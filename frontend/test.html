@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Connection Test</h1>
+    <button onclick="testAPI()">Test API</button>
+    <div id="result"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script>
+        const API_BASE_URL = 'https://8000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai';
+        
+        function testAPI() {
+            console.log('Testing API...');
+            document.getElementById('result').innerHTML = 'Loading...';
+            
+            axios.get(`${API_BASE_URL}/api/students`)
+                .then(response => {
+                    console.log('Success:', response.data);
+                    document.getElementById('result').innerHTML = 
+                        '<pre>' + JSON.stringify(response.data.slice(0, 2), null, 2) + '</pre>';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('result').innerHTML = 
+                        '<p style="color: red;">Error: ' + error.message + '</p>';
+                });
+        }
+    </script>
+</body>
+</html>
