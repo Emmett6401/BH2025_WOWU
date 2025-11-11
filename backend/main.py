@@ -280,7 +280,7 @@ async def get_subjects():
         cursor.execute("""
             SELECT s.*, i.name as instructor_name
             FROM subjects s
-            LEFT JOIN instructors i ON s.instructor_id = i.id
+            LEFT JOIN instructors i ON s.main_instructor = i.code
             ORDER BY s.name
         """)
         subjects = cursor.fetchall()
@@ -294,8 +294,8 @@ async def get_subjects():
     finally:
         conn.close()
 
-@app.get("/api/subjects/{subject_id}")
-async def get_subject(subject_id: int):
+@app.get("/api/subjects/{subject_code}")
+async def get_subject(subject_code: str):
     """특정 과목 조회"""
     conn = get_db_connection()
     try:
@@ -303,9 +303,9 @@ async def get_subject(subject_id: int):
         cursor.execute("""
             SELECT s.*, i.name as instructor_name
             FROM subjects s
-            LEFT JOIN instructors i ON s.instructor_id = i.id
-            WHERE s.id = %s
-        """, (subject_id,))
+            LEFT JOIN instructors i ON s.main_instructor = i.code
+            WHERE s.code = %s
+        """, (subject_code,))
         subject = cursor.fetchone()
         
         if not subject:
@@ -326,32 +326,31 @@ async def create_subject(data: dict):
     try:
         cursor = conn.cursor()
         
-        # subjects 테이블에 필드가 없을 수 있으므로 확인 후 추가
         query = """
             INSERT INTO subjects 
-            (name, instructor_id, lecture_days, frequency, lecture_hours, description)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            (code, name, main_instructor, lecture_days, frequency, lecture_hours, description)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         
         cursor.execute(query, (
+            data.get('code'),
             data.get('name'),
-            data.get('instructor_id'),
-            data.get('lecture_days', ''),  # 예: "월,수,금"
-            data.get('frequency', '매주'),  # "매주" 또는 "격주"
+            data.get('main_instructor'),
+            data.get('lecture_days', ''),
+            data.get('frequency', '매주'),
             data.get('lecture_hours', 0),
             data.get('description', '')
         ))
         
         conn.commit()
-        return {"id": cursor.lastrowid}
+        return {"code": data.get('code')}
     except pymysql.err.OperationalError as e:
-        # 컬럼이 없는 경우 테이블 수정 필요
-        raise HTTPException(status_code=500, detail=f"데이터베이스 스키마 확인 필요: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"데이터베이스 오류: {str(e)}")
     finally:
         conn.close()
 
-@app.put("/api/subjects/{subject_id}")
-async def update_subject(subject_id: int, data: dict):
+@app.put("/api/subjects/{subject_code}")
+async def update_subject(subject_code: str, data: dict):
     """과목 수정"""
     conn = get_db_connection()
     try:
@@ -359,33 +358,33 @@ async def update_subject(subject_id: int, data: dict):
         
         query = """
             UPDATE subjects 
-            SET name = %s, instructor_id = %s, lecture_days = %s, 
+            SET name = %s, main_instructor = %s, lecture_days = %s, 
                 frequency = %s, lecture_hours = %s, description = %s
-            WHERE id = %s
+            WHERE code = %s
         """
         
         cursor.execute(query, (
             data.get('name'),
-            data.get('instructor_id'),
+            data.get('main_instructor'),
             data.get('lecture_days', ''),
             data.get('frequency', '매주'),
             data.get('lecture_hours', 0),
             data.get('description', ''),
-            subject_id
+            subject_code
         ))
         
         conn.commit()
-        return {"id": subject_id}
+        return {"code": subject_code}
     finally:
         conn.close()
 
-@app.delete("/api/subjects/{subject_id}")
-async def delete_subject(subject_id: int):
+@app.delete("/api/subjects/{subject_code}")
+async def delete_subject(subject_code: str):
     """과목 삭제"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM subjects WHERE id = %s", (subject_id,))
+        cursor.execute("DELETE FROM subjects WHERE code = %s", (subject_code,))
         conn.commit()
         return {"message": "과목이 삭제되었습니다"}
     finally:
@@ -1005,14 +1004,14 @@ async def get_counselings(
             params.append(student_id)
         
         if month:  # 형식: "2025-01"
-            query += " AND DATE_FORMAT(c.counseling_date, '%%Y-%%m') = %s"
+            query += " AND DATE_FORMAT(c.consultation_date, '%%Y-%%m') = %s"
             params.append(month)
         
         if course_code:
             query += " AND s.course_code = %s"
             params.append(course_code)
         
-        query += " ORDER BY c.counseling_date DESC"
+        query += " ORDER BY c.consultation_date DESC"
         
         cursor.execute(query, params)
         counselings = cursor.fetchall()
@@ -1061,18 +1060,17 @@ async def create_counseling(data: dict):
         # consultations 테이블 구조에 맞게 조정
         query = """
             INSERT INTO consultations 
-            (student_id, counseling_date, counseling_type, topic, content, follow_up, is_completed)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (student_id, consultation_date, consultation_type, main_topic, content, status)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """
         
         cursor.execute(query, (
             data.get('student_id'),
-            data.get('counseling_date'),
-            data.get('counseling_type', ''),
-            data.get('topic', ''),
+            data.get('consultation_date') or data.get('counseling_date'),
+            data.get('consultation_type', '정기'),
+            data.get('main_topic') or data.get('topic', ''),
             data.get('content'),
-            data.get('follow_up', ''),
-            data.get('is_completed', 0)
+            data.get('status', '완료')
         ))
         
         conn.commit()
@@ -1091,19 +1089,18 @@ async def update_counseling(counseling_id: int, data: dict):
         
         query = """
             UPDATE consultations 
-            SET student_id = %s, counseling_date = %s, counseling_type = %s,
-                topic = %s, content = %s, follow_up = %s, is_completed = %s
+            SET student_id = %s, consultation_date = %s, consultation_type = %s,
+                main_topic = %s, content = %s, status = %s
             WHERE id = %s
         """
         
         cursor.execute(query, (
             data.get('student_id'),
-            data.get('counseling_date'),
-            data.get('counseling_type', ''),
-            data.get('topic', ''),
+            data.get('consultation_date') or data.get('counseling_date'),
+            data.get('consultation_type', '정기'),
+            data.get('main_topic') or data.get('topic', ''),
             data.get('content'),
-            data.get('follow_up', ''),
-            data.get('is_completed', 0),
+            data.get('status', '완료'),
             counseling_id
         ))
         
@@ -1153,10 +1150,10 @@ async def generate_ai_report(data: dict):
         
         # 상담 내역 조회
         cursor.execute("""
-            SELECT counseling_date, counseling_type, topic, content, follow_up
+            SELECT consultation_date, consultation_type, main_topic, content
             FROM consultations
             WHERE student_id = %s
-            ORDER BY counseling_date
+            ORDER BY consultation_date
         """, (student_id,))
         counselings = cursor.fetchall()
         
@@ -1166,10 +1163,8 @@ async def generate_ai_report(data: dict):
         # 상담 내용 포맷팅
         counseling_text = ""
         for c in counselings:
-            counseling_text += f"\n[{c['counseling_date']}] {c['counseling_type']} - {c['topic']}\n"
+            counseling_text += f"\n[{c['consultation_date']}] {c['consultation_type']} - {c['main_topic']}\n"
             counseling_text += f"내용: {c['content']}\n"
-            if c['follow_up']:
-                counseling_text += f"후속조치: {c['follow_up']}\n"
         
         # OpenAI API 호출
         client = OpenAI(api_key=api_key)
