@@ -281,7 +281,7 @@ async def get_subjects():
             SELECT s.*, i.name as instructor_name
             FROM subjects s
             LEFT JOIN instructors i ON s.main_instructor = i.code
-            ORDER BY s.name
+            ORDER BY s.code
         """)
         subjects = cursor.fetchall()
         
