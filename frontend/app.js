@@ -384,15 +384,20 @@ function renderSubjects() {
                 <h2 class="text-2xl font-bold text-gray-800">
                     <i class="fas fa-book mr-2"></i>과목 목록 (총 ${subjects.length}개)
                 </h2>
-                <button onclick="alert('과목 추가 기능 준비 중')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                <button onclick="window.showSubjectForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
                     <i class="fas fa-plus mr-2"></i>과목 추가
                 </button>
             </div>
             
+            <div id="subject-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg"></div>
+            
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 ${subjects.map(subject => `
                     <div class="border rounded-lg p-4 hover:shadow-lg transition-shadow">
-                        <h3 class="text-xl font-bold text-blue-600">${subject.name}</h3>
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-bold text-blue-600">${subject.name}</h3>
+                            <span class="text-xs bg-gray-100 px-2 py-1 rounded">${subject.code}</span>
+                        </div>
                         <p class="text-gray-600 text-sm mt-1">
                             <i class="fas fa-user-tie mr-1"></i>${subject.instructor_name || '미정'}
                         </p>
@@ -401,11 +406,138 @@ function renderSubjects() {
                             <p><i class="fas fa-repeat mr-2"></i>빈도: ${subject.frequency || '매주'}</p>
                             <p><i class="fas fa-clock mr-2"></i>강의시수: ${subject.lecture_hours || 0}시간</p>
                         </div>
+                        ${subject.description ? `<p class="text-sm text-gray-500 mt-2">${subject.description}</p>` : ''}
+                        <div class="mt-3 flex space-x-2">
+                            <button onclick="window.editSubject('${subject.code}')" class="text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-edit"></i> 수정
+                            </button>
+                            <button onclick="window.deleteSubject('${subject.code}')" class="text-red-600 hover:text-red-800">
+                                <i class="fas fa-trash"></i> 삭제
+                            </button>
+                        </div>
                     </div>
                 `).join('')}
             </div>
         </div>
     `;
+}
+
+window.showSubjectForm = function(subjectCode = null) {
+    const formDiv = document.getElementById('subject-form');
+    const existingSubject = subjectCode ? subjects.find(s => s.code === subjectCode) : null;
+    
+    formDiv.innerHTML = `
+        <h3 class="text-lg font-semibold mb-4">${subjectCode ? '과목 수정' : '과목 추가'}</h3>
+        <form id="subject-save-form">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-700 mb-2">과목 코드</label>
+                    <input type="text" name="code" value="${existingSubject?.code || ''}" 
+                           ${subjectCode ? 'readonly' : ''} required
+                           placeholder="G-001"
+                           class="w-full px-3 py-2 border rounded-lg ${subjectCode ? 'bg-gray-100' : ''}">
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">과목명</label>
+                    <input type="text" name="name" value="${existingSubject?.name || ''}" required
+                           class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">담당 강사 코드</label>
+                    <select name="main_instructor" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="">선택</option>
+                        ${instructors.map(inst => `
+                            <option value="${inst.code}" ${existingSubject?.main_instructor === inst.code ? 'selected' : ''}>
+                                ${inst.name} (${inst.code})
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">강의 요일</label>
+                    <input type="text" name="lecture_days" value="${existingSubject?.lecture_days || ''}"
+                           placeholder="월,수,금"
+                           class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">빈도</label>
+                    <select name="frequency" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="매주" ${existingSubject?.frequency === '매주' ? 'selected' : ''}>매주</option>
+                        <option value="격주" ${existingSubject?.frequency === '격주' ? 'selected' : ''}>격주</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">강의 시수</label>
+                    <input type="number" name="lecture_hours" value="${existingSubject?.lecture_hours || 0}"
+                           class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-gray-700 mb-2">설명</label>
+                    <textarea name="description" rows="3" class="w-full px-3 py-2 border rounded-lg">${existingSubject?.description || ''}</textarea>
+                </div>
+            </div>
+            <div class="mt-4 space-x-2">
+                <button type="button" onclick="window.saveSubject('${subjectCode || ''}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-save mr-2"></i>저장
+                </button>
+                <button type="button" onclick="window.hideSubjectForm()" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg">
+                    취소
+                </button>
+            </div>
+        </form>
+    `;
+    
+    formDiv.classList.remove('hidden');
+}
+
+window.hideSubjectForm = function() {
+    document.getElementById('subject-form').classList.add('hidden');
+}
+
+window.saveSubject = async function(subjectCode) {
+    const form = document.getElementById('subject-save-form');
+    const formData = new FormData(form);
+    const data = {
+        code: formData.get('code'),
+        name: formData.get('name'),
+        main_instructor: formData.get('main_instructor'),
+        lecture_days: formData.get('lecture_days'),
+        frequency: formData.get('frequency'),
+        lecture_hours: parseInt(formData.get('lecture_hours')) || 0,
+        description: formData.get('description')
+    };
+    
+    try {
+        if (subjectCode) {
+            await axios.put(`${API_BASE_URL}/api/subjects/${subjectCode}`, data);
+            alert('과목이 수정되었습니다.');
+        } else {
+            await axios.post(`${API_BASE_URL}/api/subjects`, data);
+            alert('과목이 추가되었습니다.');
+        }
+        window.hideSubjectForm();
+        loadSubjects();
+    } catch (error) {
+        console.error('과목 저장 실패:', error);
+        alert('저장 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+window.editSubject = function(subjectCode) {
+    window.showSubjectForm(subjectCode);
+}
+
+window.deleteSubject = async function(subjectCode) {
+    if (!confirm('이 과목을 삭제하시겠습니까?')) return;
+    
+    try {
+        await axios.delete(`${API_BASE_URL}/api/subjects/${subjectCode}`);
+        alert('과목이 삭제되었습니다.');
+        loadSubjects();
+    } catch (error) {
+        console.error('과목 삭제 실패:', error);
+        alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+    }
 }
 
 // ==================== 상담 관리 ====================
@@ -432,21 +564,48 @@ function renderCounselings() {
                 <h2 class="text-2xl font-bold text-gray-800">
                     <i class="fas fa-comments mr-2"></i>상담 목록 (총 ${counselings.length}건)
                 </h2>
-                <button onclick="alert('상담 추가 기능 준비 중')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                    <i class="fas fa-plus mr-2"></i>상담 추가
-                </button>
+                <div class="space-x-2">
+                    <select id="filter-student" class="border rounded px-3 py-2" onchange="window.filterCounselings()">
+                        <option value="">전체 학생</option>
+                        ${students.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join('')}
+                    </select>
+                    <button onclick="window.showCounselingForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-plus mr-2"></i>상담 추가
+                    </button>
+                </div>
             </div>
+            
+            <div id="counseling-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg"></div>
             
             <div class="space-y-4">
                 ${counselings.map(counseling => `
-                    <div class="border rounded-lg p-4 hover:shadow-lg transition-shadow">
-                        <h3 class="text-xl font-bold text-blue-600">${counseling.topic || counseling.main_topic || '상담'}</h3>
-                        <p class="text-gray-600">
-                            <i class="fas fa-user mr-2"></i>${counseling.student_name} (${counseling.student_code}) | 
-                            ${counseling.counseling_date?.substring(0, 10) || counseling.consultation_date?.substring(0, 10)}
-                        </p>
-                        <div class="text-gray-700 mt-2">
-                            <p><strong>상담 내용:</strong> ${counseling.content || '-'}</p>
+                    <div class="border rounded-lg p-4 hover:shadow-lg transition-shadow ${counseling.status === '완료' ? 'bg-green-50' : ''}">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h3 class="text-xl font-bold text-blue-600">${counseling.main_topic || '상담'}</h3>
+                                <p class="text-gray-600 text-sm">
+                                    <i class="fas fa-user mr-2"></i>${counseling.student_name} (${counseling.student_code}) | 
+                                    <i class="fas fa-calendar mr-2"></i>${counseling.consultation_date?.substring(0, 10)}
+                                </p>
+                                <p class="text-sm text-gray-500 mt-1">
+                                    <i class="fas fa-tag mr-2"></i>${counseling.consultation_type || '정기'} | 
+                                    <i class="fas fa-check-circle mr-2"></i>${counseling.status || '완료'}
+                                </p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="window.viewCounseling(${counseling.id})" class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button onclick="window.editCounseling(${counseling.id})" class="text-green-600 hover:text-green-800">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="window.deleteCounseling(${counseling.id})" class="text-red-600 hover:text-red-800">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="text-gray-700 mt-3">
+                            <p class="line-clamp-2">${counseling.content || '-'}</p>
                         </div>
                     </div>
                 `).join('')}
@@ -455,7 +614,150 @@ function renderCounselings() {
     `;
 }
 
+window.filterCounselings = async function() {
+    const studentId = document.getElementById('filter-student').value;
+    try {
+        const url = studentId ? `${API_BASE_URL}/api/counselings?student_id=${studentId}` : `${API_BASE_URL}/api/counselings`;
+        const response = await axios.get(url);
+        counselings = response.data;
+        renderCounselings();
+    } catch (error) {
+        console.error('상담 필터링 실패:', error);
+    }
+}
+
+window.showCounselingForm = function(counselingId = null) {
+    const formDiv = document.getElementById('counseling-form');
+    const existingCounseling = counselingId ? counselings.find(c => c.id === counselingId) : null;
+    
+    formDiv.innerHTML = `
+        <h3 class="text-lg font-semibold mb-4">${counselingId ? '상담 수정' : '상담 추가'}</h3>
+        <form id="counseling-save-form">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-700 mb-2">학생 선택 *</label>
+                    <select name="student_id" required class="w-full px-3 py-2 border rounded-lg">
+                        <option value="">선택하세요</option>
+                        ${students.map(s => `
+                            <option value="${s.id}" ${existingCounseling?.student_id === s.id ? 'selected' : ''}>
+                                ${s.name} (${s.code})
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">상담 날짜 *</label>
+                    <input type="date" name="consultation_date" 
+                           value="${existingCounseling?.consultation_date?.substring(0, 10) || ''}" 
+                           required class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">상담 유형</label>
+                    <select name="consultation_type" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="정기" ${existingCounseling?.consultation_type === '정기' ? 'selected' : ''}>정기</option>
+                        <option value="수시" ${existingCounseling?.consultation_type === '수시' ? 'selected' : ''}>수시</option>
+                        <option value="긴급" ${existingCounseling?.consultation_type === '긴급' ? 'selected' : ''}>긴급</option>
+                        <option value="학부모" ${existingCounseling?.consultation_type === '학부모' ? 'selected' : ''}>학부모</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">상태</label>
+                    <select name="status" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="예정" ${existingCounseling?.status === '예정' ? 'selected' : ''}>예정</option>
+                        <option value="완료" ${existingCounseling?.status === '완료' ? 'selected' : ''}>완료</option>
+                        <option value="취소" ${existingCounseling?.status === '취소' ? 'selected' : ''}>취소</option>
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-gray-700 mb-2">주제 *</label>
+                    <input type="text" name="main_topic" value="${existingCounseling?.main_topic || ''}" 
+                           required placeholder="상담 주제를 입력하세요"
+                           class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-gray-700 mb-2">상담 내용 *</label>
+                    <textarea name="content" rows="4" required class="w-full px-3 py-2 border rounded-lg">${existingCounseling?.content || ''}</textarea>
+                </div>
+            </div>
+            <div class="mt-4 space-x-2">
+                <button type="button" onclick="window.saveCounseling(${counselingId || 'null'})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-save mr-2"></i>저장
+                </button>
+                <button type="button" onclick="window.hideCounselingForm()" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg">
+                    취소
+                </button>
+            </div>
+        </form>
+    `;
+    
+    formDiv.classList.remove('hidden');
+}
+
+window.hideCounselingForm = function() {
+    document.getElementById('counseling-form').classList.add('hidden');
+}
+
+window.saveCounseling = async function(counselingId) {
+    const form = document.getElementById('counseling-save-form');
+    const formData = new FormData(form);
+    const data = {
+        student_id: parseInt(formData.get('student_id')),
+        consultation_date: formData.get('consultation_date'),
+        consultation_type: formData.get('consultation_type'),
+        main_topic: formData.get('main_topic'),
+        content: formData.get('content'),
+        status: formData.get('status')
+    };
+    
+    try {
+        if (counselingId) {
+            await axios.put(`${API_BASE_URL}/api/counselings/${counselingId}`, data);
+            alert('상담이 수정되었습니다.');
+        } else {
+            await axios.post(`${API_BASE_URL}/api/counselings`, data);
+            alert('상담이 추가되었습니다.');
+        }
+        window.hideCounselingForm();
+        loadCounselings();
+    } catch (error) {
+        console.error('상담 저장 실패:', error);
+        alert('저장 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+window.viewCounseling = async function(counselingId) {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/counselings/${counselingId}`);
+        const c = response.data;
+        alert(`[상담 상세]\n\n학생: ${c.student_name}\n날짜: ${c.consultation_date?.substring(0, 10)}\n유형: ${c.consultation_type}\n주제: ${c.main_topic}\n\n내용:\n${c.content}`);
+    } catch (error) {
+        console.error('상담 조회 실패:', error);
+        alert('조회 실패');
+    }
+}
+
+window.editCounseling = function(counselingId) {
+    window.showCounselingForm(counselingId);
+}
+
+window.deleteCounseling = async function(counselingId) {
+    if (!confirm('이 상담 기록을 삭제하시겠습니까?')) return;
+    
+    try {
+        await axios.delete(`${API_BASE_URL}/api/counselings/${counselingId}`);
+        alert('상담이 삭제되었습니다.');
+        loadCounselings();
+    } catch (error) {
+        console.error('상담 삭제 실패:', error);
+        alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
 // ==================== AI 생기부 ====================
+let selectedStudentForAI = null;
+let studentCounselings = [];
+let generatedReport = null;
+
 function renderAIReport() {
     const app = document.getElementById('app');
     app.innerHTML = `
@@ -464,16 +766,211 @@ function renderAIReport() {
                 <i class="fas fa-robot mr-2"></i>AI 생활기록부 작성
             </h2>
             
-            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                <p class="text-yellow-700">
-                    <i class="fas fa-exclamation-triangle mr-2"></i>
-                    OpenAI API 키가 필요합니다. .env 파일에 OPENAI_API_KEY를 설정해주세요.
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <p class="text-blue-700">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    학생을 선택하면 모든 상담 기록을 기반으로 종합 의견을 AI가 생성합니다.
                 </p>
             </div>
             
-            <p class="text-gray-600">AI 생기부 작성 기능 준비 중입니다.</p>
+            <!-- 학생 선택 -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">학생 선택</label>
+                <select id="ai-student-select" onchange="window.loadStudentCounselings()" class="w-full md:w-1/2 border rounded px-3 py-2">
+                    <option value="">-- 학생을 선택하세요 --</option>
+                    ${students.map(s => `
+                        <option value="${s.id}">${s.name} (${s.code})</option>
+                    `).join('')}
+                </select>
+            </div>
+            
+            <!-- 상담 기록 리스트 -->
+            <div id="counseling-records-section" class="hidden">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                    <i class="fas fa-list mr-2"></i>상담 기록 (총 <span id="counseling-count">0</span>건)
+                </h3>
+                <div id="counseling-records-list" class="space-y-3 mb-6">
+                    <!-- 상담 기록이 여기에 표시됩니다 -->
+                </div>
+                
+                <button onclick="window.generateAIReport()" class="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg shadow-lg transform transition hover:scale-105">
+                    <i class="fas fa-magic mr-2"></i>AI 생기부 생성
+                </button>
+            </div>
+            
+            <!-- AI 생성 결과 -->
+            <div id="ai-report-result" class="hidden mt-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                    <i class="fas fa-file-alt mr-2"></i>생성된 AI 생활기록부
+                </h3>
+                <div id="ai-report-content" class="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-6 whitespace-pre-wrap">
+                    <!-- AI 생성 내용이 여기에 표시됩니다 -->
+                </div>
+                
+                <div class="mt-4 space-x-2">
+                    <button onclick="window.copyAIReport()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+                        <i class="fas fa-copy mr-2"></i>복사
+                    </button>
+                    <button onclick="window.downloadAIReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                        <i class="fas fa-download mr-2"></i>다운로드
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 로딩 스피너 -->
+            <div id="ai-loading" class="hidden mt-6 text-center">
+                <i class="fas fa-spinner fa-spin text-4xl text-purple-600 mb-4"></i>
+                <p class="text-gray-600">AI가 생기부를 작성하고 있습니다... (약 10-20초 소요)</p>
+            </div>
         </div>
     `;
+}
+
+window.loadStudentCounselings = async function() {
+    const studentId = document.getElementById('ai-student-select').value;
+    
+    if (!studentId) {
+        document.getElementById('counseling-records-section').classList.add('hidden');
+        document.getElementById('ai-report-result').classList.add('hidden');
+        return;
+    }
+    
+    selectedStudentForAI = parseInt(studentId);
+    
+    try {
+        // 학생의 모든 상담 기록 가져오기
+        const response = await axios.get(`${API_BASE_URL}/api/counselings?student_id=${studentId}`);
+        studentCounselings = response.data;
+        
+        // 상담 기록 표시
+        const recordsList = document.getElementById('counseling-records-list');
+        const counselingCount = document.getElementById('counseling-count');
+        
+        counselingCount.textContent = studentCounselings.length;
+        
+        if (studentCounselings.length === 0) {
+            recordsList.innerHTML = `
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500">
+                    <i class="fas fa-inbox mr-2"></i>상담 기록이 없습니다.
+                </div>
+            `;
+            document.getElementById('counseling-records-section').classList.remove('hidden');
+            return;
+        }
+        
+        recordsList.innerHTML = studentCounselings.map((c, index) => `
+            <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition ${c.status === '완료' ? 'bg-green-50 border-green-200' : ''}">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex items-center space-x-2">
+                        <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-1 rounded">
+                            ${index + 1}회차
+                        </span>
+                        <span class="text-sm font-medium text-gray-700">
+                            ${c.consultation_date ? new Date(c.consultation_date).toLocaleDateString('ko-KR') : '-'}
+                        </span>
+                        <span class="text-xs px-2 py-1 rounded ${
+                            c.consultation_type === '정기' ? 'bg-blue-100 text-blue-800' :
+                            c.consultation_type === '수시' ? 'bg-green-100 text-green-800' :
+                            c.consultation_type === '긴급' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                        }">
+                            ${c.consultation_type}
+                        </span>
+                        <span class="text-xs px-2 py-1 rounded ${
+                            c.status === '완료' ? 'bg-green-100 text-green-800' :
+                            c.status === '예정' ? 'bg-gray-100 text-gray-800' :
+                            'bg-red-100 text-red-800'
+                        }">
+                            ${c.status}
+                        </span>
+                    </div>
+                </div>
+                <div class="text-sm">
+                    <p class="font-semibold text-gray-800 mb-1">
+                        <i class="fas fa-comment-dots mr-2 text-purple-600"></i>${c.main_topic || '(주제 없음)'}
+                    </p>
+                    <p class="text-gray-600 ml-6 whitespace-pre-wrap">${c.content || '(내용 없음)'}</p>
+                </div>
+            </div>
+        `).join('');
+        
+        document.getElementById('counseling-records-section').classList.remove('hidden');
+        document.getElementById('ai-report-result').classList.add('hidden');
+        generatedReport = null;
+        
+    } catch (error) {
+        console.error('상담 기록 로드 실패:', error);
+        alert('상담 기록을 불러오는데 실패했습니다.');
+    }
+}
+
+window.generateAIReport = async function() {
+    if (!selectedStudentForAI) {
+        alert('학생을 먼저 선택해주세요.');
+        return;
+    }
+    
+    if (studentCounselings.length === 0) {
+        alert('상담 기록이 없어 생기부를 생성할 수 없습니다.');
+        return;
+    }
+    
+    // 로딩 표시
+    document.getElementById('ai-loading').classList.remove('hidden');
+    document.getElementById('ai-report-result').classList.add('hidden');
+    
+    try {
+        const student = students.find(s => s.id === selectedStudentForAI);
+        
+        const response = await axios.post(`${API_BASE_URL}/api/ai/generate-report`, {
+            student_id: selectedStudentForAI,
+            student_name: student ? student.name : '알 수 없음',
+            student_code: student ? student.code : '알 수 없음'
+        });
+        
+        generatedReport = response.data.report;
+        
+        // 결과 표시
+        document.getElementById('ai-report-content').textContent = generatedReport;
+        document.getElementById('ai-report-result').classList.remove('hidden');
+        document.getElementById('ai-loading').classList.add('hidden');
+        
+        // 결과로 스크롤
+        document.getElementById('ai-report-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+    } catch (error) {
+        console.error('AI 생기부 생성 실패:', error);
+        alert('AI 생기부 생성에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+        document.getElementById('ai-loading').classList.add('hidden');
+    }
+}
+
+window.copyAIReport = function() {
+    if (!generatedReport) return;
+    
+    navigator.clipboard.writeText(generatedReport).then(() => {
+        alert('AI 생기부가 클립보드에 복사되었습니다.');
+    }).catch(err => {
+        console.error('복사 실패:', err);
+        alert('복사에 실패했습니다.');
+    });
+}
+
+window.downloadAIReport = function() {
+    if (!generatedReport) return;
+    
+    const student = students.find(s => s.id === selectedStudentForAI);
+    const filename = `AI생기부_${student ? student.name : 'student'}_${new Date().toISOString().split('T')[0]}.txt`;
+    
+    const blob = new Blob([generatedReport], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 // ==================== 강사코드 관리 ====================
