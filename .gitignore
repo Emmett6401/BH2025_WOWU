@@ -29,5 +29,15 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.coverage
+
 # misc
 .DS_Store

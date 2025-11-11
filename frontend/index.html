@@ -23,18 +23,36 @@
         <!-- 네비게이션 탭 -->
         <nav class="bg-white shadow-md">
             <div class="container mx-auto px-4">
-                <div class="flex space-x-4 overflow-x-auto">
-                    <button onclick="showTab('students')" class="tab-btn px-6 py-4 font-semibold text-blue-600 border-b-2 border-blue-600" data-tab="students">
-                        <i class="fas fa-user-graduate mr-2"></i>학생 관리
+                <div class="flex space-x-2 overflow-x-auto py-2">
+                    <button onclick="showTab('instructor-codes')" class="tab-btn px-4 py-3 text-sm font-semibold text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded" data-tab="instructor-codes">
+                        <i class="fas fa-code mr-1"></i>강사코드
                     </button>
-                    <button onclick="showTab('subjects')" class="tab-btn px-6 py-4 font-semibold text-gray-600 hover:text-blue-600" data-tab="subjects">
-                        <i class="fas fa-book mr-2"></i>과목 관리
+                    <button onclick="showTab('instructors')" class="tab-btn px-4 py-3 text-sm font-semibold text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded" data-tab="instructors">
+                        <i class="fas fa-chalkboard-teacher mr-1"></i>강사관리
                     </button>
-                    <button onclick="showTab('counselings')" class="tab-btn px-6 py-4 font-semibold text-gray-600 hover:text-blue-600" data-tab="counselings">
-                        <i class="fas fa-comments mr-2"></i>상담 관리
+                    <button onclick="showTab('subjects')" class="tab-btn px-4 py-3 text-sm font-semibold text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded" data-tab="subjects">
+                        <i class="fas fa-book mr-1"></i>교과목
                     </button>
-                    <button onclick="showTab('ai-report')" class="tab-btn px-6 py-4 font-semibold text-gray-600 hover:text-blue-600" data-tab="ai-report">
-                        <i class="fas fa-robot mr-2"></i>AI 생기부
+                    <button onclick="showTab('holidays')" class="tab-btn px-4 py-3 text-sm font-semibold text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded" data-tab="holidays">
+                        <i class="fas fa-calendar-alt mr-1"></i>공휴일
+                    </button>
+                    <button onclick="showTab('courses')" class="tab-btn px-4 py-3 text-sm font-semibold text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded" data-tab="courses">
+                        <i class="fas fa-school mr-1"></i>과정관리
+                    </button>
+                    <button onclick="showTab('students')" class="tab-btn px-4 py-3 text-sm font-semibold text-blue-600 bg-blue-50 border-b-2 border-blue-600 rounded" data-tab="students">
+                        <i class="fas fa-user-graduate mr-1"></i>학생관리
+                    </button>
+                    <button onclick="showTab('counselings')" class="tab-btn px-4 py-3 text-sm font-semibold text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded" data-tab="counselings">
+                        <i class="fas fa-comments mr-1"></i>상담관리
+                    </button>
+                    <button onclick="showTab('projects')" class="tab-btn px-4 py-3 text-sm font-semibold text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded" data-tab="projects">
+                        <i class="fas fa-project-diagram mr-1"></i>프로젝트
+                    </button>
+                    <button onclick="showTab('timetables')" class="tab-btn px-4 py-3 text-sm font-semibold text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded" data-tab="timetables">
+                        <i class="fas fa-clock mr-1"></i>시간표
+                    </button>
+                    <button onclick="showTab('ai-report')" class="tab-btn px-4 py-3 text-sm font-semibold text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded" data-tab="ai-report">
+                        <i class="fas fa-robot mr-1"></i>AI생기부
                     </button>
                 </div>
             </div>

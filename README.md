@@ -1,21 +1,95 @@
-# 학급 관리 시스템 v2.0
+# 교육관리시스템 v3.0 (Education Management System)
 
 ## 프로젝트 개요
-- **이름**: 학급 관리 시스템 v2.0 (MySQL + FastAPI + AI)
-- **목표**: 교육 기관의 학생, 과목, 상담 정보를 체계적으로 관리하고 AI를 활용한 생활기록부 자동 생성
-- **주요 기능**:
-  - ✅ MySQL 데이터베이스 연동 (외부 DB)
-  - ✅ Excel 파일 일괄 업로드로 학생 대량 등록
-  - ✅ 과목 관리 (교수, 강의요일, 매주/격주, 강의시수)
-  - ✅ 상담 관리 (학생별/월별/학급별 조회 및 필터)
-  - ✅ AI 생활기록부 자동 생성 (OpenAI GPT-4 활용)
+- **이름**: 교육관리시스템 v3.0 - 통합 학사관리 플랫폼
+- **목표**: 교육 기관의 강사, 과목, 과정, 학생, 상담, 프로젝트, 시간표를 통합 관리하고 AI 생활기록부 자동 생성
+- **주요 기능**: 9개 관리 모듈 + AI 생기부 작성
 
-## URL
+## 🌐 URL
 - **프론트엔드**: https://3000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai
 - **백엔드 API**: https://8000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai
-- **API 문서**: https://8000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai/docs
+- **API 문서 (Swagger)**: https://8000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai/docs
 
-## 데이터 아키텍처
+## ✅ 완료된 기능 (10개 모듈)
+
+### 1. 강사코드 관리 (Instructor Codes)
+- 강사 유형 코드 관리 (주강사, 보조강사, 멘토 등)
+- CRUD 기능 (생성, 조회, 수정, 삭제)
+- 총 5개 강사코드 등록됨
+
+### 2. 강사 관리 (Instructors)
+- 강사 정보 관리 (코드, 이름, 전공, 연락처, 이메일)
+- 강사 유형 연계 (강사코드와 JOIN)
+- 검색 기능 (이름, 코드, 연락처)
+- 총 33명 강사 등록됨
+
+### 3. 교과목 관리 (Subjects)
+- 과목 정보 관리 (과목명, 담당강사)
+- 강의요일 설정 (월/화/수/목/금)
+- 빈도 설정 (매주/격주)
+- 강의시수 입력
+
+### 4. 공휴일 관리 (Holidays)
+- 공휴일 등록 및 관리
+- 법정공휴일/일반 구분
+- 연도별 필터 조회
+- 2025년 공휴일 등록됨
+
+### 5. 과정(학급) 관리 (Courses)
+- 과정 기본 정보 (코드, 이름, 장소, 정원)
+- 기간 관리:
+  - 시작일, 강의종료일
+  - 프로젝트종료일, 인턴종료일
+  - 최종종료일, 총일수
+- 시간 배정:
+  - 강의시간, 프로젝트시간, 인턴시간
+- 학생수/과목수 자동 집계
+- 총 4개 과정 운영 중
+
+### 6. 학생 관리 (Students)
+- 개별 학생 정보 관리
+- **Excel 일괄 등록**:
+  - 템플릿 다운로드 기능
+  - 11개 컬럼 양식 지원
+  - 자동 학생코드 생성 (S001, S002...)
+- 과정별 조회
+- 검색 기능
+- 총 24명 학생 등록됨
+
+### 7. 학생상담 관리 (Counselings)
+- 상담 기록 관리
+- 필터 기능:
+  - 학생별 상담 조회
+  - 월별 상담 조회 (YYYY-MM)
+  - 과정별 상담 조회
+- 상담 유형 분류
+- 완료 여부 체크
+- 후속조치 관리
+
+### 8. 프로젝트 관리 (Projects)
+- 프로젝트 정보 관리
+- 팀원 관리 (최대 5명)
+- 팀원별 이름/연락처 저장
+- 과정별 프로젝트 조회
+
+### 9. 시간표 관리 (Timetables)
+- 수업 일정 관리
+- 필터 기능:
+  - 과정별 조회
+  - 기간별 조회 (시작일~종료일)
+- 정보 표시:
+  - 과정명, 과목명, 강사명 (JOIN)
+  - 수업 날짜, 시작시간, 종료시간
+  - 수업 타입 (lecture/project/internship)
+- 총 195건 시간표 등록됨
+
+### 10. AI 생활기록부 작성
+- OpenAI GPT-4o-mini 활용
+- 학생 상담 기록 자동 분석
+- 맞춤형 생기부 작성
+- 긍정적 표현 및 성장 가능성 강조
+
+## 📊 데이터 아키텍처
 
 ### 외부 MySQL 데이터베이스
 ```
@@ -24,223 +98,230 @@
 사용자: iyrc
 ```
 
-### 데이터 모델
+### 주요 테이블 구조
 
-#### 1. **학생(students)**
+#### instructor_codes (강사코드)
 ```sql
-- id: 고유 ID
-- code: 학생 코드 (S001, S002...)
-- name: 이름
-- birth_date: 생년월일
-- gender: 성별
-- phone: 연락처
-- email: 이메일
-- address: 주소
-- interests: 관심 분야
-- education: 학력
-- introduction: 자기소개
-- campus: 캠퍼스
-- course_code: 과정 코드
-- notes: 비고
+- code: VARCHAR(10) PK
+- name: VARCHAR(50)
+- type: ENUM (12가지 강사 유형)
 ```
 
-#### 2. **과목(subjects)**
+#### instructors (강사)
 ```sql
-- id: 고유 ID
-- code: 과목 코드
-- name: 과목명
-- instructor_id: 강사 ID
-- lecture_days: 강의요일 (월,수,금)
-- frequency: 빈도 (매주/격주)
-- lecture_hours: 강의시수
-- description: 설명
+- code: VARCHAR(10) PK
+- name, phone, major, email
+- instructor_type: FK -> instructor_codes.code
 ```
 
-#### 3. **강사(instructors)**
+#### courses (과정)
 ```sql
-- id: 고유 ID
-- name: 강사명
-- phone: 연락처
-- email: 이메일
+- code: VARCHAR(10) PK
+- name, capacity, location
+- lecture_hours, project_hours, internship_hours
+- start_date, lecture_end_date, project_end_date
+- internship_end_date, final_end_date, total_days
 ```
 
-#### 4. **상담(consultations)**
+#### students (학생)
 ```sql
-- id: 고유 ID
-- student_id: 학생 ID
-- counseling_date: 상담 날짜
-- counseling_type: 상담 유형 (학업/생활/진로/기타)
-- topic: 주제
-- content: 상담 내용
-- follow_up: 후속 조치
-- is_completed: 완료 여부
+- id: INT PK
+- code: VARCHAR(10) (S001, S002...)
+- name, birth_date, gender, phone, email
+- course_code: FK -> courses.code
+```
+
+#### consultations (상담)
+```sql
+- id: INT PK
+- student_id: FK -> students.id
+- counseling_date, counseling_type, topic
+- content, follow_up, is_completed
+```
+
+#### projects (프로젝트)
+```sql
+- code: VARCHAR(10) PK
+- name, course_code
+- member1_name ~ member5_name
+- member1_phone ~ member5_phone
+```
+
+#### timetables (시간표)
+```sql
+- id: INT PK
+- course_code, subject_code, instructor_code
+- class_date, start_time, end_time
+- type: ENUM (lecture/project/internship)
+```
+
+#### holidays (공휴일)
+```sql
+- id: INT PK
+- holiday_date, name
+- is_legal: TINYINT (법정공휴일 여부)
 ```
 
 ### 데이터 플로우
 ```
-프론트엔드 (HTML + TailwindCSS + Vanilla JS)
-    ↓ (REST API 호출)
+프론트엔드 (Vanilla JS + TailwindCSS)
+    ↓ (Axios HTTP 요청)
 백엔드 API (FastAPI + Python)
-    ↓ (SQL 쿼리 with PyMySQL)
-MySQL 데이터베이스 (외부 서버: bitnmeta2.synology.me)
-    ↓ (AI 생성 시)
-OpenAI GPT-4 API
+    ↓ (PyMySQL 쿼리)
+MySQL 데이터베이스 (외부 서버)
+    ↓ (AI 요청 시)
+OpenAI GPT-4o-mini API
 ```
 
-## 기능 가이드
+## 📡 API 엔드포인트 (총 23개)
 
-### 1. 학생 관리
-- **학생 추가**: 개별 학생 정보 입력
-- **Excel 일괄 등록**:
-  1. "Excel 템플릿" 버튼으로 양식 다운로드
-  2. Excel 파일에 학생 정보 입력 (첨부한 양식과 동일)
-  3. "Excel 업로드" 버튼으로 파일 업로드
-  4. 자동으로 학생 코드(S001, S002...) 생성 및 일괄 등록
-- **학생 조회**: 전체 학생 목록 테이블 형식으로 표시
-- **학생 수정/삭제**: 각 학생별 작업 버튼 사용
+### 강사코드 API
+- `GET /api/instructor-codes` - 목록 조회
+- `POST /api/instructor-codes` - 생성
+- `PUT /api/instructor-codes/{code}` - 수정
+- `DELETE /api/instructor-codes/{code}` - 삭제
 
-### 2. 과목 관리
-- **과목 추가**:
-  - 과목명, 담당 강사 선택
-  - 강의요일: 월/화/수/목/금 중 복수 선택 가능
-  - 빈도: 매주 또는 격주 선택
-  - 강의시수: 숫자로 입력
-- **과목 조회**: 카드 형식으로 과목 정보 표시
-- **과목 수정/삭제**: 각 과목 카드의 작업 버튼 사용
+### 강사 API
+- `GET /api/instructors?search={query}` - 목록 조회 (검색)
+- `GET /api/instructors/{code}` - 상세 조회
+- `POST /api/instructors` - 생성
+- `PUT /api/instructors/{code}` - 수정
+- `DELETE /api/instructors/{code}` - 삭제
 
-### 3. 상담 관리
-- **상담 추가**:
-  - 학생 선택 (드롭다운)
-  - 상담 날짜, 상담 유형(학업/생활/진로/기타)
-  - 주제, 상담 내용, 후속 조치 입력
-  - 완료 여부 체크
-- **상담 조회 및 필터링**:
-  - 월별 필터: 특정 월의 상담만 조회
-  - 학생별 필터: 특정 학생의 상담만 조회
-  - 학급별 필터: API 레벨에서 course_code로 필터 가능
-- **상담 현황**:
-  - 완료된 상담은 초록색 배경으로 표시
-  - 상담 유형별 색상 구분
+### 공휴일 API
+- `GET /api/holidays?year={year}` - 목록 조회 (연도별)
+- `POST /api/holidays` - 생성
+- `PUT /api/holidays/{id}` - 수정
+- `DELETE /api/holidays/{id}` - 삭제
 
-### 4. AI 생활기록부 작성
-- **사용 방법**:
-  1. 학생 선택
-  2. 맞춤형 지시사항 입력 (선택)
-     - 예: "긍정적이고 따뜻한 톤으로 작성", "학생의 성장 가능성 강조"
-  3. "AI 생기부 작성" 버튼 클릭
-- **AI 처리 과정**:
-  1. 선택한 학생의 모든 상담 기록 수집
-  2. 학생 정보(이름, 관심분야, 학력 등)와 함께 OpenAI GPT-4에 전송
-  3. AI가 상담 내용을 분석하고 통합하여 생활기록부 작성
-  4. 학생의 특성, 성장 과정, 발달사항을 체계적으로 기술
-- **결과 활용**:
-  - 생성된 생활기록부를 화면에 표시
-  - "복사하기" 버튼으로 클립보드에 복사
-  - 필요시 수정하여 사용
-
-## API 엔드포인트
+### 과정 API
+- `GET /api/courses` - 목록 조회 (학생수, 과목수 포함)
+- `GET /api/courses/{code}` - 상세 조회
+- `POST /api/courses` - 생성
+- `PUT /api/courses/{code}` - 수정
+- `DELETE /api/courses/{code}` - 삭제
 
 ### 학생 API
-- `GET /api/students` - 학생 목록 조회 (course_code, search 필터 지원)
-- `GET /api/students/{id}` - 특정 학생 조회
-- `POST /api/students` - 학생 생성 (자동 코드 생성)
-- `PUT /api/students/{id}` - 학생 수정
-- `DELETE /api/students/{id}` - 학생 삭제
+- `GET /api/students?course_code={code}&search={query}` - 목록 조회
+- `GET /api/students/{id}` - 상세 조회
+- `POST /api/students` - 생성
+- `PUT /api/students/{id}` - 수정
+- `DELETE /api/students/{id}` - 삭제
 - `POST /api/students/upload-excel` - Excel 일괄 업로드
 - `GET /api/students/download-template` - Excel 템플릿 다운로드
 
-### 과목 API
-- `GET /api/subjects` - 과목 목록 조회
-- `GET /api/subjects/{id}` - 특정 과목 조회
-- `POST /api/subjects` - 과목 생성
-- `PUT /api/subjects/{id}` - 과목 수정
-- `DELETE /api/subjects/{id}` - 과목 삭제
-
-### 강사 API
-- `GET /api/instructors` - 강사 목록 조회
-
 ### 상담 API
-- `GET /api/counselings` - 상담 목록 조회 (student_id, month, course_code 필터 지원)
-- `GET /api/counselings/{id}` - 특정 상담 조회
-- `POST /api/counselings` - 상담 생성
-- `PUT /api/counselings/{id}` - 상담 수정
-- `DELETE /api/counselings/{id}` - 상담 삭제
+- `GET /api/counselings?student_id={id}&month={YYYY-MM}&course_code={code}` - 목록 조회
+- `GET /api/counselings/{id}` - 상세 조회
+- `POST /api/counselings` - 생성
+- `PUT /api/counselings/{id}` - 수정
+- `DELETE /api/counselings/{id}` - 삭제
+
+### 프로젝트 API
+- `GET /api/projects?course_code={code}` - 목록 조회
+- `GET /api/projects/{code}` - 상세 조회
+- `POST /api/projects` - 생성
+- `PUT /api/projects/{code}` - 수정
+- `DELETE /api/projects/{code}` - 삭제
+
+### 시간표 API
+- `GET /api/timetables?course_code={code}&start_date={date}&end_date={date}` - 목록 조회
+- `GET /api/timetables/{id}` - 상세 조회
+- `POST /api/timetables` - 생성
+- `PUT /api/timetables/{id}` - 수정
+- `DELETE /api/timetables/{id}` - 삭제
 
 ### AI API
 - `POST /api/ai/generate-report` - AI 생활기록부 생성
-  ```json
-  {
-    "student_id": 1,
-    "custom_instructions": "긍정적인 톤으로 작성"
-  }
-  ```
 
-## 완료된 기능
-- ✅ MySQL 외부 데이터베이스 연동
-- ✅ 기존 students 테이블 활용
-- ✅ Excel 파일 업로드 및 학생 일괄 등록
-- ✅ 과목 관리 시스템 (교수, 강의요일, 매주/격주, 강의시수)
-- ✅ 상담 관리 시스템 (학생별/월별/학급별 조회)
-- ✅ AI 생활기록부 자동 생성 (OpenAI GPT-4)
-- ✅ 반응형 웹 UI (TailwindCSS)
-- ✅ FastAPI 백엔드 + Python http.server 프론트엔드
+## 🎯 사용 가이드
 
-## 미구현 기능
-- 사용자 인증 및 권한 관리
-- 출석 관리 기능
-- 성적 관리 기능
-- 파일 첨부 기능 (R2 또는 로컬 스토리지)
-- 이메일 알림 기능
-- 학부모 포털
-- 모바일 앱
+### 강사코드 관리
+1. "강사코드" 탭 클릭
+2. "강사코드 추가" 버튼으로 새 코드 등록
+3. 코드, 이름, 타입 입력 (예: IC-001, 주강사, 1. 주강사)
+4. 수정/삭제는 각 행의 아이콘 버튼 사용
 
-## 권장 다음 단계
-1. **OpenAI API 키 설정**: `.env` 파일에 `OPENAI_API_KEY` 설정하여 AI 생기부 기능 활성화
-2. **사용자 인증**: JWT 기반 로그인 시스템 추가
-3. **출석 관리**: 일별 출석 체크 및 통계 기능
-4. **성적 관리**: 시험, 과제 점수 입력 및 분석
-5. **보고서 내보내기**: PDF, Excel 형식으로 보고서 생성
-6. **프로덕션 배포**: AWS, Azure, 또는 전용 서버에 배포
+### 강사 관리
+1. "강사관리" 탭 클릭
+2. 검색창에서 이름/코드/연락처로 검색 가능
+3. "강사 추가" 버튼으로 신규 등록
+4. 강사코드, 이름, 전공, 타입, 연락처, 이메일 입력
 
-## 배포 상태
-- **플랫폼**: FastAPI (Python) + HTTP Server
-- **상태**: 🟢 개발 완료 및 운영 중
-- **기술 스택**:
-  - 프론트엔드: Vanilla JavaScript + TailwindCSS + Axios
-  - 백엔드: FastAPI + Python 3.x + PyMySQL
-  - 데이터베이스: MySQL 8.x (외부 서버)
-  - AI: OpenAI GPT-4o-mini
-  - 배포: PM2 프로세스 관리
-- **마지막 업데이트**: 2025-11-10
+### 공휴일 관리
+1. "공휴일" 탭 클릭
+2. 카드 형식으로 공휴일 목록 표시
+3. "공휴일 추가" 버튼으로 신규 등록
+4. 날짜, 이름, 법정공휴일 여부 선택
 
-## 개발 명령어
+### 과정 관리
+1. "과정관리" 탭 클릭
+2. 각 과정의 학생수/과목수 자동 표시
+3. "과정 추가" 버튼으로 신규 등록
+4. 13개 필드 입력:
+   - 기본: 코드, 이름, 장소, 정원
+   - 시간: 강의/프로젝트/인턴 시간
+   - 기간: 5개 날짜 + 총일수
+
+### 학생 관리
+1. "학생관리" 탭 클릭
+2. **개별 등록**: "학생 추가" 버튼
+3. **일괄 등록**:
+   - "Excel 템플릿" 다운로드
+   - 11개 컬럼 작성
+   - "Excel 업로드" 버튼으로 업로드
+   - 자동으로 S001, S002... 코드 생성
+
+### 상담 관리
+1. "상담관리" 탭 클릭
+2. 필터 사용:
+   - 학생 선택 드롭다운
+   - 월 선택 (YYYY-MM)
+3. "상담 추가"로 새 상담 기록
+4. 완료된 상담은 초록색 배경
+
+### 프로젝트 관리
+1. "프로젝트" 탭 클릭
+2. "프로젝트 추가" 버튼
+3. 5명까지 팀원 정보 입력
+4. 각 팀원의 이름과 연락처 저장
+
+### 시간표 관리
+1. "시간표" 탭 클릭
+2. 필터 사용:
+   - 과정코드 입력
+   - 시작일/종료일 선택
+3. 시간 입력 시 HH:MM 형식 사용
+4. 수업 타입 선택 (강의/프로젝트/인턴십)
+
+### AI 생기부 작성
+1. "AI생기부" 탭 클릭
+2. 학생 선택
+3. 맞춤 지시사항 입력 (선택)
+4. "AI 생기부 작성" 클릭
+5. 생성된 내용 복사 및 활용
+
+## 🚀 개발 및 배포
 
 ### 환경 설정
 ```bash
-# Python 라이브러리 설치
+# Python 패키지 설치
 pip install fastapi uvicorn pymysql pandas openpyxl python-multipart openai python-dotenv
 
-# .env 파일에 OpenAI API 키 설정
+# .env 파일 생성 및 OpenAI API 키 설정
 echo "OPENAI_API_KEY=your_api_key_here" > .env
 ```
 
-### 개발 서버
+### 서비스 시작
 ```bash
 # PM2로 전체 서비스 시작 (백엔드 + 프론트엔드)
 pm2 start ecosystem_all.config.cjs
 
-# 백엔드만 시작
-pm2 start ecosystem_fastapi.config.cjs
-
-# 프론트엔드만 시작 (포트 3000)
-python3 -m http.server 3000 --directory frontend
-
 # PM2 상태 확인
 pm2 list
 
-# 로그 확인
-pm2 logs fastapi-backend --nostream
-pm2 logs frontend-server --nostream
+# 로그 확인 (non-blocking)
+pm2 logs --nostream
 
 # 서비스 재시작
 pm2 restart all
@@ -249,80 +330,105 @@ pm2 restart all
 pm2 delete all
 ```
 
-### 데이터베이스
-```bash
-# 스키마 업데이트 (컬럼 추가)
-python update_schema.py
-
-# Excel 파일 분석
-python analyze_excel.py
-
-# 데이터베이스 연결 테스트
-python check_db.py
-```
-
 ### API 테스트
 ```bash
 # 헬스 체크
 curl http://localhost:8000/health
 
-# 학생 목록 조회
-curl http://localhost:8000/api/students
+# 강사코드 조회
+curl http://localhost:8000/api/instructor-codes
 
-# 과목 목록 조회
-curl http://localhost:8000/api/subjects
+# 강사 조회 (검색)
+curl "http://localhost:8000/api/instructors?search=황동하"
 
-# API 문서 (브라우저에서 열기)
-http://localhost:8000/docs
+# 공휴일 조회 (2025년)
+curl "http://localhost:8000/api/holidays?year=2025"
+
+# 과정 조회
+curl http://localhost:8000/api/courses
+
+# 시간표 조회
+curl "http://localhost:8000/api/timetables?course_code=C-001"
 ```
 
-## Excel 업로드 양식
-
-Excel 파일은 다음 컬럼을 포함해야 합니다:
-1. 타임스탬프 (선택)
-2. 이름 (필수)
-3. 생년월일(78.01.12) - 형식: YY.MM.DD
-4. 성별(선택) - 남자/여자
-5. 휴대폰번호
-6. 이메일
-7. 주소
-8. 관심 있는 분야(2개)
-9. 최종 학교/학년(졸업)
-10. 자기소개 (200자 내외)
-11. 지원하고자 하는 캠퍼스를 선택하세요
-
-템플릿 파일은 시스템에서 다운로드 가능합니다.
-
-## 프로젝트 구조
+## 📁 프로젝트 구조
 ```
 webapp/
 ├── backend/
-│   └── main.py                # FastAPI 백엔드 API
+│   ├── main.py                    # FastAPI 통합 API (23개 엔드포인트)
+│   └── extended_api.py            # 확장 API 함수 (참고용)
 ├── frontend/
-│   └── index.html             # 프론트엔드 UI (SPA)
-├── .env                        # 환경 변수 (OpenAI API 키)
-├── ecosystem_all.config.cjs    # PM2 전체 서비스 설정
-├── ecosystem_fastapi.config.cjs # PM2 백엔드 설정
-├── student_template.xlsx       # Excel 템플릿
-├── analyze_excel.py            # Excel 분석 도구
-├── check_db.py                 # DB 연결 테스트
-├── update_schema.py            # DB 스키마 업데이트
-└── README.md                   # 이 파일
+│   ├── index.html                 # HTML (10개 탭 네비게이션)
+│   └── app.js                     # Vanilla JS (9개 모듈 + AI 생기부)
+├── .env                            # OpenAI API 키
+├── ecosystem_all.config.cjs        # PM2 설정
+├── student_template.xlsx           # Excel 템플릿
+├── API_SUMMARY.md                  # API 상세 문서
+└── README.md                       # 이 파일
 ```
 
-## 보안 고려사항
-1. **.env 파일 보호**: OpenAI API 키는 절대 공개 저장소에 커밋하지 마세요
-2. **데이터베이스 접근**: 프로덕션 환경에서는 방화벽 및 VPN 사용 권장
-3. **SQL 인젝션 방지**: 모든 쿼리는 파라미터화된 쿼리 사용
-4. **CORS 설정**: 프로덕션 환경에서는 특정 도메인만 허용하도록 변경 필요
+## 📊 데이터 현황 (2025-11-10 기준)
 
-## 라이선스
+| 모듈 | 등록 데이터 수 |
+|------|---------------|
+| 강사코드 | 5개 |
+| 강사 | 33명 |
+| 교과목 | 6개 |
+| 공휴일 | 2025년 기준 등록됨 |
+| 과정 | 4개 |
+| 학생 | 24명 |
+| 상담 | 등록됨 |
+| 프로젝트 | 0개 (신규 모듈) |
+| 시간표 | 195건 |
+
+## 🔒 보안 고려사항
+1. **.env 파일**: OpenAI API 키는 절대 공개 저장소에 커밋 금지
+2. **데이터베이스**: 외부 접근 시 방화벽/VPN 사용 권장
+3. **SQL 인젝션**: 모든 쿼리는 파라미터화된 쿼리 사용
+4. **CORS**: 프로덕션 환경에서는 특정 도메인만 허용
+
+## 🎓 미구현 기능 (향후 개발)
+- [ ] 사용자 인증 및 권한 관리 (JWT)
+- [ ] 출석 관리 시스템
+- [ ] 성적 관리 시스템
+- [ ] 파일 첨부 기능
+- [ ] 이메일/SMS 알림
+- [ ] 학부모 포털
+- [ ] 모바일 앱 (React Native)
+- [ ] 보고서 내보내기 (PDF/Excel)
+- [ ] 실시간 알림 (WebSocket)
+- [ ] 대시보드 통계 차트
+
+## 🏆 권장 다음 단계
+1. **사용자 인증**: JWT 기반 로그인 시스템 추가
+2. **대시보드**: Chart.js로 통계 시각화
+3. **출석 관리**: QR 코드 체크인 시스템
+4. **성적 관리**: 성적 입력 및 분석 기능
+5. **보고서**: PDF 생성 (생기부, 성적표 등)
+6. **프로덕션 배포**: Cloudflare Pages 또는 AWS 배포
+
+## 🛠 기술 스택
+- **프론트엔드**: Vanilla JavaScript, TailwindCSS, Axios, FontAwesome
+- **백엔드**: FastAPI, Python 3.x, PyMySQL, Pandas
+- **데이터베이스**: MySQL 8.x (외부 서버)
+- **AI**: OpenAI GPT-4o-mini
+- **배포**: PM2 프로세스 관리
+- **기타**: openpyxl (Excel), python-dotenv
+
+## 📝 라이선스
 MIT License
 
-## 개발자
+## 👨‍💻 개발자
 GenSpark AI Assistant
 
-## 지원 및 문의
-- API 문서: `/docs` 엔드포인트에서 자동 생성된 Swagger UI 확인
-- 데이터베이스 이슈: `update_schema.py` 실행하여 스키마 동기화
-- AI 기능 이슈: OpenAI API 키가 `.env`에 올바르게 설정되었는지 확인
+## 📞 지원 및 문의
+- **API 문서**: `/docs` 엔드포인트에서 Swagger UI 확인
+- **데이터베이스**: `check_all_tables.py`로 전체 스키마 확인
+- **AI 기능**: `.env` 파일에 `OPENAI_API_KEY` 설정 확인
+- **상세 API 문서**: `API_SUMMARY.md` 참조
+
+---
+
+**마지막 업데이트**: 2025-11-10  
+**버전**: 3.0  
+**상태**: ✅ 9개 모듈 + AI 생기부 완료 및 운영 중
