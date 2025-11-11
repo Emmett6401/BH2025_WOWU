@@ -376,6 +376,18 @@ async function loadSubjects() {
     }
 }
 
+// 요일 변환 헬퍼 함수
+function getDayName(dayOfWeek) {
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    return days[dayOfWeek] || '미정';
+}
+
+// 격주 정보 표시 함수
+function getBiweeklyInfo(isBiweekly, weekOffset) {
+    if (isBiweekly === 0) return '매주';
+    return weekOffset === 0 ? '격주(1주차)' : '격주(2주차)';
+}
+
 function renderSubjects() {
     const app = document.getElementById('app');
     app.innerHTML = `
@@ -402,9 +414,9 @@ function renderSubjects() {
                             <i class="fas fa-user-tie mr-1"></i>${subject.instructor_name || '미정'}
                         </p>
                         <div class="text-sm text-gray-600 space-y-1 mt-2">
-                            <p><i class="fas fa-calendar mr-2"></i>강의요일: ${subject.lecture_days || '미정'}</p>
-                            <p><i class="fas fa-repeat mr-2"></i>빈도: ${subject.frequency || '매주'}</p>
-                            <p><i class="fas fa-clock mr-2"></i>강의시수: ${subject.lecture_hours || 0}시간</p>
+                            <p><i class="fas fa-calendar mr-2"></i>강의요일: ${getDayName(subject.day_of_week)}요일</p>
+                            <p><i class="fas fa-repeat mr-2"></i>빈도: ${getBiweeklyInfo(subject.is_biweekly, subject.week_offset)}</p>
+                            <p><i class="fas fa-clock mr-2"></i>강의시수: ${subject.hours || 0}시간</p>
                         </div>
                         ${subject.description ? `<p class="text-sm text-gray-500 mt-2">${subject.description}</p>` : ''}
                         <div class="mt-3 flex space-x-2">
@@ -431,19 +443,19 @@ window.showSubjectForm = function(subjectCode = null) {
         <form id="subject-save-form">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-gray-700 mb-2">과목 코드</label>
+                    <label class="block text-gray-700 mb-2">과목 코드 *</label>
                     <input type="text" name="code" value="${existingSubject?.code || ''}" 
                            ${subjectCode ? 'readonly' : ''} required
                            placeholder="G-001"
                            class="w-full px-3 py-2 border rounded-lg ${subjectCode ? 'bg-gray-100' : ''}">
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-2">과목명</label>
+                    <label class="block text-gray-700 mb-2">과목명 *</label>
                     <input type="text" name="name" value="${existingSubject?.name || ''}" required
                            class="w-full px-3 py-2 border rounded-lg">
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-2">담당 강사 코드</label>
+                    <label class="block text-gray-700 mb-2">담당 강사</label>
                     <select name="main_instructor" class="w-full px-3 py-2 border rounded-lg">
                         <option value="">선택</option>
                         ${instructors.map(inst => `
@@ -454,21 +466,35 @@ window.showSubjectForm = function(subjectCode = null) {
                     </select>
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-2">강의 요일</label>
-                    <input type="text" name="lecture_days" value="${existingSubject?.lecture_days || ''}"
-                           placeholder="월,수,금"
-                           class="w-full px-3 py-2 border rounded-lg">
-                </div>
-                <div>
-                    <label class="block text-gray-700 mb-2">빈도</label>
-                    <select name="frequency" class="w-full px-3 py-2 border rounded-lg">
-                        <option value="매주" ${existingSubject?.frequency === '매주' ? 'selected' : ''}>매주</option>
-                        <option value="격주" ${existingSubject?.frequency === '격주' ? 'selected' : ''}>격주</option>
+                    <label class="block text-gray-700 mb-2">강의 요일 *</label>
+                    <select name="day_of_week" class="w-full px-3 py-2 border rounded-lg" required>
+                        <option value="">선택</option>
+                        <option value="0" ${existingSubject?.day_of_week === 0 ? 'selected' : ''}>일요일</option>
+                        <option value="1" ${existingSubject?.day_of_week === 1 ? 'selected' : ''}>월요일</option>
+                        <option value="2" ${existingSubject?.day_of_week === 2 ? 'selected' : ''}>화요일</option>
+                        <option value="3" ${existingSubject?.day_of_week === 3 ? 'selected' : ''}>수요일</option>
+                        <option value="4" ${existingSubject?.day_of_week === 4 ? 'selected' : ''}>목요일</option>
+                        <option value="5" ${existingSubject?.day_of_week === 5 ? 'selected' : ''}>금요일</option>
+                        <option value="6" ${existingSubject?.day_of_week === 6 ? 'selected' : ''}>토요일</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-2">강의 시수</label>
-                    <input type="number" name="lecture_hours" value="${existingSubject?.lecture_hours || 0}"
+                    <label class="block text-gray-700 mb-2">격주 여부</label>
+                    <select name="is_biweekly" id="is-biweekly" class="w-full px-3 py-2 border rounded-lg" onchange="window.toggleWeekOffset()">
+                        <option value="0" ${existingSubject?.is_biweekly === 0 ? 'selected' : ''}>매주</option>
+                        <option value="1" ${existingSubject?.is_biweekly === 1 ? 'selected' : ''}>격주</option>
+                    </select>
+                </div>
+                <div id="week-offset-div" class="${existingSubject?.is_biweekly === 1 ? '' : 'hidden'}">
+                    <label class="block text-gray-700 mb-2">주차 선택</label>
+                    <select name="week_offset" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="0" ${existingSubject?.week_offset === 0 ? 'selected' : ''}>1주차</option>
+                        <option value="1" ${existingSubject?.week_offset === 1 ? 'selected' : ''}>2주차</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">강의 시수 (시간) *</label>
+                    <input type="number" name="hours" value="${existingSubject?.hours || 0}" required
                            class="w-full px-3 py-2 border rounded-lg">
                 </div>
                 <div class="col-span-2">
@@ -490,6 +516,17 @@ window.showSubjectForm = function(subjectCode = null) {
     formDiv.classList.remove('hidden');
 }
 
+// 격주 선택 시 주차 선택 표시/숨김
+window.toggleWeekOffset = function() {
+    const isBiweekly = document.getElementById('is-biweekly').value;
+    const weekOffsetDiv = document.getElementById('week-offset-div');
+    if (isBiweekly === '1') {
+        weekOffsetDiv.classList.remove('hidden');
+    } else {
+        weekOffsetDiv.classList.add('hidden');
+    }
+}
+
 window.hideSubjectForm = function() {
     document.getElementById('subject-form').classList.add('hidden');
 }
@@ -501,9 +538,10 @@ window.saveSubject = async function(subjectCode) {
         code: formData.get('code'),
         name: formData.get('name'),
         main_instructor: formData.get('main_instructor'),
-        lecture_days: formData.get('lecture_days'),
-        frequency: formData.get('frequency'),
-        lecture_hours: parseInt(formData.get('lecture_hours')) || 0,
+        day_of_week: parseInt(formData.get('day_of_week')),
+        is_biweekly: parseInt(formData.get('is_biweekly')),
+        week_offset: parseInt(formData.get('week_offset')) || 0,
+        hours: parseInt(formData.get('hours')) || 0,
         description: formData.get('description')
     };
     

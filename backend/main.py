@@ -328,17 +328,18 @@ async def create_subject(data: dict):
         
         query = """
             INSERT INTO subjects 
-            (code, name, main_instructor, lecture_days, frequency, lecture_hours, description)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (code, name, main_instructor, day_of_week, is_biweekly, week_offset, hours, description)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         cursor.execute(query, (
             data.get('code'),
             data.get('name'),
             data.get('main_instructor'),
-            data.get('lecture_days', ''),
-            data.get('frequency', '매주'),
-            data.get('lecture_hours', 0),
+            data.get('day_of_week', 0),
+            data.get('is_biweekly', 0),
+            data.get('week_offset', 0),
+            data.get('hours', 0),
             data.get('description', '')
         ))
         
@@ -358,17 +359,18 @@ async def update_subject(subject_code: str, data: dict):
         
         query = """
             UPDATE subjects 
-            SET name = %s, main_instructor = %s, lecture_days = %s, 
-                frequency = %s, lecture_hours = %s, description = %s
+            SET name = %s, main_instructor = %s, day_of_week = %s, 
+                is_biweekly = %s, week_offset = %s, hours = %s, description = %s
             WHERE code = %s
         """
         
         cursor.execute(query, (
             data.get('name'),
             data.get('main_instructor'),
-            data.get('lecture_days', ''),
-            data.get('frequency', '매주'),
-            data.get('lecture_hours', 0),
+            data.get('day_of_week', 0),
+            data.get('is_biweekly', 0),
+            data.get('week_offset', 0),
+            data.get('hours', 0),
             data.get('description', ''),
             subject_code
         ))
