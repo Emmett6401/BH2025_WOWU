@@ -1613,14 +1613,15 @@ function renderCourseDetail(course) {
                                   onchange="window.updateCourseInfo('${course.code}')">${course.notes || ''}</textarea>
                     </div>
                     <div class="bg-green-100 p-3 rounded">
-                        <div class="text-sm font-semibold mb-2">선택된 과목:</div>
-                        <ul class="text-xs space-y-1">
-                            <li>• G-001: AI기반 바이오데이터와 윤리</li>
-                            <li>• G-002: 바이오헬스 AI 실무 활용</li>
-                            <li>• G-003: AI기반 의료영상</li>
-                            <li>• G-004: AIoT 웨어러블과 빅데이터 활용하기</li>
-                            <li>• G-005: AI기반 헬스케어 디바이스 활용하기</li>
-                            <li>• G-006: AI 반려로봇 활용하기</li>
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm font-semibold">선택된 과목:</div>
+                            <button onclick="window.showSubjectSelector('${course.code}')" 
+                                    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs">
+                                <i class="fas fa-list mr-1"></i>교과목 선택
+                            </button>
+                        </div>
+                        <ul class="text-xs space-y-1" id="selected-subjects-${course.code}">
+                            <li class="text-gray-500 italic">교과목 선택 버튼을 클릭하여 과목을 선택하세요.</li>
                         </ul>
                     </div>
                 </div>
@@ -1669,8 +1670,9 @@ function renderCourseDetail(course) {
                         </thead>
                         <tbody>
                             ${courses.map((c, idx) => `
-                                <tr class="border-t hover:bg-gray-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
-                                    <td class="px-3 py-2 text-xs">${c.code}</td>
+                                <tr onclick="window.selectCourse('${c.code}')" 
+                                    class="border-t hover:bg-blue-50 cursor-pointer ${c.code === selectedCourseCode ? 'bg-blue-100' : (idx % 2 === 0 ? 'bg-white' : 'bg-gray-50')}">
+                                    <td class="px-3 py-2 text-xs font-semibold">${c.code}</td>
                                     <td class="px-3 py-2 text-xs">${c.name || '-'}</td>
                                     <td class="px-3 py-2 text-xs">${c.start_date || '-'}</td>
                                     <td class="px-3 py-2 text-xs">${c.lecture_end_date || '-'}</td>
@@ -1783,12 +1785,114 @@ window.saveCourseChanges = async function(courseCode) {
 }
 
 // 다시입력 (DB에서 원본 데이터 다시 불러오기)
-window.resetCourseForm = function(courseCode) {
+window.resetCourseForm = async function(courseCode) {
     if (!confirm('현재 입력 중인 내용을 취소하고 저장된 데이터를 다시 불러오시겠습니까?')) return;
     
     // 선택된 과정 유지하면서 재로드
     selectedCourseCode = courseCode;
-    loadCourses();
+    await loadCourses();
+    
+    // 폼 필드를 원래 값으로 재설정
+    renderCourses();
+}
+
+// 교과목 선택 모달 표시
+window.showSubjectSelector = async function(courseCode) {
+    const modal = document.getElementById('subject-selector');
+    const content = modal.querySelector('div');
+    
+    try {
+        // 교과목 목록 가져오기
+        const response = await axios.get(`${API_BASE_URL}/api/subjects`);
+        const allSubjects = response.data;
+        
+        content.innerHTML = `
+            <h3 class="text-xl font-bold mb-4 text-gray-800">
+                <i class="fas fa-list mr-2"></i>교과목 선택
+            </h3>
+            <p class="text-sm text-gray-600 mb-4">
+                과정에 포함할 교과목을 선택하세요. (체크박스를 클릭하여 선택/해제)
+            </p>
+            <div class="max-h-96 overflow-y-auto border rounded p-4">
+                <table class="min-w-full">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs">선택</th>
+                            <th class="px-3 py-2 text-left text-xs">과목코드</th>
+                            <th class="px-3 py-2 text-left text-xs">과목명</th>
+                            <th class="px-3 py-2 text-left text-xs">시수</th>
+                            <th class="px-3 py-2 text-left text-xs">요일</th>
+                            <th class="px-3 py-2 text-left text-xs">격주</th>
+                            <th class="px-3 py-2 text-left text-xs">담당강사</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${allSubjects.map(s => `
+                            <tr class="border-t hover:bg-gray-50">
+                                <td class="px-3 py-2">
+                                    <input type="checkbox" class="subject-checkbox" value="${s.code}" 
+                                           id="subject-${s.code}">
+                                </td>
+                                <td class="px-3 py-2 text-xs">${s.code}</td>
+                                <td class="px-3 py-2 text-xs">${s.name}</td>
+                                <td class="px-3 py-2 text-xs">${s.hours || '-'}시간</td>
+                                <td class="px-3 py-2 text-xs">${s.day_of_week || '-'}</td>
+                                <td class="px-3 py-2 text-xs">${s.is_biweekly ? '격주' : '매주'}</td>
+                                <td class="px-3 py-2 text-xs">${s.instructor_name || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-6 flex justify-end space-x-2">
+                <button onclick="window.hideSubjectSelector()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded">
+                    <i class="fas fa-times mr-2"></i>취소
+                </button>
+                <button onclick="window.saveSelectedSubjects('${courseCode}')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
+                    <i class="fas fa-check mr-2"></i>적용
+                </button>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+    } catch (error) {
+        console.error('교과목 로드 실패:', error);
+        alert('교과목 목록을 불러오는데 실패했습니다.');
+    }
+}
+
+// 교과목 선택 모달 닫기
+window.hideSubjectSelector = function() {
+    document.getElementById('subject-selector').classList.add('hidden');
+}
+
+// 선택된 교과목 저장 (임시 - 실제 DB 저장은 나중에 구현)
+window.saveSelectedSubjects = function(courseCode) {
+    const checkboxes = document.querySelectorAll('.subject-checkbox:checked');
+    const selectedSubjects = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (selectedSubjects.length === 0) {
+        alert('하나 이상의 교과목을 선택해주세요.');
+        return;
+    }
+    
+    // 선택된 과목 리스트 업데이트 (UI만)
+    const listElement = document.getElementById(`selected-subjects-${courseCode}`);
+    if (listElement) {
+        listElement.innerHTML = selectedSubjects.map(code => {
+            const checkbox = document.getElementById(`subject-${code}`);
+            const row = checkbox.closest('tr');
+            const cells = row.querySelectorAll('td');
+            const subjectName = cells[2].textContent;
+            return `<li>• ${code}: ${subjectName}</li>`;
+        }).join('');
+    }
+    
+    // TODO: 실제로는 course_subjects 테이블에 저장해야 함
+    console.log(`과정 ${courseCode}에 선택된 교과목:`, selectedSubjects);
+    
+    window.hideSubjectSelector();
+    alert(`${selectedSubjects.length}개의 교과목이 선택되었습니다.`);
 }
 
 // renderCourses를 selectedCourseCode를 고려하도록 수정
@@ -1840,36 +1944,94 @@ function renderCourses() {
 
 window.showCourseForm = function(code = null) {
     const formDiv = document.getElementById('course-form');
+    const formContent = formDiv.querySelector('div');
     formDiv.classList.remove('hidden');
     
     const existing = code ? courses.find(c => c.code === code) : null;
     
-    formDiv.innerHTML = `
-        <h3 class="text-lg font-semibold mb-4">${code ? '과정 수정' : '과정 추가'}</h3>
+    formContent.innerHTML = `
+        <h3 class="text-xl font-bold mb-4 text-gray-800">
+            <i class="fas fa-${code ? 'edit' : 'plus-circle'} mr-2"></i>
+            ${code ? '과정 수정' : '과정 추가'}
+        </h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input type="text" id="course-code" placeholder="과정코드" value="${existing ? existing.code : ''}" ${code ? 'readonly' : ''} class="border rounded px-3 py-2">
-            <input type="text" id="course-name" placeholder="과정명" value="${existing ? existing.name : ''}" class="border rounded px-3 py-2">
-            <input type="text" id="course-location" placeholder="장소" value="${existing ? existing.location || '' : ''}" class="border rounded px-3 py-2">
-            <input type="number" id="course-capacity" placeholder="정원" value="${existing ? existing.capacity : ''}" class="border rounded px-3 py-2">
-            <input type="number" id="course-lecture-hours" placeholder="강의시간" value="${existing ? existing.lecture_hours : ''}" class="border rounded px-3 py-2">
-            <input type="number" id="course-project-hours" placeholder="프로젝트시간" value="${existing ? existing.project_hours : ''}" class="border rounded px-3 py-2">
-            <input type="number" id="course-internship-hours" placeholder="인턴시간" value="${existing ? existing.internship_hours : ''}" class="border rounded px-3 py-2">
-            <input type="date" id="course-start-date" placeholder="시작일" value="${existing ? existing.start_date : ''}" class="border rounded px-3 py-2">
-            <input type="date" id="course-lecture-end" placeholder="강의종료일" value="${existing ? existing.lecture_end_date : ''}" class="border rounded px-3 py-2">
-            <input type="date" id="course-project-end" placeholder="프로젝트종료일" value="${existing ? existing.project_end_date : ''}" class="border rounded px-3 py-2">
-            <input type="date" id="course-internship-end" placeholder="인턴종료일" value="${existing ? existing.internship_end_date : ''}" class="border rounded px-3 py-2">
-            <input type="date" id="course-final-end" placeholder="최종종료일" value="${existing ? existing.final_end_date : ''}" class="border rounded px-3 py-2">
-            <input type="number" id="course-total-days" placeholder="총일수" value="${existing ? existing.total_days : ''}" class="border rounded px-3 py-2">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">과정코드 *</label>
+                <input type="text" id="form-course-code" placeholder="예: C-001" value="${existing ? existing.code : ''}" ${code ? 'readonly' : ''} 
+                       class="w-full border rounded px-3 py-2 ${code ? 'bg-gray-100' : ''}">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">과정명 *</label>
+                <input type="text" id="form-course-name" placeholder="과정명 입력" value="${existing ? existing.name : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">강의장소</label>
+                <input type="text" id="form-course-location" placeholder="장소 입력" value="${existing ? existing.location || '' : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">정원</label>
+                <input type="number" id="form-course-capacity" placeholder="24" value="${existing ? existing.capacity : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">강의시간(h)</label>
+                <input type="number" id="form-course-lecture-hours" placeholder="260" value="${existing ? existing.lecture_hours : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">프로젝트시간(h)</label>
+                <input type="number" id="form-course-project-hours" placeholder="220" value="${existing ? existing.project_hours : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">인턴시간(h)</label>
+                <input type="number" id="form-course-internship-hours" placeholder="120" value="${existing ? existing.internship_hours : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">시작일</label>
+                <input type="date" id="form-course-start-date" value="${existing ? existing.start_date : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">강의종료일</label>
+                <input type="date" id="form-course-lecture-end" value="${existing ? existing.lecture_end_date : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">프로젝트종료일</label>
+                <input type="date" id="form-course-project-end" value="${existing ? existing.project_end_date : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">인턴종료일</label>
+                <input type="date" id="form-course-internship-end" value="${existing ? existing.internship_end_date : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">최종종료일</label>
+                <input type="date" id="form-course-final-end" value="${existing ? existing.final_end_date : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">총일수</label>
+                <input type="number" id="form-course-total-days" placeholder="113" value="${existing ? existing.total_days : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
         </div>
         <div class="mt-4">
-            <textarea id="course-notes" placeholder="비고" rows="3" class="w-full border rounded px-3 py-2">${existing ? existing.notes || '' : ''}</textarea>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">비고</label>
+            <textarea id="form-course-notes" placeholder="특이사항 입력" rows="3" 
+                      class="w-full border rounded px-3 py-2">${existing ? existing.notes || '' : ''}</textarea>
         </div>
-        <div class="mt-4 space-x-2">
-            <button onclick="window.saveCourse('${code || ''}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-                <i class="fas fa-save mr-2"></i>저장
+        <div class="mt-6 flex justify-end space-x-2">
+            <button onclick="window.hideCourseForm()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded">
+                <i class="fas fa-times mr-2"></i>취소
             </button>
-            <button onclick="window.hideCourseForm()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
-                취소
+            <button onclick="window.saveCourse('${code || ''}')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
+                <i class="fas fa-save mr-2"></i>${code ? '수정' : '추가'}
             </button>
         </div>
     `;
@@ -1881,34 +2043,43 @@ window.hideCourseForm = function() {
 
 window.saveCourse = async function(existingCode) {
     const data = {
-        code: document.getElementById('course-code').value,
-        name: document.getElementById('course-name').value,
-        location: document.getElementById('course-location').value,
-        capacity: parseInt(document.getElementById('course-capacity').value),
-        lecture_hours: parseInt(document.getElementById('course-lecture-hours').value),
-        project_hours: parseInt(document.getElementById('course-project-hours').value),
-        internship_hours: parseInt(document.getElementById('course-internship-hours').value),
-        start_date: document.getElementById('course-start-date').value,
-        lecture_end_date: document.getElementById('course-lecture-end').value,
-        project_end_date: document.getElementById('course-project-end').value,
-        internship_end_date: document.getElementById('course-internship-end').value,
-        final_end_date: document.getElementById('course-final-end').value,
-        total_days: parseInt(document.getElementById('course-total-days').value),
-        notes: document.getElementById('course-notes').value
+        code: document.getElementById('form-course-code').value,
+        name: document.getElementById('form-course-name').value,
+        location: document.getElementById('form-course-location').value,
+        capacity: parseInt(document.getElementById('form-course-capacity').value) || 24,
+        lecture_hours: parseInt(document.getElementById('form-course-lecture-hours').value) || 0,
+        project_hours: parseInt(document.getElementById('form-course-project-hours').value) || 0,
+        internship_hours: parseInt(document.getElementById('form-course-internship-hours').value) || 0,
+        start_date: document.getElementById('form-course-start-date').value,
+        lecture_end_date: document.getElementById('form-course-lecture-end').value,
+        project_end_date: document.getElementById('form-course-project-end').value,
+        internship_end_date: document.getElementById('form-course-internship-end').value,
+        final_end_date: document.getElementById('form-course-final-end').value,
+        total_days: parseInt(document.getElementById('form-course-total-days').value) || 113,
+        notes: document.getElementById('form-course-notes').value
     };
+    
+    // 유효성 검사
+    if (!data.code || !data.name) {
+        alert('과정코드와 과정명은 필수 입력 항목입니다.');
+        return;
+    }
     
     try {
         if (existingCode) {
             await axios.put(`${API_BASE_URL}/api/courses/${existingCode}`, data);
             alert('과정이 수정되었습니다.');
+            selectedCourseCode = data.code;
         } else {
             await axios.post(`${API_BASE_URL}/api/courses`, data);
             alert('과정이 추가되었습니다.');
+            selectedCourseCode = data.code;
         }
         window.hideCourseForm();
-        loadCourses();
+        await loadCourses();
     } catch (error) {
-        alert('저장 실패: ' + error.response?.data?.detail || error.message);
+        console.error('저장 실패:', error);
+        alert('저장 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
