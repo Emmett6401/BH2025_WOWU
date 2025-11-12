@@ -1444,6 +1444,14 @@ async function loadCourses() {
     try {
         const response = await axios.get(`${API_BASE_URL}/api/courses`);
         courses = response.data;
+        
+        // 각 과정별 선택된 과목 초기화 (임시로 G-001~G-006)
+        courses.forEach(course => {
+            if (!courseSubjects[course.code]) {
+                courseSubjects[course.code] = ['G-001', 'G-002', 'G-003', 'G-004', 'G-005', 'G-006'];
+            }
+        });
+        
         renderCourses();
     } catch (error) {
         console.error('과정 목록 로드 실패:', error);
@@ -1612,22 +1620,8 @@ function renderCourseDetail(course) {
                         <textarea id="course-notes" rows="3" class="w-full px-3 py-2 border rounded" 
                                   onchange="window.updateCourseInfo('${course.code}')">${course.notes || ''}</textarea>
                     </div>
-                    <div class="bg-green-100 p-3 rounded">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-sm font-semibold">선택된 과목: <span id="subject-count-${course.code}" class="text-green-700">(6개)</span></div>
-                            <button onclick="window.showSubjectSelector('${course.code}')" 
-                                    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs">
-                                <i class="fas fa-list mr-1"></i>교과목 선택
-                            </button>
-                        </div>
-                        <ul class="text-xs space-y-1" id="selected-subjects-${course.code}">
-                            <li>• G-001: AI기반 바이오데이터와 윤리</li>
-                            <li>• G-002: 바이오헬스 AI 실무 활용</li>
-                            <li>• G-003: AI기반 의료영상</li>
-                            <li>• G-004: AIoT 웨어러블과 빅데이터 활용하기</li>
-                            <li>• G-005: AI기반 헬스케어 디바이스 활용하기</li>
-                            <li>• G-006: AI 반려로봇 활용하기</li>
-                        </ul>
+                    <div class="bg-green-100 p-3 rounded" id="subject-area-${course.code}">
+                        <!-- 내용은 JavaScript로 동적 생성 -->
                     </div>
                 </div>
             </div>
@@ -1691,10 +1685,65 @@ function renderCourseDetail(course) {
             </div>
         </div>
     `;
+    
+    // 과목 영역 업데이트 (DOM이 생성된 후)
+    setTimeout(() => {
+        updateSubjectArea(course.code);
+    }, 0);
+}
+
+// 과목 영역 업데이트 함수
+async function updateSubjectArea(courseCode) {
+    const subjectArea = document.getElementById(`subject-area-${courseCode}`);
+    if (!subjectArea) return;
+    
+    const selectedSubjects = courseSubjects[courseCode] || [];
+    const hasSubjects = selectedSubjects.length > 0;
+    
+    if (hasSubjects) {
+        // 교과목 정보 가져오기
+        try {
+            const response = await axios.get(`${API_BASE_URL}/api/subjects`);
+            const allSubjects = response.data;
+            
+            // 선택된 과목이 있는 경우
+            subjectArea.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-sm font-semibold">선택된 과목: <span id="subject-count-${courseCode}" class="text-green-700">(${selectedSubjects.length}개)</span></div>
+                    <button onclick="window.showSubjectSelector('${courseCode}')" 
+                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs">
+                        <i class="fas fa-list mr-1"></i>교과목 선택
+                    </button>
+                </div>
+                <ul class="text-xs space-y-1" id="selected-subjects-${courseCode}">
+                    ${selectedSubjects.map(code => {
+                        const subject = allSubjects.find(s => s.code === code);
+                        const name = subject ? subject.name : '과목명';
+                        return `<li>• ${code}: ${name}</li>`;
+                    }).join('')}
+                </ul>
+            `;
+        } catch (error) {
+            console.error('교과목 정보 로드 실패:', error);
+        }
+    } else {
+        // 선택된 과목이 없는 경우
+        subjectArea.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+                <div class="text-sm font-semibold text-gray-600">선택된 과목: <span class="text-gray-500">(0개)</span></div>
+                <button onclick="window.showSubjectSelector('${courseCode}')" 
+                        class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs">
+                    <i class="fas fa-list mr-1"></i>교과목 선택
+                </button>
+            </div>
+            <p class="text-xs text-gray-500 italic">교과목 선택 버튼을 클릭하여 과목을 추가하세요.</p>
+        `;
+    }
 }
 
 // ==================== 새로운 과정 관리 UI 인터랙티브 함수 ====================
 let selectedCourseCode = null;
+let courseSubjects = {}; // 과정별 선택된 교과목 저장 { 'C-001': ['G-001', 'G-002', ...], ... }
 
 // 과정 탭 선택
 window.selectCourse = function(courseCode) {
@@ -1851,9 +1900,12 @@ window.showSubjectSelector = async function(courseCode) {
         const response = await axios.get(`${API_BASE_URL}/api/subjects`);
         const allSubjects = response.data;
         
+        // 현재 과정에 선택된 과목 목록
+        const selectedSubjects = courseSubjects[courseCode] || [];
+        
         content.innerHTML = `
             <h3 class="text-xl font-bold mb-4 text-gray-800">
-                <i class="fas fa-list mr-2"></i>교과목 선택
+                <i class="fas fa-list mr-2"></i>교과목 선택 - ${courseCode}
             </h3>
             <p class="text-sm text-gray-600 mb-4">
                 과정에 포함할 교과목을 선택하세요. (체크박스를 클릭하여 선택/해제)
@@ -1872,11 +1924,13 @@ window.showSubjectSelector = async function(courseCode) {
                         </tr>
                     </thead>
                     <tbody>
-                        ${allSubjects.map(s => `
+                        ${allSubjects.map(s => {
+                            const isSelected = selectedSubjects.includes(s.code);
+                            return `
                             <tr class="border-t hover:bg-gray-50">
                                 <td class="px-3 py-2">
                                     <input type="checkbox" class="subject-checkbox" value="${s.code}" 
-                                           id="subject-${s.code}">
+                                           id="subject-${s.code}" ${isSelected ? 'checked' : ''}>
                                 </td>
                                 <td class="px-3 py-2 text-xs">${s.code}</td>
                                 <td class="px-3 py-2 text-xs">${s.name}</td>
@@ -1885,7 +1939,8 @@ window.showSubjectSelector = async function(courseCode) {
                                 <td class="px-3 py-2 text-xs">${s.is_biweekly ? '격주' : '매주'}</td>
                                 <td class="px-3 py-2 text-xs">${s.instructor_name || '-'}</td>
                             </tr>
-                        `).join('')}
+                        `;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1921,29 +1976,17 @@ window.saveSelectedSubjects = function(courseCode) {
         return;
     }
     
-    // 선택된 과목 리스트 업데이트 (UI만)
-    const listElement = document.getElementById(`selected-subjects-${courseCode}`);
-    const countElement = document.getElementById(`subject-count-${courseCode}`);
-    
-    if (listElement) {
-        listElement.innerHTML = selectedSubjects.map(code => {
-            const checkbox = document.getElementById(`subject-${code}`);
-            const row = checkbox.closest('tr');
-            const cells = row.querySelectorAll('td');
-            const subjectName = cells[2].textContent;
-            return `<li>• ${code}: ${subjectName}</li>`;
-        }).join('');
-    }
-    
-    if (countElement) {
-        countElement.textContent = `(${selectedSubjects.length}개)`;
-    }
+    // courseSubjects에 저장
+    courseSubjects[courseCode] = selectedSubjects;
     
     // TODO: 실제로는 course_subjects 테이블에 저장해야 함
     console.log(`과정 ${courseCode}에 선택된 교과목:`, selectedSubjects);
     
     window.hideSubjectSelector();
     alert(`${selectedSubjects.length}개의 교과목이 선택되었습니다.`);
+    
+    // 과목 영역 업데이트
+    updateSubjectArea(courseCode);
 }
 
 // renderCourses를 selectedCourseCode를 고려하도록 수정
@@ -1993,12 +2036,30 @@ function renderCourses() {
     `;
 }
 
+// 과정코드 자동생성
+function generateCourseCode() {
+    if (courses.length === 0) return 'C-001';
+    
+    // 기존 과정 코드에서 숫자 추출
+    const numbers = courses
+        .map(c => {
+            const match = c.code.match(/C-(\d+)/);
+            return match ? parseInt(match[1]) : 0;
+        })
+        .filter(n => n > 0);
+    
+    const maxNumber = Math.max(...numbers, 0);
+    const newNumber = maxNumber + 1;
+    return `C-${String(newNumber).padStart(3, '0')}`;
+}
+
 window.showCourseForm = function(code = null) {
     const formDiv = document.getElementById('course-form');
     const formContent = formDiv.querySelector('div');
     formDiv.classList.remove('hidden');
     
     const existing = code ? courses.find(c => c.code === code) : null;
+    const autoCode = existing ? existing.code : generateCourseCode();
     
     formContent.innerHTML = `
         <h3 class="text-xl font-bold mb-4 text-gray-800">
@@ -2007,9 +2068,9 @@ window.showCourseForm = function(code = null) {
         </h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">과정코드 *</label>
-                <input type="text" id="form-course-code" placeholder="예: C-001" value="${existing ? existing.code : ''}" ${code ? 'readonly' : ''} 
-                       class="w-full border rounded px-3 py-2 ${code ? 'bg-gray-100' : ''}">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">과정코드 * (자동생성)</label>
+                <input type="text" id="form-course-code" value="${autoCode}" readonly 
+                       class="w-full border rounded px-3 py-2 bg-gray-100 cursor-not-allowed">
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">과정명 *</label>
@@ -2024,22 +2085,26 @@ window.showCourseForm = function(code = null) {
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">정원</label>
                 <input type="number" id="form-course-capacity" placeholder="24" value="${existing ? existing.capacity : ''}" 
-                       class="w-full border rounded px-3 py-2">
+                       class="w-full border rounded px-3 py-2"
+                       onkeydown="if(event.key==='Tab' && !this.value) {event.preventDefault(); this.value=this.placeholder; this.nextElementSibling ? this.parentElement.nextElementSibling.querySelector('input').focus() : null;}">
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">강의시간(h)</label>
                 <input type="number" id="form-course-lecture-hours" placeholder="260" value="${existing ? existing.lecture_hours : ''}" 
-                       class="w-full border rounded px-3 py-2">
+                       class="w-full border rounded px-3 py-2"
+                       onkeydown="if(event.key==='Tab' && !this.value) {event.preventDefault(); this.value=this.placeholder; this.parentElement.nextElementSibling.querySelector('input').focus();}">
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">프로젝트시간(h)</label>
                 <input type="number" id="form-course-project-hours" placeholder="220" value="${existing ? existing.project_hours : ''}" 
-                       class="w-full border rounded px-3 py-2">
+                       class="w-full border rounded px-3 py-2"
+                       onkeydown="if(event.key==='Tab' && !this.value) {event.preventDefault(); this.value=this.placeholder; this.parentElement.nextElementSibling.querySelector('input').focus();}">
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">인턴시간(h)</label>
                 <input type="number" id="form-course-internship-hours" placeholder="120" value="${existing ? existing.internship_hours : ''}" 
-                       class="w-full border rounded px-3 py-2">
+                       class="w-full border rounded px-3 py-2"
+                       onkeydown="if(event.key==='Tab' && !this.value) {event.preventDefault(); this.value=this.placeholder;}">
             </div>
             <div class="col-span-3">
                 <div class="flex items-center gap-2">
@@ -2133,6 +2198,8 @@ window.saveCourse = async function(existingCode) {
             await axios.post(`${API_BASE_URL}/api/courses`, data);
             alert('과정이 추가되었습니다.');
             selectedCourseCode = data.code;
+            // 새 과정 추가 시 빈 교과목 배열로 초기화
+            courseSubjects[data.code] = [];
         }
         window.hideCourseForm();
         await loadCourses();
