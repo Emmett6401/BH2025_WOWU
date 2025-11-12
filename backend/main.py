@@ -329,8 +329,10 @@ async def create_subject(data: dict):
         
         query = """
             INSERT INTO subjects 
-            (code, name, main_instructor, day_of_week, is_biweekly, week_offset, hours, description)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (code, name, main_instructor, day_of_week, is_biweekly, week_offset, hours, description,
+             sub_subject_1, sub_hours_1, sub_subject_2, sub_hours_2, sub_subject_3, sub_hours_3,
+             sub_subject_4, sub_hours_4, sub_subject_5, sub_hours_5)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         cursor.execute(query, (
@@ -341,7 +343,17 @@ async def create_subject(data: dict):
             data.get('is_biweekly', 0),
             data.get('week_offset', 0),
             data.get('hours', 0),
-            data.get('description', '')
+            data.get('description', ''),
+            data.get('sub_subject_1', ''),
+            data.get('sub_hours_1', 0),
+            data.get('sub_subject_2', ''),
+            data.get('sub_hours_2', 0),
+            data.get('sub_subject_3', ''),
+            data.get('sub_hours_3', 0),
+            data.get('sub_subject_4', ''),
+            data.get('sub_hours_4', 0),
+            data.get('sub_subject_5', ''),
+            data.get('sub_hours_5', 0)
         ))
         
         conn.commit()
@@ -361,7 +373,10 @@ async def update_subject(subject_code: str, data: dict):
         query = """
             UPDATE subjects 
             SET name = %s, main_instructor = %s, day_of_week = %s, 
-                is_biweekly = %s, week_offset = %s, hours = %s, description = %s
+                is_biweekly = %s, week_offset = %s, hours = %s, description = %s,
+                sub_subject_1 = %s, sub_hours_1 = %s, sub_subject_2 = %s, sub_hours_2 = %s,
+                sub_subject_3 = %s, sub_hours_3 = %s, sub_subject_4 = %s, sub_hours_4 = %s,
+                sub_subject_5 = %s, sub_hours_5 = %s
             WHERE code = %s
         """
         
@@ -373,6 +388,16 @@ async def update_subject(subject_code: str, data: dict):
             data.get('week_offset', 0),
             data.get('hours', 0),
             data.get('description', ''),
+            data.get('sub_subject_1', ''),
+            data.get('sub_hours_1', 0),
+            data.get('sub_subject_2', ''),
+            data.get('sub_hours_2', 0),
+            data.get('sub_subject_3', ''),
+            data.get('sub_hours_3', 0),
+            data.get('sub_subject_4', ''),
+            data.get('sub_hours_4', 0),
+            data.get('sub_subject_5', ''),
+            data.get('sub_hours_5', 0),
             subject_code
         ))
         

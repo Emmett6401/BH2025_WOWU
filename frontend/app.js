@@ -8,6 +8,41 @@ let subjects = [];
 let instructors = [];
 let counselings = [];
 
+// ==================== 커스텀 알림 모달 ====================
+window.showAlert = function(message) {
+    const alertModal = document.getElementById('custom-alert');
+    const alertMessage = document.getElementById('alert-message');
+    alertMessage.textContent = message;
+    alertModal.classList.remove('hidden');
+};
+
+window.hideAlert = function() {
+    const alertModal = document.getElementById('custom-alert');
+    alertModal.classList.add('hidden');
+};
+
+// 확인 모달용 콜백 저장
+let confirmCallback = null;
+
+window.showConfirm = function(message) {
+    return new Promise((resolve) => {
+        const confirmModal = document.getElementById('custom-confirm');
+        const confirmMessage = document.getElementById('confirm-message');
+        confirmMessage.textContent = message;
+        confirmModal.classList.remove('hidden');
+        confirmCallback = resolve;
+    });
+};
+
+window.handleConfirm = function(result) {
+    const confirmModal = document.getElementById('custom-confirm');
+    confirmModal.classList.add('hidden');
+    if (confirmCallback) {
+        confirmCallback(result);
+        confirmCallback = null;
+    }
+};
+
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
     console.log('App initialized');
@@ -422,6 +457,19 @@ function renderSubjects() {
                             <p><i class="fas fa-clock mr-2"></i>강의시수: ${subject.hours || 0}시간</p>
                         </div>
                         ${subject.description ? `<p class="text-sm text-gray-500 mt-2">${subject.description}</p>` : ''}
+                        ${(() => {
+                            const subs = [1, 2, 3, 4, 5]
+                                .filter(i => subject[`sub_subject_${i}`] && subject[`sub_subject_${i}`].trim())
+                                .map(i => `${subject[`sub_subject_${i}`]} (${subject[`sub_hours_${i}`] || 0}h)`);
+                            return subs.length > 0 ? `
+                                <div class="mt-2 pt-2 border-t">
+                                    <p class="text-xs font-semibold text-gray-700 mb-1">세부 교과목:</p>
+                                    <div class="text-xs text-gray-600 space-y-0.5">
+                                        ${subs.map(s => `<p>• ${s}</p>`).join('')}
+                                    </div>
+                                </div>
+                            ` : '';
+                        })()}
                         <div class="mt-3 flex space-x-2">
                             <button onclick="window.editSubject('${subject.code}')" class="text-blue-600 hover:text-blue-800">
                                 <i class="fas fa-edit"></i> 수정
@@ -500,6 +548,30 @@ window.showSubjectForm = function(subjectCode = null) {
                     <input type="number" name="hours" value="${existingSubject?.hours || 0}" required
                            class="w-full px-3 py-2 border rounded-lg">
                 </div>
+                
+                <!-- 세부 교과목 5개 -->
+                <div class="col-span-2">
+                    <label class="block text-gray-700 font-semibold mb-3">
+                        <i class="fas fa-list mr-2"></i>세부 교과목 (최대 5개)
+                    </label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-blue-50 p-4 rounded-lg">
+                        ${[1, 2, 3, 4, 5].map(i => `
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm font-semibold text-gray-600 w-12">${i}.</span>
+                                <input type="text" name="sub_subject_${i}" 
+                                       value="${existingSubject?.[`sub_subject_${i}`] || ''}"
+                                       placeholder="세부교과명 ${i}"
+                                       class="flex-1 px-2 py-1 border rounded text-sm">
+                                <input type="number" name="sub_hours_${i}" 
+                                       value="${existingSubject?.[`sub_hours_${i}`] || 0}"
+                                       placeholder="시수"
+                                       class="w-16 px-2 py-1 border rounded text-sm">
+                                <span class="text-xs text-gray-500">h</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
                 <div class="col-span-2">
                     <label class="block text-gray-700 mb-2">설명</label>
                     <textarea name="description" rows="3" class="w-full px-3 py-2 border rounded-lg">${existingSubject?.description || ''}</textarea>
@@ -545,22 +617,33 @@ window.saveSubject = async function(subjectCode) {
         is_biweekly: parseInt(formData.get('is_biweekly')),
         week_offset: parseInt(formData.get('week_offset')) || 0,
         hours: parseInt(formData.get('hours')) || 0,
-        description: formData.get('description')
+        description: formData.get('description'),
+        // 세부 교과목 5개
+        sub_subject_1: formData.get('sub_subject_1') || '',
+        sub_hours_1: parseInt(formData.get('sub_hours_1')) || 0,
+        sub_subject_2: formData.get('sub_subject_2') || '',
+        sub_hours_2: parseInt(formData.get('sub_hours_2')) || 0,
+        sub_subject_3: formData.get('sub_subject_3') || '',
+        sub_hours_3: parseInt(formData.get('sub_hours_3')) || 0,
+        sub_subject_4: formData.get('sub_subject_4') || '',
+        sub_hours_4: parseInt(formData.get('sub_hours_4')) || 0,
+        sub_subject_5: formData.get('sub_subject_5') || '',
+        sub_hours_5: parseInt(formData.get('sub_hours_5')) || 0
     };
     
     try {
         if (subjectCode) {
             await axios.put(`${API_BASE_URL}/api/subjects/${subjectCode}`, data);
-            alert('과목이 수정되었습니다.');
+            window.showAlert('과목이 수정되었습니다.');
         } else {
             await axios.post(`${API_BASE_URL}/api/subjects`, data);
-            alert('과목이 추가되었습니다.');
+            window.showAlert('과목이 추가되었습니다.');
         }
         window.hideSubjectForm();
         loadSubjects();
     } catch (error) {
         console.error('과목 저장 실패:', error);
-        alert('저장 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
@@ -569,15 +652,16 @@ window.editSubject = function(subjectCode) {
 }
 
 window.deleteSubject = async function(subjectCode) {
-    if (!confirm('이 과목을 삭제하시겠습니까?')) return;
+    const confirmed = await window.showConfirm('이 과목을 삭제하시겠습니까?');
+    if (!confirmed) return;
     
     try {
         await axios.delete(`${API_BASE_URL}/api/subjects/${subjectCode}`);
-        alert('과목이 삭제되었습니다.');
+        window.showAlert('과목이 삭제되었습니다.');
         loadSubjects();
     } catch (error) {
         console.error('과목 삭제 실패:', error);
-        alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('삭제 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
@@ -1770,10 +1854,10 @@ window.updateCourseDate = async function(courseCode) {
         selectedCourseCode = courseCode;
         renderCourses();
         
-        alert('과정 시작일이 업데이트되었습니다.');
+        window.showAlert('과정 시작일이 업데이트되었습니다.');
     } catch (error) {
         console.error('날짜 업데이트 실패:', error);
-        alert('날짜 업데이트에 실패했습니다.');
+        window.showAlert('날짜 업데이트에 실패했습니다.');
     }
 }
 
@@ -1957,7 +2041,7 @@ window.showSubjectSelector = async function(courseCode) {
         modal.classList.remove('hidden');
     } catch (error) {
         console.error('교과목 로드 실패:', error);
-        alert('교과목 목록을 불러오는데 실패했습니다.');
+        window.showAlert('교과목 목록을 불러오는데 실패했습니다.');
     }
 }
 
@@ -1972,7 +2056,7 @@ window.saveSelectedSubjects = function(courseCode) {
     const selectedSubjects = Array.from(checkboxes).map(cb => cb.value);
     
     if (selectedSubjects.length === 0) {
-        alert('하나 이상의 교과목을 선택해주세요.');
+        window.showAlert('하나 이상의 교과목을 선택해주세요.');
         return;
     }
     
@@ -1983,7 +2067,7 @@ window.saveSelectedSubjects = function(courseCode) {
     console.log(`과정 ${courseCode}에 선택된 교과목:`, selectedSubjects);
     
     window.hideSubjectSelector();
-    alert(`${selectedSubjects.length}개의 교과목이 선택되었습니다.`);
+    window.showAlert(`${selectedSubjects.length}개의 교과목이 선택되었습니다.`);
     
     // 과목 영역 업데이트
     updateSubjectArea(courseCode);
@@ -2864,6 +2948,29 @@ window.showTrainingLogForm = async function(timetableId) {
         const response = await axios.get(`${API_BASE_URL}/api/timetables/${timetableId}`);
         const tt = response.data;
         
+        // 과목의 세부 교과목 정보 조회
+        let subSubjectsHTML = '';
+        if (tt.subject_code) {
+            try {
+                const subjectRes = await axios.get(`${API_BASE_URL}/api/subjects/${tt.subject_code}`);
+                const subject = subjectRes.data;
+                const subs = [1, 2, 3, 4, 5]
+                    .filter(i => subject[`sub_subject_${i}`] && subject[`sub_subject_${i}`].trim())
+                    .map(i => `<li class="text-xs">• ${subject[`sub_subject_${i}`]} (${subject[`sub_hours_${i}`] || 0}시간)</li>`);
+                
+                if (subs.length > 0) {
+                    subSubjectsHTML = `
+                        <div class="mt-2 pt-2 border-t">
+                            <p class="text-sm font-semibold mb-1">세부 교과목:</p>
+                            <ul class="text-gray-600">${subs.join('')}</ul>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('과목 정보 조회 실패:', error);
+            }
+        }
+        
         const formDiv = document.getElementById('training-log-form');
         formDiv.innerHTML = `
             <h3 class="text-lg font-bold mb-4">
@@ -2874,6 +2981,7 @@ window.showTrainingLogForm = async function(timetableId) {
                 <p class="text-sm"><strong>과목:</strong> ${tt.subject_name || '-'}</p>
                 <p class="text-sm"><strong>강사:</strong> ${tt.instructor_name || '-'}</p>
                 <p class="text-sm"><strong>시간:</strong> ${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</p>
+                ${subSubjectsHTML}
             </div>
             <form id="training-log-save-form">
                 <div class="space-y-4">
@@ -2910,7 +3018,7 @@ window.showTrainingLogForm = async function(timetableId) {
         formDiv.scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
         console.error('시간표 정보 조회 실패:', error);
-        alert('시간표 정보를 불러오는데 실패했습니다');
+        window.showAlert('시간표 정보를 불러오는데 실패했습니다');
     }
 }
 
@@ -2924,6 +3032,29 @@ window.editTrainingLog = async function(logId, timetableId) {
         const log = logRes.data;
         const tt = ttRes.data;
         
+        // 과목의 세부 교과목 정보 조회
+        let subSubjectsHTML = '';
+        if (tt.subject_code) {
+            try {
+                const subjectRes = await axios.get(`${API_BASE_URL}/api/subjects/${tt.subject_code}`);
+                const subject = subjectRes.data;
+                const subs = [1, 2, 3, 4, 5]
+                    .filter(i => subject[`sub_subject_${i}`] && subject[`sub_subject_${i}`].trim())
+                    .map(i => `<li class="text-xs">• ${subject[`sub_subject_${i}`]} (${subject[`sub_hours_${i}`] || 0}시간)</li>`);
+                
+                if (subs.length > 0) {
+                    subSubjectsHTML = `
+                        <div class="mt-2 pt-2 border-t">
+                            <p class="text-sm font-semibold mb-1">세부 교과목:</p>
+                            <ul class="text-gray-600">${subs.join('')}</ul>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('과목 정보 조회 실패:', error);
+            }
+        }
+        
         const formDiv = document.getElementById('training-log-form');
         formDiv.innerHTML = `
             <h3 class="text-lg font-bold mb-4">
@@ -2934,6 +3065,7 @@ window.editTrainingLog = async function(logId, timetableId) {
                 <p class="text-sm"><strong>과목:</strong> ${tt.subject_name || '-'}</p>
                 <p class="text-sm"><strong>강사:</strong> ${tt.instructor_name || '-'}</p>
                 <p class="text-sm"><strong>시간:</strong> ${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</p>
+                ${subSubjectsHTML}
             </div>
             <form id="training-log-save-form">
                 <div class="space-y-4">
@@ -2971,7 +3103,7 @@ window.editTrainingLog = async function(logId, timetableId) {
         formDiv.scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
         console.error('훈련일지 조회 실패:', error);
-        alert('훈련일지를 불러오는데 실패했습니다');
+        window.showAlert('훈련일지를 불러오는데 실패했습니다');
     }
 }
 
@@ -2991,12 +3123,12 @@ window.saveTrainingLog = async function(timetableId, courseCode, instructorCode,
     
     try {
         await axios.post(`${API_BASE_URL}/api/training-logs`, data);
-        alert('훈련일지가 저장되었습니다.');
+        window.showAlert('훈련일지가 저장되었습니다.');
         window.hideTrainingLogForm();
         window.filterTrainingLogs();
     } catch (error) {
         console.error('훈련일지 저장 실패:', error);
-        alert('저장 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
@@ -3012,26 +3144,27 @@ window.updateTrainingLog = async function(logId) {
     
     try {
         await axios.put(`${API_BASE_URL}/api/training-logs/${logId}`, data);
-        alert('훈련일지가 수정되었습니다.');
+        window.showAlert('훈련일지가 수정되었습니다.');
         window.hideTrainingLogForm();
         window.filterTrainingLogs();
     } catch (error) {
         console.error('훈련일지 수정 실패:', error);
-        alert('수정 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('수정 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
 window.deleteTrainingLog = async function(logId) {
-    if (!confirm('이 훈련일지를 삭제하시겠습니까?')) return;
+    const confirmed = await window.showConfirm('이 훈련일지를 삭제하시겠습니까?');
+    if (!confirmed) return;
     
     try {
         await axios.delete(`${API_BASE_URL}/api/training-logs/${logId}`);
-        alert('훈련일지가 삭제되었습니다.');
+        window.showAlert('훈련일지가 삭제되었습니다.');
         window.hideTrainingLogForm();
         window.filterTrainingLogs();
     } catch (error) {
         console.error('훈련일지 삭제 실패:', error);
-        alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('삭제 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
