@@ -1452,22 +1452,46 @@ async function loadCourses() {
 }
 
 function renderCourseDetail(course) {
+    // 날짜 계산 헬퍼 함수
+    const addDays = (dateStr, days) => {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        date.setDate(date.getDate() + days);
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        return `${month}월 ${day}일`;
+    };
+    
     // 총 기간 계산
     const totalDays = course.total_days || 113;
-    const lectureDays = course.lecture_hours ? Math.ceil(course.lecture_hours / 8) : 76;
-    const projectDays = course.project_hours ? Math.ceil(course.project_hours / 8) : 32;
-    const internDays = course.internship_hours ? Math.ceil(course.internship_hours / 8) : 5;
+    const lectureDays = course.lecture_hours ? Math.ceil(course.lecture_hours / 8) : 33;
+    const projectDays = course.project_hours ? Math.ceil(course.project_hours / 8) : 28;
+    const internDays = course.internship_hours ? Math.ceil(course.internship_hours / 8) : 15;
     
-    // 공휴일 계산 (예시)
-    const holidays = 37;
+    // 퍼센트 계산
+    const lecturePercent = Math.floor((lectureDays / totalDays) * 100);
+    const projectPercent = Math.floor((projectDays / totalDays) * 100);
+    const internPercent = Math.floor((internDays / totalDays) * 100);
+    
+    // 각 단계별 종료일 계산 (시작일 기준)
+    const lectureEndDate = addDays(course.start_date, lectureDays - 1);
+    const projectEndDate = addDays(course.start_date, lectureDays + projectDays - 1);
+    const internEndDate = addDays(course.start_date, lectureDays + projectDays + internDays - 1);
+    
+    // 근무일 합계
+    const workDays = lectureDays + projectDays + internDays;
+    
+    // 제외일 계산
+    const excludedDays = totalDays - workDays;
     const weekends = Math.floor(totalDays / 7) * 2;
+    const holidays = excludedDays - weekends;
     
     return `
         <div class="p-6">
             <!-- 과정 시작일 -->
             <div class="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4">
                 <label class="block text-sm font-semibold text-gray-700 mb-2">
-                    <i class="fas fa-info-circle mr-2"></i>과정 기간 내 변경료율이 있다면 즉 클릭해주세요.
+                    <i class="fas fa-calendar-alt mr-2"></i>과정 시작일
                 </label>
                 <input type="date" id="course-start-date" value="${course.start_date || ''}" 
                        class="px-3 py-2 border rounded" onchange="window.updateCourseDate('${course.code}')">
@@ -1480,30 +1504,45 @@ function renderCourseDetail(course) {
                 </h3>
                 <div class="grid grid-cols-3 gap-4">
                     <div class="bg-blue-100 p-3 rounded">
-                        <label class="block text-xs text-gray-600">이론</label>
-                        <div class="flex items-center mt-1">
+                        <label class="block text-xs text-gray-600 mb-2">이론</label>
+                        <div class="flex items-center mb-2">
                             <input type="number" id="theory-hours" value="${course.lecture_hours || 260}" 
                                    class="w-20 px-2 py-1 border rounded text-sm" onchange="window.updateCourseHours('${course.code}')">
-                            <span class="ml-2 text-sm">h</span>
-                            <span class="ml-auto text-xs text-blue-700">약 ${lectureDays}일 (${Math.floor((lectureDays/totalDays)*100)}%)</span>
+                            <span class="ml-2 text-sm font-semibold">h</span>
+                        </div>
+                        <div class="text-xs text-blue-700 font-semibold">
+                            약 ${lectureDays}일 (${lecturePercent}%)
+                        </div>
+                        <div class="text-xs text-blue-600 mt-1">
+                            ${lectureEndDate}까지
                         </div>
                     </div>
                     <div class="bg-green-100 p-3 rounded">
-                        <label class="block text-xs text-gray-600">프로젝트</label>
-                        <div class="flex items-center mt-1">
+                        <label class="block text-xs text-gray-600 mb-2">프로젝트</label>
+                        <div class="flex items-center mb-2">
                             <input type="number" id="project-hours" value="${course.project_hours || 220}" 
                                    class="w-20 px-2 py-1 border rounded text-sm" onchange="window.updateCourseHours('${course.code}')">
-                            <span class="ml-2 text-sm">h</span>
-                            <span class="ml-auto text-xs text-green-700">약 ${projectDays}일 (${Math.floor((projectDays/totalDays)*100)}%)</span>
+                            <span class="ml-2 text-sm font-semibold">h</span>
+                        </div>
+                        <div class="text-xs text-green-700 font-semibold">
+                            약 ${projectDays}일 (${projectPercent}%)
+                        </div>
+                        <div class="text-xs text-green-600 mt-1">
+                            ${projectEndDate}까지
                         </div>
                     </div>
                     <div class="bg-red-100 p-3 rounded">
-                        <label class="block text-xs text-gray-600">인턴십</label>
-                        <div class="flex items-center mt-1">
+                        <label class="block text-xs text-gray-600 mb-2">인턴십</label>
+                        <div class="flex items-center mb-2">
                             <input type="number" id="intern-hours" value="${course.internship_hours || 120}" 
                                    class="w-20 px-2 py-1 border rounded text-sm" onchange="window.updateCourseHours('${course.code}')">
-                            <span class="ml-2 text-sm">h</span>
-                            <span class="ml-auto text-xs text-red-700">약 ${internDays}일 (${Math.floor((internDays/totalDays)*100)}%)</span>
+                            <span class="ml-2 text-sm font-semibold">h</span>
+                        </div>
+                        <div class="text-xs text-red-700 font-semibold">
+                            약 ${internDays}일 (${internPercent}%)
+                        </div>
+                        <div class="text-xs text-red-600 mt-1">
+                            ${internEndDate}까지
                         </div>
                     </div>
                 </div>
@@ -1514,22 +1553,20 @@ function renderCourseDetail(course) {
                 <h3 class="font-bold text-lg mb-3">
                     <i class="fas fa-calendar-check mr-2"></i>교육 일정 계산 결과
                 </h3>
-                <div class="grid grid-cols-4 gap-3">
-                    <div class="text-center">
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="text-center p-3 bg-white rounded shadow-sm">
+                        <div class="text-xs text-gray-500 mb-1">총 기간</div>
                         <div class="text-2xl font-bold text-blue-600">${totalDays}일</div>
-                        <div class="text-xs text-gray-600">총 기간</div>
                     </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-green-600">${lectureDays}일 (600시간)</div>
-                        <div class="text-xs text-gray-600">근무일 / 교육일 / 공휴일 제외</div>
+                    <div class="text-center p-3 bg-white rounded shadow-sm">
+                        <div class="text-xs text-gray-500 mb-1">근무일</div>
+                        <div class="text-xl font-bold text-green-600">${workDays}일</div>
+                        <div class="text-xs text-gray-600 mt-1">= 이론(${lectureDays}) + 프로젝트(${projectDays}) + 인턴십(${internDays})</div>
                     </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-red-600">${holidays}일</div>
-                        <div class="text-xs text-gray-600">제외일 / 주말 / 공휴일 / 5회</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-gray-600">${weekends + holidays}일</div>
-                        <div class="text-xs text-gray-600">주말: ${weekends}일 / 공휴일: ${holidays}일</div>
+                    <div class="text-center p-3 bg-white rounded shadow-sm">
+                        <div class="text-xs text-gray-500 mb-1">제외일</div>
+                        <div class="text-xl font-bold text-red-600">${excludedDays}일</div>
+                        <div class="text-xs text-gray-600 mt-1">= 주말(${weekends}) + 공휴일(${holidays})</div>
                     </div>
                 </div>
             </div>
