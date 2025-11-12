@@ -1614,14 +1614,19 @@ function renderCourseDetail(course) {
                     </div>
                     <div class="bg-green-100 p-3 rounded">
                         <div class="flex items-center justify-between mb-2">
-                            <div class="text-sm font-semibold">선택된 과목:</div>
+                            <div class="text-sm font-semibold">선택된 과목: <span id="subject-count-${course.code}" class="text-green-700">(6개)</span></div>
                             <button onclick="window.showSubjectSelector('${course.code}')" 
                                     class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs">
                                 <i class="fas fa-list mr-1"></i>교과목 선택
                             </button>
                         </div>
                         <ul class="text-xs space-y-1" id="selected-subjects-${course.code}">
-                            <li class="text-gray-500 italic">교과목 선택 버튼을 클릭하여 과목을 선택하세요.</li>
+                            <li>• G-001: AI기반 바이오데이터와 윤리</li>
+                            <li>• G-002: 바이오헬스 AI 실무 활용</li>
+                            <li>• G-003: AI기반 의료영상</li>
+                            <li>• G-004: AIoT 웨어러블과 빅데이터 활용하기</li>
+                            <li>• G-005: AI기반 헬스케어 디바이스 활용하기</li>
+                            <li>• G-006: AI 반려로봇 활용하기</li>
                         </ul>
                     </div>
                 </div>
@@ -1629,9 +1634,9 @@ function renderCourseDetail(course) {
             
             <!-- 버튼 -->
             <div class="flex space-x-2">
-                <button onclick="window.saveCourseChanges('${course.code}')" 
+                <button onclick="window.editCourse('${course.code}')" 
                         class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded">
-                    <i class="fas fa-save mr-2"></i>저장
+                    <i class="fas fa-edit mr-2"></i>수정
                 </button>
                 <button onclick="window.showCourseForm()" 
                         class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
@@ -1640,10 +1645,6 @@ function renderCourseDetail(course) {
                 <button onclick="window.deleteCourse('${course.code}')" 
                         class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded">
                     <i class="fas fa-trash mr-2"></i>삭제
-                </button>
-                <button onclick="window.resetCourseForm('${course.code}')" 
-                        class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-2 rounded ml-auto">
-                    <i class="fas fa-redo mr-2"></i>다시입력
                 </button>
             </div>
             
@@ -1784,16 +1785,60 @@ window.saveCourseChanges = async function(courseCode) {
     }
 }
 
-// 다시입력 (DB에서 원본 데이터 다시 불러오기)
-window.resetCourseForm = async function(courseCode) {
-    if (!confirm('현재 입력 중인 내용을 취소하고 저장된 데이터를 다시 불러오시겠습니까?')) return;
+// 자동계산 버튼 클릭 시 날짜 자동 계산
+window.autoCalculateDates = async function() {
+    const startDate = document.getElementById('form-course-start-date').value;
+    const lectureHours = parseInt(document.getElementById('form-course-lecture-hours').value) || 0;
+    const projectHours = parseInt(document.getElementById('form-course-project-hours').value) || 0;
+    const internshipHours = parseInt(document.getElementById('form-course-internship-hours').value) || 0;
     
-    // 선택된 과정 유지하면서 재로드
-    selectedCourseCode = courseCode;
-    await loadCourses();
+    if (!startDate) {
+        alert('시작일을 먼저 입력해주세요.');
+        return;
+    }
     
-    // 폼 필드를 원래 값으로 재설정
-    renderCourses();
+    if (lectureHours === 0 && projectHours === 0 && internshipHours === 0) {
+        alert('강의시간, 프로젝트시간, 인턴시간 중 하나 이상을 입력해주세요.');
+        return;
+    }
+    
+    try {
+        // 계산 중 표시
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>계산중...';
+        button.disabled = true;
+        
+        const response = await axios.post(`${API_BASE_URL}/api/courses/calculate-dates`, {
+            start_date: startDate,
+            lecture_hours: lectureHours,
+            project_hours: projectHours,
+            internship_hours: internshipHours
+        });
+        
+        const result = response.data;
+        
+        // 계산된 날짜들을 폼에 입력
+        document.getElementById('form-course-lecture-end').value = result.lecture_end_date;
+        document.getElementById('form-course-project-end').value = result.project_end_date;
+        document.getElementById('form-course-internship-end').value = result.internship_end_date;
+        document.getElementById('form-course-final-end').value = result.final_end_date;
+        document.getElementById('form-course-total-days').value = result.total_days;
+        
+        // 버튼 원상복구
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+        
+        alert(`자동계산 완료!\n총 ${result.total_days}일 (근무일: ${result.work_days}일)`);
+    } catch (error) {
+        console.error('자동계산 실패:', error);
+        alert('자동계산에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+        
+        // 버튼 원상복구
+        const button = event.target.closest('button');
+        button.innerHTML = '<i class="fas fa-calculator mr-2"></i>자동계산';
+        button.disabled = false;
+    }
 }
 
 // 교과목 선택 모달 표시
@@ -1866,7 +1911,7 @@ window.hideSubjectSelector = function() {
     document.getElementById('subject-selector').classList.add('hidden');
 }
 
-// 선택된 교과목 저장 (임시 - 실제 DB 저장은 나중에 구현)
+// 선택된 교과목 저장
 window.saveSelectedSubjects = function(courseCode) {
     const checkboxes = document.querySelectorAll('.subject-checkbox:checked');
     const selectedSubjects = Array.from(checkboxes).map(cb => cb.value);
@@ -1878,6 +1923,8 @@ window.saveSelectedSubjects = function(courseCode) {
     
     // 선택된 과목 리스트 업데이트 (UI만)
     const listElement = document.getElementById(`selected-subjects-${courseCode}`);
+    const countElement = document.getElementById(`subject-count-${courseCode}`);
+    
     if (listElement) {
         listElement.innerHTML = selectedSubjects.map(code => {
             const checkbox = document.getElementById(`subject-${code}`);
@@ -1886,6 +1933,10 @@ window.saveSelectedSubjects = function(courseCode) {
             const subjectName = cells[2].textContent;
             return `<li>• ${code}: ${subjectName}</li>`;
         }).join('');
+    }
+    
+    if (countElement) {
+        countElement.textContent = `(${selectedSubjects.length}개)`;
     }
     
     // TODO: 실제로는 course_subjects 테이블에 저장해야 함
@@ -1990,35 +2041,43 @@ window.showCourseForm = function(code = null) {
                 <input type="number" id="form-course-internship-hours" placeholder="120" value="${existing ? existing.internship_hours : ''}" 
                        class="w-full border rounded px-3 py-2">
             </div>
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">시작일</label>
-                <input type="date" id="form-course-start-date" value="${existing ? existing.start_date : ''}" 
-                       class="w-full border rounded px-3 py-2">
+            <div class="col-span-3">
+                <div class="flex items-center gap-2">
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">시작일 *</label>
+                        <input type="date" id="form-course-start-date" value="${existing ? existing.start_date : ''}" 
+                               class="w-full border rounded px-3 py-2">
+                    </div>
+                    <button type="button" onclick="window.autoCalculateDates()" 
+                            class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded self-end">
+                        <i class="fas fa-calculator mr-2"></i>자동계산
+                    </button>
+                </div>
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">강의종료일</label>
                 <input type="date" id="form-course-lecture-end" value="${existing ? existing.lecture_end_date : ''}" 
-                       class="w-full border rounded px-3 py-2">
+                       class="w-full border rounded px-3 py-2 bg-gray-50" readonly>
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">프로젝트종료일</label>
                 <input type="date" id="form-course-project-end" value="${existing ? existing.project_end_date : ''}" 
-                       class="w-full border rounded px-3 py-2">
+                       class="w-full border rounded px-3 py-2 bg-gray-50" readonly>
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">인턴종료일</label>
                 <input type="date" id="form-course-internship-end" value="${existing ? existing.internship_end_date : ''}" 
-                       class="w-full border rounded px-3 py-2">
+                       class="w-full border rounded px-3 py-2 bg-gray-50" readonly>
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">최종종료일</label>
                 <input type="date" id="form-course-final-end" value="${existing ? existing.final_end_date : ''}" 
-                       class="w-full border rounded px-3 py-2">
+                       class="w-full border rounded px-3 py-2 bg-gray-50" readonly>
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">총일수</label>
                 <input type="number" id="form-course-total-days" placeholder="113" value="${existing ? existing.total_days : ''}" 
-                       class="w-full border rounded px-3 py-2">
+                       class="w-full border rounded px-3 py-2 bg-gray-50" readonly>
             </div>
         </div>
         <div class="mt-4">
@@ -2027,10 +2086,10 @@ window.showCourseForm = function(code = null) {
                       class="w-full border rounded px-3 py-2">${existing ? existing.notes || '' : ''}</textarea>
         </div>
         <div class="mt-6 flex justify-end space-x-2">
-            <button onclick="window.hideCourseForm()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded">
+            <button type="button" onclick="window.hideCourseForm()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded">
                 <i class="fas fa-times mr-2"></i>취소
             </button>
-            <button onclick="window.saveCourse('${code || ''}')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
+            <button type="button" onclick="window.saveCourse('${code || ''}')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
                 <i class="fas fa-save mr-2"></i>${code ? '수정' : '추가'}
             </button>
         </div>

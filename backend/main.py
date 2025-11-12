@@ -1458,6 +1458,89 @@ async def root():
         "status": "running"
     }
 
+@app.post("/api/courses/calculate-dates")
+async def calculate_course_dates(data: dict):
+    """
+    과정 날짜 자동 계산 (공휴일 제외)
+    - start_date: 시작일
+    - lecture_hours: 강의시간
+    - project_hours: 프로젝트시간
+    - internship_hours: 인턴십시간
+    """
+    from datetime import timedelta
+    
+    try:
+        start_date_str = data.get('start_date')
+        lecture_hours = int(data.get('lecture_hours', 0))
+        project_hours = int(data.get('project_hours', 0))
+        internship_hours = int(data.get('internship_hours', 0))
+        
+        if not start_date_str:
+            raise HTTPException(status_code=400, detail="시작일은 필수입니다.")
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        
+        # 시간을 일수로 변환 (8시간 = 1일)
+        lecture_days = (lecture_hours + 7) // 8  # 올림 처리
+        project_days = (project_hours + 7) // 8
+        intern_days = (internship_hours + 7) // 8
+        
+        # 공휴일 가져오기
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 시작일로부터 1년간의 공휴일 조회
+        end_year = start_date.year + 1
+        cursor.execute("""
+            SELECT holiday_date 
+            FROM holidays 
+            WHERE holiday_date >= %s 
+            AND YEAR(holiday_date) BETWEEN %s AND %s
+        """, (start_date_str, start_date.year, end_year))
+        
+        holidays_result = cursor.fetchall()
+        holidays = set(row[0] for row in holidays_result)
+        
+        cursor.close()
+        conn.close()
+        
+        # 근무일 계산 함수 (주말 및 공휴일 제외)
+        def add_business_days(start, days_to_add):
+            current = start
+            added_days = 0
+            
+            while added_days < days_to_add:
+                current += timedelta(days=1)
+                # 주말(토요일=5, 일요일=6)과 공휴일 제외
+                if current.weekday() < 5 and current not in holidays:
+                    added_days += 1
+            
+            return current
+        
+        # 각 단계별 종료일 계산
+        lecture_end_date = add_business_days(start_date, lecture_days)
+        project_end_date = add_business_days(lecture_end_date, project_days)
+        internship_end_date = add_business_days(project_end_date, intern_days)
+        
+        # 총 일수 계산 (실제 캘린더 일수)
+        total_days = (internship_end_date - start_date).days
+        
+        return {
+            "start_date": start_date_str,
+            "lecture_end_date": lecture_end_date.strftime('%Y-%m-%d'),
+            "project_end_date": project_end_date.strftime('%Y-%m-%d'),
+            "internship_end_date": internship_end_date.strftime('%Y-%m-%d'),
+            "final_end_date": internship_end_date.strftime('%Y-%m-%d'),
+            "total_days": total_days,
+            "lecture_days": lecture_days,
+            "project_days": project_days,
+            "internship_days": intern_days,
+            "work_days": lecture_days + project_days + intern_days
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"날짜 계산 실패: {str(e)}")
+
 @app.get("/health")
 async def health_check():
     """헬스 체크"""
