@@ -1439,6 +1439,7 @@ window.deleteHoliday = async function(id) {
 
 // ==================== 과정 관리 ====================
 let courses = [];
+let courseSubjects = {}; // 과정별 선택된 교과목 저장
 
 async function loadCourses() {
     try {
@@ -1743,7 +1744,6 @@ async function updateSubjectArea(courseCode) {
 
 // ==================== 새로운 과정 관리 UI 인터랙티브 함수 ====================
 let selectedCourseCode = null;
-let courseSubjects = {}; // 과정별 선택된 교과목 저장 { 'C-001': ['G-001', 'G-002', ...], ... }
 
 // 과정 탭 선택
 window.selectCourse = function(courseCode) {
