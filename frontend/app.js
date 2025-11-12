@@ -1632,21 +1632,17 @@ function renderCourseDetail(course) {
                         class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded">
                     <i class="fas fa-save mr-2"></i>저장
                 </button>
-                <button onclick="window.exportCourseExcel('${course.code}')" 
+                <button onclick="window.showCourseForm()" 
                         class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
-                    <i class="fas fa-file-excel mr-2"></i>추가
+                    <i class="fas fa-plus mr-2"></i>추가
                 </button>
-                <button onclick="window.printCourse('${course.code}')" 
+                <button onclick="window.deleteCourse('${course.code}')" 
                         class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded">
-                    <i class="fas fa-file-pdf mr-2"></i>삭제
+                    <i class="fas fa-trash mr-2"></i>삭제
                 </button>
-                <button onclick="window.exportCourseData('${course.code}')" 
-                        class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded">
-                    <i class="fas fa-file-export mr-2"></i>과정 선별
-                </button>
-                <button onclick="window.resetCourseForm()" 
+                <button onclick="window.resetCourseForm('${course.code}')" 
                         class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-2 rounded ml-auto">
-                    초기화
+                    <i class="fas fa-redo mr-2"></i>다시입력
                 </button>
             </div>
             
@@ -1786,27 +1782,12 @@ window.saveCourseChanges = async function(courseCode) {
     }
 }
 
-// Excel 내보내기 (추가 기능)
-window.exportCourseExcel = function(courseCode) {
-    alert('Excel 내보내기 기능은 준비 중입니다.');
-    // TODO: 과정 데이터를 Excel 형식으로 내보내기
-}
-
-// PDF 출력 (삭제 -> 실제로는 PDF 출력)
-window.printCourse = function(courseCode) {
-    if (!confirm('이 과정을 삭제하시겠습니까?')) return;
-    window.deleteCourse(courseCode);
-}
-
-// 데이터 내보내기 (과정 선별)
-window.exportCourseData = function(courseCode) {
-    alert('과정 데이터 내보내기 기능은 준비 중입니다.');
-    // TODO: JSON/CSV 형식으로 데이터 내보내기
-}
-
-// 폼 초기화
-window.resetCourseForm = function() {
-    if (!confirm('현재 입력 내용을 초기화하시겠습니까?')) return;
+// 다시입력 (DB에서 원본 데이터 다시 불러오기)
+window.resetCourseForm = function(courseCode) {
+    if (!confirm('현재 입력 중인 내용을 취소하고 저장된 데이터를 다시 불러오시겠습니까?')) return;
+    
+    // 선택된 과정 유지하면서 재로드
+    selectedCourseCode = courseCode;
     loadCourses();
 }
 
@@ -1936,14 +1917,19 @@ window.editCourse = function(code) {
 }
 
 window.deleteCourse = async function(code) {
-    if (!confirm('이 과정을 삭제하시겠습니까?')) return;
+    if (!confirm('이 과정을 삭제하시겠습니까?\n삭제하면 복구할 수 없습니다.')) return;
     
     try {
         await axios.delete(`${API_BASE_URL}/api/courses/${code}`);
         alert('과정이 삭제되었습니다.');
-        loadCourses();
+        
+        // 선택된 과정 코드 초기화
+        selectedCourseCode = null;
+        
+        await loadCourses();
     } catch (error) {
-        alert('삭제 실패: ' + error.response?.data?.detail || error.message);
+        console.error('삭제 실패:', error);
+        alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
