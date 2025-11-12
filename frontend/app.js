@@ -1451,48 +1451,371 @@ async function loadCourses() {
     }
 }
 
-function renderCourses() {
-    const app = document.getElementById('app');
-    app.innerHTML = `
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">
-                    <i class="fas fa-school mr-2"></i>과정(학급) 관리 (총 ${courses.length}개)
-                </h2>
-                <button onclick="window.showCourseForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                    <i class="fas fa-plus mr-2"></i>과정 추가
+function renderCourseDetail(course) {
+    // 총 기간 계산
+    const totalDays = course.total_days || 113;
+    const lectureDays = course.lecture_hours ? Math.ceil(course.lecture_hours / 8) : 76;
+    const projectDays = course.project_hours ? Math.ceil(course.project_hours / 8) : 32;
+    const internDays = course.internship_hours ? Math.ceil(course.internship_hours / 8) : 5;
+    
+    // 공휴일 계산 (예시)
+    const holidays = 37;
+    const weekends = Math.floor(totalDays / 7) * 2;
+    
+    return `
+        <div class="p-6">
+            <!-- 과정 시작일 -->
+            <div class="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-info-circle mr-2"></i>과정 기간 내 변경료율이 있다면 즉 클릭해주세요.
+                </label>
+                <input type="date" id="course-start-date" value="${course.start_date || ''}" 
+                       class="px-3 py-2 border rounded" onchange="window.updateCourseDate('${course.code}')">
+            </div>
+            
+            <!-- 과정 개요 (총 600시간) -->
+            <div class="mb-6 bg-gray-50 p-4 rounded">
+                <h3 class="font-bold text-lg mb-3">
+                    <i class="fas fa-clock mr-2"></i>과정 개요 (총 600시간)
+                </h3>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-blue-100 p-3 rounded">
+                        <label class="block text-xs text-gray-600">이론</label>
+                        <div class="flex items-center mt-1">
+                            <input type="number" id="theory-hours" value="${course.lecture_hours || 260}" 
+                                   class="w-20 px-2 py-1 border rounded text-sm" onchange="window.updateCourseHours('${course.code}')">
+                            <span class="ml-2 text-sm">h</span>
+                            <span class="ml-auto text-xs text-blue-700">약 ${lectureDays}일 (${Math.floor((lectureDays/totalDays)*100)}%)</span>
+                        </div>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded">
+                        <label class="block text-xs text-gray-600">프로젝트</label>
+                        <div class="flex items-center mt-1">
+                            <input type="number" id="project-hours" value="${course.project_hours || 220}" 
+                                   class="w-20 px-2 py-1 border rounded text-sm" onchange="window.updateCourseHours('${course.code}')">
+                            <span class="ml-2 text-sm">h</span>
+                            <span class="ml-auto text-xs text-green-700">약 ${projectDays}일 (${Math.floor((projectDays/totalDays)*100)}%)</span>
+                        </div>
+                    </div>
+                    <div class="bg-red-100 p-3 rounded">
+                        <label class="block text-xs text-gray-600">인턴십</label>
+                        <div class="flex items-center mt-1">
+                            <input type="number" id="intern-hours" value="${course.internship_hours || 120}" 
+                                   class="w-20 px-2 py-1 border rounded text-sm" onchange="window.updateCourseHours('${course.code}')">
+                            <span class="ml-2 text-sm">h</span>
+                            <span class="ml-auto text-xs text-red-700">약 ${internDays}일 (${Math.floor((internDays/totalDays)*100)}%)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 교육 일정 계산 결과 -->
+            <div class="mb-6 bg-green-50 p-4 rounded">
+                <h3 class="font-bold text-lg mb-3">
+                    <i class="fas fa-calendar-check mr-2"></i>교육 일정 계산 결과
+                </h3>
+                <div class="grid grid-cols-4 gap-3">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-blue-600">${totalDays}일</div>
+                        <div class="text-xs text-gray-600">총 기간</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-600">${lectureDays}일 (600시간)</div>
+                        <div class="text-xs text-gray-600">근무일 / 교육일 / 공휴일 제외</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-red-600">${holidays}일</div>
+                        <div class="text-xs text-gray-600">제외일 / 주말 / 공휴일 / 5회</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-gray-600">${weekends + holidays}일</div>
+                        <div class="text-xs text-gray-600">주말: ${weekends}일 / 공휴일: ${holidays}일</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 과정 기간 내 공휴일 -->
+            <div class="mb-6 bg-red-50 p-4 rounded">
+                <h3 class="font-bold text-lg mb-2">
+                    <i class="fas fa-calendar-times mr-2 text-red-600"></i>과정 기간 내 공휴일
+                </h3>
+                <div class="text-sm text-red-600">
+                    12-25(성탄절), 01-01(신정), 02-16(설날 연휴), 02-17(설날), 02-18(설날 연휴)
+                </div>
+            </div>
+            
+            <!-- 기본 정보 -->
+            <div class="mb-6 bg-gray-50 p-4 rounded">
+                <h3 class="font-bold text-lg mb-4">
+                    <i class="fas fa-info-circle mr-2"></i>기본 정보
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">코드:</label>
+                        <input type="text" id="course-code" value="${course.code}" readonly
+                               class="w-full px-3 py-2 border rounded bg-gray-100">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">인원수:</label>
+                        <input type="number" id="course-capacity" value="${course.capacity || 24}" 
+                               class="w-full px-3 py-2 border rounded" onchange="window.updateCourseInfo('${course.code}')">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm text-gray-600 mb-1">반명칭:</label>
+                        <input type="text" id="course-name" value="${course.name || ''}" 
+                               class="w-full px-3 py-2 border rounded" onchange="window.updateCourseInfo('${course.code}')">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm text-gray-600 mb-1">강의장소:</label>
+                        <input type="text" id="course-location" value="${course.location || ''}" 
+                               class="w-full px-3 py-2 border rounded" onchange="window.updateCourseInfo('${course.code}')">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">특이 사항:</label>
+                        <textarea id="course-notes" rows="3" class="w-full px-3 py-2 border rounded" 
+                                  onchange="window.updateCourseInfo('${course.code}')">${course.notes || ''}</textarea>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded">
+                        <div class="text-sm font-semibold mb-2">선택된 과목:</div>
+                        <ul class="text-xs space-y-1">
+                            <li>• G-001: AI기반 바이오데이터와 윤리</li>
+                            <li>• G-002: 바이오헬스 AI 실무 활용</li>
+                            <li>• G-003: AI기반 의료영상</li>
+                            <li>• G-004: AIoT 웨어러블과 빅데이터 활용하기</li>
+                            <li>• G-005: AI기반 헬스케어 디바이스 활용하기</li>
+                            <li>• G-006: AI 반려로봇 활용하기</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 버튼 -->
+            <div class="flex space-x-2">
+                <button onclick="window.saveCourseChanges('${course.code}')" 
+                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded">
+                    <i class="fas fa-save mr-2"></i>저장
+                </button>
+                <button onclick="window.exportCourseExcel('${course.code}')" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
+                    <i class="fas fa-file-excel mr-2"></i>추가
+                </button>
+                <button onclick="window.printCourse('${course.code}')" 
+                        class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded">
+                    <i class="fas fa-file-pdf mr-2"></i>삭제
+                </button>
+                <button onclick="window.exportCourseData('${course.code}')" 
+                        class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded">
+                    <i class="fas fa-file-export mr-2"></i>과정 선별
+                </button>
+                <button onclick="window.resetCourseForm()" 
+                        class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-2 rounded ml-auto">
+                    초기화
                 </button>
             </div>
             
-            <div id="course-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg"></div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                ${courses.map(c => `
-                    <div class="border rounded-lg p-4 hover:shadow-md">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-semibold text-lg">${c.name}</h3>
-                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                ${c.code}
-                            </span>
-                        </div>
-                        <div class="text-sm text-gray-600 space-y-1">
-                            <p><i class="fas fa-map-marker-alt mr-2"></i>${c.location || '-'}</p>
-                            <p><i class="fas fa-users mr-2"></i>학생: ${c.student_count}/${c.capacity}명</p>
-                            <p><i class="fas fa-book mr-2"></i>과목: ${c.subject_count}개</p>
-                            <p><i class="fas fa-calendar mr-2"></i>${c.start_date} ~ ${c.final_end_date}</p>
-                            <p><i class="fas fa-clock mr-2"></i>강의: ${c.lecture_hours}h / 프로젝트: ${c.project_hours}h / 인턴: ${c.internship_hours}h</p>
-                        </div>
-                        <div class="mt-3 flex space-x-2">
-                            <button onclick="window.editCourse('${c.code}')" class="text-blue-600 hover:text-blue-800">
-                                <i class="fas fa-edit"></i> 수정
-                            </button>
-                            <button onclick="window.deleteCourse('${c.code}')" class="text-red-600 hover:text-red-800">
-                                <i class="fas fa-trash"></i> 삭제
-                            </button>
-                        </div>
-                    </div>
-                `).join('')}
+            <!-- 과정 목록 테이블 -->
+            <div class="mt-8">
+                <h3 class="font-bold text-lg mb-4">
+                    <i class="fas fa-list mr-2"></i>등록된 과정 목록
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs">코드</th>
+                                <th class="px-3 py-2 text-left text-xs">반명칭</th>
+                                <th class="px-3 py-2 text-left text-xs">시작일</th>
+                                <th class="px-3 py-2 text-left text-xs">강의종료</th>
+                                <th class="px-3 py-2 text-left text-xs">프로젝트종료</th>
+                                <th class="px-3 py-2 text-left text-xs">인턴십종료</th>
+                                <th class="px-3 py-2 text-left text-xs">종기간</th>
+                                <th class="px-3 py-2 text-left text-xs">인원</th>
+                                <th class="px-3 py-2 text-left text-xs">장소</th>
+                                <th class="px-3 py-2 text-left text-xs">비고</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${courses.map((c, idx) => `
+                                <tr class="border-t hover:bg-gray-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
+                                    <td class="px-3 py-2 text-xs">${c.code}</td>
+                                    <td class="px-3 py-2 text-xs">${c.name || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.start_date || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.lecture_end_date || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.project_end_date || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.internship_end_date || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.total_days || 113}일</td>
+                                    <td class="px-3 py-2 text-xs">${c.capacity || 24}</td>
+                                    <td class="px-3 py-2 text-xs">${c.location || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${(c.notes || '').substring(0, 20)}${c.notes && c.notes.length > 20 ? '...' : ''}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             </div>
+        </div>
+    `;
+}
+
+// ==================== 새로운 과정 관리 UI 인터랙티브 함수 ====================
+let selectedCourseCode = null;
+
+// 과정 탭 선택
+window.selectCourse = function(courseCode) {
+    selectedCourseCode = courseCode;
+    renderCourses();
+}
+
+// 과정 시작일 업데이트
+window.updateCourseDate = async function(courseCode) {
+    const newDate = document.getElementById('course-start-date').value;
+    if (!newDate) return;
+    
+    try {
+        const course = courses.find(c => c.code === courseCode);
+        if (!course) return;
+        
+        await axios.put(`${API_BASE_URL}/api/courses/${courseCode}`, {
+            ...course,
+            start_date: newDate
+        });
+        
+        // 재로드
+        await loadCourses();
+        selectedCourseCode = courseCode;
+        renderCourses();
+        
+        alert('과정 시작일이 업데이트되었습니다.');
+    } catch (error) {
+        console.error('날짜 업데이트 실패:', error);
+        alert('날짜 업데이트에 실패했습니다.');
+    }
+}
+
+// 시간 입력 변경 시 실시간 재계산
+window.updateCourseHours = function(courseCode) {
+    const theoryHours = parseInt(document.getElementById('theory-hours').value) || 0;
+    const projectHours = parseInt(document.getElementById('project-hours').value) || 0;
+    const internHours = parseInt(document.getElementById('intern-hours').value) || 0;
+    
+    // 재렌더링 (UI만 업데이트, 저장은 별도)
+    const course = courses.find(c => c.code === courseCode);
+    if (course) {
+        course.lecture_hours = theoryHours;
+        course.project_hours = projectHours;
+        course.internship_hours = internHours;
+        renderCourses();
+    }
+}
+
+// 기본 정보 변경
+window.updateCourseInfo = function(courseCode) {
+    // 실시간 업데이트는 하지 않고, 저장 버튼 클릭 시 반영
+    // UI 피드백만 제공
+}
+
+// 모든 변경사항 저장
+window.saveCourseChanges = async function(courseCode) {
+    const course = courses.find(c => c.code === courseCode);
+    if (!course) return;
+    
+    const data = {
+        code: courseCode,
+        name: document.getElementById('course-name').value,
+        location: document.getElementById('course-location').value,
+        capacity: parseInt(document.getElementById('course-capacity').value) || 24,
+        lecture_hours: parseInt(document.getElementById('theory-hours').value) || 260,
+        project_hours: parseInt(document.getElementById('project-hours').value) || 220,
+        internship_hours: parseInt(document.getElementById('intern-hours').value) || 120,
+        start_date: document.getElementById('course-start-date').value,
+        notes: document.getElementById('course-notes').value,
+        // 기존 필드 유지
+        lecture_end_date: course.lecture_end_date,
+        project_end_date: course.project_end_date,
+        internship_end_date: course.internship_end_date,
+        final_end_date: course.final_end_date,
+        total_days: course.total_days
+    };
+    
+    try {
+        await axios.put(`${API_BASE_URL}/api/courses/${courseCode}`, data);
+        alert('과정 정보가 저장되었습니다.');
+        await loadCourses();
+        selectedCourseCode = courseCode;
+        renderCourses();
+    } catch (error) {
+        console.error('저장 실패:', error);
+        alert('저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+// Excel 내보내기 (추가 기능)
+window.exportCourseExcel = function(courseCode) {
+    alert('Excel 내보내기 기능은 준비 중입니다.');
+    // TODO: 과정 데이터를 Excel 형식으로 내보내기
+}
+
+// PDF 출력 (삭제 -> 실제로는 PDF 출력)
+window.printCourse = function(courseCode) {
+    if (!confirm('이 과정을 삭제하시겠습니까?')) return;
+    window.deleteCourse(courseCode);
+}
+
+// 데이터 내보내기 (과정 선별)
+window.exportCourseData = function(courseCode) {
+    alert('과정 데이터 내보내기 기능은 준비 중입니다.');
+    // TODO: JSON/CSV 형식으로 데이터 내보내기
+}
+
+// 폼 초기화
+window.resetCourseForm = function() {
+    if (!confirm('현재 입력 내용을 초기화하시겠습니까?')) return;
+    loadCourses();
+}
+
+// renderCourses를 selectedCourseCode를 고려하도록 수정
+function renderCourses() {
+    const app = document.getElementById('app');
+    
+    // 선택된 과정이 없으면 첫 번째 과정 선택
+    if (!selectedCourseCode && courses.length > 0) {
+        selectedCourseCode = courses[0].code;
+    }
+    
+    const selectedCourse = courses.find(c => c.code === selectedCourseCode);
+    
+    app.innerHTML = `
+        <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 mb-6 rounded-t-lg">
+            <h1 class="text-2xl font-bold">
+                <i class="fas fa-school mr-2"></i>바이오헬스 훈련컨텍 이노베이터
+            </h1>
+            <p class="text-blue-100 mt-1">for KDT - 교육 관리 시스템</p>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md">
+            <!-- 과정 선택 탭 -->
+            <div class="bg-gray-100 px-4 py-2 flex space-x-2 overflow-x-auto border-b">
+                ${courses.map((c) => `
+                    <button onclick="window.selectCourse('${c.code}')" 
+                            class="course-tab px-4 py-2 rounded-t ${c.code === selectedCourseCode ? 'bg-white font-semibold border-t-2 border-blue-600' : 'bg-gray-200 hover:bg-gray-300'}" 
+                            data-code="${c.code}">
+                        <i class="fas fa-home mr-1"></i>${c.name || c.code}
+                        <button onclick="event.stopPropagation(); window.deleteCourse('${c.code}')" class="ml-2 text-red-600 hover:text-red-800">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </button>
+                `).join('')}
+                <button onclick="window.showCourseForm()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-t">
+                    <i class="fas fa-plus mr-1"></i>과정 추가
+                </button>
+            </div>
+            
+            ${selectedCourse ? renderCourseDetail(selectedCourse) : `
+                <div class="p-8 text-center text-gray-500">
+                    <i class="fas fa-folder-open text-4xl mb-4"></i>
+                    <p>등록된 과정이 없습니다. "과정 추가" 버튼을 클릭하여 새 과정을 만드세요.</p>
+                </div>
+            `}
         </div>
     `;
 }
