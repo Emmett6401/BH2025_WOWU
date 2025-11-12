@@ -9,6 +9,7 @@ import os
 from datetime import datetime, date
 from openai import OpenAI
 from dotenv import load_dotenv
+import requests
 
 load_dotenv()
 
@@ -869,13 +870,16 @@ async def get_timetables(
         
         query = """
             SELECT t.*, 
-                   c.name as course_name,
+                   c.name as course_name, c.start_date as course_start_date,
                    s.name as subject_name,
-                   i.name as instructor_name
+                   i.name as instructor_name,
+                   tl.id as training_log_id,
+                   tl.content as training_content
             FROM timetables t
             LEFT JOIN courses c ON t.course_code = c.code
             LEFT JOIN subjects s ON t.subject_code = s.code
             LEFT JOIN instructors i ON t.instructor_code = i.code
+            LEFT JOIN training_logs tl ON t.id = tl.timetable_id
             WHERE 1=1
         """
         params = []
@@ -896,6 +900,16 @@ async def get_timetables(
         
         cursor.execute(query, params)
         timetables = cursor.fetchall()
+        
+        # 주차/일차 계산
+        for tt in timetables:
+            if tt.get('course_start_date') and tt.get('class_date'):
+                delta = (tt['class_date'] - tt['course_start_date']).days
+                tt['week_number'] = (delta // 7) + 1
+                tt['day_number'] = delta + 1
+            else:
+                tt['week_number'] = None
+                tt['day_number'] = None
         return [convert_datetime(tt) for tt in timetables]
     finally:
         conn.close()
@@ -1123,6 +1137,187 @@ async def delete_counseling(counseling_id: int):
     finally:
         conn.close()
 
+# ==================== 훈련일지 관리 API ====================
+
+@app.get("/api/training-logs")
+async def get_training_logs(
+    course_code: Optional[str] = None,
+    instructor_code: Optional[str] = None,
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+    timetable_id: Optional[int] = None
+):
+    """훈련일지 목록 조회"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # training_logs 테이블이 없으면 생성
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS training_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                timetable_id INT NOT NULL,
+                course_code VARCHAR(50),
+                instructor_code VARCHAR(50),
+                class_date DATE,
+                content TEXT,
+                homework TEXT,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (timetable_id) REFERENCES timetables(id) ON DELETE CASCADE
+            )
+        """)
+        conn.commit()
+        
+        query = """
+            SELECT tl.*, 
+                   t.class_date, t.start_time, t.end_time, t.type,
+                   s.name as subject_name,
+                   i.name as instructor_name,
+                   c.name as course_name
+            FROM training_logs tl
+            LEFT JOIN timetables t ON tl.timetable_id = t.id
+            LEFT JOIN subjects s ON t.subject_code = s.code
+            LEFT JOIN instructors i ON t.instructor_code = i.code
+            LEFT JOIN courses c ON t.course_code = c.code
+            WHERE 1=1
+        """
+        
+        params = []
+        
+        if timetable_id:
+            query += " AND tl.timetable_id = %s"
+            params.append(timetable_id)
+        
+        if course_code:
+            query += " AND t.course_code = %s"
+            params.append(course_code)
+        
+        if instructor_code:
+            query += " AND t.instructor_code = %s"
+            params.append(instructor_code)
+        
+        if year and month:
+            query += " AND YEAR(t.class_date) = %s AND MONTH(t.class_date) = %s"
+            params.extend([year, month])
+        elif year:
+            query += " AND YEAR(t.class_date) = %s"
+            params.append(year)
+        
+        query += " ORDER BY t.class_date, t.start_time"
+        
+        cursor.execute(query, params)
+        logs = cursor.fetchall()
+        
+        for log in logs:
+            for key, value in log.items():
+                if isinstance(value, (datetime, date)):
+                    log[key] = value.isoformat()
+        
+        return logs
+    finally:
+        conn.close()
+
+@app.get("/api/training-logs/{log_id}")
+async def get_training_log(log_id: int):
+    """특정 훈련일지 조회"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("""
+            SELECT tl.*, 
+                   t.class_date, t.start_time, t.end_time, t.type,
+                   s.name as subject_name,
+                   i.name as instructor_name,
+                   c.name as course_name
+            FROM training_logs tl
+            LEFT JOIN timetables t ON tl.timetable_id = t.id
+            LEFT JOIN subjects s ON t.subject_code = s.code
+            LEFT JOIN instructors i ON t.instructor_code = i.code
+            LEFT JOIN courses c ON t.course_code = c.code
+            WHERE tl.id = %s
+        """, (log_id,))
+        log = cursor.fetchone()
+        
+        if not log:
+            raise HTTPException(status_code=404, detail="훈련일지를 찾을 수 없습니다")
+        
+        for key, value in log.items():
+            if isinstance(value, (datetime, date)):
+                log[key] = value.isoformat()
+        
+        return log
+    finally:
+        conn.close()
+
+@app.post("/api/training-logs")
+async def create_training_log(data: dict):
+    """훈련일지 생성"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        query = """
+            INSERT INTO training_logs 
+            (timetable_id, course_code, instructor_code, class_date, content, homework, notes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        cursor.execute(query, (
+            data.get('timetable_id'),
+            data.get('course_code'),
+            data.get('instructor_code'),
+            data.get('class_date'),
+            data.get('content', ''),
+            data.get('homework', ''),
+            data.get('notes', '')
+        ))
+        
+        conn.commit()
+        return {"id": cursor.lastrowid}
+    except pymysql.err.OperationalError as e:
+        raise HTTPException(status_code=500, detail=f"데이터베이스 오류: {str(e)}")
+    finally:
+        conn.close()
+
+@app.put("/api/training-logs/{log_id}")
+async def update_training_log(log_id: int, data: dict):
+    """훈련일지 수정"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        query = """
+            UPDATE training_logs 
+            SET content = %s, homework = %s, notes = %s
+            WHERE id = %s
+        """
+        
+        cursor.execute(query, (
+            data.get('content', ''),
+            data.get('homework', ''),
+            data.get('notes', ''),
+            log_id
+        ))
+        
+        conn.commit()
+        return {"id": log_id}
+    finally:
+        conn.close()
+
+@app.delete("/api/training-logs/{log_id}")
+async def delete_training_log(log_id: int):
+    """훈련일지 삭제"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM training_logs WHERE id = %s", (log_id,))
+        conn.commit()
+        return {"message": "훈련일지가 삭제되었습니다"}
+    finally:
+        conn.close()
+
 # ==================== AI 생기부 작성 API ====================
 
 @app.post("/api/ai/generate-report")
@@ -1134,10 +1329,8 @@ async def generate_ai_report(data: dict):
     if not student_id:
         raise HTTPException(status_code=400, detail="학생 ID가 필요합니다")
     
-    # OpenAI API 키 확인
-    api_key = os.getenv('OPENAI_API_KEY')
-    if not api_key:
-        raise HTTPException(status_code=500, detail="OpenAI API 키가 설정되지 않았습니다")
+    # Groq API 키 확인 (없으면 무료 API 사용)
+    groq_api_key = os.getenv('GROQ_API_KEY', '')
     
     conn = get_db_connection()
     try:
@@ -1168,9 +1361,6 @@ async def generate_ai_report(data: dict):
             counseling_text += f"\n[{c['consultation_date']}] {c['consultation_type']} - {c['main_topic']}\n"
             counseling_text += f"내용: {c['content']}\n"
         
-        # OpenAI API 호출
-        client = OpenAI(api_key=api_key)
-        
         system_prompt = """당신은 학생 생활기록부를 작성하는 전문 교사입니다.
 학생의 상담 기록을 바탕으로 학생의 성장과 발달, 특성을 잘 드러내는 생활기록부를 작성해주세요.
 생활기록부는 교육적이고 긍정적인 표현을 사용하며, 학생의 강점과 발전 가능성을 강조해야 합니다."""
@@ -1193,17 +1383,56 @@ async def generate_ai_report(data: dict):
 2. 각 상담 내용을 통합하여 학생의 학업, 생활, 진로 측면의 발달사항을 기술해주세요 (500-800자)
 """
         
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.7,
-            max_tokens=2000
-        )
+        # Groq API 사용 (무료, 빠른 추론)
+        if groq_api_key:
+            headers = {
+                "Authorization": f"Bearer {groq_api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": "llama-3.1-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 2000
+            }
+            
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=30
+            )
+            
+            if response.status_code != 200:
+                raise Exception(f"Groq API 오류: {response.text}")
+            
+            ai_report = response.json()['choices'][0]['message']['content']
+        else:
+            # API 키가 없으면 기본 생기부 템플릿 생성
+            ai_report = f"""[학생 생활기록부]
+
+학생명: {student['name']}
+생년월일: {student['birth_date']}
+관심분야: {student['interests']}
+
+[종합 의견]
+본 학생은 총 {len(counselings)}회의 상담을 통해 지속적인 성장과 발전을 보여주었습니다.
+
+{counseling_text}
+
+위 상담 내용을 종합하면, 본 학생은 자기주도적 학습 태도와 긍정적인 성장 마인드를 보유하고 있으며,
+꾸준한 노력을 통해 목표를 향해 나아가고 있습니다. 앞으로도 지속적인 관심과 지도를 통해
+더욱 발전할 것으로 기대됩니다.
+
+※ AI API 키가 설정되지 않아 기본 템플릿이 생성되었습니다. 
+  Groq API 키를 설정하면 더 상세한 생기부를 자동 생성할 수 있습니다.
+"""
         
-        ai_report = response.choices[0].message.content
+        ai_report = ai_report
         
         return {
             "student_id": student_id,

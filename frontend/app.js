@@ -59,6 +59,9 @@ window.showTab = function(tab) {
         case 'timetables':
             loadTimetables();
             break;
+        case 'training-logs':
+            loadTrainingLogs();
+            break;
         case 'ai-report':
             renderAIReport();
             break;
@@ -1740,16 +1743,21 @@ let timetables = [];
 
 async function loadTimetables() {
     try {
-        const response = await axios.get(`${API_BASE_URL}/api/timetables`);
-        timetables = response.data;
-        renderTimetables();
+        // 과정 목록도 함께 로드
+        const [ttRes, coursesRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/api/timetables`),
+            axios.get(`${API_BASE_URL}/api/courses`)
+        ]);
+        timetables = ttRes.data;
+        const courses = coursesRes.data;
+        renderTimetables(courses);
     } catch (error) {
         console.error('시간표 목록 로드 실패:', error);
         document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">시간표 목록을 불러오는데 실패했습니다.</div>';
     }
 }
 
-function renderTimetables() {
+function renderTimetables(courses = []) {
     const app = document.getElementById('app');
     app.innerHTML = `
         <div class="bg-white rounded-lg shadow-md p-6">
@@ -1757,13 +1765,33 @@ function renderTimetables() {
                 <h2 class="text-2xl font-bold text-gray-800">
                     <i class="fas fa-clock mr-2"></i>시간표 관리 (총 ${timetables.length}건)
                 </h2>
-                <div class="space-x-2">
-                    <input type="date" id="tt-start-date" class="border rounded px-3 py-2" onchange="window.filterTimetables()">
-                    <input type="date" id="tt-end-date" class="border rounded px-3 py-2" onchange="window.filterTimetables()">
-                    <input type="text" id="tt-course" placeholder="과정코드" class="border rounded px-3 py-2" onkeyup="window.filterTimetables()">
-                    <button onclick="window.showTimetableForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                        <i class="fas fa-plus mr-2"></i>시간표 추가
-                    </button>
+                <button onclick="window.showTimetableForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-plus mr-2"></i>시간표 추가
+                </button>
+            </div>
+            
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <p class="text-blue-700">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    과정을 선택하여 해당 과정의 시간표를 조회하세요
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label class="block text-gray-700 mb-2">과정 선택 *</label>
+                    <select id="tt-course" class="w-full border rounded px-3 py-2" onchange="window.filterTimetables()">
+                        <option value="">-- 과정을 선택하세요 --</option>
+                        ${courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">시작일</label>
+                    <input type="date" id="tt-start-date" class="w-full border rounded px-3 py-2" onchange="window.filterTimetables()">
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">종료일</label>
+                    <input type="date" id="tt-end-date" class="w-full border rounded px-3 py-2" onchange="window.filterTimetables()">
                 </div>
             </div>
             
@@ -1773,39 +1801,59 @@ function renderTimetables() {
                 <table class="min-w-full bg-white" id="timetable-list">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="px-4 py-2 text-left">날짜</th>
-                            <th class="px-4 py-2 text-left">과정</th>
-                            <th class="px-4 py-2 text-left">과목</th>
-                            <th class="px-4 py-2 text-left">강사</th>
-                            <th class="px-4 py-2 text-left">시간</th>
-                            <th class="px-4 py-2 text-left">타입</th>
-                            <th class="px-4 py-2 text-left">작업</th>
+                            <th class="px-3 py-2 text-left text-xs">날짜</th>
+                            <th class="px-3 py-2 text-left text-xs">주차</th>
+                            <th class="px-3 py-2 text-left text-xs">일차</th>
+                            <th class="px-3 py-2 text-left text-xs">과목</th>
+                            <th class="px-3 py-2 text-left text-xs">강사</th>
+                            <th class="px-3 py-2 text-left text-xs">시간</th>
+                            <th class="px-3 py-2 text-left text-xs">타입</th>
+                            <th class="px-3 py-2 text-left text-xs">훈련일지</th>
+                            <th class="px-3 py-2 text-left text-xs">작업</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${timetables.slice(0, 50).map(tt => `
+                        ${timetables.length === 0 ? `
+                            <tr>
+                                <td colspan="9" class="px-4 py-8 text-center text-gray-500">
+                                    과정을 선택하여 시간표를 조회하세요
+                                </td>
+                            </tr>
+                        ` : timetables.slice(0, 100).map(tt => `
                             <tr class="border-t hover:bg-gray-50">
-                                <td class="px-4 py-2">${tt.class_date}</td>
-                                <td class="px-4 py-2">${tt.course_name || tt.course_code}</td>
-                                <td class="px-4 py-2">${tt.subject_name || tt.subject_code || '-'}</td>
-                                <td class="px-4 py-2">${tt.instructor_name || tt.instructor_code || '-'}</td>
-                                <td class="px-4 py-2">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
-                                <td class="px-4 py-2">
-                                    <span class="text-xs ${tt.type === 'lecture' ? 'bg-blue-100 text-blue-800' : tt.type === 'project' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} px-2 py-1 rounded">
+                                <td class="px-3 py-2 text-xs">${tt.class_date}</td>
+                                <td class="px-3 py-2 text-xs">${tt.week_number || '-'}주차</td>
+                                <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
+                                <td class="px-3 py-2 text-xs">${tt.subject_name || tt.subject_code || '-'}</td>
+                                <td class="px-3 py-2 text-xs">${tt.instructor_name || tt.instructor_code || '-'}</td>
+                                <td class="px-3 py-2 text-xs">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
+                                <td class="px-3 py-2 text-xs">
+                                    <span class="px-2 py-1 rounded text-xs ${tt.type === 'lecture' ? 'bg-blue-100 text-blue-800' : tt.type === 'project' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
                                         ${tt.type}
                                     </span>
                                 </td>
-                                <td class="px-4 py-2">
-                                    <button onclick="window.editTimetable(${tt.id})" class="text-blue-600 hover:text-blue-800 mr-2">
+                                <td class="px-3 py-2 text-xs">
+                                    ${tt.training_log_id ? `
+                                        <span class="text-green-600">
+                                            <i class="fas fa-check-circle"></i> 완료
+                                        </span>
+                                    ` : `
+                                        <span class="text-gray-400">
+                                            <i class="fas fa-times-circle"></i> 미작성
+                                        </span>
+                                    `}
+                                </td>
+                                <td class="px-3 py-2 text-xs">
+                                    <button onclick="window.editTimetable(${tt.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="수정">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button onclick="window.deleteTimetable(${tt.id})" class="text-red-600 hover:text-red-800">
+                                    <button onclick="window.deleteTimetable(${tt.id})" class="text-red-600 hover:text-red-800" title="삭제">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </td>
                             </tr>
                         `).join('')}
-                        ${timetables.length > 50 ? `<tr><td colspan="7" class="px-4 py-2 text-center text-gray-500">처음 50개만 표시됩니다 (전체: ${timetables.length})</td></tr>` : ''}
+                        ${timetables.length > 100 ? `<tr><td colspan="9" class="px-4 py-2 text-center text-gray-500">처음 100개만 표시됩니다 (전체: ${timetables.length})</td></tr>` : ''}
                     </tbody>
                 </table>
             </div>
@@ -1948,6 +1996,406 @@ window.deleteTimetable = async function(id) {
         loadTimetables();
     } catch (error) {
         alert('삭제 실패: ' + error.response?.data?.detail || error.message);
+    }
+}
+
+// ==================== 훈련일지 관리 ====================
+let trainingLogs = [];
+let selectedCourseForLogs = null;
+
+async function loadTrainingLogs() {
+    try {
+        // 먼저 과정 목록 로드
+        const coursesRes = await axios.get(`${API_BASE_URL}/api/courses`);
+        const courses = coursesRes.data;
+        
+        // 강사 목록 로드
+        const instructorsRes = await axios.get(`${API_BASE_URL}/api/instructors`);
+        instructors = instructorsRes.data;
+        
+        renderTrainingLogsSelection(courses);
+    } catch (error) {
+        console.error('훈련일지 초기화 실패:', error);
+        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">훈련일지를 불러오는데 실패했습니다.</div>';
+    }
+}
+
+function renderTrainingLogsSelection(courses) {
+    const app = document.getElementById('app');
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                <i class="fas fa-clipboard-list mr-2"></i>훈련일지 관리
+            </h2>
+            
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <p class="text-blue-700">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    과정, 강사, 기간을 선택하여 훈련일지를 조회하세요
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div>
+                    <label class="block text-gray-700 mb-2">과정 선택</label>
+                    <select id="log-course" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
+                        <option value="">-- 과정 선택 --</option>
+                        ${courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">강사 선택</label>
+                    <select id="log-instructor" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
+                        <option value="">전체 강사</option>
+                        ${instructors.map(i => `<option value="${i.code}">${i.name} (${i.code})</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">년도</label>
+                    <select id="log-year" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
+                        <option value="">전체</option>
+                        <option value="${currentYear}" selected>${currentYear}</option>
+                        <option value="${currentYear - 1}">${currentYear - 1}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">월</label>
+                    <select id="log-month" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
+                        <option value="">전체</option>
+                        ${Array.from({length: 12}, (_, i) => i + 1).map(m => 
+                            `<option value="${m}" ${m === currentMonth ? 'selected' : ''}>${m}월</option>`
+                        ).join('')}
+                    </select>
+                </div>
+            </div>
+            
+            <div id="training-logs-list">
+                <p class="text-gray-500 text-center py-8">과정을 선택하여 시간표와 훈련일지를 조회하세요</p>
+            </div>
+        </div>
+    `;
+}
+
+window.filterTrainingLogs = async function() {
+    const courseCode = document.getElementById('log-course').value;
+    const instructorCode = document.getElementById('log-instructor').value;
+    const year = document.getElementById('log-year').value;
+    const month = document.getElementById('log-month').value;
+    
+    if (!courseCode) {
+        document.getElementById('training-logs-list').innerHTML = `
+            <p class="text-gray-500 text-center py-8">과정을 먼저 선택해주세요</p>
+        `;
+        return;
+    }
+    
+    selectedCourseForLogs = courseCode;
+    
+    try {
+        // 시간표와 훈련일지를 함께 조회
+        let url = `${API_BASE_URL}/api/timetables?course_code=${courseCode}`;
+        
+        const response = await axios.get(url);
+        const timetables = response.data;
+        
+        // 필터링
+        let filteredTimetables = timetables;
+        
+        if (instructorCode) {
+            filteredTimetables = filteredTimetables.filter(tt => tt.instructor_code === instructorCode);
+        }
+        
+        if (year && month) {
+            filteredTimetables = filteredTimetables.filter(tt => {
+                const date = new Date(tt.class_date);
+                return date.getFullYear() === parseInt(year) && date.getMonth() + 1 === parseInt(month);
+            });
+        } else if (year) {
+            filteredTimetables = filteredTimetables.filter(tt => {
+                const date = new Date(tt.class_date);
+                return date.getFullYear() === parseInt(year);
+            });
+        }
+        
+        renderTrainingLogsTable(filteredTimetables);
+    } catch (error) {
+        console.error('훈련일지 조회 실패:', error);
+        document.getElementById('training-logs-list').innerHTML = `
+            <p class="text-red-600 text-center py-8">훈련일지를 불러오는데 실패했습니다</p>
+        `;
+    }
+}
+
+function renderTrainingLogsTable(timetables) {
+    const listDiv = document.getElementById('training-logs-list');
+    
+    if (timetables.length === 0) {
+        listDiv.innerHTML = `
+            <p class="text-gray-500 text-center py-8">조회된 시간표가 없습니다</p>
+        `;
+        return;
+    }
+    
+    listDiv.innerHTML = `
+        <div class="mb-4">
+            <p class="text-sm text-gray-600">총 ${timetables.length}건의 시간표</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs">날짜</th>
+                        <th class="px-3 py-2 text-left text-xs">주차</th>
+                        <th class="px-3 py-2 text-left text-xs">일차</th>
+                        <th class="px-3 py-2 text-left text-xs">과목</th>
+                        <th class="px-3 py-2 text-left text-xs">강사</th>
+                        <th class="px-3 py-2 text-left text-xs">시간</th>
+                        <th class="px-3 py-2 text-left text-xs">타입</th>
+                        <th class="px-3 py-2 text-left text-xs">훈련일지</th>
+                        <th class="px-3 py-2 text-left text-xs">작업</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${timetables.map(tt => {
+                        const hasLog = tt.training_log_id != null;
+                        const logContent = tt.training_content ? tt.training_content.substring(0, 30) + '...' : '';
+                        
+                        return `
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="px-3 py-2 text-xs">${tt.class_date}</td>
+                                <td class="px-3 py-2 text-xs">${tt.week_number || '-'}주차</td>
+                                <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
+                                <td class="px-3 py-2 text-xs">${tt.subject_name || '-'}</td>
+                                <td class="px-3 py-2 text-xs">${tt.instructor_name || '-'}</td>
+                                <td class="px-3 py-2 text-xs">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
+                                <td class="px-3 py-2 text-xs">
+                                    <span class="px-2 py-1 rounded text-xs ${
+                                        tt.type === 'lecture' ? 'bg-blue-100 text-blue-800' :
+                                        tt.type === 'project' ? 'bg-green-100 text-green-800' :
+                                        'bg-yellow-100 text-yellow-800'
+                                    }">
+                                        ${tt.type}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 text-xs">
+                                    ${hasLog ? `
+                                        <span class="text-green-600">
+                                            <i class="fas fa-check-circle mr-1"></i>작성완료
+                                        </span>
+                                        <div class="text-gray-500 text-xs mt-1">${logContent}</div>
+                                    ` : `
+                                        <span class="text-gray-400">
+                                            <i class="fas fa-times-circle mr-1"></i>미작성
+                                        </span>
+                                    `}
+                                </td>
+                                <td class="px-3 py-2 text-xs">
+                                    ${hasLog ? `
+                                        <button onclick="window.editTrainingLog(${tt.training_log_id}, ${tt.id})" class="text-blue-600 hover:text-blue-800 mr-2">
+                                            <i class="fas fa-edit"></i> 수정
+                                        </button>
+                                    ` : `
+                                        <button onclick="window.showTrainingLogForm(${tt.id})" class="text-green-600 hover:text-green-800">
+                                            <i class="fas fa-plus"></i> 작성
+                                        </button>
+                                    `}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+        
+        <div id="training-log-form" class="hidden mt-6 p-4 bg-blue-50 rounded-lg"></div>
+    `;
+}
+
+window.showTrainingLogForm = async function(timetableId) {
+    try {
+        // 시간표 정보 조회
+        const response = await axios.get(`${API_BASE_URL}/api/timetables/${timetableId}`);
+        const tt = response.data;
+        
+        const formDiv = document.getElementById('training-log-form');
+        formDiv.innerHTML = `
+            <h3 class="text-lg font-bold mb-4">
+                <i class="fas fa-clipboard-list mr-2"></i>훈련일지 작성
+            </h3>
+            <div class="bg-white p-4 rounded mb-4">
+                <p class="text-sm"><strong>날짜:</strong> ${tt.class_date}</p>
+                <p class="text-sm"><strong>과목:</strong> ${tt.subject_name || '-'}</p>
+                <p class="text-sm"><strong>강사:</strong> ${tt.instructor_name || '-'}</p>
+                <p class="text-sm"><strong>시간:</strong> ${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</p>
+            </div>
+            <form id="training-log-save-form">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">수업 내용 *</label>
+                        <textarea name="content" rows="6" required class="w-full px-3 py-2 border rounded-lg" 
+                                  placeholder="오늘 수업에서 다룬 내용을 자세히 작성해주세요..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">과제</label>
+                        <textarea name="homework" rows="3" class="w-full px-3 py-2 border rounded-lg" 
+                                  placeholder="학생들에게 부여한 과제가 있다면 작성해주세요..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">비고</label>
+                        <textarea name="notes" rows="2" class="w-full px-3 py-2 border rounded-lg" 
+                                  placeholder="기타 특이사항이나 참고사항을 작성해주세요..."></textarea>
+                    </div>
+                </div>
+                <div class="mt-4 space-x-2">
+                    <button type="button" onclick="window.saveTrainingLog(${timetableId}, '${tt.course_code}', '${tt.instructor_code}', '${tt.class_date}')" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-save mr-2"></i>저장
+                    </button>
+                    <button type="button" onclick="window.hideTrainingLogForm()" 
+                            class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg">
+                        취소
+                    </button>
+                </div>
+            </form>
+        `;
+        
+        formDiv.classList.remove('hidden');
+        formDiv.scrollIntoView({ behavior: 'smooth' });
+    } catch (error) {
+        console.error('시간표 정보 조회 실패:', error);
+        alert('시간표 정보를 불러오는데 실패했습니다');
+    }
+}
+
+window.editTrainingLog = async function(logId, timetableId) {
+    try {
+        const [logRes, ttRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/api/training-logs/${logId}`),
+            axios.get(`${API_BASE_URL}/api/timetables/${timetableId}`)
+        ]);
+        
+        const log = logRes.data;
+        const tt = ttRes.data;
+        
+        const formDiv = document.getElementById('training-log-form');
+        formDiv.innerHTML = `
+            <h3 class="text-lg font-bold mb-4">
+                <i class="fas fa-edit mr-2"></i>훈련일지 수정
+            </h3>
+            <div class="bg-white p-4 rounded mb-4">
+                <p class="text-sm"><strong>날짜:</strong> ${tt.class_date}</p>
+                <p class="text-sm"><strong>과목:</strong> ${tt.subject_name || '-'}</p>
+                <p class="text-sm"><strong>강사:</strong> ${tt.instructor_name || '-'}</p>
+                <p class="text-sm"><strong>시간:</strong> ${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</p>
+            </div>
+            <form id="training-log-save-form">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">수업 내용 *</label>
+                        <textarea name="content" rows="6" required class="w-full px-3 py-2 border rounded-lg">${log.content || ''}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">과제</label>
+                        <textarea name="homework" rows="3" class="w-full px-3 py-2 border rounded-lg">${log.homework || ''}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">비고</label>
+                        <textarea name="notes" rows="2" class="w-full px-3 py-2 border rounded-lg">${log.notes || ''}</textarea>
+                    </div>
+                </div>
+                <div class="mt-4 space-x-2">
+                    <button type="button" onclick="window.updateTrainingLog(${logId})" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-save mr-2"></i>저장
+                    </button>
+                    <button type="button" onclick="window.deleteTrainingLog(${logId})" 
+                            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-trash mr-2"></i>삭제
+                    </button>
+                    <button type="button" onclick="window.hideTrainingLogForm()" 
+                            class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg">
+                        취소
+                    </button>
+                </div>
+            </form>
+        `;
+        
+        formDiv.classList.remove('hidden');
+        formDiv.scrollIntoView({ behavior: 'smooth' });
+    } catch (error) {
+        console.error('훈련일지 조회 실패:', error);
+        alert('훈련일지를 불러오는데 실패했습니다');
+    }
+}
+
+window.saveTrainingLog = async function(timetableId, courseCode, instructorCode, classDate) {
+    const form = document.getElementById('training-log-save-form');
+    const formData = new FormData(form);
+    
+    const data = {
+        timetable_id: timetableId,
+        course_code: courseCode,
+        instructor_code: instructorCode,
+        class_date: classDate,
+        content: formData.get('content'),
+        homework: formData.get('homework'),
+        notes: formData.get('notes')
+    };
+    
+    try {
+        await axios.post(`${API_BASE_URL}/api/training-logs`, data);
+        alert('훈련일지가 저장되었습니다.');
+        window.hideTrainingLogForm();
+        window.filterTrainingLogs();
+    } catch (error) {
+        console.error('훈련일지 저장 실패:', error);
+        alert('저장 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+window.updateTrainingLog = async function(logId) {
+    const form = document.getElementById('training-log-save-form');
+    const formData = new FormData(form);
+    
+    const data = {
+        content: formData.get('content'),
+        homework: formData.get('homework'),
+        notes: formData.get('notes')
+    };
+    
+    try {
+        await axios.put(`${API_BASE_URL}/api/training-logs/${logId}`, data);
+        alert('훈련일지가 수정되었습니다.');
+        window.hideTrainingLogForm();
+        window.filterTrainingLogs();
+    } catch (error) {
+        console.error('훈련일지 수정 실패:', error);
+        alert('수정 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+window.deleteTrainingLog = async function(logId) {
+    if (!confirm('이 훈련일지를 삭제하시겠습니까?')) return;
+    
+    try {
+        await axios.delete(`${API_BASE_URL}/api/training-logs/${logId}`);
+        alert('훈련일지가 삭제되었습니다.');
+        window.hideTrainingLogForm();
+        window.filterTrainingLogs();
+    } catch (error) {
+        console.error('훈련일지 삭제 실패:', error);
+        alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+window.hideTrainingLogForm = function() {
+    const formDiv = document.getElementById('training-log-form');
+    if (formDiv) {
+        formDiv.classList.add('hidden');
     }
 }
 
