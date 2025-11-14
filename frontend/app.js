@@ -535,7 +535,7 @@ window.showStudentForm = function(studentId = null) {
                                onchange="window.handleStudentImageUpload(event)" class="hidden">
                         <input type="file" id="student-camera-input" accept="image/*" capture="environment" 
                                onchange="window.handleStudentImageUpload(event)" class="hidden">
-                        <div id="student-photos-preview" class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2"></div>
+                        <div id="student-photos-preview" class="flex flex-col gap-2 mt-2"></div>
                         <input type="hidden" id="student-photo-urls" value="${student?.photo_urls || '[]'}">
                     </div>
                 </div>
@@ -664,14 +664,16 @@ function updateStudentPhotoPreview(photoUrls) {
     }
     
     previewDiv.innerHTML = photoUrls.map((url, index) => `
-        <div class="relative group">
-            <img src="${url}" alt="학생 사진 ${index + 1}" 
-                 class="w-full h-24 object-cover rounded border">
-            <button type="button" 
-                    onclick="window.removeStudentPhoto(${index})"
-                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 
-                           opacity-0 group-hover:opacity-100 transition-opacity">
-                <i class="fas fa-times text-xs"></i>
+        <div class="flex items-center justify-between bg-white border rounded px-3 py-2 hover:bg-gray-50">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-image text-blue-500"></i>
+                <a href="${url}" target="_blank" download class="text-blue-600 hover:underline text-sm">
+                    사진 ${index + 1}
+                </a>
+            </div>
+            <button type="button" onclick="window.removeStudentPhoto(${index})" 
+                    class="text-red-500 hover:text-red-700">
+                <i class="fas fa-trash text-xs"></i>
             </button>
         </div>
     `).join('');
@@ -1533,7 +1535,7 @@ window.showCounselingForm = function(counselingId = null) {
                                onchange="window.handleCounselingImageUpload(event)" class="hidden">
                         <input type="file" id="counseling-camera-input" accept="image/*" capture="environment" 
                                onchange="window.handleCounselingImageUpload(event)" class="hidden">
-                        <div id="counseling-photos-preview" class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                        <div id="counseling-photos-preview" class="flex flex-col gap-2 mt-2">
                             ${existingCounseling?.photo_urls ? JSON.parse(existingCounseling.photo_urls).map((url, idx) => `
                                 <div class="relative group">
                                     <img src="${url}" class="w-full h-24 object-cover rounded border">
@@ -1658,12 +1660,22 @@ window.removeCounselingPhoto = function(index) {
 
 function updateCounselingPhotoPreview(photoUrls) {
     const previewDiv = document.getElementById('counseling-photos-preview');
+    if (!photoUrls || photoUrls.length === 0) {
+        previewDiv.innerHTML = '<p class="text-gray-400 text-sm">첨부된 사진이 없습니다</p>';
+        return;
+    }
+    
     previewDiv.innerHTML = photoUrls.map((url, idx) => `
-        <div class="relative group">
-            <img src="${url}" class="w-full h-24 object-cover rounded border" alt="사진 ${idx + 1}">
+        <div class="flex items-center justify-between bg-white border rounded px-3 py-2 hover:bg-gray-50">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-image text-blue-500"></i>
+                <a href="${url}" target="_blank" download class="text-blue-600 hover:underline text-sm">
+                    사진 ${idx + 1}
+                </a>
+            </div>
             <button type="button" onclick="window.removeCounselingPhoto(${idx})" 
-                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                <i class="fas fa-times text-xs"></i>
+                    class="text-red-500 hover:text-red-700">
+                <i class="fas fa-trash text-xs"></i>
             </button>
         </div>
     `).join('');
@@ -2332,7 +2344,7 @@ window.showInstructorForm = function(code = null) {
                        onchange="window.handleInstructorImageUpload(event)" class="hidden">
                 <input type="file" id="instructor-camera-input" accept="image/*" capture="environment" 
                        onchange="window.handleInstructorImageUpload(event)" class="hidden">
-                <div id="instructor-photos-preview" class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2"></div>
+                <div id="instructor-photos-preview" class="flex flex-col gap-2 mt-2"></div>
                 <input type="hidden" id="instructor-photo-urls" value="${existingInst?.photo_urls || '[]'}">
             </div>
         </div>
@@ -2466,14 +2478,16 @@ function updateInstructorPhotoPreview(photoUrls) {
     }
     
     previewDiv.innerHTML = photoUrls.map((url, index) => `
-        <div class="relative group">
-            <img src="${url}" alt="강사 사진 ${index + 1}" 
-                 class="w-full h-24 object-cover rounded border">
-            <button type="button" 
-                    onclick="window.removeInstructorPhoto(${index})"
-                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 
-                           opacity-0 group-hover:opacity-100 transition-opacity">
-                <i class="fas fa-times text-xs"></i>
+        <div class="flex items-center justify-between bg-white border rounded px-3 py-2 hover:bg-gray-50">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-image text-blue-500"></i>
+                <a href="${url}" target="_blank" download class="text-blue-600 hover:underline text-sm">
+                    사진 ${index + 1}
+                </a>
+            </div>
+            <button type="button" onclick="window.removeInstructorPhoto(${index})" 
+                    class="text-red-500 hover:text-red-700">
+                <i class="fas fa-trash text-xs"></i>
             </button>
         </div>
     `).join('');
@@ -4683,7 +4697,7 @@ window.showTrainingLogForm = async function(timetableId) {
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
                             <input type="file" id="training-camera-input" accept="image/*" capture="environment" 
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
-                            <div id="training-photos-preview" class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2"></div>
+                            <div id="training-photos-preview" class="flex flex-col gap-2 mt-2"></div>
                             <input type="hidden" id="training-photo-urls" value="[]">
                             <p class="text-sm text-gray-500 mt-2">
                                 <i class="fas fa-info-circle mr-1"></i>
@@ -4849,12 +4863,24 @@ window.removeTrainingPhoto = function(index) {
 
 function updateTrainingPhotoPreview(photoUrls) {
     const previewDiv = document.getElementById('training-photos-preview');
+    if (!previewDiv) return;
+    
+    if (!photoUrls || photoUrls.length === 0) {
+        previewDiv.innerHTML = '<p class="text-gray-400 text-sm">첨부된 사진이 없습니다</p>';
+        return;
+    }
+    
     previewDiv.innerHTML = photoUrls.map((url, idx) => `
-        <div class="relative group">
-            <img src="${url}" class="w-full h-24 object-cover rounded border" alt="사진 ${idx + 1}">
+        <div class="flex items-center justify-between bg-white border rounded px-3 py-2 hover:bg-gray-50">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-image text-blue-500"></i>
+                <a href="${url}" target="_blank" download class="text-blue-600 hover:underline text-sm">
+                    사진 ${idx + 1}
+                </a>
+            </div>
             <button type="button" onclick="window.removeTrainingPhoto(${idx})" 
-                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                <i class="fas fa-times text-xs"></i>
+                    class="text-red-500 hover:text-red-700">
+                <i class="fas fa-trash text-xs"></i>
             </button>
         </div>
     `).join('');

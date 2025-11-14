@@ -1324,9 +1324,14 @@ async def create_counseling(data: dict):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         
+        # instructor_code가 빈 문자열이면 None으로 처리
+        instructor_code = data.get('instructor_code')
+        if instructor_code == '':
+            instructor_code = None
+        
         cursor.execute(query, (
             data.get('student_id'),
-            data.get('instructor_code'),
+            instructor_code,
             data.get('consultation_date') or data.get('counseling_date'),
             data.get('consultation_type', '정기'),
             data.get('main_topic') or data.get('topic', ''),
@@ -1339,6 +1344,8 @@ async def create_counseling(data: dict):
         return {"id": cursor.lastrowid}
     except pymysql.err.OperationalError as e:
         raise HTTPException(status_code=500, detail=f"데이터베이스 오류: {str(e)}")
+    except pymysql.err.IntegrityError as e:
+        raise HTTPException(status_code=400, detail=f"데이터 무결성 오류: {str(e)}")
     finally:
         conn.close()
 
@@ -1359,9 +1366,14 @@ async def update_counseling(counseling_id: int, data: dict):
             WHERE id = %s
         """
         
+        # instructor_code가 빈 문자열이면 None으로 처리
+        instructor_code = data.get('instructor_code')
+        if instructor_code == '':
+            instructor_code = None
+        
         cursor.execute(query, (
             data.get('student_id'),
-            data.get('instructor_code'),
+            instructor_code,
             data.get('consultation_date') or data.get('counseling_date'),
             data.get('consultation_type', '정기'),
             data.get('main_topic') or data.get('topic', ''),
