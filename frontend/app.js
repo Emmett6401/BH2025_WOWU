@@ -337,6 +337,9 @@ function renderStudents() {
                                 <td class="px-4 py-2 text-sm text-blue-600">${courseDisplay}</td>
                                 <td class="px-4 py-2">${student.campus || '-'}</td>
                                 <td class="px-4 py-2">
+                                    ${student.photo_urls && JSON.parse(student.photo_urls || '[]').length > 0 ? `
+                                        <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(student.photo_urls).length}개 사진"></i>
+                                    ` : ''}
                                     <button onclick="window.viewStudent(${student.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="상세보기">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -582,7 +585,7 @@ window.hideStudentForm = function() {
     document.getElementById('student-form').classList.add('hidden');
 }
 
-window.saveStudent = async function(studentId) {
+window.saveStudent = async function(studentId, autoSave = false) {
     const form = document.getElementById('student-save-form');
     const formData = new FormData(form);
     
@@ -612,8 +615,10 @@ window.saveStudent = async function(studentId) {
         } else {
             await axios.post(`${API_BASE_URL}/api/students`, data);
         }
-        window.hideStudentForm();
-        loadStudents();
+        if (!autoSave) {
+            window.hideStudentForm();
+            loadStudents();
+        }
     } catch (error) {
         console.error('학생 저장 실패:', error);
         alert('학생 저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
@@ -665,11 +670,11 @@ window.handleStudentImageUpload = async function(event) {
         photoUrlsInput.value = JSON.stringify(photoUrls);
         updateStudentPhotoPreview(photoUrls);
         
-        // 자동 저장
+        // 자동 저장 (화면 유지)
         const studentIdInput = document.getElementById('student-id');
         const studentId = studentIdInput ? studentIdInput.value : null;
         if (studentId) {
-            await window.saveStudent(parseInt(studentId));
+            await window.saveStudent(parseInt(studentId), true);
         }
         
         // 프로그레스 바 숨기기
@@ -710,7 +715,7 @@ window.removeStudentPhoto = async function(index) {
     const studentIdInput = document.getElementById('student-id');
     const studentId = studentIdInput ? studentIdInput.value : null;
     if (studentId) {
-        await window.saveStudent(parseInt(studentId));
+        await window.saveStudent(parseInt(studentId), true);
         
         // 학생 이름 가져오기
         const studentNameInput = document.querySelector('input[name="name"]');
@@ -731,16 +736,23 @@ function updateStudentPhotoPreview(photoUrls) {
     }
     
     previewDiv.innerHTML = photoUrls.map((url, index) => `
-        <div class="flex items-center justify-between bg-white border rounded px-3 py-2 hover:bg-gray-50">
-            <div class="flex items-center gap-2">
-                <i class="fas fa-image text-blue-500"></i>
-                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="text-blue-600 hover:underline text-sm">
-                    사진 ${index + 1}
+        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
+            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="flex-shrink-0">
+                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
+                     alt="사진 ${index + 1}"
+                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
+                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
+            </a>
+            <div class="flex-1">
+                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download 
+                   class="text-blue-600 hover:underline text-sm block">
+                    사진 ${index + 1} 다운로드
                 </a>
+                <p class="text-xs text-gray-500 mt-1">클릭하여 다운로드</p>
             </div>
             <button type="button" onclick="window.removeStudentPhoto(${index})" 
-                    class="text-red-500 hover:text-red-700">
-                <i class="fas fa-trash text-xs"></i>
+                    class="text-red-500 hover:text-red-700 px-2">
+                <i class="fas fa-trash"></i>
             </button>
         </div>
     `).join('');
@@ -1655,7 +1667,7 @@ window.hideCounselingForm = function() {
     document.getElementById('counseling-form').classList.add('hidden');
 }
 
-window.saveCounseling = async function(counselingId) {
+window.saveCounseling = async function(counselingId, autoSave = false) {
     const form = document.getElementById('counseling-save-form');
     const formData = new FormData(form);
     const photoUrls = document.getElementById('counseling-photo-urls').value || '[]';
@@ -1674,13 +1686,19 @@ window.saveCounseling = async function(counselingId) {
     try {
         if (counselingId) {
             await axios.put(`${API_BASE_URL}/api/counselings/${counselingId}`, data);
-            window.showAlert('상담이 수정되었습니다.');
+            if (!autoSave) {
+                window.showAlert('상담이 수정되었습니다.');
+            }
         } else {
             await axios.post(`${API_BASE_URL}/api/counselings`, data);
-            window.showAlert('상담이 추가되었습니다.');
+            if (!autoSave) {
+                window.showAlert('상담이 추가되었습니다.');
+            }
         }
-        window.hideCounselingForm();
-        loadCounselings();
+        if (!autoSave) {
+            window.hideCounselingForm();
+            loadCounselings();
+        }
     } catch (error) {
         console.error('상담 저장 실패:', error);
         window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
@@ -1736,12 +1754,12 @@ window.handleCounselingImageUpload = async function(event) {
         // 미리보기 업데이트
         updateCounselingPhotoPreview(photoUrls);
         
-        // 자동 저장
+        // 자동 저장 (화면 유지)
         const counselingIdInput = document.getElementById('counseling-id');
         const counselingId = counselingIdInput ? counselingIdInput.value : null;
         if (counselingId) {
             // 기존 상담일지 업데이트
-            await window.saveCounseling(parseInt(counselingId));
+            await window.saveCounseling(parseInt(counselingId), true);
         }
         
         // 프로그레스 바 숨기기
@@ -1775,11 +1793,11 @@ window.removeCounselingPhoto = async function(index) {
     document.getElementById('counseling-photo-urls').value = JSON.stringify(photoUrls);
     updateCounselingPhotoPreview(photoUrls);
     
-    // 자동 저장
+    // 자동 저장 (화면 유지)
     const counselingIdInput = document.getElementById('counseling-id');
     const counselingId = counselingIdInput ? counselingIdInput.value : null;
     if (counselingId) {
-        await window.saveCounseling(parseInt(counselingId));
+        await window.saveCounseling(parseInt(counselingId), true);
         
         // 학생 이름 가져오기
         const studentSelect = document.querySelector('#counseling-save-form select[name="student_id"]');
@@ -2328,8 +2346,11 @@ function renderInstructors() {
                                     return typeInfo ? typeInfo.type : '';
                                 })()}</td>
                                 <td class="px-4 py-2">${inst.phone || ''}</td>
-                                <td class="px-4 py-2">${inst.email || ''}< /td>
+                                <td class="px-4 py-2">${inst.email || ''}</td>
                                 <td class="px-4 py-2">
+                                    ${inst.photo_urls && JSON.parse(inst.photo_urls || '[]').length > 0 ? `
+                                        <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(inst.photo_urls).length}개 사진"></i>
+                                    ` : ''}
                                     <button onclick="window.editInstructor('${inst.code}')" class="text-blue-600 hover:text-blue-800 mr-2">
                                         <i class="fas fa-edit"></i>
                                     </button>
@@ -2526,7 +2547,7 @@ window.hideInstructorForm = function() {
     document.getElementById('instructor-form').classList.add('hidden');
 }
 
-window.saveInstructor = async function(existingCode) {
+window.saveInstructor = async function(existingCode, autoSave = false) {
     // 사진 URL 가져오기
     const photoUrlsInput = document.getElementById('instructor-photo-urls');
     const photoUrls = photoUrlsInput ? JSON.parse(photoUrlsInput.value || '[]') : [];
@@ -2544,13 +2565,19 @@ window.saveInstructor = async function(existingCode) {
     try {
         if (existingCode) {
             await axios.put(`${API_BASE_URL}/api/instructors/${existingCode}`, data);
-            alert('강사 정보가 수정되었습니다.');
+            if (!autoSave) {
+                alert('강사 정보가 수정되었습니다.');
+            }
         } else {
             await axios.post(`${API_BASE_URL}/api/instructors`, data);
-            alert('강사가 추가되었습니다.');
+            if (!autoSave) {
+                alert('강사가 추가되었습니다.');
+            }
         }
-        window.hideInstructorForm();
-        loadInstructors();
+        if (!autoSave) {
+            window.hideInstructorForm();
+            loadInstructors();
+        }
     } catch (error) {
         alert('저장 실패: ' + error.response?.data?.detail || error.message);
     }
@@ -2617,11 +2644,11 @@ window.handleInstructorImageUpload = async function(event) {
         photoUrlsInput.value = JSON.stringify(photoUrls);
         updateInstructorPhotoPreview(photoUrls);
         
-        // 자동 저장
+        // 자동 저장 (화면 유지)
         const instructorCodeInput = document.getElementById('instructor-code');
         const existingCode = instructorCodeInput ? instructorCodeInput.value : null;
         if (existingCode) {
-            await window.saveInstructor(existingCode);
+            await window.saveInstructor(existingCode, true);
         }
         
         // 프로그레스 바 숨기기
@@ -2658,11 +2685,11 @@ window.removeInstructorPhoto = async function(index) {
     photoUrlsInput.value = JSON.stringify(photoUrls);
     updateInstructorPhotoPreview(photoUrls);
     
-    // 자동 저장
+    // 자동 저장 (화면 유지)
     const instructorCodeInput = document.getElementById('instructor-code');
     const existingCode = instructorCodeInput ? instructorCodeInput.value : null;
     if (existingCode) {
-        await window.saveInstructor(existingCode);
+        await window.saveInstructor(existingCode, true);
         
         // 강사 이름 가져오기
         const instructorNameInput = document.querySelector('input[name="name"]');
@@ -4809,6 +4836,9 @@ function renderTrainingLogsTable(timetables) {
                                     `}
                                 </td>
                                 <td class="px-3 py-2 text-xs">
+                                    ${hasLog && tt.training_photo_urls && JSON.parse(tt.training_photo_urls || '[]').length > 0 ? `
+                                        <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(tt.training_photo_urls).length}개 사진"></i>
+                                    ` : ''}
                                     ${hasLog ? `
                                         <button onclick="window.editTrainingLog(${tt.training_log_id}, ${tt.id})" class="text-blue-600 hover:text-blue-800 mr-2">
                                             <i class="fas fa-edit"></i> 수정
@@ -5144,17 +5174,17 @@ window.handleTrainingImageUpload = async function(event) {
         const logId = logIdInput ? logIdInput.value : null;
         
         if (logId) {
-            // 기존 훈련일지 수정
-            await window.updateTrainingLog(parseInt(logId));
+            // 기존 훈련일지 수정 (화면 유지)
+            await window.updateTrainingLog(parseInt(logId), true);
         } else {
-            // 새 훈련일지 - hidden input에서 정보 가져오기
+            // 새 훈련일지 - hidden input에서 정보 가져오기 (화면 유지)
             const timetableId = document.getElementById('training-timetable-id')?.value;
             const courseCode = document.getElementById('training-course-code')?.value;
             const instructorCode = document.getElementById('training-instructor-code')?.value;
             const classDate = document.getElementById('training-class-date')?.value;
             
             if (timetableId && courseCode && instructorCode && classDate) {
-                await window.saveTrainingLog(parseInt(timetableId), courseCode, instructorCode, classDate);
+                await window.saveTrainingLog(parseInt(timetableId), courseCode, instructorCode, classDate, true);
             }
         }
         
@@ -5195,7 +5225,7 @@ window.removeTrainingPhoto = async function(index) {
     const logId = logIdInput ? logIdInput.value : null;
     
     if (logId) {
-        await window.updateTrainingLog(parseInt(logId));
+        await window.updateTrainingLog(parseInt(logId), true);
         
         // 과정명과 날짜 정보 가져오기
         const courseCodeInput = document.getElementById('training-course-code');
@@ -5232,7 +5262,7 @@ function updateTrainingPhotoPreview(photoUrls) {
     `).join('');
 }
 
-window.saveTrainingLog = async function(timetableId, courseCode, instructorCode, classDate) {
+window.saveTrainingLog = async function(timetableId, courseCode, instructorCode, classDate, autoSave = false) {
     const form = document.getElementById('training-log-save-form');
     const formData = new FormData(form);
     const photoUrls = document.getElementById('training-photo-urls').value || '[]';
@@ -5250,16 +5280,18 @@ window.saveTrainingLog = async function(timetableId, courseCode, instructorCode,
     
     try {
         await axios.post(`${API_BASE_URL}/api/training-logs`, data);
-        window.showAlert('훈련일지가 저장되었습니다.');
-        window.hideTrainingLogForm();
-        window.filterTrainingLogs();
+        if (!autoSave) {
+            window.showAlert('훈련일지가 저장되었습니다.');
+            window.hideTrainingLogForm();
+            window.filterTrainingLogs();
+        }
     } catch (error) {
         console.error('훈련일지 저장 실패:', error);
         window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
-window.updateTrainingLog = async function(logId) {
+window.updateTrainingLog = async function(logId, autoSave = false) {
     const form = document.getElementById('training-log-save-form');
     const formData = new FormData(form);
     const photoUrls = document.getElementById('training-photo-urls').value || '[]';
@@ -5273,9 +5305,11 @@ window.updateTrainingLog = async function(logId) {
     
     try {
         await axios.put(`${API_BASE_URL}/api/training-logs/${logId}`, data);
-        window.showAlert('훈련일지가 수정되었습니다.');
-        window.hideTrainingLogForm();
-        window.filterTrainingLogs();
+        if (!autoSave) {
+            window.showAlert('훈련일지가 수정되었습니다.');
+            window.hideTrainingLogForm();
+            window.filterTrainingLogs();
+        }
     } catch (error) {
         console.error('훈련일지 수정 실패:', error);
         window.showAlert('수정 실패: ' + (error.response?.data?.detail || error.message));
