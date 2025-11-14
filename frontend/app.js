@@ -3036,7 +3036,8 @@ function renderTimetableList() {
         tbody.innerHTML = `
             <tr>
                 <td colspan="9" class="px-4 py-8 text-center text-gray-500">
-                    과정을 선택하여 시간표를 조회하세요
+                    <i class="fas fa-search mr-2"></i>
+                    필터 조건에 맞는 시간표가 없습니다
                 </td>
             </tr>
         `;
@@ -3125,25 +3126,35 @@ function renderTimetables() {
             <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
                 <p class="text-blue-700">
                     <i class="fas fa-info-circle mr-2"></i>
-                    과정을 선택하여 해당 과정의 시간표를 조회하세요
+                    과정, 월, 강사, 과목별로 시간표를 필터링할 수 있습니다 (복수 선택 가능)
                 </p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div>
-                    <label class="block text-gray-700 mb-2">과정 선택 *</label>
+                    <label class="block text-gray-700 mb-2">과정 선택</label>
                     <select id="tt-course" class="w-full border rounded px-3 py-2" onchange="window.filterTimetables()">
-                        <option value="">-- 과정을 선택하세요 --</option>
+                        <option value="">-- 전체 과정 --</option>
                         ${courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('')}
                     </select>
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-2">시작일</label>
-                    <input type="date" id="tt-start-date" class="w-full border rounded px-3 py-2" onchange="window.filterTimetables()">
+                    <label class="block text-gray-700 mb-2">월별 선택</label>
+                    <input type="month" id="tt-month" class="w-full border rounded px-3 py-2" onchange="window.filterTimetables()">
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-2">종료일</label>
-                    <input type="date" id="tt-end-date" class="w-full border rounded px-3 py-2" onchange="window.filterTimetables()">
+                    <label class="block text-gray-700 mb-2">강사 선택</label>
+                    <select id="tt-instructor" class="w-full border rounded px-3 py-2" onchange="window.filterTimetables()">
+                        <option value="">-- 전체 강사 --</option>
+                        ${instructors.map(i => `<option value="${i.code}">${i.name} (${i.code})</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">과목 선택</label>
+                    <select id="tt-subject" class="w-full border rounded px-3 py-2" onchange="window.filterTimetables()">
+                        <option value="">-- 전체 과목 --</option>
+                        ${subjects.map(s => `<option value="${s.code}">${s.name} (${s.code})</option>`).join('')}
+                    </select>
                 </div>
             </div>
             
@@ -3215,7 +3226,7 @@ function renderTimetables() {
         </div>
     `;
     
-    // 초기 필터링된 데이터 설정
+    // 초기 필터링된 데이터 설정 (전체 표시)
     filteredTimetables = timetables;
     pagination.timetables.totalItems = timetables.length;
     pagination.timetables.currentPage = 1;
@@ -3257,25 +3268,43 @@ function formatDateWithDay(dateStr) {
     return `${dateStr.substring(0, 10)} (${dayOfWeek})`;
 }
 
-window.filterTimetables = async function() {
+window.filterTimetables = function() {
     const courseCode = document.getElementById('tt-course').value;
-    const startDate = document.getElementById('tt-start-date').value;
-    const endDate = document.getElementById('tt-end-date').value;
+    const month = document.getElementById('tt-month').value; // YYYY-MM 형식
+    const instructorCode = document.getElementById('tt-instructor').value;
+    const subjectCode = document.getElementById('tt-subject').value;
     
-    let url = `${API_BASE_URL}/api/timetables?`;
-    if (courseCode) url += `course_code=${courseCode}&`;
-    if (startDate) url += `start_date=${startDate}&`;
-    if (endDate) url += `end_date=${endDate}&`;
+    // 모든 시간표에서 필터링
+    filteredTimetables = timetables.filter(tt => {
+        // 과정 필터
+        if (courseCode && tt.course_code !== courseCode) {
+            return false;
+        }
+        
+        // 월별 필터 (YYYY-MM 형식)
+        if (month && tt.class_date) {
+            const ttMonth = tt.class_date.substring(0, 7); // "2025-01-15" -> "2025-01"
+            if (ttMonth !== month) {
+                return false;
+            }
+        }
+        
+        // 강사 필터
+        if (instructorCode && tt.instructor_code !== instructorCode) {
+            return false;
+        }
+        
+        // 과목 필터
+        if (subjectCode && tt.subject_code !== subjectCode) {
+            return false;
+        }
+        
+        return true;
+    });
     
-    try {
-        const response = await axios.get(url);
-        filteredTimetables = response.data;
-        pagination.timetables.totalItems = filteredTimetables.length;
-        pagination.timetables.currentPage = 1;
-        renderTimetableList();
-    } catch (error) {
-        console.error('필터링 실패:', error);
-    }
+    pagination.timetables.totalItems = filteredTimetables.length;
+    pagination.timetables.currentPage = 1;
+    renderTimetableList();
 }
 
 window.showTimetableForm = function(id = null) {
