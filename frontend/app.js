@@ -8,7 +8,7 @@ function checkLogin() {
     
     if (!loggedIn || !instructor) {
         // 로그인되지 않았으면 로그인 페이지로 리다이렉트
-        window.location.href = '/static/login.html';
+        window.location.href = '/login.html';
         return false;
     }
     
@@ -32,7 +32,7 @@ function logout() {
         sessionStorage.removeItem('instructor');
         
         // 로그인 페이지로 이동
-        window.location.href = '/static/login.html';
+        window.location.href = '/login.html';
     }
 }
 
