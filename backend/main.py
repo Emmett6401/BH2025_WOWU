@@ -422,9 +422,17 @@ async def delete_subject(subject_code: str):
 
 def convert_datetime(obj):
     """datetime 객체를 문자열로 변환"""
+    from datetime import timedelta
     for key, value in obj.items():
         if isinstance(value, (datetime, date)):
             obj[key] = value.isoformat()
+        elif isinstance(value, timedelta):
+            # timedelta를 HH:MM:SS 형식으로 변환
+            total_seconds = int(value.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            obj[key] = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
         elif isinstance(value, bytes):
             obj[key] = None
     return obj

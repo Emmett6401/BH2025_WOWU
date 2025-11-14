@@ -3222,10 +3222,18 @@ function renderTimetables() {
     renderTimetableList();
 }
 
-function formatTime(seconds) {
-    if (!seconds) return '-';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
+function formatTime(timeValue) {
+    if (!timeValue) return '-';
+    
+    // 문자열인 경우 (HH:MM:SS 형식)
+    if (typeof timeValue === 'string') {
+        // HH:MM:SS에서 HH:MM만 추출
+        return timeValue.substring(0, 5);
+    }
+    
+    // 숫자인 경우 (초 단위)
+    const hours = Math.floor(timeValue / 3600);
+    const minutes = Math.floor((timeValue % 3600) / 60);
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
@@ -3358,13 +3366,17 @@ window.hideTimetableForm = function() {
 }
 
 window.saveTimetable = async function(id) {
+    // 시간 입력값을 HH:MM:SS 형식으로 변환
+    const startTimeValue = document.getElementById('tt-start-time').value;
+    const endTimeValue = document.getElementById('tt-end-time').value;
+    
     const data = {
         course_code: document.getElementById('tt-course-code').value,
         subject_code: document.getElementById('tt-subject-code').value,
         instructor_code: document.getElementById('tt-instructor-code').value,
         class_date: document.getElementById('tt-class-date').value,
-        start_time: timeToSeconds(document.getElementById('tt-start-time').value),
-        end_time: timeToSeconds(document.getElementById('tt-end-time').value),
+        start_time: startTimeValue + ':00',  // "HH:MM" -> "HH:MM:SS" 형식으로 변환
+        end_time: endTimeValue + ':00',      // "HH:MM" -> "HH:MM:SS" 형식으로 변환
         type: document.getElementById('tt-type').value,
         notes: document.getElementById('tt-notes').value
     };
