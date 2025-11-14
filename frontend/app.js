@@ -160,7 +160,7 @@ function renderStudents() {
                             <tr class="border-b hover:bg-gray-50">
                                 <td class="px-4 py-2 font-mono">${student.code}</td>
                                 <td class="px-4 py-2 font-semibold">${student.name}</td>
-                                <td class="px-4 py-2">${student.birth_date || '-'}</td>
+                                <td class="px-4 py-2">${student.birth_date ? formatDateWithDay(student.birth_date) : '-'}</td>
                                 <td class="px-4 py-2">${student.gender || '-'}</td>
                                 <td class="px-4 py-2">${student.phone || '-'}</td>
                                 <td class="px-4 py-2">${student.email || '-'}</td>
@@ -668,14 +668,16 @@ window.deleteSubject = async function(subjectCode) {
 // ==================== 상담 관리 ====================
 async function loadCounselings() {
     try {
-        const [counselingsRes, studentsRes, instructorsRes] = await Promise.all([
+        const [counselingsRes, studentsRes, instructorsRes, coursesRes] = await Promise.all([
             axios.get(`${API_BASE_URL}/api/counselings`),
             axios.get(`${API_BASE_URL}/api/students`),
-            axios.get(`${API_BASE_URL}/api/instructors`)
+            axios.get(`${API_BASE_URL}/api/instructors`),
+            axios.get(`${API_BASE_URL}/api/courses`)
         ]);
         counselings = counselingsRes.data;
         students = studentsRes.data;
         instructors = instructorsRes.data;
+        courses = coursesRes.data;
         renderCounselings();
     } catch (error) {
         console.error('상담 목록 로드 실패:', error);
@@ -693,7 +695,14 @@ function renderCounselings() {
             
             <!-- 검색 및 필터 -->
             <div class="bg-gray-50 p-4 rounded-lg mb-6">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm text-gray-700 mb-1">과정 선택</label>
+                        <select id="filter-course" class="w-full border rounded px-3 py-2" onchange="window.updateStudentsByCourse()">
+                            <option value="">전체 과정</option>
+                            ${courses.map(c => `<option value="${c.code}">${c.name || c.code}</option>`).join('')}
+                        </select>
+                    </div>
                     <div>
                         <label class="block text-sm text-gray-700 mb-1">학생 선택</label>
                         <select id="filter-student" class="w-full border rounded px-3 py-2">
@@ -754,7 +763,7 @@ function renderCounselings() {
                         <tbody>
                             ${counselings.map(c => `
                                 <tr class="border-t hover:bg-gray-50">
-                                    <td class="px-3 py-2 text-xs">${c.consultation_date?.substring(0, 10) || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${formatDateWithDay(c.consultation_date)}</td>
                                     <td class="px-3 py-2 text-xs">
                                         <button onclick="window.showStudentDetail(${c.student_id})" 
                                                 class="text-blue-600 hover:underline">
@@ -766,6 +775,7 @@ function renderCounselings() {
                                         <span class="px-2 py-1 rounded text-xs ${
                                             c.consultation_type === '긴급' ? 'bg-red-100 text-red-800' :
                                             c.consultation_type === '정기' ? 'bg-blue-100 text-blue-800' :
+                                            c.consultation_type === '학생요청' ? 'bg-purple-100 text-purple-800' :
                                             'bg-gray-100 text-gray-800'
                                         }">
                                             ${c.consultation_type || '정기'}
@@ -800,6 +810,7 @@ function renderCounselings() {
 }
 
 window.filterCounselings = async function() {
+    const courseCode = document.getElementById('filter-course').value;
     const studentId = document.getElementById('filter-student').value;
     const instructorCode = document.getElementById('filter-instructor').value;
     const startDate = document.getElementById('filter-start-date').value;
@@ -809,6 +820,7 @@ window.filterCounselings = async function() {
     try {
         let url = `${API_BASE_URL}/api/counselings?`;
         if (studentId) url += `student_id=${studentId}&`;
+        if (courseCode) url += `course_code=${courseCode}&`;
         
         const response = await axios.get(url);
         let filtered = response.data;
@@ -853,7 +865,7 @@ window.filterCounselings = async function() {
                     <tbody>
                         ${counselings.map(c => `
                             <tr class="border-t hover:bg-gray-50">
-                                <td class="px-3 py-2 text-xs">${c.consultation_date?.substring(0, 10) || '-'}</td>
+                                <td class="px-3 py-2 text-xs">${formatDateWithDay(c.consultation_date)}</td>
                                 <td class="px-3 py-2 text-xs">
                                     <button onclick="window.showStudentDetail(${c.student_id})" 
                                             class="text-blue-600 hover:underline">
@@ -865,6 +877,7 @@ window.filterCounselings = async function() {
                                     <span class="px-2 py-1 rounded text-xs ${
                                         c.consultation_type === '긴급' ? 'bg-red-100 text-red-800' :
                                         c.consultation_type === '정기' ? 'bg-blue-100 text-blue-800' :
+                                        c.consultation_type === '학생요청' ? 'bg-purple-100 text-purple-800' :
                                         'bg-gray-100 text-gray-800'
                                     }">
                                         ${c.consultation_type || '정기'}
@@ -900,12 +913,30 @@ window.filterCounselings = async function() {
 }
 
 window.resetCounselingFilters = function() {
+    document.getElementById('filter-course').value = '';
     document.getElementById('filter-student').value = '';
     document.getElementById('filter-instructor').value = '';
     document.getElementById('filter-start-date').value = '';
     document.getElementById('filter-end-date').value = '';
     document.getElementById('filter-content').value = '';
+    window.updateStudentsByCourse();
     loadCounselings();
+}
+
+window.updateStudentsByCourse = function() {
+    const courseCode = document.getElementById('filter-course').value;
+    const studentSelect = document.getElementById('filter-student');
+    
+    // 학생 목록 필터링
+    const filteredStudents = courseCode 
+        ? students.filter(s => s.course_code === courseCode)
+        : students;
+    
+    // 학생 드롭다운 업데이트
+    studentSelect.innerHTML = `
+        <option value="">전체 학생</option>
+        ${filteredStudents.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join('')}
+    `;
 }
 
 window.showStudentDetail = async function(studentId) {
@@ -941,7 +972,7 @@ window.showStudentDetail = async function(studentId) {
                 </div>
                 <div class="bg-white p-4 rounded shadow-sm">
                     <p class="text-xs text-gray-500 mb-1">생년월일</p>
-                    <p class="text-lg font-bold">${student.birth_date || '-'}</p>
+                    <p class="text-lg font-bold">${student.birth_date ? formatDateWithDay(student.birth_date) : '-'}</p>
                 </div>
                 <div class="bg-white p-4 rounded shadow-sm">
                     <p class="text-xs text-gray-500 mb-1">연락처</p>
@@ -976,7 +1007,7 @@ window.showStudentDetail = async function(studentId) {
                         <tbody>
                             ${studentCounselings.map(c => `
                                 <tr class="border-t hover:bg-gray-50">
-                                    <td class="px-3 py-2 text-xs">${c.consultation_date?.substring(0, 10) || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${formatDateWithDay(c.consultation_date)}</td>
                                     <td class="px-3 py-2 text-xs">${c.instructor_name || '-'}</td>
                                     <td class="px-3 py-2 text-xs">${c.consultation_type || '정기'}</td>
                                     <td class="px-3 py-2 text-xs">${c.content || '-'}</td>
@@ -1055,6 +1086,7 @@ window.showCounselingForm = function(counselingId = null) {
                         <option value="수시" ${existingCounseling?.consultation_type === '수시' ? 'selected' : ''}>수시</option>
                         <option value="긴급" ${existingCounseling?.consultation_type === '긴급' ? 'selected' : ''}>긴급</option>
                         <option value="학부모" ${existingCounseling?.consultation_type === '학부모' ? 'selected' : ''}>학부모</option>
+                        <option value="학생요청" ${existingCounseling?.consultation_type === '학생요청' ? 'selected' : ''}>학생요청</option>
                     </select>
                 </div>
                 <div>
@@ -2013,10 +2045,10 @@ function renderCourseDetail(course) {
                                     class="border-t hover:bg-blue-50 cursor-pointer ${c.code === selectedCourseCode ? 'bg-blue-100' : (idx % 2 === 0 ? 'bg-white' : 'bg-gray-50')}">
                                     <td class="px-3 py-2 text-xs font-semibold">${c.code}</td>
                                     <td class="px-3 py-2 text-xs">${c.name || '-'}</td>
-                                    <td class="px-3 py-2 text-xs">${c.start_date || '-'}</td>
-                                    <td class="px-3 py-2 text-xs">${c.lecture_end_date || '-'}</td>
-                                    <td class="px-3 py-2 text-xs">${c.project_end_date || '-'}</td>
-                                    <td class="px-3 py-2 text-xs">${c.internship_end_date || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.start_date ? formatDateWithDay(c.start_date) : '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.lecture_end_date ? formatDateWithDay(c.lecture_end_date) : '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.project_end_date ? formatDateWithDay(c.project_end_date) : '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.internship_end_date ? formatDateWithDay(c.internship_end_date) : '-'}</td>
                                     <td class="px-3 py-2 text-xs">${c.total_days || 113}일</td>
                                     <td class="px-3 py-2 text-xs">${c.capacity || 24}</td>
                                     <td class="px-3 py-2 text-xs">${c.location || '-'}</td>
@@ -2863,6 +2895,15 @@ function calculateDuration(startSeconds, endSeconds) {
     if (!startSeconds || !endSeconds) return 0;
     const durationSeconds = endSeconds - startSeconds;
     return Math.round(durationSeconds / 3600); // 시간 단위로 반환
+}
+
+// 날짜에 요일 추가하는 헬퍼 함수
+function formatDateWithDay(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    const dayOfWeek = dayNames[date.getDay()];
+    return `${dateStr.substring(0, 10)} (${dayOfWeek})`;
 }
 
 window.filterTimetables = async function() {
