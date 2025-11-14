@@ -7,6 +7,7 @@ let students = [];
 let subjects = [];
 let instructors = [];
 let counselings = [];
+let courses = [];
 
 // ==================== 커스텀 알림 모달 ====================
 window.showAlert = function(message) {
@@ -188,7 +189,8 @@ function renderStudents() {
                                     </button>
                                 </td>
                             </tr>
-                        `).join('')}
+                        `;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1882,7 +1884,6 @@ window.deleteHoliday = async function(id) {
 }
 
 // ==================== 과정 관리 ====================
-let courses = [];
 let courseSubjects = {}; // 과정별 선택된 교과목 저장
 
 async function loadCourses() {
