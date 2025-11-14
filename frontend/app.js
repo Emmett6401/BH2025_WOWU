@@ -355,7 +355,7 @@ function renderStudents() {
 }
 
 window.downloadTemplate = async function() {
-    window.open(`${API_BASE_URL}/api/students/download-template`, '_blank');
+    window.open(`${API_BASE_URL}/api/template/students`, '_blank');
 }
 
 window.showExcelUpload = function() {
@@ -415,10 +415,32 @@ window.showStudentForm = function(studentId = null) {
     const student = studentId ? students.find(s => s.id === studentId) : null;
     const formDiv = document.getElementById('student-form');
     
+    // 학생 코드 자동 생성 (S001, S002...)
+    let autoCode = '';
+    if (!studentId) {
+        const maxCode = students.reduce((max, s) => {
+            const match = s.code.match(/^S(\d+)$/);
+            if (match) {
+                const num = parseInt(match[1]);
+                return num > max ? num : max;
+            }
+            return max;
+        }, 0);
+        autoCode = `S${String(maxCode + 1).padStart(3, '0')}`;
+    }
+    
     formDiv.innerHTML = `
         <h3 class="text-lg font-bold mb-4">${student ? '학생 정보 수정' : '새 학생 추가'}</h3>
         <form id="student-save-form">
             <div class="grid grid-cols-2 gap-4">
+                ${!student ? `
+                <div>
+                    <label class="block text-gray-700 mb-2">학생 코드</label>
+                    <input type="text" value="${autoCode}" readonly 
+                           class="w-full px-3 py-2 border rounded-lg bg-gray-100 font-mono">
+                    <input type="hidden" name="code" value="${autoCode}">
+                </div>
+                ` : ''}
                 <div>
                     <label class="block text-gray-700 mb-2">이름</label>
                     <input type="text" name="name" value="${student?.name || ''}" required 
@@ -670,16 +692,30 @@ window.showSubjectForm = function(subjectCode = null) {
     const formDiv = document.getElementById('subject-form');
     const existingSubject = subjectCode ? subjects.find(s => s.code === subjectCode) : null;
     
+    // 과목 코드 자동 생성 (G-001, G-002...)
+    let autoCode = '';
+    if (!subjectCode) {
+        const maxCode = subjects.reduce((max, subj) => {
+            const match = subj.code.match(/^G-(\d+)$/);
+            if (match) {
+                const num = parseInt(match[1]);
+                return num > max ? num : max;
+            }
+            return max;
+        }, 0);
+        autoCode = `G-${String(maxCode + 1).padStart(3, '0')}`;
+    }
+    
     formDiv.innerHTML = `
         <h3 class="text-lg font-semibold mb-4">${subjectCode ? '과목 수정' : '과목 추가'}</h3>
         <form id="subject-save-form">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-gray-700 mb-2">과목 코드 *</label>
-                    <input type="text" name="code" value="${existingSubject?.code || ''}" 
-                           ${subjectCode ? 'readonly' : ''} required
+                    <input type="text" name="code" value="${existingSubject?.code || autoCode}" 
+                           ${subjectCode ? 'readonly' : 'readonly'} required
                            placeholder="G-001"
-                           class="w-full px-3 py-2 border rounded-lg ${subjectCode ? 'bg-gray-100' : ''}">
+                           class="w-full px-3 py-2 border rounded-lg bg-gray-100">
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-2">과목명 *</label>
@@ -1684,7 +1720,7 @@ function renderInstructorCodes() {
                     <thead class="bg-gray-100">
                         <tr>
                             <th class="px-4 py-2 text-left">코드</th>
-                            <th class="px-4 py-2 text-left">이름</th>
+                            <th class="px-4 py-2 text-left">강사역할</th>
                             <th class="px-4 py-2 text-left">타입</th>
                             <th class="px-4 py-2 text-left">작업</th>
                         </tr>
@@ -1718,12 +1754,41 @@ window.showInstructorCodeForm = function(code = null) {
     
     const existingCode = code ? instructorCodes.find(c => c.code === code) : null;
     
+    // 강사코드 자동 생성 (IC-001, IC-002...)
+    let autoCode = '';
+    if (!code) {
+        const maxCode = instructorCodes.reduce((max, ic) => {
+            const match = ic.code.match(/^IC-(\d+)$/);
+            if (match) {
+                const num = parseInt(match[1]);
+                return num > max ? num : max;
+            }
+            return max;
+        }, 0);
+        autoCode = `IC-${String(maxCode + 1).padStart(3, '0')}`;
+    }
+    
     formDiv.innerHTML = `
         <h3 class="text-lg font-semibold mb-4">${code ? '강사코드 수정' : '강사코드 추가'}</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input type="text" id="code" placeholder="코드 (예: IC-001)" value="${existingCode ? existingCode.code : ''}" ${code ? 'readonly' : ''} class="border rounded px-3 py-2">
-            <input type="text" id="name" placeholder="이름" value="${existingCode ? existingCode.name : ''}" class="border rounded px-3 py-2">
-            <input type="text" id="type" placeholder="타입 (예: 1. 주강사)" value="${existingCode ? existingCode.type : ''}" class="border rounded px-3 py-2">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">코드 *</label>
+                <input type="text" id="code" placeholder="코드 (예: IC-001)" value="${existingCode ? existingCode.code : autoCode}" ${code ? 'readonly' : 'readonly'} class="w-full border rounded px-3 py-2 bg-gray-100">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">강사역할 *</label>
+                <input type="text" id="name" placeholder="강사역할" value="${existingCode ? existingCode.name : ''}" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">타입 *</label>
+                <select id="type" class="w-full border rounded px-3 py-2">
+                    <option value="">타입 선택</option>
+                    <option value="1. 주강사" ${existingCode && existingCode.type === '1. 주강사' ? 'selected' : ''}>1. 주강사</option>
+                    <option value="2. 보조강사" ${existingCode && existingCode.type === '2. 보조강사' ? 'selected' : ''}>2. 보조강사</option>
+                    <option value="3. 멘토" ${existingCode && existingCode.type === '3. 멘토' ? 'selected' : ''}>3. 멘토</option>
+                    <option value="4. 행정지원" ${existingCode && existingCode.type === '4. 행정지원' ? 'selected' : ''}>4. 행정지원</option>
+                </select>
+            </div>
         </div>
         <div class="mt-4 space-x-2">
             <button onclick="window.saveInstructorCode('${code || ''}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
@@ -1741,24 +1806,42 @@ window.hideInstructorCodeForm = function() {
 }
 
 window.saveInstructorCode = async function(existingCode) {
+    const code = document.getElementById('code').value;
+    const name = document.getElementById('name').value;
+    const type = document.getElementById('type').value;
+    
+    // 유효성 검사
+    if (!code) {
+        window.showAlert('코드를 입력하세요.');
+        return;
+    }
+    if (!name) {
+        window.showAlert('강사역할을 입력하세요.');
+        return;
+    }
+    if (!type) {
+        window.showAlert('타입을 선택하세요.');
+        return;
+    }
+    
     const data = {
-        code: document.getElementById('code').value,
-        name: document.getElementById('name').value,
-        type: document.getElementById('type').value
+        code: code,
+        name: name,
+        type: type
     };
     
     try {
         if (existingCode) {
             await axios.put(`${API_BASE_URL}/api/instructor-codes/${existingCode}`, data);
-            alert('강사코드가 수정되었습니다.');
+            window.showAlert('강사코드가 수정되었습니다.');
         } else {
             await axios.post(`${API_BASE_URL}/api/instructor-codes`, data);
-            alert('강사코드가 추가되었습니다.');
+            window.showAlert('강사코드가 추가되었습니다.');
         }
         window.hideInstructorCodeForm();
         loadInstructorCodes();
     } catch (error) {
-        alert('저장 실패: ' + error.response?.data?.detail || error.message);
+        window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
@@ -1767,14 +1850,18 @@ window.editInstructorCode = function(code) {
 }
 
 window.deleteInstructorCode = async function(code) {
-    if (!confirm('이 강사코드를 삭제하시겠습니까?')) return;
+    const confirmed = await window.showConfirm('이 강사코드를 삭제하시겠습니까?\\n\\n삭제하면 복구할 수 없습니다.');
+    if (!confirmed) return;
     
     try {
+        window.showLoading('강사코드 삭제 중...');
         await axios.delete(`${API_BASE_URL}/api/instructor-codes/${code}`);
-        alert('강사코드가 삭제되었습니다.');
+        window.hideLoading();
+        window.showAlert('강사코드가 삭제되었습니다.');
         loadInstructorCodes();
     } catch (error) {
-        alert('삭제 실패: ' + error.response?.data?.detail || error.message);
+        window.hideLoading();
+        window.showAlert('삭제 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
@@ -1836,7 +1923,8 @@ function renderInstructors() {
                             <th class="px-4 py-2 text-left">강사코드</th>
                             <th class="px-4 py-2 text-left">이름</th>
                             <th class="px-4 py-2 text-left">전공</th>
-                            <th class="px-4 py-2 text-left">강사구분</th>
+                            <th class="px-4 py-2 text-left">강사역할</th>
+                            <th class="px-4 py-2 text-left">강사타입</th>
                             <th class="px-4 py-2 text-left">연락처</th>
                             <th class="px-4 py-2 text-left">이메일</th>
                             <th class="px-4 py-2 text-left">작업</th>
@@ -1848,9 +1936,16 @@ function renderInstructors() {
                                 <td class="px-4 py-2">${inst.code}</td>
                                 <td class="px-4 py-2">${inst.name}</td>
                                 <td class="px-4 py-2">${inst.major || ''}</td>
-                                <td class="px-4 py-2">${inst.type_name || ''}</td>
+                                <td class="px-4 py-2">${(() => {
+                                    const typeInfo = instructorTypes.find(t => t.code === inst.instructor_type);
+                                    return typeInfo ? typeInfo.name : '';
+                                })()}</td>
+                                <td class="px-4 py-2">${(() => {
+                                    const typeInfo = instructorTypes.find(t => t.code === inst.instructor_type);
+                                    return typeInfo ? typeInfo.type : '';
+                                })()}</td>
                                 <td class="px-4 py-2">${inst.phone || ''}</td>
-                                <td class="px-4 py-2">${inst.email || ''}</td>
+                                <td class="px-4 py-2">${inst.email || ''}< /td>
                                 <td class="px-4 py-2">
                                     <button onclick="window.editInstructor('${inst.code}')" class="text-blue-600 hover:text-blue-800 mr-2">
                                         <i class="fas fa-edit"></i>
@@ -1934,12 +2029,26 @@ window.showInstructorForm = function(code = null) {
     
     const existingInst = code ? instructors.find(i => i.code === code) : null;
     
+    // 강사 코드 자동 생성 (T-001, T-002...)
+    let autoCode = '';
+    if (!code) {
+        const maxCode = instructors.reduce((max, inst) => {
+            const match = inst.code.match(/^T-(\d+)$/);
+            if (match) {
+                const num = parseInt(match[1]);
+                return num > max ? num : max;
+            }
+            return max;
+        }, 0);
+        autoCode = `T-${String(maxCode + 1).padStart(3, '0')}`;
+    }
+    
     formDiv.innerHTML = `
         <h3 class="text-lg font-semibold mb-4">${code ? '강사 수정' : '강사 추가'}</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label class="block text-gray-700 mb-1">강사코드 *</label>
-                <input type="text" id="inst-code" placeholder="I001" value="${existingInst ? existingInst.code : ''}" ${code ? 'readonly' : ''} class="w-full border rounded px-3 py-2 ${code ? 'bg-gray-100' : ''}">
+                <input type="text" id="inst-code" placeholder="T-001" value="${existingInst ? existingInst.code : autoCode}" ${code ? 'readonly' : 'readonly'} class="w-full border rounded px-3 py-2 bg-gray-100">
             </div>
             <div>
                 <label class="block text-gray-700 mb-1">이름 *</label>
@@ -2055,26 +2164,38 @@ function renderHolidays() {
             
             <div id="holiday-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg"></div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                ${holidays.map(h => `
-                    <div class="border rounded-lg p-4 hover:shadow-md">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-semibold text-lg">${h.name}</h3>
-                            <span class="text-xs ${h.is_legal ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'} px-2 py-1 rounded">
-                                ${h.is_legal ? '법정공휴일' : '일반'}
-                            </span>
-                        </div>
-                        <p class="text-gray-600 mb-3">${h.holiday_date}</p>
-                        <div class="flex space-x-2">
-                            <button onclick="window.editHoliday(${h.id})" class="text-blue-600 hover:text-blue-800">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button onclick="window.deleteHoliday(${h.id})" class="text-red-600 hover:text-red-800">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                `).join('')}
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">날짜</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">공휴일명</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">구분</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">작업</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${holidays.map(h => `
+                            <tr class="border-t hover:bg-gray-50">
+                                <td class="px-4 py-2 text-xs">${h.holiday_date}</td>
+                                <td class="px-4 py-2 text-xs font-semibold">${h.name}</td>
+                                <td class="px-4 py-2 text-xs">
+                                    <span class="${h.is_legal ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'} px-2 py-1 rounded text-xs">
+                                        ${h.is_legal ? '법정공휴일' : '일반'}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2 text-xs">
+                                    <button onclick="window.editHoliday(${h.id})" class="text-blue-600 hover:text-blue-800 mr-2">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="window.deleteHoliday(${h.id})" class="text-red-600 hover:text-red-800">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
             </div>
         </div>
     `;
@@ -2944,22 +3065,35 @@ window.deleteCourse = async function(code) {
     }
 }
 
-// ==================== 프로젝트 관리 ====================
+// ==================== 팀 관리 ====================
 let projects = [];
 
 async function loadProjects() {
     try {
-        window.showLoading('프로젝트 데이터를 불러오는 중...');
-        const response = await axios.get(`${API_BASE_URL}/api/projects`);
-        projects = response.data;
+        window.showLoading('팀 데이터를 불러오는 중...');
+        const [projectsRes, coursesRes, studentsRes, instructorsRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/api/projects`),
+            axios.get(`${API_BASE_URL}/api/courses`),
+            axios.get(`${API_BASE_URL}/api/students`),
+            axios.get(`${API_BASE_URL}/api/instructors`)
+        ]);
+        projects = projectsRes.data;
+        courses = coursesRes.data;
+        students = studentsRes.data;
+        instructors = instructorsRes.data;
         renderProjects();
         window.hideLoading();
     } catch (error) {
         window.hideLoading();
-        console.error('프로젝트 목록 로드 실패:', error);
-        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">프로젝트 목록을 불러오는데 실패했습니다.</div>';
+        console.error('팀 목록 로드 실패:', error);
+        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">팀 목록을 불러오는데 실패했습니다.</div>';
     }
 }
+
+let projectsFilterCourse = '';
+let projectsFilterGroup = '';
+let projectsFilterStudent = '';
+let projectsSearchQuery = '';
 
 function renderProjects() {
     const app = document.getElementById('app');
@@ -2967,48 +3101,159 @@ function renderProjects() {
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">
-                    <i class="fas fa-project-diagram mr-2"></i>프로젝트 관리 (총 ${projects.length}개)
+                    <i class="fas fa-users mr-2"></i>팀 관리 (총 ${projects.length}개)
                 </h2>
                 <button onclick="window.showProjectForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                    <i class="fas fa-plus mr-2"></i>프로젝트 추가
+                    <i class="fas fa-plus mr-2"></i>팀 추가
                 </button>
+            </div>
+            
+            <!-- 필터 및 검색 -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">과정 필터</label>
+                    <select id="projects-course-filter" onchange="window.filterProjects()" class="w-full border rounded px-3 py-2">
+                        <option value="">전체 과정</option>
+                        ${courses.map(c => `<option value="${c.code}">${c.name || c.code}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">그룹 구분</label>
+                    <select id="projects-group-filter" onchange="window.filterProjects()" class="w-full border rounded px-3 py-2">
+                        <option value="">전체 그룹</option>
+                        <option value="1. 스터디그룹">1. 스터디그룹</option>
+                        <option value="2. 프로젝트그룹">2. 프로젝트그룹</option>
+                        <option value="3. 인턴그룹">3. 인턴그룹</option>
+                        <option value="4. 기타그룹">4. 기타그룹</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">학생 필터</label>
+                    <select id="projects-student-filter" onchange="window.filterProjects()" class="w-full border rounded px-3 py-2">
+                        <option value="">전체 학생</option>
+                        ${students.map(s => `<option value="${s.code}">${s.name} (${s.code})</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">검색 (팀명 또는 팀원)</label>
+                    <input type="text" id="projects-search" oninput="window.searchProjects()" placeholder="검색어를 입력하세요..." class="w-full border rounded px-3 py-2">
+                </div>
             </div>
             
             <div id="project-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg"></div>
             
-            ${projects.length === 0 ? '<p class="text-gray-500 text-center py-8">등록된 프로젝트가 없습니다.</p>' : ''}
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                ${projects.map(p => `
-                    <div class="border rounded-lg p-4 hover:shadow-md">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-semibold text-lg">${p.name}</h3>
-                            <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                ${p.code}
-                            </span>
-                        </div>
-                        <p class="text-sm text-gray-600 mb-2">과정: ${p.course_name || p.course_code}</p>
-                        <div class="text-sm text-gray-600">
-                            <p class="font-semibold mb-1">팀원:</p>
-                            <ul class="list-disc list-inside">
-                                ${p.member1_name ? `<li>${p.member1_name} (${p.member1_phone || '-'})</li>` : ''}
-                                ${p.member2_name ? `<li>${p.member2_name} (${p.member2_phone || '-'})</li>` : ''}
-                                ${p.member3_name ? `<li>${p.member3_name} (${p.member3_phone || '-'})</li>` : ''}
-                                ${p.member4_name ? `<li>${p.member4_name} (${p.member4_phone || '-'})</li>` : ''}
-                                ${p.member5_name ? `<li>${p.member5_name} (${p.member5_phone || '-'})</li>` : ''}
-                            </ul>
-                        </div>
-                        <div class="mt-3 flex space-x-2">
-                            <button onclick="window.editProject('${p.code}')" class="text-blue-600 hover:text-blue-800">
-                                <i class="fas fa-edit"></i> 수정
-                            </button>
-                            <button onclick="window.deleteProject('${p.code}')" class="text-red-600 hover:text-red-800">
-                                <i class="fas fa-trash"></i> 삭제
-                            </button>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
+            <div id="projects-list"></div>
+        </div>
+    `;
+    
+    window.filterProjects();
+}
+
+window.filterProjects = function() {
+    const courseFilter = document.getElementById('projects-course-filter');
+    const groupFilter = document.getElementById('projects-group-filter');
+    const studentFilter = document.getElementById('projects-student-filter');
+    projectsFilterCourse = courseFilter ? courseFilter.value : '';
+    projectsFilterGroup = groupFilter ? groupFilter.value : '';
+    projectsFilterStudent = studentFilter ? studentFilter.value : '';
+    window.renderProjectsList();
+}
+
+window.searchProjects = function() {
+    const searchInput = document.getElementById('projects-search');
+    projectsSearchQuery = searchInput ? searchInput.value.toLowerCase() : '';
+    window.renderProjectsList();
+}
+
+window.renderProjectsList = function() {
+    let filteredProjects = projects;
+    
+    // 과정 필터
+    if (projectsFilterCourse) {
+        filteredProjects = filteredProjects.filter(p => p.course_code === projectsFilterCourse);
+    }
+    
+    // 그룹 구분 필터
+    if (projectsFilterGroup) {
+        filteredProjects = filteredProjects.filter(p => p.group_type === projectsFilterGroup);
+    }
+    
+    // 학생 필터 (팀원 중 한 명이라도 해당 학생이 있으면)
+    if (projectsFilterStudent) {
+        filteredProjects = filteredProjects.filter(p => {
+            return p.member1_code === projectsFilterStudent ||
+                   p.member2_code === projectsFilterStudent ||
+                   p.member3_code === projectsFilterStudent ||
+                   p.member4_code === projectsFilterStudent ||
+                   p.member5_code === projectsFilterStudent;
+        });
+    }
+    
+    // 검색 필터 (팀명 또는 팀원 이름)
+    if (projectsSearchQuery) {
+        filteredProjects = filteredProjects.filter(p => {
+            const matchName = (p.name || '').toLowerCase().includes(projectsSearchQuery);
+            const matchMember1 = (p.member1_name || '').toLowerCase().includes(projectsSearchQuery);
+            const matchMember2 = (p.member2_name || '').toLowerCase().includes(projectsSearchQuery);
+            const matchMember3 = (p.member3_name || '').toLowerCase().includes(projectsSearchQuery);
+            const matchMember4 = (p.member4_name || '').toLowerCase().includes(projectsSearchQuery);
+            const matchMember5 = (p.member5_name || '').toLowerCase().includes(projectsSearchQuery);
+            return matchName || matchMember1 || matchMember2 || matchMember3 || matchMember4 || matchMember5;
+        });
+    }
+    
+    const listDiv = document.getElementById('projects-list');
+    
+    if (filteredProjects.length === 0) {
+        listDiv.innerHTML = '<p class="text-gray-500 text-center py-8">조건에 맞는 팀이 없습니다.</p>';
+        return;
+    }
+    
+    listDiv.innerHTML = `
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀 코드</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀명</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">그룹구분</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">과정</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">주강사</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">멘토</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀원1</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀원2</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀원3</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀원4</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀원5</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">작업</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filteredProjects.map(p => `
+                        <tr class="border-t hover:bg-gray-50">
+                            <td class="px-4 py-2 text-xs font-mono">${p.code}</td>
+                            <td class="px-4 py-2 text-xs font-semibold">${p.name}</td>
+                            <td class="px-4 py-2 text-xs">${p.group_type || '-'}</td>
+                            <td class="px-4 py-2 text-xs text-blue-600">${p.course_name || p.course_code || '-'}</td>
+                            <td class="px-4 py-2 text-xs">${p.instructor_name || '-'}</td>
+                            <td class="px-4 py-2 text-xs">${p.mentor_name || '-'}</td>
+                            <td class="px-4 py-2 text-xs">${p.member1_name || '-'}</td>
+                            <td class="px-4 py-2 text-xs">${p.member2_name || '-'}</td>
+                            <td class="px-4 py-2 text-xs">${p.member3_name || '-'}</td>
+                            <td class="px-4 py-2 text-xs">${p.member4_name || '-'}</td>
+                            <td class="px-4 py-2 text-xs">${p.member5_name || '-'}</td>
+                            <td class="px-4 py-2 text-xs">
+                                <button onclick="window.editProject('${p.code}')" class="text-blue-600 hover:text-blue-800 mr-2">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="window.deleteProject('${p.code}')" class="text-red-600 hover:text-red-800">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
         </div>
     `;
 }
@@ -3019,19 +3264,101 @@ window.showProjectForm = function(code = null) {
     
     const existing = code ? projects.find(p => p.code === code) : null;
     
+    // 팀 코드 자동 생성 (TEAM001, TEAM002...)
+    let autoCode = '';
+    if (!code) {
+        const maxCode = projects.reduce((max, p) => {
+            const match = p.code.match(/^TEAM(\d+)$/);
+            if (match) {
+                const num = parseInt(match[1]);
+                return num > max ? num : max;
+            }
+            return max;
+        }, 0);
+        autoCode = `TEAM${String(maxCode + 1).padStart(3, '0')}`;
+    }
+    
     formDiv.innerHTML = `
-        <h3 class="text-lg font-semibold mb-4">${code ? '프로젝트 수정' : '프로젝트 추가'}</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <input type="text" id="proj-code" placeholder="프로젝트코드" value="${existing ? existing.code : ''}" ${code ? 'readonly' : ''} class="border rounded px-3 py-2">
-            <input type="text" id="proj-name" placeholder="프로젝트명" value="${existing ? existing.name : ''}" class="border rounded px-3 py-2">
-            <input type="text" id="proj-course" placeholder="과정코드" value="${existing ? existing.course_code || '' : ''}" class="border rounded px-3 py-2">
+        <h3 class="text-lg font-semibold mb-4">${code ? '팀 수정' : '팀 추가'}</h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">팀 코드</label>
+                <input type="text" id="proj-code" placeholder="팀코드" value="${existing ? existing.code : autoCode}" ${code ? 'readonly' : 'readonly'} class="border rounded px-3 py-2 w-full bg-gray-100">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">팀명 *</label>
+                <input type="text" id="proj-name" placeholder="팀명" value="${existing ? existing.name : ''}" class="border rounded px-3 py-2 w-full">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">그룹 구분 *</label>
+                <select id="proj-group" class="border rounded px-3 py-2 w-full">
+                    <option value="">그룹 선택</option>
+                    <option value="1. 스터디그룹" ${existing && existing.group_type === '1. 스터디그룹' ? 'selected' : ''}>1. 스터디그룹</option>
+                    <option value="2. 프로젝트그룹" ${existing && existing.group_type === '2. 프로젝트그룹' ? 'selected' : ''}>2. 프로젝트그룹</option>
+                    <option value="3. 인턴그룹" ${existing && existing.group_type === '3. 인턴그룹' ? 'selected' : ''}>3. 인턴그룹</option>
+                    <option value="4. 기타그룹" ${existing && existing.group_type === '4. 기타그룹' ? 'selected' : ''}>4. 기타그룹</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">과정 *</label>
+                <select id="proj-course" onchange="window.updateProjectStudentList()" class="border rounded px-3 py-2 w-full">
+                    <option value="">과정 선택</option>
+                    ${courses.map(c => `<option value="${c.code}" ${existing && existing.course_code === c.code ? 'selected' : ''}>${c.name || c.code}</option>`).join('')}
+                </select>
+            </div>
         </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">주강사</label>
+                <select id="proj-instructor" class="border rounded px-3 py-2 w-full">
+                    <option value="">선택 안함</option>
+                    ${instructors.filter(inst => {
+                        const typeInfo = instructorTypes.find(t => t.code === inst.instructor_type);
+                        return typeInfo && typeInfo.type === '1. 주강사';
+                    }).map(inst => {
+                        const typeInfo = instructorTypes.find(t => t.code === inst.instructor_type);
+                        return `<option value="${inst.code}" ${existing && existing.instructor_code === inst.code ? 'selected' : ''}>${inst.name} - ${inst.code} - ${typeInfo.name} - ${typeInfo.type}</option>`;
+                    }).join('')}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">멘토</label>
+                <select id="proj-mentor" class="border rounded px-3 py-2 w-full">
+                    <option value="">선택 안함</option>
+                    ${instructors.filter(inst => {
+                        const typeInfo = instructorTypes.find(t => t.code === inst.instructor_type);
+                        return typeInfo && typeInfo.type === '3. 멘토';
+                    }).map(inst => {
+                        const typeInfo = instructorTypes.find(t => t.code === inst.instructor_type);
+                        return `<option value="${inst.code}" ${existing && existing.mentor_code === inst.code ? 'selected' : ''}>${inst.name} - ${inst.code} - ${typeInfo.name} - ${typeInfo.type}</option>`;
+                    }).join('')}
+                </select>
+            </div>
+        </div>
+        
+        <h4 class="font-semibold mb-2">공유계정 (최대 5개)</h4>
+        <div class="space-y-2 mb-4">
+            ${[1, 2, 3, 4, 5].map(i => `
+                <div class="grid grid-cols-3 gap-2">
+                    <input type="text" id="account${i}-name" placeholder="계정명칭 ${i}" value="${existing ? existing[`account${i}_name`] || '' : ''}" class="border rounded px-3 py-2">
+                    <input type="text" id="account${i}-id" placeholder="계정 ID" value="${existing ? existing[`account${i}_id`] || '' : ''}" class="border rounded px-3 py-2">
+                    <input type="text" id="account${i}-pw" placeholder="비밀번호" value="${existing ? existing[`account${i}_pw`] || '' : ''}" class="border rounded px-3 py-2">
+                </div>
+            `).join('')}
+        </div>
+        
         <h4 class="font-semibold mb-2">팀원 정보 (최대 5명)</h4>
         <div class="space-y-2">
             ${[1, 2, 3, 4, 5].map(i => `
-                <div class="grid grid-cols-2 gap-4">
-                    <input type="text" id="member${i}-name" placeholder="팀원${i} 이름" value="${existing ? existing[`member${i}_name`] || '' : ''}" class="border rounded px-3 py-2">
-                    <input type="text" id="member${i}-phone" placeholder="팀원${i} 연락처" value="${existing ? existing[`member${i}_phone`] || '' : ''}" class="border rounded px-3 py-2">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">팀원${i}</label>
+                    <select id="member${i}-select" onchange="window.selectProjectMember(${i})" class="border rounded px-3 py-2 w-full">
+                        <option value="">선택 안함</option>
+                    </select>
+                    <input type="hidden" id="member${i}-name" value="${existing ? existing[`member${i}_name`] || '' : ''}">
+                    <input type="hidden" id="member${i}-phone" value="${existing ? existing[`member${i}_phone`] || '' : ''}">
+                    <input type="hidden" id="member${i}-code" value="${existing ? existing[`member${i}_code`] || '' : ''}">
                 </div>
             `).join('')}
         </div>
@@ -3044,6 +3371,68 @@ window.showProjectForm = function(code = null) {
             </button>
         </div>
     `;
+    
+    // 초기 학생 목록 업데이트
+    window.updateProjectStudentList();
+}
+
+window.updateProjectStudentList = function() {
+    const courseSelect = document.getElementById('proj-course');
+    const selectedCourse = courseSelect ? courseSelect.value : '';
+    
+    // 선택된 과정의 학생들만 필터링
+    const filteredStudents = selectedCourse 
+        ? students.filter(s => s.course_code === selectedCourse)
+        : students;
+    
+    // 각 팀원 선택 드롭다운 업데이트
+    for (let i = 1; i <= 5; i++) {
+        const select = document.getElementById(`member${i}-select`);
+        const nameInput = document.getElementById(`member${i}-name`);
+        const codeInput = document.getElementById(`member${i}-code`);
+        
+        if (select) {
+            const currentValue = codeInput ? codeInput.value : '';
+            select.innerHTML = `
+                <option value="">선택 안함</option>
+                ${filteredStudents.map(s => `
+                    <option value="${s.code}" ${s.code === currentValue ? 'selected' : ''}>
+                        ${s.name} (${s.code})
+                    </option>
+                `).join('')}
+            `;
+            
+            // 기존 값이 있으면 표시 업데이트
+            if (currentValue) {
+                const student = students.find(s => s.code === currentValue);
+                if (student && select.value) {
+                    select.value = currentValue;
+                }
+            }
+        }
+    }
+}
+
+window.selectProjectMember = function(memberIndex) {
+    const select = document.getElementById(`member${memberIndex}-select`);
+    const studentCode = select ? select.value : '';
+    
+    const nameInput = document.getElementById(`member${memberIndex}-name`);
+    const phoneInput = document.getElementById(`member${memberIndex}-phone`);
+    const codeInput = document.getElementById(`member${memberIndex}-code`);
+    
+    if (studentCode) {
+        const student = students.find(s => s.code === studentCode);
+        if (student) {
+            if (nameInput) nameInput.value = student.name;
+            if (phoneInput) phoneInput.value = student.phone || '';
+            if (codeInput) codeInput.value = student.code;
+        }
+    } else {
+        if (nameInput) nameInput.value = '';
+        if (phoneInput) phoneInput.value = '';
+        if (codeInput) codeInput.value = '';
+    }
 }
 
 window.hideProjectForm = function() {
@@ -3051,34 +3440,83 @@ window.hideProjectForm = function() {
 }
 
 window.saveProject = async function(existingCode) {
+    const code = document.getElementById('proj-code').value;
+    const name = document.getElementById('proj-name').value;
+    const groupType = document.getElementById('proj-group').value;
+    const courseCode = document.getElementById('proj-course').value;
+    const instructorCode = document.getElementById('proj-instructor').value;
+    const mentorCode = document.getElementById('proj-mentor').value;
+    
+    // 유효성 검사
+    if (!code) {
+        window.showAlert('팀 코드를 입력하세요.');
+        return;
+    }
+    if (!name) {
+        window.showAlert('팀명을 입력하세요.');
+        return;
+    }
+    if (!groupType) {
+        window.showAlert('그룹 구분을 선택하세요.');
+        return;
+    }
+    if (!courseCode) {
+        window.showAlert('과정을 선택하세요.');
+        return;
+    }
+    
     const data = {
-        code: document.getElementById('proj-code').value,
-        name: document.getElementById('proj-name').value,
-        course_code: document.getElementById('proj-course').value,
+        code: code,
+        name: name,
+        group_type: groupType,
+        course_code: courseCode,
+        instructor_code: instructorCode || null,
+        mentor_code: mentorCode || null,
         member1_name: document.getElementById('member1-name').value,
         member1_phone: document.getElementById('member1-phone').value,
+        member1_code: document.getElementById('member1-code').value,
         member2_name: document.getElementById('member2-name').value,
         member2_phone: document.getElementById('member2-phone').value,
+        member2_code: document.getElementById('member2-code').value,
         member3_name: document.getElementById('member3-name').value,
         member3_phone: document.getElementById('member3-phone').value,
+        member3_code: document.getElementById('member3-code').value,
         member4_name: document.getElementById('member4-name').value,
         member4_phone: document.getElementById('member4-phone').value,
+        member4_code: document.getElementById('member4-code').value,
         member5_name: document.getElementById('member5-name').value,
-        member5_phone: document.getElementById('member5-phone').value
+        member5_phone: document.getElementById('member5-phone').value,
+        member5_code: document.getElementById('member5-code').value,
+        // 공유계정 필드 추가
+        account1_name: document.getElementById('account1-name').value || null,
+        account1_id: document.getElementById('account1-id').value || null,
+        account1_pw: document.getElementById('account1-pw').value || null,
+        account2_name: document.getElementById('account2-name').value || null,
+        account2_id: document.getElementById('account2-id').value || null,
+        account2_pw: document.getElementById('account2-pw').value || null,
+        account3_name: document.getElementById('account3-name').value || null,
+        account3_id: document.getElementById('account3-id').value || null,
+        account3_pw: document.getElementById('account3-pw').value || null,
+        account4_name: document.getElementById('account4-name').value || null,
+        account4_id: document.getElementById('account4-id').value || null,
+        account4_pw: document.getElementById('account4-pw').value || null,
+        account5_name: document.getElementById('account5-name').value || null,
+        account5_id: document.getElementById('account5-id').value || null,
+        account5_pw: document.getElementById('account5-pw').value || null
     };
     
     try {
         if (existingCode) {
             await axios.put(`${API_BASE_URL}/api/projects/${existingCode}`, data);
-            alert('프로젝트가 수정되었습니다.');
+            window.showAlert('팀이 수정되었습니다.');
         } else {
             await axios.post(`${API_BASE_URL}/api/projects`, data);
-            alert('프로젝트가 추가되었습니다.');
+            window.showAlert('팀이 추가되었습니다.');
         }
         window.hideProjectForm();
         loadProjects();
     } catch (error) {
-        alert('저장 실패: ' + error.response?.data?.detail || error.message);
+        window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
@@ -3087,14 +3525,18 @@ window.editProject = function(code) {
 }
 
 window.deleteProject = async function(code) {
-    if (!confirm('이 프로젝트를 삭제하시겠습니까?')) return;
+    const confirmed = await window.showConfirm('이 팀을 삭제하시겠습니까?\n\n삭제하면 복구할 수 없습니다.');
+    if (!confirmed) return;
     
     try {
+        window.showLoading('팀 삭제 중...');
         await axios.delete(`${API_BASE_URL}/api/projects/${code}`);
-        alert('프로젝트가 삭제되었습니다.');
+        window.hideLoading();
+        window.showAlert('팀이 삭제되었습니다.');
         loadProjects();
     } catch (error) {
-        alert('삭제 실패: ' + error.response?.data?.detail || error.message);
+        window.hideLoading();
+        window.showAlert('삭제 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
@@ -3124,7 +3566,7 @@ function renderTimetableList() {
     if (filteredTimetables.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="12" class="px-4 py-8 text-center text-gray-500">
+                <td colspan="11" class="px-4 py-8 text-center text-gray-500">
                     <i class="fas fa-search mr-2"></i>
                     필터 조건에 맞는 시간표가 없습니다
                 </td>
@@ -3138,7 +3580,6 @@ function renderTimetableList() {
         const duration = calculateDuration(tt.start_time, tt.end_time);
         const subject = subjects.find(s => s.code === tt.subject_code);
         const totalHours = subject ? subject.hours : 0;
-        const subSubjects = getSubSubjects(tt.subject_code);
         
         return `
         <tr class="border-t hover:bg-gray-50">
@@ -3146,7 +3587,6 @@ function renderTimetableList() {
             <td class="px-3 py-2 text-xs">${tt.week_number || '-'}주차</td>
             <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
             <td class="px-3 py-2 text-xs">${tt.subject_name || tt.subject_code || '-'}</td>
-            <td class="px-3 py-2 text-xs text-gray-600">${subSubjects}</td>
             <td class="px-3 py-2 text-xs">${tt.instructor_name || tt.instructor_code || '-'}</td>
             <td class="px-3 py-2 text-xs">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
             <td class="px-3 py-2 text-xs font-semibold text-blue-600">${duration}h</td>
@@ -3267,7 +3707,6 @@ function renderTimetables() {
                             <th class="px-3 py-2 text-left text-xs">주차</th>
                             <th class="px-3 py-2 text-left text-xs">일차</th>
                             <th class="px-3 py-2 text-left text-xs">과목</th>
-                            <th class="px-3 py-2 text-left text-xs">교과목주제</th>
                             <th class="px-3 py-2 text-left text-xs">강사</th>
                             <th class="px-3 py-2 text-left text-xs">시간</th>
                             <th class="px-3 py-2 text-left text-xs">해당일 시수</th>
@@ -4237,7 +4676,7 @@ function renderAITimetableList() {
                 </p>
             </div>
         `;
-        promptSection.classList.add('hidden');
+        promptSection.classList.remove('hidden');
         return;
     }
     
@@ -4283,7 +4722,6 @@ function renderAITimetableList() {
                         <th class="px-4 py-2 text-left">날짜</th>
                         <th class="px-4 py-2 text-left">과정</th>
                         <th class="px-4 py-2 text-left">과목</th>
-                        <th class="px-4 py-2 text-left">교과목 주제</th>
                         <th class="px-4 py-2 text-left">강사</th>
                         <th class="px-4 py-2 text-left">시간</th>
                         <th class="px-4 py-2 text-left">해당일 시수</th>
@@ -4309,9 +4747,6 @@ function renderAITimetableList() {
                                     ${isFirstRow ? `
                                         <td class="px-4 py-2 text-sm font-semibold" rowspan="${rowspan}">
                                             ${group.subject_name}
-                                        </td>
-                                        <td class="px-4 py-2 text-xs text-gray-600" rowspan="${rowspan}">
-                                            ${getSubSubjects(tt.subject_code)}
                                         </td>
                                     ` : ''}
                                     <td class="px-4 py-2 text-sm">${tt.instructor_name || tt.instructor_code || '-'}</td>

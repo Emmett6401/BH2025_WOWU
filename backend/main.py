@@ -258,7 +258,7 @@ async def upload_excel(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"파일 처리 중 오류: {str(e)}")
 
-@app.get("/api/students/download-template")
+@app.get("/api/template/students")
 async def download_template():
     """학생 등록 템플릿 다운로드"""
     template_path = "/home/user/webapp/student_template.xlsx"
@@ -489,10 +489,25 @@ async def delete_instructor_code(code: str):
     """강사코드 삭제"""
     conn = get_db_connection()
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 사용 중인지 확인
+        cursor.execute("SELECT COUNT(*) as cnt FROM instructors WHERE instructor_type = %s", (code,))
+        result = cursor.fetchone()
+        if result and result['cnt'] > 0:
+            raise HTTPException(status_code=400, detail=f"이 강사코드는 {result['cnt']}명의 강사가 사용 중입니다. 먼저 강사의 타입을 변경하세요.")
+        
         cursor.execute("DELETE FROM instructor_codes WHERE code = %s", (code,))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="강사코드를 찾을 수 없습니다")
+        
         conn.commit()
         return {"message": "강사코드가 삭제되었습니다"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"삭제 실패: {str(e)}")
     finally:
         conn.close()
 
@@ -774,15 +789,45 @@ async def delete_course(code: str):
 
 @app.get("/api/projects")
 async def get_projects(course_code: Optional[str] = None):
-    """프로젝트 목록 조회 (과정별 필터)"""
+    """팀 목록 조회 (과정별 필터)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
+        # Check if new columns exist, if not, add them
+        try:
+            cursor.execute("SHOW COLUMNS FROM projects LIKE 'group_type'")
+            if not cursor.fetchone():
+                # Add new columns
+                cursor.execute("ALTER TABLE projects ADD COLUMN group_type VARCHAR(50)")
+                cursor.execute("ALTER TABLE projects ADD COLUMN instructor_code VARCHAR(50)")
+                cursor.execute("ALTER TABLE projects ADD COLUMN mentor_code VARCHAR(50)")
+                conn.commit()
+        except:
+            pass  # Columns might already exist
+        
+        # Check if account columns exist, if not, add them
+        try:
+            cursor.execute("SHOW COLUMNS FROM projects LIKE 'account1_name'")
+            if not cursor.fetchone():
+                # Add shared account columns (5 sets of 3 fields = 15 columns)
+                for i in range(1, 6):
+                    cursor.execute(f"ALTER TABLE projects ADD COLUMN account{i}_name VARCHAR(100)")
+                    cursor.execute(f"ALTER TABLE projects ADD COLUMN account{i}_id VARCHAR(100)")
+                    cursor.execute(f"ALTER TABLE projects ADD COLUMN account{i}_pw VARCHAR(100)")
+                conn.commit()
+        except:
+            pass  # Columns might already exist
+        
         query = """
-            SELECT p.*, c.name as course_name
+            SELECT p.*, 
+                   c.name as course_name,
+                   i1.name as instructor_name,
+                   i2.name as mentor_name
             FROM projects p
             LEFT JOIN courses c ON p.course_code = c.code
+            LEFT JOIN instructors i1 ON p.instructor_code = i1.code
+            LEFT JOIN instructors i2 ON p.mentor_code = i2.code
             WHERE 1=1
         """
         params = []
@@ -801,45 +846,90 @@ async def get_projects(course_code: Optional[str] = None):
 
 @app.get("/api/projects/{code}")
 async def get_project(code: str):
-    """특정 프로젝트 조회"""
+    """특정 팀 조회"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute("""
-            SELECT p.*, c.name as course_name
+            SELECT p.*, 
+                   c.name as course_name,
+                   i1.name as instructor_name,
+                   i2.name as mentor_name
             FROM projects p
             LEFT JOIN courses c ON p.course_code = c.code
+            LEFT JOIN instructors i1 ON p.instructor_code = i1.code
+            LEFT JOIN instructors i2 ON p.mentor_code = i2.code
             WHERE p.code = %s
         """, (code,))
         project = cursor.fetchone()
         if not project:
-            raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다")
+            raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
         return convert_datetime(project)
     finally:
         conn.close()
 
 @app.post("/api/projects")
 async def create_project(data: dict):
-    """프로젝트 생성 (5명의 팀원 정보)"""
+    """팀 생성 (5명의 팀원 정보)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        
+        # Check if new columns exist, if not, add them
+        try:
+            cursor.execute("SHOW COLUMNS FROM projects LIKE 'member1_code'")
+            if not cursor.fetchone():
+                # Add new columns
+                for i in range(1, 6):
+                    cursor.execute(f"ALTER TABLE projects ADD COLUMN member{i}_code VARCHAR(50)")
+                cursor.execute("ALTER TABLE projects ADD COLUMN group_type VARCHAR(50)")
+                cursor.execute("ALTER TABLE projects ADD COLUMN instructor_code VARCHAR(50)")
+                cursor.execute("ALTER TABLE projects ADD COLUMN mentor_code VARCHAR(50)")
+                conn.commit()
+        except:
+            pass  # Columns might already exist
+        
+        # Check if account columns exist, if not, add them
+        try:
+            cursor.execute("SHOW COLUMNS FROM projects LIKE 'account1_name'")
+            if not cursor.fetchone():
+                # Add shared account columns (5 sets of 3 fields = 15 columns)
+                for i in range(1, 6):
+                    cursor.execute(f"ALTER TABLE projects ADD COLUMN account{i}_name VARCHAR(100)")
+                    cursor.execute(f"ALTER TABLE projects ADD COLUMN account{i}_id VARCHAR(100)")
+                    cursor.execute(f"ALTER TABLE projects ADD COLUMN account{i}_pw VARCHAR(100)")
+                conn.commit()
+        except:
+            pass  # Columns might already exist
+        
         query = """
-            INSERT INTO projects (code, name, course_code,
-                                 member1_name, member1_phone,
-                                 member2_name, member2_phone,
-                                 member3_name, member3_phone,
-                                 member4_name, member4_phone,
-                                 member5_name, member5_phone)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO projects (code, name, group_type, course_code, instructor_code, mentor_code,
+                                 member1_name, member1_phone, member1_code,
+                                 member2_name, member2_phone, member2_code,
+                                 member3_name, member3_phone, member3_code,
+                                 member4_name, member4_phone, member4_code,
+                                 member5_name, member5_phone, member5_code,
+                                 account1_name, account1_id, account1_pw,
+                                 account2_name, account2_id, account2_pw,
+                                 account3_name, account3_id, account3_pw,
+                                 account4_name, account4_id, account4_pw,
+                                 account5_name, account5_id, account5_pw)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
-            data['code'], data['name'], data.get('course_code'),
-            data.get('member1_name'), data.get('member1_phone'),
-            data.get('member2_name'), data.get('member2_phone'),
-            data.get('member3_name'), data.get('member3_phone'),
-            data.get('member4_name'), data.get('member4_phone'),
-            data.get('member5_name'), data.get('member5_phone')
+            data['code'], data['name'], data.get('group_type'), data.get('course_code'),
+            data.get('instructor_code'), data.get('mentor_code'),
+            data.get('member1_name'), data.get('member1_phone'), data.get('member1_code'),
+            data.get('member2_name'), data.get('member2_phone'), data.get('member2_code'),
+            data.get('member3_name'), data.get('member3_phone'), data.get('member3_code'),
+            data.get('member4_name'), data.get('member4_phone'), data.get('member4_code'),
+            data.get('member5_name'), data.get('member5_phone'), data.get('member5_code'),
+            data.get('account1_name'), data.get('account1_id'), data.get('account1_pw'),
+            data.get('account2_name'), data.get('account2_id'), data.get('account2_pw'),
+            data.get('account3_name'), data.get('account3_id'), data.get('account3_pw'),
+            data.get('account4_name'), data.get('account4_id'), data.get('account4_pw'),
+            data.get('account5_name'), data.get('account5_id'), data.get('account5_pw')
         ))
         conn.commit()
         return {"code": data['code']}
@@ -848,27 +938,39 @@ async def create_project(data: dict):
 
 @app.put("/api/projects/{code}")
 async def update_project(code: str, data: dict):
-    """프로젝트 수정"""
+    """팀 수정"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         query = """
             UPDATE projects
-            SET name = %s, course_code = %s,
-                member1_name = %s, member1_phone = %s,
-                member2_name = %s, member2_phone = %s,
-                member3_name = %s, member3_phone = %s,
-                member4_name = %s, member4_phone = %s,
-                member5_name = %s, member5_phone = %s
+            SET name = %s, group_type = %s, course_code = %s, 
+                instructor_code = %s, mentor_code = %s,
+                member1_name = %s, member1_phone = %s, member1_code = %s,
+                member2_name = %s, member2_phone = %s, member2_code = %s,
+                member3_name = %s, member3_phone = %s, member3_code = %s,
+                member4_name = %s, member4_phone = %s, member4_code = %s,
+                member5_name = %s, member5_phone = %s, member5_code = %s,
+                account1_name = %s, account1_id = %s, account1_pw = %s,
+                account2_name = %s, account2_id = %s, account2_pw = %s,
+                account3_name = %s, account3_id = %s, account3_pw = %s,
+                account4_name = %s, account4_id = %s, account4_pw = %s,
+                account5_name = %s, account5_id = %s, account5_pw = %s
             WHERE code = %s
         """
         cursor.execute(query, (
-            data['name'], data.get('course_code'),
-            data.get('member1_name'), data.get('member1_phone'),
-            data.get('member2_name'), data.get('member2_phone'),
-            data.get('member3_name'), data.get('member3_phone'),
-            data.get('member4_name'), data.get('member4_phone'),
-            data.get('member5_name'), data.get('member5_phone'),
+            data['name'], data.get('group_type'), data.get('course_code'),
+            data.get('instructor_code'), data.get('mentor_code'),
+            data.get('member1_name'), data.get('member1_phone'), data.get('member1_code'),
+            data.get('member2_name'), data.get('member2_phone'), data.get('member2_code'),
+            data.get('member3_name'), data.get('member3_phone'), data.get('member3_code'),
+            data.get('member4_name'), data.get('member4_phone'), data.get('member4_code'),
+            data.get('member5_name'), data.get('member5_phone'), data.get('member5_code'),
+            data.get('account1_name'), data.get('account1_id'), data.get('account1_pw'),
+            data.get('account2_name'), data.get('account2_id'), data.get('account2_pw'),
+            data.get('account3_name'), data.get('account3_id'), data.get('account3_pw'),
+            data.get('account4_name'), data.get('account4_id'), data.get('account4_pw'),
+            data.get('account5_name'), data.get('account5_id'), data.get('account5_pw'),
             code
         ))
         conn.commit()
@@ -878,13 +980,15 @@ async def update_project(code: str, data: dict):
 
 @app.delete("/api/projects/{code}")
 async def delete_project(code: str):
-    """프로젝트 삭제"""
+    """팀 삭제"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM projects WHERE code = %s", (code,))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
         conn.commit()
-        return {"message": "프로젝트가 삭제되었습니다"}
+        return {"message": "팀이 삭제되었습니다"}
     finally:
         conn.close()
 
