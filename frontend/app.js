@@ -3031,21 +3031,25 @@ function renderTimetableList() {
 
 async function loadTimetables() {
     try {
-        // 과정 목록도 함께 로드
-        const [ttRes, coursesRes] = await Promise.all([
+        // 과정, 과목, 강사 목록도 함께 로드
+        const [ttRes, coursesRes, subjectsRes, instructorsRes] = await Promise.all([
             axios.get(`${API_BASE_URL}/api/timetables`),
-            axios.get(`${API_BASE_URL}/api/courses`)
+            axios.get(`${API_BASE_URL}/api/courses`),
+            axios.get(`${API_BASE_URL}/api/subjects`),
+            axios.get(`${API_BASE_URL}/api/instructors`)
         ]);
         timetables = ttRes.data;
-        const courses = coursesRes.data;
-        renderTimetables(courses);
+        courses = coursesRes.data;
+        subjects = subjectsRes.data;
+        instructors = instructorsRes.data;
+        renderTimetables();
     } catch (error) {
         console.error('시간표 목록 로드 실패:', error);
         document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">시간표 목록을 불러오는데 실패했습니다.</div>';
     }
 }
 
-function renderTimetables(courses = []) {
+function renderTimetables() {
     const app = document.getElementById('app');
     app.innerHTML = `
         <div class="bg-white rounded-lg shadow-md p-6">
@@ -3213,20 +3217,70 @@ window.showTimetableForm = function(id = null) {
     const existing = id ? timetables.find(tt => tt.id === id) : null;
     
     formDiv.innerHTML = `
-        <h3 class="text-lg font-semibold mb-4">${id ? '시간표 수정' : '시간표 추가'}</h3>
+        <div class="flex justify-between items-start mb-4">
+            <h3 class="text-lg font-semibold">${id ? '시간표 수정' : '시간표 추가'}</h3>
+            <button onclick="window.hideTimetableForm()" class="text-gray-600 hover:text-gray-800">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <input type="text" id="tt-course-code" placeholder="과정코드" value="${existing ? existing.course_code : ''}" class="border rounded px-3 py-2">
-            <input type="text" id="tt-subject-code" placeholder="과목코드" value="${existing ? existing.subject_code || '' : ''}" class="border rounded px-3 py-2">
-            <input type="text" id="tt-instructor-code" placeholder="강사코드" value="${existing ? existing.instructor_code || '' : ''}" class="border rounded px-3 py-2">
-            <input type="date" id="tt-class-date" value="${existing ? existing.class_date : ''}" class="border rounded px-3 py-2">
-            <input type="time" id="tt-start-time" value="${existing ? formatTime(existing.start_time) : ''}" class="border rounded px-3 py-2">
-            <input type="time" id="tt-end-time" value="${existing ? formatTime(existing.end_time) : ''}" class="border rounded px-3 py-2">
-            <select id="tt-type" class="border rounded px-3 py-2">
-                <option value="lecture" ${existing && existing.type === 'lecture' ? 'selected' : ''}>강의</option>
-                <option value="project" ${existing && existing.type === 'project' ? 'selected' : ''}>프로젝트</option>
-                <option value="internship" ${existing && existing.type === 'internship' ? 'selected' : ''}>인턴십</option>
-            </select>
-            <input type="text" id="tt-notes" placeholder="비고" value="${existing ? existing.notes || '' : ''}" class="border rounded px-3 py-2">
+            <div>
+                <label class="block text-sm text-gray-700 mb-1">과정 *</label>
+                <select id="tt-course-code" class="w-full border rounded px-3 py-2" required>
+                    <option value="">선택하세요</option>
+                    ${courses.map(c => `
+                        <option value="${c.code}" ${existing && existing.course_code === c.code ? 'selected' : ''}>
+                            ${c.code} - ${c.name || c.code}
+                        </option>
+                    `).join('')}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-700 mb-1">과목</label>
+                <select id="tt-subject-code" class="w-full border rounded px-3 py-2">
+                    <option value="">선택하세요</option>
+                    ${subjects.map(s => `
+                        <option value="${s.code}" ${existing && existing.subject_code === s.code ? 'selected' : ''}>
+                            ${s.code} - ${s.name || s.code}
+                        </option>
+                    `).join('')}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-700 mb-1">강사</label>
+                <select id="tt-instructor-code" class="w-full border rounded px-3 py-2">
+                    <option value="">선택하세요</option>
+                    ${instructors.map(i => `
+                        <option value="${i.code}" ${existing && existing.instructor_code === i.code ? 'selected' : ''}>
+                            ${i.code} - ${i.name}
+                        </option>
+                    `).join('')}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-700 mb-1">날짜 *</label>
+                <input type="date" id="tt-class-date" value="${existing ? existing.class_date : ''}" class="w-full border rounded px-3 py-2" required>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-700 mb-1">시작 시간 *</label>
+                <input type="time" id="tt-start-time" value="${existing ? formatTime(existing.start_time) : ''}" class="w-full border rounded px-3 py-2" required>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-700 mb-1">종료 시간 *</label>
+                <input type="time" id="tt-end-time" value="${existing ? formatTime(existing.end_time) : ''}" class="w-full border rounded px-3 py-2" required>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-700 mb-1">타입 *</label>
+                <select id="tt-type" class="w-full border rounded px-3 py-2" required>
+                    <option value="lecture" ${existing && existing.type === 'lecture' ? 'selected' : ''}>강의</option>
+                    <option value="project" ${existing && existing.type === 'project' ? 'selected' : ''}>프로젝트</option>
+                    <option value="internship" ${existing && existing.type === 'internship' ? 'selected' : ''}>인턴십</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-700 mb-1">비고</label>
+                <input type="text" id="tt-notes" placeholder="비고" value="${existing ? existing.notes || '' : ''}" class="w-full border rounded px-3 py-2">
+            </div>
         </div>
         <div class="mt-4 space-x-2">
             <button onclick="window.saveTimetable(${id || 'null'})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
