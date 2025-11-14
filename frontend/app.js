@@ -534,7 +534,7 @@ window.showStudentForm = function(studentId = null) {
                         </div>
                         <input type="file" id="student-file-input" accept="image/*" multiple 
                                onchange="window.handleStudentImageUpload(event)" class="hidden">
-                        <input type="file" id="student-camera-input" accept="image/*" capture="environment" 
+                        <input type="file" id="student-camera-input" accept="image/*"  
                                onchange="window.handleStudentImageUpload(event)" class="hidden">
                         <div id="student-upload-progress" class="hidden mb-3">
                             <div class="bg-blue-50 border border-blue-200 rounded p-3">
@@ -679,7 +679,11 @@ window.handleStudentImageUpload = async function(event) {
             }, 1000);
         }
         
-        window.showAlert(`${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        // 학생 이름 가져오기
+        const studentNameInput = document.querySelector('input[name="name"]');
+        const studentName = studentNameInput ? studentNameInput.value : '';
+        const contextMsg = studentName ? `${studentName} 학생에게 ` : '학생에게 ';
+        window.showAlert(`${contextMsg}${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
         
     } catch (error) {
         // 프로그레스 바 숨기기
@@ -694,13 +698,26 @@ window.handleStudentImageUpload = async function(event) {
 }
 
 // 학생 사진 삭제
-window.removeStudentPhoto = function(index) {
+window.removeStudentPhoto = async function(index) {
     const photoUrlsInput = document.getElementById('student-photo-urls');
     const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
     
     photoUrls.splice(index, 1);
     photoUrlsInput.value = JSON.stringify(photoUrls);
     updateStudentPhotoPreview(photoUrls);
+    
+    // 자동 저장
+    const studentIdInput = document.getElementById('student-id');
+    const studentId = studentIdInput ? studentIdInput.value : null;
+    if (studentId) {
+        await window.saveStudent(parseInt(studentId));
+        
+        // 학생 이름 가져오기
+        const studentNameInput = document.querySelector('input[name="name"]');
+        const studentName = studentNameInput ? studentNameInput.value : '';
+        const contextMsg = studentName ? `${studentName} 학생에게서 ` : '학생에게서 ';
+        window.showAlert(`${contextMsg}사진이 삭제되고 자동 저장되었습니다.`);
+    }
 }
 
 // 학생 사진 미리보기 업데이트
@@ -1598,7 +1615,7 @@ window.showCounselingForm = function(counselingId = null) {
                         </div>
                         <input type="file" id="counseling-file-input" accept="image/*" multiple 
                                onchange="window.handleCounselingImageUpload(event)" class="hidden">
-                        <input type="file" id="counseling-camera-input" accept="image/*" capture="environment" 
+                        <input type="file" id="counseling-camera-input" accept="image/*"  
                                onchange="window.handleCounselingImageUpload(event)" class="hidden">
                         <div id="counseling-photos-preview" class="flex flex-col gap-2 mt-2">
                             ${existingCounseling?.photo_urls ? JSON.parse(existingCounseling.photo_urls).map((url, idx) => `
@@ -1734,7 +1751,11 @@ window.handleCounselingImageUpload = async function(event) {
             }, 1000);
         }
         
-        window.showAlert(`${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        // 학생 이름 가져오기
+        const studentSelect = document.querySelector('#counseling-save-form select[name="student_id"]');
+        const studentName = studentSelect ? studentSelect.options[studentSelect.selectedIndex].text : '';
+        const contextMsg = studentName ? `${studentName} 학생의 상담일지에 ` : '';
+        window.showAlert(`${contextMsg}${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
         
     } catch (error) {
         // 프로그레스 바 숨기기
@@ -1748,11 +1769,24 @@ window.handleCounselingImageUpload = async function(event) {
     event.target.value = '';
 }
 
-window.removeCounselingPhoto = function(index) {
+window.removeCounselingPhoto = async function(index) {
     const photoUrls = JSON.parse(document.getElementById('counseling-photo-urls').value || '[]');
     photoUrls.splice(index, 1);
     document.getElementById('counseling-photo-urls').value = JSON.stringify(photoUrls);
     updateCounselingPhotoPreview(photoUrls);
+    
+    // 자동 저장
+    const counselingIdInput = document.getElementById('counseling-id');
+    const counselingId = counselingIdInput ? counselingIdInput.value : null;
+    if (counselingId) {
+        await window.saveCounseling(parseInt(counselingId));
+        
+        // 학생 이름 가져오기
+        const studentSelect = document.querySelector('#counseling-save-form select[name="student_id"]');
+        const studentName = studentSelect ? studentSelect.options[studentSelect.selectedIndex].text : '';
+        const contextMsg = studentName ? `${studentName} 학생의 상담일지에서 ` : '';
+        window.showAlert(`${contextMsg}사진이 삭제되고 자동 저장되었습니다.`);
+    }
 }
 
 function updateCounselingPhotoPreview(photoUrls) {
@@ -2447,7 +2481,7 @@ window.showInstructorForm = function(code = null) {
                 </div>
                 <input type="file" id="instructor-file-input" accept="image/*" multiple 
                        onchange="window.handleInstructorImageUpload(event)" class="hidden">
-                <input type="file" id="instructor-camera-input" accept="image/*" capture="environment" 
+                <input type="file" id="instructor-camera-input" accept="image/*"  
                        onchange="window.handleInstructorImageUpload(event)" class="hidden">
                 <div id="instructor-upload-progress" class="hidden mb-3">
                     <div class="bg-blue-50 border border-blue-200 rounded p-3">
@@ -2597,7 +2631,11 @@ window.handleInstructorImageUpload = async function(event) {
             }, 1000);
         }
         
-        window.showAlert(`${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        // 강사 이름 가져오기
+        const instructorNameInput = document.querySelector('input[name="name"]');
+        const instructorName = instructorNameInput ? instructorNameInput.value : '';
+        const contextMsg = instructorName ? `${instructorName} 강사에게 ` : '강사에게 ';
+        window.showAlert(`${contextMsg}${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
         
     } catch (error) {
         // 프로그레스 바 숨기기
@@ -2612,13 +2650,26 @@ window.handleInstructorImageUpload = async function(event) {
 }
 
 // 강사 사진 삭제
-window.removeInstructorPhoto = function(index) {
+window.removeInstructorPhoto = async function(index) {
     const photoUrlsInput = document.getElementById('instructor-photo-urls');
     const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
     
     photoUrls.splice(index, 1);
     photoUrlsInput.value = JSON.stringify(photoUrls);
     updateInstructorPhotoPreview(photoUrls);
+    
+    // 자동 저장
+    const instructorCodeInput = document.getElementById('instructor-code');
+    const existingCode = instructorCodeInput ? instructorCodeInput.value : null;
+    if (existingCode) {
+        await window.saveInstructor(existingCode);
+        
+        // 강사 이름 가져오기
+        const instructorNameInput = document.querySelector('input[name="name"]');
+        const instructorName = instructorNameInput ? instructorNameInput.value : '';
+        const contextMsg = instructorName ? `${instructorName} 강사에게서 ` : '강사에게서 ';
+        window.showAlert(`${contextMsg}사진이 삭제되고 자동 저장되었습니다.`);
+    }
 }
 
 // 강사 사진 미리보기 업데이트
@@ -4861,7 +4912,7 @@ window.showTrainingLogForm = async function(timetableId) {
                             </div>
                             <input type="file" id="training-file-input" accept="image/*" multiple 
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
-                            <input type="file" id="training-camera-input" accept="image/*" capture="environment" 
+                            <input type="file" id="training-camera-input" accept="image/*"  
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
                             <div id="training-upload-progress" class="hidden mb-3">
                                 <div class="bg-blue-50 border border-blue-200 rounded p-3">
@@ -4987,7 +5038,7 @@ window.editTrainingLog = async function(logId, timetableId) {
                             </div>
                             <input type="file" id="training-file-input" accept="image/*" multiple 
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
-                            <input type="file" id="training-camera-input" accept="image/*" capture="environment" 
+                            <input type="file" id="training-camera-input" accept="image/*"  
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
                             <div id="training-upload-progress" class="hidden mb-3">
                                 <div class="bg-blue-50 border border-blue-200 rounded p-3">
@@ -5114,7 +5165,13 @@ window.handleTrainingImageUpload = async function(event) {
             }, 1000);
         }
         
-        window.showAlert(`${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        // 과정명과 날짜 정보 가져오기
+        const courseCodeInput = document.getElementById('training-course-code');
+        const classDateInput = document.getElementById('training-class-date');
+        const courseName = courseCodeInput?.dataset?.courseName || '';
+        const classDate = classDateInput?.value || '';
+        const contextMsg = courseName && classDate ? `${courseName} (${classDate}) 훈련일지에 ` : '훈련일지에 ';
+        window.showAlert(`${contextMsg}${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
         
     } catch (error) {
         // 프로그레스 바 숨기기
@@ -5127,11 +5184,27 @@ window.handleTrainingImageUpload = async function(event) {
     event.target.value = '';
 }
 
-window.removeTrainingPhoto = function(index) {
+window.removeTrainingPhoto = async function(index) {
     const photoUrls = JSON.parse(document.getElementById('training-photo-urls').value || '[]');
     photoUrls.splice(index, 1);
     document.getElementById('training-photo-urls').value = JSON.stringify(photoUrls);
     updateTrainingPhotoPreview(photoUrls);
+    
+    // 자동 저장
+    const logIdInput = document.getElementById('training-log-id');
+    const logId = logIdInput ? logIdInput.value : null;
+    
+    if (logId) {
+        await window.updateTrainingLog(parseInt(logId));
+        
+        // 과정명과 날짜 정보 가져오기
+        const courseCodeInput = document.getElementById('training-course-code');
+        const classDateInput = document.getElementById('training-class-date');
+        const courseName = courseCodeInput?.dataset?.courseName || '';
+        const classDate = classDateInput?.value || '';
+        const contextMsg = courseName && classDate ? `${courseName} (${classDate}) 훈련일지에서 ` : '훈련일지에서 ';
+        window.showAlert(`${contextMsg}사진이 삭제되고 자동 저장되었습니다.`);
+    }
 }
 
 function updateTrainingPhotoPreview(photoUrls) {
