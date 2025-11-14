@@ -1789,7 +1789,8 @@ window.filterCounselings = async function() {
                                     </button>
                                 </td>
                             </tr>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
