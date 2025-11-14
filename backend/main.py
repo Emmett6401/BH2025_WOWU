@@ -2463,14 +2463,14 @@ async def generate_ai_counseling(data: dict):
 @app.post("/api/upload-image")
 async def upload_image(
     file: UploadFile = File(...),
-    category: str = Query(..., description="guidance, train, student, teacher")
+    category: str = Query(..., description="guidance, train, student, teacher, team")
 ):
     """
     이미지 파일을 FTP 서버에 업로드
     
     Args:
         file: 업로드할 이미지 파일
-        category: 저장 카테고리 (guidance=상담일지, train=훈련일지, student=학생, teacher=강사)
+        category: 저장 카테고리 (guidance=상담일지, train=훈련일지, student=학생, teacher=강사, team=팀)
     
     Returns:
         업로드된 파일의 URL

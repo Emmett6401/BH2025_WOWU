@@ -4251,10 +4251,8 @@ window.handleProjectImageUpload = async function(event) {
             const file = files[i];
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('category', 'team');
-            formData.append('record_id', projectCode || 'temp');
 
-            const response = await axios.post(`${API_BASE_URL}/api/upload-image`, formData, {
+            const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=team`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
                 onUploadProgress: (progressEvent) => {
                     const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
