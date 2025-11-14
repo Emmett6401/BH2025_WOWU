@@ -1438,15 +1438,25 @@ function renderAIReport() {
                 </p>
             </div>
             
-            <!-- 학생 선택 -->
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">학생 선택</label>
-                <select id="ai-student-select" onchange="window.loadStudentCounselings()" class="w-full md:w-1/2 border rounded px-3 py-2">
-                    <option value="">-- 학생을 선택하세요 --</option>
-                    ${students.map(s => `
-                        <option value="${s.id}">${s.name} (${s.code})</option>
-                    `).join('')}
-                </select>
+            <!-- 학생 선택 및 스타일 옵션 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">학생 선택</label>
+                    <select id="ai-student-select" onchange="window.loadStudentCounselings()" class="w-full border rounded px-3 py-2">
+                        <option value="">-- 학생을 선택하세요 --</option>
+                        ${students.map(s => `
+                            <option value="${s.id}">${s.name} (${s.code})</option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">작성 스타일</label>
+                    <select id="ai-report-style" class="w-full border rounded px-3 py-2">
+                        <option value="formal">공식적 (정식 생활기록부 양식)</option>
+                        <option value="friendly">친근한 (따뜻하고 격려적인 톤)</option>
+                        <option value="detailed">상세 분석 (심층 평가 및 분석)</option>
+                    </select>
+                </div>
             </div>
             
             <!-- 상담 기록 리스트 -->
@@ -1586,11 +1596,13 @@ window.generateAIReport = async function() {
     
     try {
         const student = students.find(s => s.id === selectedStudentForAI);
+        const style = document.getElementById('ai-report-style').value;
         
         const response = await axios.post(`${API_BASE_URL}/api/ai/generate-report`, {
             student_id: selectedStudentForAI,
             student_name: student ? student.name : '알 수 없음',
-            student_code: student ? student.code : '알 수 없음'
+            student_code: student ? student.code : '알 수 없음',
+            style: style
         });
         
         generatedReport = response.data.report;
