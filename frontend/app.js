@@ -1510,7 +1510,7 @@ function renderCounselings() {
             
             <!-- 검색 및 필터 -->
             <div class="bg-gray-50 p-4 rounded-lg mb-6">
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
                     <div>
                         <label class="block text-sm text-gray-700 mb-1">과정 선택</label>
                         <select id="filter-course" class="w-full border rounded px-3 py-2" onchange="window.updateStudentsByCourse(); window.filterCounselings();">
@@ -1522,7 +1522,10 @@ function renderCounselings() {
                         <label class="block text-sm text-gray-700 mb-1">학생 선택</label>
                         <select id="filter-student" class="w-full border rounded px-3 py-2" onchange="window.filterCounselings()">
                             <option value="">전체 학생</option>
-                            ${students.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join('')}
+                            ${students.map(s => {
+                                const counselingCount = counselings.filter(c => c.student_id === s.id).length;
+                                return `<option value="${s.id}">${s.name} (${s.code}) - ${counselingCount}회</option>`;
+                            }).join('')}
                         </select>
                     </div>
                     <div>
@@ -1530,6 +1533,15 @@ function renderCounselings() {
                         <select id="filter-instructor" class="w-full border rounded px-3 py-2" onchange="window.filterCounselings()">
                             <option value="">전체</option>
                             ${instructors.map(i => `<option value="${i.code}">${i.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-700 mb-1">정렬</label>
+                        <select id="filter-sort" class="w-full border rounded px-3 py-2" onchange="window.filterCounselings()">
+                            <option value="date-desc">최신순</option>
+                            <option value="date-asc">오래된순</option>
+                            <option value="counseling-count-desc">상담많은순</option>
+                            <option value="counseling-count-asc">상담적은순</option>
                         </select>
                     </div>
                     <div>
@@ -1568,7 +1580,7 @@ function renderCounselings() {
                         <thead class="bg-gray-100">
                             <tr>
                                 <th class="px-3 py-2 text-left text-xs">날짜</th>
-                                <th class="px-3 py-2 text-left text-xs">학생</th>
+                                <th class="px-3 py-2 text-left text-xs">학생 (상담횟수)</th>
                                 <th class="px-3 py-2 text-left text-xs">상담선생님</th>
                                 <th class="px-3 py-2 text-left text-xs">유형</th>
                                 <th class="px-3 py-2 text-left text-xs">상담내용</th>
@@ -1577,7 +1589,9 @@ function renderCounselings() {
                             </tr>
                         </thead>
                         <tbody>
-                            ${counselings.map(c => `
+                            ${counselings.map(c => {
+                                const studentCounselingCount = counselings.filter(item => item.student_id === c.student_id).length;
+                                return `
                                 <tr class="border-t hover:bg-gray-50">
                                     <td class="px-3 py-2 text-xs">${formatDateWithDay(c.consultation_date)}</td>
                                     <td class="px-3 py-2 text-xs">
@@ -1585,6 +1599,9 @@ function renderCounselings() {
                                                 class="text-blue-600 hover:underline">
                                             ${c.student_name} (${c.student_code})
                                         </button>
+                                        <span class="ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                                            ${studentCounselingCount}회
+                                        </span>
                                     </td>
                                     <td class="px-3 py-2 text-xs">${c.instructor_name || '-'}</td>
                                     <td class="px-3 py-2 text-xs">
@@ -1619,7 +1636,8 @@ function renderCounselings() {
                                         </button>
                                     </td>
                                 </tr>
-                            `).join('')}
+                            `;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -1666,6 +1684,47 @@ window.filterCounselings = async function() {
             );
         }
         
+        // 정렬 처리
+        const sortType = document.getElementById('filter-sort').value;
+        
+        if (sortType === 'date-desc') {
+            // 최신순 (기본)
+            filtered.sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date));
+        } else if (sortType === 'date-asc') {
+            // 오래된순
+            filtered.sort((a, b) => new Date(a.consultation_date) - new Date(b.consultation_date));
+        } else if (sortType === 'counseling-count-desc') {
+            // 상담많은순 - 학생별 상담 횟수로 정렬
+            const counselingCounts = {};
+            filtered.forEach(c => {
+                counselingCounts[c.student_id] = (counselingCounts[c.student_id] || 0) + 1;
+            });
+            filtered.sort((a, b) => {
+                const countA = counselingCounts[a.student_id] || 0;
+                const countB = counselingCounts[b.student_id] || 0;
+                if (countB !== countA) {
+                    return countB - countA; // 상담 횟수 많은순
+                }
+                // 같으면 최신순
+                return new Date(b.consultation_date) - new Date(a.consultation_date);
+            });
+        } else if (sortType === 'counseling-count-asc') {
+            // 상담적은순 - 학생별 상담 횟수로 정렬
+            const counselingCounts = {};
+            filtered.forEach(c => {
+                counselingCounts[c.student_id] = (counselingCounts[c.student_id] || 0) + 1;
+            });
+            filtered.sort((a, b) => {
+                const countA = counselingCounts[a.student_id] || 0;
+                const countB = counselingCounts[b.student_id] || 0;
+                if (countA !== countB) {
+                    return countA - countB; // 상담 횟수 적은순
+                }
+                // 같으면 최신순
+                return new Date(b.consultation_date) - new Date(a.consultation_date);
+            });
+        }
+        
         counselings = filtered;
         
         // 목록만 다시 렌더링
@@ -1677,7 +1736,7 @@ window.filterCounselings = async function() {
                     <thead class="bg-gray-100">
                         <tr>
                             <th class="px-3 py-2 text-left text-xs">날짜</th>
-                            <th class="px-3 py-2 text-left text-xs">학생</th>
+                            <th class="px-3 py-2 text-left text-xs">학생 (상담횟수)</th>
                             <th class="px-3 py-2 text-left text-xs">상담선생님</th>
                             <th class="px-3 py-2 text-left text-xs">유형</th>
                             <th class="px-3 py-2 text-left text-xs">상담내용</th>
@@ -1686,7 +1745,9 @@ window.filterCounselings = async function() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${counselings.map(c => `
+                        ${counselings.map(c => {
+                            const studentCounselingCount = counselings.filter(item => item.student_id === c.student_id).length;
+                            return `
                             <tr class="border-t hover:bg-gray-50">
                                 <td class="px-3 py-2 text-xs">${formatDateWithDay(c.consultation_date)}</td>
                                 <td class="px-3 py-2 text-xs">
@@ -1694,6 +1755,9 @@ window.filterCounselings = async function() {
                                             class="text-blue-600 hover:underline">
                                         ${c.student_name} (${c.student_code})
                                     </button>
+                                    <span class="ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                                        ${studentCounselingCount}회
+                                    </span>
                                 </td>
                                 <td class="px-3 py-2 text-xs">${c.instructor_name || '-'}</td>
                                 <td class="px-3 py-2 text-xs">
