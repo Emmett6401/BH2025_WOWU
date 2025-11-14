@@ -133,6 +133,24 @@ function paginateArray(array, page, itemsPerPage) {
     return array.slice(startIndex, endIndex);
 }
 
+// ==================== Debounce 헬퍼 ====================
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// 디바운스된 상담 필터링 (500ms 대기)
+window.debouncedFilterCounselings = debounce(() => {
+    window.filterCounselings();
+}, 500);
+
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
     console.log('App initialized');
@@ -812,37 +830,38 @@ function renderCounselings() {
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
                     <div>
                         <label class="block text-sm text-gray-700 mb-1">과정 선택</label>
-                        <select id="filter-course" class="w-full border rounded px-3 py-2" onchange="window.updateStudentsByCourse()">
+                        <select id="filter-course" class="w-full border rounded px-3 py-2" onchange="window.updateStudentsByCourse(); window.filterCounselings();">
                             <option value="">전체 과정</option>
                             ${courses.map(c => `<option value="${c.code}">${c.name || c.code}</option>`).join('')}
                         </select>
                     </div>
                     <div>
                         <label class="block text-sm text-gray-700 mb-1">학생 선택</label>
-                        <select id="filter-student" class="w-full border rounded px-3 py-2">
+                        <select id="filter-student" class="w-full border rounded px-3 py-2" onchange="window.filterCounselings()">
                             <option value="">전체 학생</option>
                             ${students.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join('')}
                         </select>
                     </div>
                     <div>
                         <label class="block text-sm text-gray-700 mb-1">상담 선생님</label>
-                        <select id="filter-instructor" class="w-full border rounded px-3 py-2">
+                        <select id="filter-instructor" class="w-full border rounded px-3 py-2" onchange="window.filterCounselings()">
                             <option value="">전체</option>
                             ${instructors.map(i => `<option value="${i.code}">${i.name}</option>`).join('')}
                         </select>
                     </div>
                     <div>
                         <label class="block text-sm text-gray-700 mb-1">시작 날짜</label>
-                        <input type="date" id="filter-start-date" class="w-full border rounded px-3 py-2">
+                        <input type="date" id="filter-start-date" class="w-full border rounded px-3 py-2" onchange="window.filterCounselings()">
                     </div>
                     <div>
                         <label class="block text-sm text-gray-700 mb-1">종료 날짜</label>
-                        <input type="date" id="filter-end-date" class="w-full border rounded px-3 py-2">
+                        <input type="date" id="filter-end-date" class="w-full border rounded px-3 py-2" onchange="window.filterCounselings()">
                     </div>
                 </div>
                 <div class="flex gap-2">
                     <input type="text" id="filter-content" placeholder="상담 내용 검색..." 
-                           class="flex-1 border rounded px-3 py-2">
+                           class="flex-1 border rounded px-3 py-2"
+                           onkeyup="window.debouncedFilterCounselings()">
                     <button onclick="window.filterCounselings()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
                         <i class="fas fa-search mr-2"></i>검색
                     </button>
