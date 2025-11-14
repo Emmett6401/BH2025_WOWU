@@ -274,9 +274,45 @@ async function loadDashboard() {
             .sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date))
             .slice(0, 5);
         
-        // 오늘 시간표
+        // 오늘 시간표 (추가 정보와 함께)
         const today = new Date().toISOString().split('T')[0];
-        const todayTimetables = timetablesData.filter(t => t.class_date === today);
+        const todayTimetables = timetablesData
+            .filter(t => t.class_date === today)
+            .map(t => {
+                // 해당 과정 찾기
+                const course = coursesData.find(c => c.code === t.course_code);
+                
+                // 과정 시작일부터 오늘까지 일수 계산
+                let daysFromStart = 0;
+                if (course && course.start_date) {
+                    const startDate = new Date(course.start_date);
+                    const currentDate = new Date(today);
+                    const diffTime = currentDate - startDate;
+                    daysFromStart = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1은 시작일을 1일로 계산
+                }
+                
+                // 해당 과정의 시간표 중 오늘까지의 총 시수 계산
+                const courseTimetables = timetablesData.filter(tt => 
+                    tt.course_code === t.course_code && 
+                    tt.class_date <= today
+                );
+                const totalHours = courseTimetables.length;
+                
+                // 오늘 몇 번째 시간인지 계산 (같은 날짜 내에서)
+                const todayCourseTimetables = timetablesData
+                    .filter(tt => tt.course_code === t.course_code && tt.class_date === today)
+                    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+                const todayHourIndex = todayCourseTimetables.findIndex(tt => tt.id === t.id) + 1;
+                const todayTotalHours = todayCourseTimetables.length;
+                
+                return {
+                    ...t,
+                    daysFromStart,
+                    totalHours,
+                    todayHourIndex,
+                    todayTotalHours
+                };
+            });
         
         // 최근 훈련일지 (최근 5건)
         const recentTrainingLogs = trainingLogsData
@@ -364,14 +400,44 @@ async function loadDashboard() {
                         </div>
                         <div class="space-y-3">
                             ${todayTimetables.length > 0 ? todayTimetables.slice(0, 5).map(t => `
-                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                    <div class="flex-1">
-                                        <p class="font-semibold text-gray-800">${t.subject_name || '과목명 없음'}</p>
-                                        <p class="text-sm text-gray-600">${t.course_name || t.course_code} - ${t.instructor_name || '강사 미정'}</p>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-sm font-semibold text-blue-600">${t.start_time} - ${t.end_time}</p>
-                                        <p class="text-xs text-gray-500">${t.type === 'lecture' ? '강의' : t.type === 'project' ? '프로젝트' : '인턴십'}</p>
+                                <div class="border-l-4 ${
+                                    t.type === 'lecture' ? 'border-blue-500' : 
+                                    t.type === 'project' ? 'border-green-500' : 
+                                    'border-purple-500'
+                                } bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <h4 class="font-bold text-gray-800 text-lg">${t.subject_name || '과목명 없음'}</h4>
+                                                <span class="text-xs px-2 py-1 rounded ${
+                                                    t.type === 'lecture' ? 'bg-blue-100 text-blue-700' : 
+                                                    t.type === 'project' ? 'bg-green-100 text-green-700' : 
+                                                    'bg-purple-100 text-purple-700'
+                                                }">
+                                                    ${t.type === 'lecture' ? '강의' : t.type === 'project' ? '프로젝트' : '인턴십'}
+                                                </span>
+                                            </div>
+                                            <p class="text-sm text-gray-600 mb-2">
+                                                <i class="fas fa-graduation-cap mr-1"></i>${t.course_name || t.course_code}
+                                            </p>
+                                            <p class="text-sm text-gray-700 font-semibold">
+                                                <i class="fas fa-chalkboard-teacher mr-1 text-green-600"></i>${t.instructor_name || '강사 미정'}
+                                            </p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-lg font-bold text-blue-600 mb-1">${t.start_time} - ${t.end_time}</p>
+                                            <div class="text-xs text-gray-600 space-y-1">
+                                                ${t.daysFromStart > 0 ? `
+                                                    <p><i class="fas fa-calendar-day mr-1"></i><strong>${t.daysFromStart}일째</strong></p>
+                                                ` : ''}
+                                                ${t.totalHours > 0 ? `
+                                                    <p><i class="fas fa-clock mr-1"></i><strong>누적 ${t.totalHours}시간</strong></p>
+                                                ` : ''}
+                                                ${t.todayTotalHours > 1 ? `
+                                                    <p><i class="fas fa-list-ol mr-1"></i>오늘 ${t.todayHourIndex}/${t.todayTotalHours}교시</p>
+                                                ` : ''}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             `).join('') : `
