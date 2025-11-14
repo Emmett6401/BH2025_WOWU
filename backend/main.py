@@ -2646,7 +2646,7 @@ async def get_thumbnail(url: str = Query(..., description="FTP URL")):
         url: FTP URL
     
     Returns:
-        썸네일 이미지 (있으면), 없으면 기본 아이콘
+        썸네일 이미지 (있으면 제공, 없으면 FTP에서 다운로드하여 생성)
     """
     try:
         # URL에서 파일명 추출
@@ -2663,9 +2663,45 @@ async def get_thumbnail(url: str = Query(..., description="FTP URL")):
                     'Cache-Control': 'public, max-age=86400'  # 1일 캐싱
                 }
             )
-        else:
-            # 썸네일이 없으면 404
-            raise HTTPException(status_code=404, detail="썸네일을 찾을 수 없습니다")
+        
+        # 썸네일이 없으면 FTP에서 원본 다운로드하여 생성
+        try:
+            # FTP URL 파싱
+            url_parts = url.replace('ftp://', '').split('/', 1)
+            file_path = url_parts[1] if len(url_parts) > 1 else ''
+            
+            # FTP 연결 및 다운로드
+            ftp = FTP()
+            ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
+            ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
+            
+            # 파일 다운로드
+            file_data = io.BytesIO()
+            ftp.retrbinary(f'RETR /{file_path}', file_data.write)
+            ftp.quit()
+            
+            # 파일 데이터 가져오기
+            file_data.seek(0)
+            file_bytes = file_data.read()
+            
+            # 썸네일 생성
+            thumb_result = create_thumbnail(file_bytes, filename)
+            
+            if thumb_result and os.path.exists(thumb_path):
+                return FileResponse(
+                    thumb_path,
+                    media_type='image/jpeg',
+                    headers={
+                        'Cache-Control': 'public, max-age=86400'
+                    }
+                )
+            else:
+                # 썸네일 생성 실패
+                raise HTTPException(status_code=404, detail="썸네일 생성 실패")
+                
+        except Exception as e:
+            print(f"FTP 다운로드 및 썸네일 생성 실패: {str(e)}")
+            raise HTTPException(status_code=404, detail="썸네일을 생성할 수 없습니다")
             
     except HTTPException:
         raise

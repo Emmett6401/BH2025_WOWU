@@ -528,7 +528,7 @@ window.showStudentForm = function(studentId = null) {
                                 <i class="fas fa-folder-open mr-2"></i>파일 선택
                             </button>
                             <button type="button" onclick="document.getElementById('student-camera-input').click()" 
-                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
+                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm md:hidden">
                                 <i class="fas fa-camera mr-2"></i>사진 촬영
                             </button>
                         </div>
@@ -1538,9 +1538,20 @@ window.showCounselingForm = function(counselingId = null) {
                                 <i class="fas fa-folder-open mr-2"></i>파일 선택
                             </button>
                             <button type="button" onclick="document.getElementById('counseling-camera-input').click()" 
-                                    class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                                    class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded md:hidden">
                                 <i class="fas fa-camera mr-2"></i>사진 촬영
                             </button>
+                        </div>
+                        <div id="counseling-upload-progress" class="hidden mb-3">
+                            <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                <p class="text-sm text-blue-800 mb-2">
+                                    <i class="fas fa-cloud-upload-alt mr-2"></i>
+                                    서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                                </p>
+                                <div class="w-full bg-blue-200 rounded-full h-2">
+                                    <div id="counseling-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                            </div>
                         </div>
                         <input type="file" id="counseling-file-input" accept="image/*" multiple 
                                onchange="window.handleCounselingImageUpload(event)" class="hidden">
@@ -1621,14 +1632,26 @@ window.handleCounselingImageUpload = async function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
-    window.showLoading('사진 업로드 중...');
+    // 프로그레스 바 표시
+    const progressDiv = document.getElementById('counseling-upload-progress');
+    const progressBar = document.getElementById('counseling-progress-bar');
+    if (progressDiv) {
+        progressDiv.classList.remove('hidden');
+        progressBar.style.width = '0%';
+    }
     
     try {
         const photoUrls = JSON.parse(document.getElementById('counseling-photo-urls').value || '[]');
+        const totalFiles = files.length;
         
-        for (let file of files) {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
             const formData = new FormData();
             formData.append('file', file);
+            
+            // 프로그레스 업데이트
+            const progress = ((i + 0.5) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${progress}%`;
             
             const response = await axios.post(
                 `${API_BASE_URL}/api/upload-image?category=guidance`,
@@ -1641,6 +1664,10 @@ window.handleCounselingImageUpload = async function(event) {
             if (response.data.success) {
                 photoUrls.push(response.data.url);
             }
+            
+            // 완료 프로그레스
+            const completeProgress = ((i + 1) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${completeProgress}%`;
         }
         
         // hidden input 업데이트
@@ -1648,9 +1675,6 @@ window.handleCounselingImageUpload = async function(event) {
         
         // 미리보기 업데이트
         updateCounselingPhotoPreview(photoUrls);
-        
-        window.hideLoading();
-        window.showAlert(`${files.length}개 사진이 업로드되었습니다. 자동 저장 중...`);
         
         // 자동 저장
         const counselingIdInput = document.getElementById('counseling-id');
@@ -1660,8 +1684,19 @@ window.handleCounselingImageUpload = async function(event) {
             await window.saveCounseling(parseInt(counselingId));
         }
         
+        // 프로그레스 바 숨기기
+        if (progressDiv) {
+            setTimeout(() => {
+                progressDiv.classList.add('hidden');
+            }, 1000);
+        }
+        
+        window.showAlert(`${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        
     } catch (error) {
-        window.hideLoading();
+        // 프로그레스 바 숨기기
+        if (progressDiv) progressDiv.classList.add('hidden');
+        
         console.error('사진 업로드 실패:', error);
         window.showAlert('사진 업로드 실패: ' + (error.response?.data?.detail || error.message));
     }
@@ -2363,7 +2398,7 @@ window.showInstructorForm = function(code = null) {
                         <i class="fas fa-folder-open mr-2"></i>파일 선택
                     </button>
                     <button type="button" onclick="document.getElementById('instructor-camera-input').click()" 
-                            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
+                            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm md:hidden">
                         <i class="fas fa-camera mr-2"></i>사진 촬영
                     </button>
                 </div>
@@ -4737,7 +4772,7 @@ window.showTrainingLogForm = async function(timetableId) {
                                     <i class="fas fa-folder-open mr-2"></i>파일 선택
                                 </button>
                                 <button type="button" onclick="document.getElementById('training-camera-input').click()" 
-                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded md:hidden">
                                     <i class="fas fa-camera mr-2"></i>사진 촬영
                                 </button>
                             </div>
@@ -4852,7 +4887,7 @@ window.editTrainingLog = async function(logId, timetableId) {
                                     <i class="fas fa-folder-open mr-2"></i>파일 선택
                                 </button>
                                 <button type="button" onclick="document.getElementById('training-camera-input').click()" 
-                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded md:hidden">
                                     <i class="fas fa-camera mr-2"></i>사진 촬영
                                 </button>
                             </div>
