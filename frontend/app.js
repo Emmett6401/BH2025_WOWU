@@ -9,6 +9,15 @@ let instructors = [];
 let counselings = [];
 let courses = [];
 
+// 페이지네이션 상태
+let pagination = {
+    timetables: { currentPage: 1, itemsPerPage: 50, totalItems: 0 },
+    trainingLogs: { currentPage: 1, itemsPerPage: 50, totalItems: 0 },
+    students: { currentPage: 1, itemsPerPage: 50, totalItems: 0 },
+    counselings: { currentPage: 1, itemsPerPage: 50, totalItems: 0 },
+    instructors: { currentPage: 1, itemsPerPage: 50, totalItems: 0 }
+};
+
 // ==================== 커스텀 알림 모달 ====================
 window.showAlert = function(message) {
     const alertModal = document.getElementById('custom-alert');
@@ -43,6 +52,86 @@ window.handleConfirm = function(result) {
         confirmCallback = null;
     }
 };
+
+// ==================== 페이지네이션 헬퍼 ====================
+function createPaginationHTML(page, itemsPerPage, totalItems, onPageChange, onItemsPerPageChange) {
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const startItem = (page - 1) * itemsPerPage + 1;
+    const endItem = Math.min(page * itemsPerPage, totalItems);
+    
+    let paginationHTML = `
+        <div class="flex justify-between items-center mt-4 pt-4 border-t">
+            <div class="flex items-center space-x-2">
+                <span class="text-sm text-gray-600">페이지당 항목:</span>
+                <select onchange="${onItemsPerPageChange}" class="border rounded px-2 py-1 text-sm">
+                    <option value="25" ${itemsPerPage === 25 ? 'selected' : ''}>25개</option>
+                    <option value="50" ${itemsPerPage === 50 ? 'selected' : ''}>50개</option>
+                    <option value="100" ${itemsPerPage === 100 ? 'selected' : ''}>100개</option>
+                    <option value="200" ${itemsPerPage === 200 ? 'selected' : ''}>200개</option>
+                </select>
+                <span class="text-sm text-gray-600 ml-4">
+                    ${startItem}-${endItem} / 총 ${totalItems}개
+                </span>
+            </div>
+            
+            <div class="flex items-center space-x-1">
+                <button onclick="${onPageChange}(1)" 
+                        ${page === 1 ? 'disabled' : ''} 
+                        class="px-2 py-1 border rounded text-sm ${page === 1 ? 'bg-gray-100 text-gray-400' : 'hover:bg-gray-100'}">
+                    <i class="fas fa-angle-double-left"></i>
+                </button>
+                <button onclick="${onPageChange}(${page - 1})" 
+                        ${page === 1 ? 'disabled' : ''} 
+                        class="px-2 py-1 border rounded text-sm ${page === 1 ? 'bg-gray-100 text-gray-400' : 'hover:bg-gray-100'}">
+                    <i class="fas fa-angle-left"></i>
+                </button>
+                
+                ${generatePageButtons(page, totalPages, onPageChange)}
+                
+                <button onclick="${onPageChange}(${page + 1})" 
+                        ${page === totalPages ? 'disabled' : ''} 
+                        class="px-2 py-1 border rounded text-sm ${page === totalPages ? 'bg-gray-100 text-gray-400' : 'hover:bg-gray-100'}">
+                    <i class="fas fa-angle-right"></i>
+                </button>
+                <button onclick="${onPageChange}(${totalPages})" 
+                        ${page === totalPages ? 'disabled' : ''} 
+                        class="px-2 py-1 border rounded text-sm ${page === totalPages ? 'bg-gray-100 text-gray-400' : 'hover:bg-gray-100'}">
+                    <i class="fas fa-angle-double-right"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    return paginationHTML;
+}
+
+function generatePageButtons(currentPage, totalPages, onPageChange) {
+    let buttons = '';
+    const maxButtons = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+    
+    if (endPage - startPage < maxButtons - 1) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        buttons += `
+            <button onclick="${onPageChange}(${i})" 
+                    class="px-3 py-1 border rounded text-sm ${i === currentPage ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}">
+                ${i}
+            </button>
+        `;
+    }
+    
+    return buttons;
+}
+
+function paginateArray(array, page, itemsPerPage) {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return array.slice(startIndex, endIndex);
+}
 
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
@@ -2846,6 +2935,80 @@ window.deleteProject = async function(code) {
 
 // ==================== 시간표 관리 ====================
 let timetables = [];
+let filteredTimetables = []; // 필터링된 시간표 저장
+
+// 시간표 페이지 변경
+window.changeTimetablePage = function(page) {
+    pagination.timetables.currentPage = page;
+    renderTimetableList();
+};
+
+// 시간표 페이지당 항목 수 변경
+window.changeTimetableItemsPerPage = function(event) {
+    pagination.timetables.itemsPerPage = parseInt(event.target.value);
+    pagination.timetables.currentPage = 1;
+    renderTimetableList();
+};
+
+// 시간표 목록만 다시 렌더링
+function renderTimetableList() {
+    const { currentPage, itemsPerPage } = pagination.timetables;
+    const paginatedData = paginateArray(filteredTimetables, currentPage, itemsPerPage);
+    
+    const tbody = document.querySelector('#timetable-list tbody');
+    if (filteredTimetables.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="px-4 py-8 text-center text-gray-500">
+                    과정을 선택하여 시간표를 조회하세요
+                </td>
+            </tr>
+        `;
+        document.getElementById('timetable-pagination').innerHTML = '';
+        return;
+    }
+    
+    tbody.innerHTML = paginatedData.map(tt => `
+        <tr class="border-t hover:bg-gray-50">
+            <td class="px-3 py-2 text-xs">${tt.class_date}</td>
+            <td class="px-3 py-2 text-xs">${tt.week_number || '-'}주차</td>
+            <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
+            <td class="px-3 py-2 text-xs">${tt.subject_name || tt.subject_code || '-'}</td>
+            <td class="px-3 py-2 text-xs">${tt.instructor_name || tt.instructor_code || '-'}</td>
+            <td class="px-3 py-2 text-xs">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
+            <td class="px-3 py-2 text-xs">
+                <span class="text-xs ${tt.type === 'lecture' ? 'bg-blue-100 text-blue-800' : tt.type === 'project' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} px-2 py-1 rounded">
+                    ${tt.type}
+                </span>
+            </td>
+            <td class="px-3 py-2 text-xs">
+                ${tt.training_log_id ? `
+                    <a href="#" onclick="showTab('training-logs'); return false;" class="text-green-600">
+                        <i class="fas fa-check-circle"></i> 작성됨
+                    </a>
+                ` : '<span class="text-gray-400">-</span>'}
+            </td>
+            <td class="px-3 py-2 text-xs">
+                <button onclick="window.editTimetable(${tt.id})" class="text-blue-600 hover:text-blue-800 mr-2">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button onclick="window.deleteTimetable(${tt.id})" class="text-red-600 hover:text-red-800">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+    
+    // 페이지네이션 렌더링
+    const paginationHTML = createPaginationHTML(
+        currentPage,
+        itemsPerPage,
+        filteredTimetables.length,
+        'window.changeTimetablePage',
+        'window.changeTimetableItemsPerPage(event)'
+    );
+    document.getElementById('timetable-pagination').innerHTML = paginationHTML;
+}
 
 async function loadTimetables() {
     try {
@@ -2963,8 +3126,17 @@ function renderTimetables(courses = []) {
                     </tbody>
                 </table>
             </div>
+            
+            <!-- 페이지네이션 -->
+            <div id="timetable-pagination"></div>
         </div>
     `;
+    
+    // 초기 필터링된 데이터 설정
+    filteredTimetables = timetables;
+    pagination.timetables.totalItems = timetables.length;
+    pagination.timetables.currentPage = 1;
+    renderTimetableList();
 }
 
 function formatTime(seconds) {
@@ -3006,35 +3178,10 @@ window.filterTimetables = async function() {
     
     try {
         const response = await axios.get(url);
-        timetables = response.data;
-        
-        const tbody = document.querySelector('#timetable-list tbody');
-        tbody.innerHTML = timetables.slice(0, 50).map(tt => `
-            <tr class="border-t hover:bg-gray-50">
-                <td class="px-4 py-2">${tt.class_date}</td>
-                <td class="px-4 py-2">${tt.course_name || tt.course_code}</td>
-                <td class="px-4 py-2">${tt.subject_name || tt.subject_code || '-'}</td>
-                <td class="px-4 py-2">${tt.instructor_name || tt.instructor_code || '-'}</td>
-                <td class="px-4 py-2">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
-                <td class="px-4 py-2">
-                    <span class="text-xs ${tt.type === 'lecture' ? 'bg-blue-100 text-blue-800' : tt.type === 'project' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} px-2 py-1 rounded">
-                        ${tt.type}
-                    </span>
-                </td>
-                <td class="px-4 py-2">
-                    <button onclick="window.editTimetable(${tt.id})" class="text-blue-600 hover:text-blue-800 mr-2">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button onclick="window.deleteTimetable(${tt.id})" class="text-red-600 hover:text-red-800">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-        
-        if (timetables.length > 50) {
-            tbody.innerHTML += `<tr><td colspan="7" class="px-4 py-2 text-center text-gray-500">처음 50개만 표시됩니다 (전체: ${timetables.length})</td></tr>`;
-        }
+        filteredTimetables = response.data;
+        pagination.timetables.totalItems = filteredTimetables.length;
+        pagination.timetables.currentPage = 1;
+        renderTimetableList();
     } catch (error) {
         console.error('필터링 실패:', error);
     }
