@@ -64,7 +64,8 @@ FTP_PATHS = {
     'guidance': '/homes/ha/camFTP/BH2025/guidance',  # 상담일지
     'train': '/homes/ha/camFTP/BH2025/train',        # 훈련일지
     'student': '/homes/ha/camFTP/BH2025/student',    # 학생
-    'teacher': '/homes/ha/camFTP/BH2025/teacher'     # 강사
+    'teacher': '/homes/ha/camFTP/BH2025/teacher',    # 강사
+    'team': '/homes/ha/camFTP/BH2025/team'           # 팀(프로젝트)
 }
 
 def create_thumbnail(file_data: bytes, filename: str) -> str:
@@ -971,6 +972,9 @@ async def get_projects(course_code: Optional[str] = None):
         except:
             pass  # Columns might already exist
         
+        # Check if photo_urls column exists, if not, add it
+        ensure_photo_urls_column(cursor, 'projects')
+        
         query = """
             SELECT p.*, 
                    c.name as course_name,
@@ -1054,6 +1058,9 @@ async def create_project(data: dict):
         except:
             pass  # Columns might already exist
         
+        # Ensure photo_urls column exists
+        ensure_photo_urls_column(cursor, 'projects')
+        
         query = """
             INSERT INTO projects (code, name, group_type, course_code, instructor_code, mentor_code,
                                  member1_name, member1_phone, member1_code,
@@ -1065,9 +1072,10 @@ async def create_project(data: dict):
                                  account2_name, account2_id, account2_pw,
                                  account3_name, account3_id, account3_pw,
                                  account4_name, account4_id, account4_pw,
-                                 account5_name, account5_id, account5_pw)
+                                 account5_name, account5_id, account5_pw,
+                                 photo_urls)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
             data['code'], data['name'], data.get('group_type'), data.get('course_code'),
@@ -1081,7 +1089,8 @@ async def create_project(data: dict):
             data.get('account2_name'), data.get('account2_id'), data.get('account2_pw'),
             data.get('account3_name'), data.get('account3_id'), data.get('account3_pw'),
             data.get('account4_name'), data.get('account4_id'), data.get('account4_pw'),
-            data.get('account5_name'), data.get('account5_id'), data.get('account5_pw')
+            data.get('account5_name'), data.get('account5_id'), data.get('account5_pw'),
+            data.get('photo_urls', '[]')
         ))
         conn.commit()
         return {"code": data['code']}
@@ -1094,6 +1103,9 @@ async def update_project(code: str, data: dict):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        # Ensure photo_urls column exists
+        ensure_photo_urls_column(cursor, 'projects')
+        
         query = """
             UPDATE projects
             SET name = %s, group_type = %s, course_code = %s, 
@@ -1107,7 +1119,8 @@ async def update_project(code: str, data: dict):
                 account2_name = %s, account2_id = %s, account2_pw = %s,
                 account3_name = %s, account3_id = %s, account3_pw = %s,
                 account4_name = %s, account4_id = %s, account4_pw = %s,
-                account5_name = %s, account5_id = %s, account5_pw = %s
+                account5_name = %s, account5_id = %s, account5_pw = %s,
+                photo_urls = %s
             WHERE code = %s
         """
         cursor.execute(query, (
@@ -1123,6 +1136,7 @@ async def update_project(code: str, data: dict):
             data.get('account3_name'), data.get('account3_id'), data.get('account3_pw'),
             data.get('account4_name'), data.get('account4_id'), data.get('account4_pw'),
             data.get('account5_name'), data.get('account5_id'), data.get('account5_pw'),
+            data.get('photo_urls', '[]'),
             code
         ))
         conn.commit()
