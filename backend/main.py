@@ -2737,6 +2737,127 @@ async def health_check():
     except Exception as e:
         return {"status": "unhealthy", "error": str(e)}
 
+# ==================== 인증 API ====================
+
+@app.post("/api/auth/login")
+async def login(credentials: dict):
+    """
+    로그인 API
+    - 강사 이름으로 로그인
+    - 기본 비밀번호: kdt2025
+    """
+    instructor_name = credentials.get('name')
+    password = credentials.get('password')
+    
+    if not instructor_name or not password:
+        raise HTTPException(status_code=400, detail="이름과 비밀번호를 입력하세요")
+    
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 강사 테이블에서 이름으로 검색
+        cursor.execute("""
+            SELECT i.*, ic.name as instructor_type_name
+            FROM instructors i
+            LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
+            WHERE i.name = %s
+        """, (instructor_name,))
+        
+        instructor = cursor.fetchone()
+        
+        if not instructor:
+            raise HTTPException(status_code=401, detail="등록되지 않은 강사입니다")
+        
+        # 비밀번호 확인 (기본값: kdt2025)
+        default_password = "kdt2025"
+        stored_password = instructor.get('password', default_password)
+        
+        # password 컬럼이 없으면 기본 비밀번호로 체크
+        if stored_password is None:
+            stored_password = default_password
+        
+        if password != stored_password:
+            raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다")
+        
+        # datetime 변환
+        for key, value in instructor.items():
+            if isinstance(value, (datetime, date)):
+                instructor[key] = value.isoformat()
+            elif isinstance(value, bytes):
+                instructor[key] = None
+        
+        return {
+            "success": True,
+            "message": f"{instructor['name']}님, 환영합니다!",
+            "instructor": instructor
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"로그인 실패: {str(e)}")
+    finally:
+        conn.close()
+
+@app.post("/api/auth/change-password")
+async def change_password(data: dict):
+    """
+    비밀번호 변경 API
+    """
+    instructor_code = data.get('instructor_code')
+    old_password = data.get('old_password')
+    new_password = data.get('new_password')
+    
+    if not all([instructor_code, old_password, new_password]):
+        raise HTTPException(status_code=400, detail="모든 필드를 입력하세요")
+    
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # password 컬럼이 없으면 추가
+        cursor.execute("SHOW COLUMNS FROM instructors LIKE 'password'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE instructors ADD COLUMN password VARCHAR(100) DEFAULT 'kdt2025'")
+            conn.commit()
+        
+        # 기존 비밀번호 확인
+        cursor.execute("SELECT password FROM instructors WHERE code = %s", (instructor_code,))
+        result = cursor.fetchone()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="강사를 찾을 수 없습니다")
+        
+        stored_password = result.get('password', 'kdt2025')
+        if stored_password is None:
+            stored_password = 'kdt2025'
+        
+        if old_password != stored_password:
+            raise HTTPException(status_code=401, detail="현재 비밀번호가 일치하지 않습니다")
+        
+        # 비밀번호 업데이트
+        cursor.execute("""
+            UPDATE instructors 
+            SET password = %s 
+            WHERE code = %s
+        """, (new_password, instructor_code))
+        
+        conn.commit()
+        
+        return {
+            "success": True,
+            "message": "비밀번호가 변경되었습니다"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"비밀번호 변경 실패: {str(e)}")
+    finally:
+        conn.close()
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     """프론트엔드 index.html 서빙"""
@@ -2745,6 +2866,15 @@ async def serve_index():
             return HTMLResponse(content=f.read())
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Frontend not found")
+
+@app.get("/login", response_class=HTMLResponse)
+async def serve_login():
+    """로그인 페이지 서빙"""
+    try:
+        with open("../frontend/login.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Login page not found")
 
 if __name__ == "__main__":
     import uvicorn

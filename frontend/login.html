@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>교육관리시스템 - 로그인</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center">
+    <div class="container max-w-md mx-auto px-4">
+        <!-- 로그인 카드 -->
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <!-- 헤더 -->
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-center">
+                <div class="inline-block bg-white rounded-full p-4 mb-4">
+                    <i class="fas fa-graduation-cap text-5xl text-blue-600"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-white mb-2">교육관리시스템</h1>
+                <p class="text-blue-100">강사 로그인</p>
+            </div>
+            
+            <!-- 로그인 폼 -->
+            <div class="p-8">
+                <form id="loginForm" class="space-y-6">
+                    <!-- 강사 이름 입력 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-user mr-2"></i>강사 이름
+                        </label>
+                        <input 
+                            type="text" 
+                            id="instructorName" 
+                            placeholder="이름을 입력하세요"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
+                            required
+                            autocomplete="username"
+                        >
+                    </div>
+                    
+                    <!-- 비밀번호 입력 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-lock mr-2"></i>비밀번호
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="password" 
+                                id="password" 
+                                placeholder="비밀번호를 입력하세요"
+                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none pr-12"
+                                required
+                                autocomplete="current-password"
+                            >
+                            <button 
+                                type="button" 
+                                id="togglePassword"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                            >
+                                <i class="fas fa-eye" id="eyeIcon"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>최초 비밀번호: kdt2025
+                        </p>
+                    </div>
+                    
+                    <!-- 체크박스 옵션 -->
+                    <div class="space-y-2">
+                        <label class="flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                id="rememberName" 
+                                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            >
+                            <span class="ml-2 text-sm text-gray-700">
+                                <i class="fas fa-user-check mr-1 text-blue-500"></i>아이디 저장
+                            </span>
+                        </label>
+                        
+                        <label class="flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                id="autoLogin" 
+                                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            >
+                            <span class="ml-2 text-sm text-gray-700">
+                                <i class="fas fa-sign-in-alt mr-1 text-green-500"></i>자동 로그인 (비밀번호 저장)
+                            </span>
+                        </label>
+                    </div>
+                    
+                    <!-- 로그인 버튼 -->
+                    <button 
+                        type="submit" 
+                        id="loginButton"
+                        class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                    >
+                        <i class="fas fa-sign-in-alt mr-2"></i>로그인
+                    </button>
+                </form>
+                
+                <!-- 알림 메시지 -->
+                <div id="alertMessage" class="hidden mt-4 p-4 rounded-lg"></div>
+                
+                <!-- 추가 정보 -->
+                <div class="mt-6 pt-6 border-t border-gray-200 text-center text-sm text-gray-600">
+                    <p>
+                        <i class="fas fa-question-circle mr-1"></i>
+                        문제가 있으신가요? 관리자에게 문의하세요.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 푸터 -->
+        <div class="text-center mt-6 text-gray-600 text-sm">
+            <p>© 2025 교육관리시스템. All rights reserved.</p>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        
+        // 로그인 폼
+        const loginForm = document.getElementById('loginForm');
+        const instructorNameInput = document.getElementById('instructorName');
+        const passwordInput = document.getElementById('password');
+        const rememberNameCheckbox = document.getElementById('rememberName');
+        const autoLoginCheckbox = document.getElementById('autoLogin');
+        const loginButton = document.getElementById('loginButton');
+        const alertMessage = document.getElementById('alertMessage');
+        const togglePasswordBtn = document.getElementById('togglePassword');
+        const eyeIcon = document.getElementById('eyeIcon');
+        
+        // 페이지 로드 시 저장된 정보 불러오기
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedName = localStorage.getItem('instructor_name');
+            const savedPassword = localStorage.getItem('instructor_password');
+            const rememberName = localStorage.getItem('remember_name') === 'true';
+            const autoLogin = localStorage.getItem('auto_login') === 'true';
+            
+            if (rememberName && savedName) {
+                instructorNameInput.value = savedName;
+                rememberNameCheckbox.checked = true;
+            }
+            
+            if (autoLogin && savedPassword) {
+                passwordInput.value = savedPassword;
+                autoLoginCheckbox.checked = true;
+                
+                // 자동 로그인 체크되어 있고 이름과 비밀번호 모두 있으면 자동 로그인
+                if (savedName && savedPassword) {
+                    showAlert('자동 로그인 중...', 'info');
+                    setTimeout(() => {
+                        loginForm.dispatchEvent(new Event('submit'));
+                    }, 500);
+                }
+            }
+        });
+        
+        // 비밀번호 표시/숨김 토글
+        togglePasswordBtn.addEventListener('click', () => {
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
+            eyeIcon.classList.toggle('fa-eye');
+            eyeIcon.classList.toggle('fa-eye-slash');
+        });
+        
+        // 로그인 폼 제출
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = instructorNameInput.value.trim();
+            const password = passwordInput.value;
+            const rememberName = rememberNameCheckbox.checked;
+            const autoLogin = autoLoginCheckbox.checked;
+            
+            if (!name || !password) {
+                showAlert('이름과 비밀번호를 입력하세요', 'error');
+                return;
+            }
+            
+            // 로그인 버튼 비활성화
+            loginButton.disabled = true;
+            loginButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>로그인 중...';
+            
+            try {
+                const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+                    name: name,
+                    password: password
+                });
+                
+                if (response.data.success) {
+                    // 로그인 성공
+                    const instructor = response.data.instructor;
+                    
+                    // 세션 스토리지에 강사 정보 저장
+                    sessionStorage.setItem('instructor', JSON.stringify(instructor));
+                    sessionStorage.setItem('logged_in', 'true');
+                    
+                    // 아이디 저장 옵션
+                    if (rememberName) {
+                        localStorage.setItem('instructor_name', name);
+                        localStorage.setItem('remember_name', 'true');
+                    } else {
+                        localStorage.removeItem('instructor_name');
+                        localStorage.removeItem('remember_name');
+                    }
+                    
+                    // 자동 로그인 옵션 (비밀번호 저장)
+                    if (autoLogin) {
+                        localStorage.setItem('instructor_password', password);
+                        localStorage.setItem('auto_login', 'true');
+                    } else {
+                        localStorage.removeItem('instructor_password');
+                        localStorage.removeItem('auto_login');
+                    }
+                    
+                    showAlert(response.data.message, 'success');
+                    
+                    // 1초 후 메인 페이지로 이동
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('로그인 오류:', error);
+                const message = error.response?.data?.detail || '로그인에 실패했습니다';
+                showAlert(message, 'error');
+                
+                // 로그인 버튼 다시 활성화
+                loginButton.disabled = false;
+                loginButton.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>로그인';
+            }
+        });
+        
+        // 알림 메시지 표시
+        function showAlert(message, type) {
+            alertMessage.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'bg-blue-100', 'text-blue-800');
+            
+            if (type === 'error') {
+                alertMessage.classList.add('bg-red-100', 'text-red-800');
+                alertMessage.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i>${message}`;
+            } else if (type === 'success') {
+                alertMessage.classList.add('bg-green-100', 'text-green-800');
+                alertMessage.innerHTML = `<i class="fas fa-check-circle mr-2"></i>${message}`;
+            } else if (type === 'info') {
+                alertMessage.classList.add('bg-blue-100', 'text-blue-800');
+                alertMessage.innerHTML = `<i class="fas fa-info-circle mr-2"></i>${message}`;
+            }
+            
+            alertMessage.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

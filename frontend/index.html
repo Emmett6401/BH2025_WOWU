@@ -12,11 +12,24 @@
         <!-- 헤더 -->
         <header class="bg-blue-600 text-white shadow-lg">
             <div class="container mx-auto px-4 py-6">
-                <h1 class="text-3xl font-bold">
-                    <i class="fas fa-school mr-3"></i>
-                    KDT 과정 관리 시스템 v2.0
-                </h1>
-                <p class="text-blue-100 mt-2">보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단 바이오헬스아카데미 올인원테크 이노베이터</p>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h1 class="text-3xl font-bold">
+                            <i class="fas fa-school mr-3"></i>
+                            KDT 과정 관리 시스템 v2.0
+                        </h1>
+                        <p class="text-blue-100 mt-2">보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단 바이오헬스아카데미 올인원테크 이노베이터</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div id="userInfo" class="text-right">
+                            <p class="text-sm text-blue-100">로그인: <span id="instructorName" class="font-semibold text-white"></span></p>
+                            <p class="text-xs text-blue-200"><span id="instructorType"></span></p>
+                        </div>
+                        <button onclick="logout()" class="bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg font-semibold transition-all">
+                            <i class="fas fa-sign-out-alt mr-2"></i>로그아웃
+                        </button>
+                    </div>
+                </div>
             </div>
         </header>
 

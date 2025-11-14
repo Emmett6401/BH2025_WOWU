@@ -1,6 +1,49 @@
 // API 베이스 URL
 const API_BASE_URL = 'https://8000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai';
 
+// ==================== 로그인 체크 ====================
+function checkLogin() {
+    const loggedIn = sessionStorage.getItem('logged_in');
+    const instructor = sessionStorage.getItem('instructor');
+    
+    if (!loggedIn || !instructor) {
+        // 로그인되지 않았으면 로그인 페이지로 리다이렉트
+        window.location.href = '/static/login.html';
+        return false;
+    }
+    
+    // 강사 정보 표시
+    try {
+        const instructorData = JSON.parse(instructor);
+        document.getElementById('instructorName').textContent = instructorData.name || '강사';
+        document.getElementById('instructorType').textContent = instructorData.instructor_type_name || '';
+    } catch (e) {
+        console.error('강사 정보 파싱 오류:', e);
+    }
+    
+    return true;
+}
+
+// 로그아웃 함수
+function logout() {
+    if (confirm('로그아웃 하시겠습니까?')) {
+        // 세션 스토리지 삭제
+        sessionStorage.removeItem('logged_in');
+        sessionStorage.removeItem('instructor');
+        
+        // 로그인 페이지로 이동
+        window.location.href = '/static/login.html';
+    }
+}
+
+// 페이지 로드 시 로그인 체크
+window.addEventListener('DOMContentLoaded', () => {
+    if (!checkLogin()) {
+        return; // 로그인 안 되어 있으면 여기서 중단
+    }
+    // 로그인 되어 있으면 계속 진행
+});
+
 // 전역 상태
 let currentTab = 'students';
 let students = [];
