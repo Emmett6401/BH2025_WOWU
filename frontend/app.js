@@ -584,7 +584,6 @@ async function loadDashboard() {
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
     console.log('App initialized');
-    loadStudents();
     showTab('dashboard'); // 첫 페이지를 대시보드로 변경
 });
 
