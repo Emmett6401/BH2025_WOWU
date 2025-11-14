@@ -4438,6 +4438,35 @@ window.showTrainingLogForm = async function(timetableId) {
                         <textarea name="notes" rows="2" class="w-full px-3 py-2 border rounded-lg" 
                                   placeholder="기타 특이사항이나 참고사항을 작성해주세요..."></textarea>
                     </div>
+                    
+                    <!-- 사진 업로드 -->
+                    <div>
+                        <label class="block text-gray-700 mb-2">
+                            <i class="fas fa-camera mr-2"></i>사진 첨부
+                        </label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <button type="button" onclick="document.getElementById('training-file-input').click()" 
+                                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                                    <i class="fas fa-folder-open mr-2"></i>파일 선택
+                                </button>
+                                <button type="button" onclick="document.getElementById('training-camera-input').click()" 
+                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                                    <i class="fas fa-camera mr-2"></i>사진 촬영
+                                </button>
+                            </div>
+                            <input type="file" id="training-file-input" accept="image/*" multiple 
+                                   onchange="window.handleTrainingImageUpload(event)" class="hidden">
+                            <input type="file" id="training-camera-input" accept="image/*" capture="environment" 
+                                   onchange="window.handleTrainingImageUpload(event)" class="hidden">
+                            <div id="training-photos-preview" class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2"></div>
+                            <input type="hidden" id="training-photo-urls" value="[]">
+                            <p class="text-sm text-gray-500 mt-2">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                최대 10MB, JPG/PNG/GIF 형식
+                            </p>
+                        </div>
+                    </div>
                 </div>
                 <div class="mt-4 space-x-2">
                     <button type="button" onclick="window.saveTrainingLog(${timetableId}, '${tt.course_code}', '${tt.instructor_code}', '${tt.class_date}')" 
@@ -4545,9 +4574,72 @@ window.editTrainingLog = async function(logId, timetableId) {
     }
 }
 
+// 훈련일지 사진 업로드 처리
+window.handleTrainingImageUpload = async function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    window.showLoading('사진 업로드 중...');
+    
+    try {
+        const photoUrls = JSON.parse(document.getElementById('training-photo-urls').value || '[]');
+        
+        for (let file of files) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await axios.post(
+                `${API_BASE_URL}/api/upload-image?category=train`,
+                formData,
+                {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                }
+            );
+            
+            if (response.data.success) {
+                photoUrls.push(response.data.url);
+            }
+        }
+        
+        document.getElementById('training-photo-urls').value = JSON.stringify(photoUrls);
+        updateTrainingPhotoPreview(photoUrls);
+        
+        window.hideLoading();
+        window.showAlert(`${files.length}개 사진이 업로드되었습니다.`);
+        
+    } catch (error) {
+        window.hideLoading();
+        console.error('사진 업로드 실패:', error);
+        window.showAlert('사진 업로드 실패: ' + (error.response?.data?.detail || error.message));
+    }
+    
+    event.target.value = '';
+}
+
+window.removeTrainingPhoto = function(index) {
+    const photoUrls = JSON.parse(document.getElementById('training-photo-urls').value || '[]');
+    photoUrls.splice(index, 1);
+    document.getElementById('training-photo-urls').value = JSON.stringify(photoUrls);
+    updateTrainingPhotoPreview(photoUrls);
+}
+
+function updateTrainingPhotoPreview(photoUrls) {
+    const previewDiv = document.getElementById('training-photos-preview');
+    previewDiv.innerHTML = photoUrls.map((url, idx) => `
+        <div class="relative group">
+            <img src="${url}" class="w-full h-24 object-cover rounded border" alt="사진 ${idx + 1}">
+            <button type="button" onclick="window.removeTrainingPhoto(${idx})" 
+                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                <i class="fas fa-times text-xs"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
 window.saveTrainingLog = async function(timetableId, courseCode, instructorCode, classDate) {
     const form = document.getElementById('training-log-save-form');
     const formData = new FormData(form);
+    const photoUrls = document.getElementById('training-photo-urls').value || '[]';
     
     const data = {
         timetable_id: timetableId,
@@ -4556,7 +4648,8 @@ window.saveTrainingLog = async function(timetableId, courseCode, instructorCode,
         class_date: classDate,
         content: formData.get('content'),
         homework: formData.get('homework'),
-        notes: formData.get('notes')
+        notes: formData.get('notes'),
+        photo_urls: photoUrls
     };
     
     try {
@@ -4573,11 +4666,13 @@ window.saveTrainingLog = async function(timetableId, courseCode, instructorCode,
 window.updateTrainingLog = async function(logId) {
     const form = document.getElementById('training-log-save-form');
     const formData = new FormData(form);
+    const photoUrls = document.getElementById('training-photo-urls').value || '[]';
     
     const data = {
         content: formData.get('content'),
         homework: formData.get('homework'),
-        notes: formData.get('notes')
+        notes: formData.get('notes'),
+        photo_urls: photoUrls
     };
     
     try {

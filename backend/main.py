@@ -1492,10 +1492,13 @@ async def create_training_log(data: dict):
     try:
         cursor = conn.cursor()
         
+        # photo_urls 컬럼이 없으면 자동 생성
+        ensure_photo_urls_column(cursor, 'training_logs')
+        
         query = """
             INSERT INTO training_logs 
-            (timetable_id, course_code, instructor_code, class_date, content, homework, notes)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (timetable_id, course_code, instructor_code, class_date, content, homework, notes, photo_urls)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         cursor.execute(query, (
@@ -1505,7 +1508,8 @@ async def create_training_log(data: dict):
             data.get('class_date'),
             data.get('content', ''),
             data.get('homework', ''),
-            data.get('notes', '')
+            data.get('notes', ''),
+            data.get('photo_urls')
         ))
         
         conn.commit()
@@ -1522,9 +1526,12 @@ async def update_training_log(log_id: int, data: dict):
     try:
         cursor = conn.cursor()
         
+        # photo_urls 컬럼이 없으면 자동 생성
+        ensure_photo_urls_column(cursor, 'training_logs')
+        
         query = """
             UPDATE training_logs 
-            SET content = %s, homework = %s, notes = %s
+            SET content = %s, homework = %s, notes = %s, photo_urls = %s
             WHERE id = %s
         """
         
@@ -1532,6 +1539,7 @@ async def update_training_log(log_id: int, data: dict):
             data.get('content', ''),
             data.get('homework', ''),
             data.get('notes', ''),
+            data.get('photo_urls'),
             log_id
         ))
         
