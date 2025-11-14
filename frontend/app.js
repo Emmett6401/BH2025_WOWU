@@ -5025,10 +5025,10 @@ window.searchUncounseledStudents = async function() {
         const counselingsRes = await axios.get(`${API_BASE_URL}/api/counselings`);
         const allCounselings = counselingsRes.data;
         
-        // 학생별 상담 횟수 계산
+        // 학생별 상담 횟수 계산 (student_id 기준)
         const studentCounselingCount = {};
         allStudents.forEach(student => {
-            const count = allCounselings.filter(c => c.student_code === student.code).length;
+            const count = allCounselings.filter(c => c.student_id === student.id).length;
             studentCounselingCount[student.code] = count;
         });
         

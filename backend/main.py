@@ -2187,7 +2187,7 @@ async def generate_ai_counseling(data: dict):
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
-        # 학생 정보 가져오기
+        # 학생 정보 가져오기 (student_id 필요)
         cursor.execute("""
             SELECT s.*, c.name as course_name
             FROM students s
@@ -2199,12 +2199,14 @@ async def generate_ai_counseling(data: dict):
         if not student:
             raise HTTPException(status_code=404, detail="학생을 찾을 수 없습니다")
         
-        # 기존 상담 횟수 확인
+        student_id = student['id']
+        
+        # 기존 상담 횟수 확인 (consultations 테이블 사용)
         cursor.execute("""
             SELECT COUNT(*) as count
-            FROM counselings
-            WHERE student_code = %s
-        """, (student_code,))
+            FROM consultations
+            WHERE student_id = %s
+        """, (student_id,))
         
         result = cursor.fetchone()
         counseling_count = result['count'] if result else 0
@@ -2239,11 +2241,12 @@ async def generate_ai_counseling(data: dict):
 약 2-3주 후 학습 진도를 확인하고 추가 상담을 진행할 예정입니다.
 """
         
-        # 상담일지 생성
+        # 상담일지 생성 (consultations 테이블에 student_id 사용)
         cursor.execute("""
-            INSERT INTO counselings (student_code, counseling_date, content, created_at)
-            VALUES (%s, CURDATE(), %s, NOW())
-        """, (student_code, content))
+            INSERT INTO consultations 
+            (student_id, consultation_date, consultation_type, main_topic, content, status, created_at)
+            VALUES (%s, CURDATE(), '정기', 'AI 자동 생성', %s, '완료', NOW())
+        """, (student_id, content))
         
         conn.commit()
         
