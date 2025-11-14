@@ -766,8 +766,8 @@ function renderCounselings() {
                 </div>
             </div>
             
-            <div id="counseling-form" class="hidden mb-6 p-4 bg-blue-50 rounded-lg"></div>
             <div id="student-detail" class="hidden mb-6 p-4 bg-green-50 rounded-lg"></div>
+            <div id="counseling-form" class="hidden mb-6 p-4 bg-blue-50 rounded-lg"></div>
             
             <!-- 상담 목록 그리드 -->
             <div id="counseling-list">
@@ -966,6 +966,9 @@ window.updateStudentsByCourse = function() {
 
 window.showStudentDetail = async function(studentId) {
     try {
+        // 상담 수정창 닫기
+        window.hideCounselingForm();
+        
         // 기존 상세 정보 초기화
         const detailDiv = document.getElementById('student-detail');
         detailDiv.innerHTML = '<div class="p-4 text-center"><i class="fas fa-spinner fa-spin mr-2"></i>로딩 중...</div>';
@@ -1095,41 +1098,6 @@ window.showStudentDetail = async function(studentId) {
                     <p class="text-gray-700 whitespace-pre-wrap">${student.notes}</p>
                 </div>
             ` : ''}
-            
-            <!-- 상담 내역 그리드 -->
-            <div class="bg-white p-4 rounded shadow-sm">
-                <h4 class="font-bold text-lg mb-3">
-                    <i class="fas fa-comments mr-2"></i>상담 내역
-                </h4>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full border">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-3 py-2 text-left text-xs">날짜</th>
-                                <th class="px-3 py-2 text-left text-xs">선생님</th>
-                                <th class="px-3 py-2 text-left text-xs">유형</th>
-                                <th class="px-3 py-2 text-left text-xs">상담내용</th>
-                                <th class="px-3 py-2 text-left text-xs">상태</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${studentCounselings.length > 0 ? studentCounselings.map(c => `
-                                <tr class="border-t hover:bg-gray-50">
-                                    <td class="px-3 py-2 text-xs">${formatDateWithDay(c.consultation_date)}</td>
-                                    <td class="px-3 py-2 text-xs">${c.instructor_name || '-'}</td>
-                                    <td class="px-3 py-2 text-xs">${c.consultation_type || '정기'}</td>
-                                    <td class="px-3 py-2 text-xs">${c.content || '-'}</td>
-                                    <td class="px-3 py-2 text-xs">${c.status || '완료'}</td>
-                                </tr>
-                            `).join('') : `
-                                <tr>
-                                    <td colspan="5" class="px-3 py-4 text-center text-gray-500">상담 내역이 없습니다.</td>
-                                </tr>
-                            `}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         `;
         
         // detailDiv는 이미 함수 시작 부분에서 표시됨
