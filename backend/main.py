@@ -10,6 +10,9 @@ from datetime import datetime, date
 from openai import OpenAI
 from dotenv import load_dotenv
 import requests
+from ftplib import FTP
+import uuid
+import base64
 
 load_dotenv()
 
@@ -37,6 +40,83 @@ DB_CONFIG = {
 def get_db_connection():
     """데이터베이스 연결"""
     return pymysql.connect(**DB_CONFIG)
+
+def ensure_photo_urls_column(cursor, table_name: str):
+    """photo_urls 컬럼이 없으면 추가"""
+    try:
+        cursor.execute(f"SHOW COLUMNS FROM {table_name} LIKE 'photo_urls'")
+        if not cursor.fetchone():
+            cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN photo_urls TEXT")
+    except:
+        pass  # 이미 존재하거나 권한 문제
+
+# FTP 설정
+FTP_CONFIG = {
+    'host': 'bitnmeta2.synology.me',
+    'port': 2121,
+    'user': 'ha',
+    'passwd': 'dodan1004~'
+}
+
+# FTP 경로 설정
+FTP_PATHS = {
+    'guidance': '/homes/ha/camFTP/BH2025/guidance',  # 상담일지
+    'train': '/homes/ha/camFTP/BH2025/train',        # 훈련일지
+    'student': '/homes/ha/camFTP/BH2025/student',    # 학생
+    'teacher': '/homes/ha/camFTP/BH2025/teacher'     # 강사
+}
+
+def upload_to_ftp(file_data: bytes, filename: str, category: str) -> str:
+    """
+    FTP 서버에 파일 업로드
+    
+    Args:
+        file_data: 파일 바이트 데이터
+        filename: 저장할 파일명 (확장자 포함)
+        category: 카테고리 (guidance, train, student, teacher)
+    
+    Returns:
+        업로드된 파일의 FTP URL
+    """
+    try:
+        # FTP 연결
+        ftp = FTP()
+        ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
+        ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
+        ftp.encoding = 'utf-8'
+        
+        # 경로 이동
+        target_path = FTP_PATHS.get(category)
+        if not target_path:
+            raise ValueError(f"Invalid category: {category}")
+        
+        try:
+            ftp.cwd(target_path)
+        except:
+            # 경로가 없으면 생성
+            path_parts = target_path.split('/')
+            current_path = ''
+            for part in path_parts:
+                if not part:
+                    continue
+                current_path += '/' + part
+                try:
+                    ftp.cwd(current_path)
+                except:
+                    ftp.mkd(current_path)
+                    ftp.cwd(current_path)
+        
+        # 파일 업로드
+        ftp.storbinary(f'STOR {filename}', io.BytesIO(file_data))
+        
+        # URL 생성 (FTP URL)
+        file_url = f"ftp://{FTP_CONFIG['host']}:{FTP_CONFIG['port']}{target_path}/{filename}"
+        
+        ftp.quit()
+        return file_url
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FTP 업로드 실패: {str(e)}")
 
 # ==================== 학생 관리 API ====================
 
@@ -1143,6 +1223,9 @@ async def get_counselings(
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # photo_urls 컬럼 확인 및 추가
+        ensure_photo_urls_column(cursor, 'consultations')
         
         query = """
             SELECT c.*, s.name as student_name, s.code as student_code, s.course_code,
@@ -2261,6 +2344,120 @@ async def generate_ai_counseling(data: dict):
         raise HTTPException(status_code=500, detail=f"AI 상담일지 생성 실패: {str(e)}")
     finally:
         conn.close()
+
+@app.post("/api/upload-image")
+async def upload_image(
+    file: UploadFile = File(...),
+    category: str = Query(..., description="guidance, train, student, teacher")
+):
+    """
+    이미지 파일을 FTP 서버에 업로드
+    
+    Args:
+        file: 업로드할 이미지 파일
+        category: 저장 카테고리 (guidance=상담일지, train=훈련일지, student=학생, teacher=강사)
+    
+    Returns:
+        업로드된 파일의 URL
+    """
+    try:
+        # 파일 확장자 검증
+        allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        
+        if file_ext not in allowed_extensions:
+            raise HTTPException(
+                status_code=400,
+                detail=f"허용되지 않는 파일 형식입니다. 허용 형식: {', '.join(allowed_extensions)}"
+            )
+        
+        # 파일 읽기
+        file_data = await file.read()
+        
+        # 파일 크기 체크 (10MB 제한)
+        if len(file_data) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="파일 크기는 10MB를 초과할 수 없습니다")
+        
+        # 고유한 파일명 생성 (타임스탬프 + UUID + 원본 확장자)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_id = str(uuid.uuid4())[:8]
+        new_filename = f"{timestamp}_{unique_id}{file_ext}"
+        
+        # FTP 업로드
+        file_url = upload_to_ftp(file_data, new_filename, category)
+        
+        return {
+            "success": True,
+            "url": file_url,
+            "filename": new_filename,
+            "size": len(file_data)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"이미지 업로드 실패: {str(e)}")
+
+@app.post("/api/upload-image-base64")
+async def upload_image_base64(data: dict):
+    """
+    Base64 인코딩된 이미지를 FTP 서버에 업로드 (모바일 카메라 촬영용)
+    
+    Args:
+        data: {
+            "image": "data:image/jpeg;base64,...",
+            "category": "guidance|train|student|teacher"
+        }
+    
+    Returns:
+        업로드된 파일의 URL
+    """
+    try:
+        image_data = data.get('image')
+        category = data.get('category')
+        
+        if not image_data or not category:
+            raise HTTPException(status_code=400, detail="image와 category는 필수입니다")
+        
+        # Base64 데이터 파싱
+        if ',' in image_data:
+            header, base64_data = image_data.split(',', 1)
+            # 이미지 타입 추출 (data:image/jpeg;base64 -> jpeg)
+            if 'image/' in header:
+                image_type = header.split('image/')[1].split(';')[0]
+                file_ext = f'.{image_type}'
+            else:
+                file_ext = '.jpg'
+        else:
+            base64_data = image_data
+            file_ext = '.jpg'
+        
+        # Base64 디코딩
+        file_data = base64.b64decode(base64_data)
+        
+        # 파일 크기 체크 (10MB 제한)
+        if len(file_data) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="파일 크기는 10MB를 초과할 수 없습니다")
+        
+        # 고유한 파일명 생성
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_id = str(uuid.uuid4())[:8]
+        new_filename = f"{timestamp}_{unique_id}{file_ext}"
+        
+        # FTP 업로드
+        file_url = upload_to_ftp(file_data, new_filename, category)
+        
+        return {
+            "success": True,
+            "url": file_url,
+            "filename": new_filename,
+            "size": len(file_data)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"이미지 업로드 실패: {str(e)}")
 
 @app.get("/health")
 async def health_check():
