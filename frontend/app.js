@@ -6,6 +6,7 @@ let currentTab = 'students';
 let students = [];
 let subjects = [];
 let instructors = [];
+let instructorTypes = []; // 강사구분 목록
 let counselings = [];
 let courses = [];
 
@@ -1766,8 +1767,12 @@ window.deleteInstructorCode = async function(code) {
 async function loadInstructors() {
     try {
         window.showLoading('강사 데이터를 불러오는 중...');
-        const response = await axios.get(`${API_BASE_URL}/api/instructors`);
-        instructors = response.data;
+        const [instructorsRes, typesRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/api/instructors`),
+            axios.get(`${API_BASE_URL}/api/instructor-codes`)
+        ]);
+        instructors = instructorsRes.data;
+        instructorTypes = typesRes.data;
         renderInstructors();
         window.hideLoading();
     } catch (error) {
@@ -1785,11 +1790,25 @@ function renderInstructors() {
                 <h2 class="text-2xl font-bold text-gray-800">
                     <i class="fas fa-chalkboard-teacher mr-2"></i>강사 관리 (총 ${instructors.length}명)
                 </h2>
-                <div class="space-x-2">
-                    <input type="text" id="instructor-search" placeholder="검색..." class="border rounded px-3 py-2" onkeyup="window.searchInstructors()">
-                    <button onclick="window.showInstructorForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                        <i class="fas fa-plus mr-2"></i>강사 추가
-                    </button>
+                <button onclick="window.showInstructorForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-plus mr-2"></i>강사 추가
+                </button>
+            </div>
+            
+            <!-- 필터 영역 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-gray-700 mb-2">강사구분 필터</label>
+                    <select id="instructor-type-filter" class="w-full border rounded px-3 py-2" onchange="window.filterInstructors()">
+                        <option value="">-- 전체 강사구분 --</option>
+                        ${instructorTypes.map(type => `
+                            <option value="${type.code}">${type.name}</option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">검색 (이름, 전공)</label>
+                    <input type="text" id="instructor-search" placeholder="검색어 입력..." class="w-full border rounded px-3 py-2" onkeyup="window.filterInstructors()">
                 </div>
             </div>
             
@@ -1802,7 +1821,7 @@ function renderInstructors() {
                             <th class="px-4 py-2 text-left">강사코드</th>
                             <th class="px-4 py-2 text-left">이름</th>
                             <th class="px-4 py-2 text-left">전공</th>
-                            <th class="px-4 py-2 text-left">타입</th>
+                            <th class="px-4 py-2 text-left">강사구분</th>
                             <th class="px-4 py-2 text-left">연락처</th>
                             <th class="px-4 py-2 text-left">이메일</th>
                             <th class="px-4 py-2 text-left">작업</th>
@@ -1834,14 +1853,44 @@ function renderInstructors() {
     `;
 }
 
-window.searchInstructors = async function() {
-    const search = document.getElementById('instructor-search').value;
+window.filterInstructors = async function() {
+    const search = document.getElementById('instructor-search').value.toLowerCase();
+    const typeFilter = document.getElementById('instructor-type-filter').value;
+    
     try {
-        const response = await axios.get(`${API_BASE_URL}/api/instructors?search=${search}`);
-        instructors = response.data;
+        // 서버에서 전체 강사 목록 가져오기
+        const response = await axios.get(`${API_BASE_URL}/api/instructors`);
+        let filteredInstructors = response.data;
+        
+        // 강사구분 필터 적용
+        if (typeFilter) {
+            filteredInstructors = filteredInstructors.filter(inst => 
+                inst.instructor_type === typeFilter
+            );
+        }
+        
+        // 검색어 필터 적용 (이름, 전공)
+        if (search) {
+            filteredInstructors = filteredInstructors.filter(inst => 
+                (inst.name && inst.name.toLowerCase().includes(search)) ||
+                (inst.major && inst.major.toLowerCase().includes(search))
+            );
+        }
         
         const tbody = document.getElementById('instructor-list');
-        tbody.innerHTML = instructors.map(inst => `
+        if (filteredInstructors.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                        <i class="fas fa-search mr-2"></i>
+                        조건에 맞는 강사가 없습니다
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = filteredInstructors.map(inst => `
             <tr class="border-t hover:bg-gray-50">
                 <td class="px-4 py-2">${inst.code}</td>
                 <td class="px-4 py-2">${inst.name}</td>
@@ -1860,7 +1909,7 @@ window.searchInstructors = async function() {
             </tr>
         `).join('');
     } catch (error) {
-        console.error('검색 실패:', error);
+        console.error('필터링 실패:', error);
     }
 }
 
@@ -1873,12 +1922,37 @@ window.showInstructorForm = function(code = null) {
     formDiv.innerHTML = `
         <h3 class="text-lg font-semibold mb-4">${code ? '강사 수정' : '강사 추가'}</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input type="text" id="inst-code" placeholder="강사코드" value="${existingInst ? existingInst.code : ''}" ${code ? 'readonly' : ''} class="border rounded px-3 py-2">
-            <input type="text" id="inst-name" placeholder="이름" value="${existingInst ? existingInst.name : ''}" class="border rounded px-3 py-2">
-            <input type="text" id="inst-major" placeholder="전공" value="${existingInst ? existingInst.major || '' : ''}" class="border rounded px-3 py-2">
-            <input type="text" id="inst-type" placeholder="강사타입 코드" value="${existingInst ? existingInst.instructor_type || '' : ''}" class="border rounded px-3 py-2">
-            <input type="text" id="inst-phone" placeholder="연락처" value="${existingInst ? existingInst.phone || '' : ''}" class="border rounded px-3 py-2">
-            <input type="email" id="inst-email" placeholder="이메일" value="${existingInst ? existingInst.email || '' : ''}" class="border rounded px-3 py-2">
+            <div>
+                <label class="block text-gray-700 mb-1">강사코드 *</label>
+                <input type="text" id="inst-code" placeholder="I001" value="${existingInst ? existingInst.code : ''}" ${code ? 'readonly' : ''} class="w-full border rounded px-3 py-2 ${code ? 'bg-gray-100' : ''}">
+            </div>
+            <div>
+                <label class="block text-gray-700 mb-1">이름 *</label>
+                <input type="text" id="inst-name" placeholder="홍길동" value="${existingInst ? existingInst.name : ''}" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-gray-700 mb-1">전공</label>
+                <input type="text" id="inst-major" placeholder="컴퓨터공학" value="${existingInst ? existingInst.major || '' : ''}" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-gray-700 mb-1">강사구분</label>
+                <select id="inst-type" class="w-full border rounded px-3 py-2">
+                    <option value="">선택하세요</option>
+                    ${instructorTypes.map(type => `
+                        <option value="${type.code}" ${existingInst && existingInst.instructor_type === type.code ? 'selected' : ''}>
+                            ${type.name} (${type.code})
+                        </option>
+                    `).join('')}
+                </select>
+            </div>
+            <div>
+                <label class="block text-gray-700 mb-1">연락처</label>
+                <input type="text" id="inst-phone" placeholder="010-1234-5678" value="${existingInst ? existingInst.phone || '' : ''}" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-gray-700 mb-1">이메일</label>
+                <input type="email" id="inst-email" placeholder="email@example.com" value="${existingInst ? existingInst.email || '' : ''}" class="w-full border rounded px-3 py-2">
+            </div>
         </div>
         <div class="mt-4 space-x-2">
             <button onclick="window.saveInstructor('${code || ''}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
