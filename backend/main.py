@@ -1,6 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from typing import Optional, List
 import pymysql
 import pandas as pd
@@ -18,6 +19,9 @@ from PIL import Image
 load_dotenv()
 
 app = FastAPI(title="학급 관리 시스템 API")
+
+# 정적 파일 서빙 (프론트엔드)
+app.mount("/static", StaticFiles(directory="../frontend"), name="static")
 
 # CORS 설정
 app.add_middleware(
@@ -2732,6 +2736,15 @@ async def health_check():
         return {"status": "healthy", "database": "connected"}
     except Exception as e:
         return {"status": "unhealthy", "error": str(e)}
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_index():
+    """프론트엔드 index.html 서빙"""
+    try:
+        with open("../frontend/index.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Frontend not found")
 
 if __name__ == "__main__":
     import uvicorn
