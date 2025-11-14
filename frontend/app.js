@@ -551,7 +551,7 @@ window.showStudentForm = function(studentId = null) {
                             </div>
                         </div>
                         <div id="student-photos-preview" class="flex flex-col gap-2 mt-2"></div>
-                        <input type="hidden" id="student-photo-urls" value="${student?.photo_urls || '[]'}">
+                        <input type="hidden" id="student-photo-urls" value='${student && student.photo_urls ? student.photo_urls : "[]"}'>
                     </div>
                 </div>
             </div>
@@ -1661,6 +1661,18 @@ window.showCounselingForm = function(counselingId = null) {
     
     formDiv.classList.remove('hidden');
     formDiv.scrollIntoView({ behavior: 'smooth' });
+    
+    // 기존 사진 미리보기 표시
+    if (existingCounseling && existingCounseling.photo_urls) {
+        try {
+            const photoUrls = typeof existingCounseling.photo_urls === 'string' 
+                ? JSON.parse(existingCounseling.photo_urls) 
+                : existingCounseling.photo_urls;
+            updateCounselingPhotoPreview(photoUrls);
+        } catch (e) {
+            console.error('사진 URL 파싱 오류:', e);
+        }
+    }
 }
 
 window.hideCounselingForm = function() {
@@ -2516,7 +2528,7 @@ window.showInstructorForm = function(code = null) {
                     </div>
                 </div>
                 <div id="instructor-photos-preview" class="flex flex-col gap-2 mt-2"></div>
-                <input type="hidden" id="instructor-photo-urls" value="${existingInst?.photo_urls || '[]'}">
+                <input type="hidden" id="instructor-photo-urls" value='${existingInst && existingInst.photo_urls ? existingInst.photo_urls : "[]"}'>
             </div>
         </div>
         
@@ -4757,6 +4769,8 @@ function renderTrainingLogsTable(timetables) {
     });
     
     listDiv.innerHTML = `
+        <div id="training-log-form" class="hidden mb-6 p-4 bg-blue-50 rounded-lg"></div>
+        
         <div class="mb-4">
             <p class="text-sm text-gray-600">총 ${timetables.length}건의 시간표</p>
         </div>
@@ -4836,8 +4850,8 @@ function renderTrainingLogsTable(timetables) {
                                     `}
                                 </td>
                                 <td class="px-3 py-2 text-xs">
-                                    ${hasLog && tt.training_photo_urls && JSON.parse(tt.training_photo_urls || '[]').length > 0 ? `
-                                        <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(tt.training_photo_urls).length}개 사진"></i>
+                                    ${hasLog && tt.training_log_photo_urls && JSON.parse(tt.training_log_photo_urls || '[]').length > 0 ? `
+                                        <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(tt.training_log_photo_urls).length}개 사진"></i>
                                     ` : ''}
                                     ${hasLog ? `
                                         <button onclick="window.editTrainingLog(${tt.training_log_id}, ${tt.id})" class="text-blue-600 hover:text-blue-800 mr-2">
@@ -4855,8 +4869,6 @@ function renderTrainingLogsTable(timetables) {
                 </tbody>
             </table>
         </div>
-        
-        <div id="training-log-form" class="hidden mt-6 p-4 bg-blue-50 rounded-lg"></div>
     `;
 }
 
@@ -5082,7 +5094,7 @@ window.editTrainingLog = async function(logId, timetableId) {
                                 </div>
                             </div>
                             <div id="training-photos-preview" class="flex flex-col gap-2 mt-2"></div>
-                            <input type="hidden" id="training-photo-urls" value="${log.photo_urls || '[]'}">
+                            <input type="hidden" id="training-photo-urls" value='${log && log.photo_urls ? log.photo_urls : "[]"}'>
                         </div>
                     </div>
                 </div>

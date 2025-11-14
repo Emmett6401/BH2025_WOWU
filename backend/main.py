@@ -1163,7 +1163,8 @@ async def get_timetables(
                    s.name as subject_name,
                    i.name as instructor_name,
                    tl.id as training_log_id,
-                   tl.content as training_content
+                   tl.content as training_content,
+                   tl.photo_urls as training_log_photo_urls
             FROM timetables t
             LEFT JOIN courses c ON t.course_code = c.code
             LEFT JOIN subjects s ON t.subject_code = s.code
