@@ -528,7 +528,7 @@ window.showStudentForm = function(studentId = null) {
                                 <i class="fas fa-folder-open mr-2"></i>파일 선택
                             </button>
                             <button type="button" onclick="document.getElementById('student-camera-input').click()" 
-                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm md:hidden">
+                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
                                 <i class="fas fa-camera mr-2"></i>사진 촬영
                             </button>
                         </div>
@@ -1538,7 +1538,7 @@ window.showCounselingForm = function(counselingId = null) {
                                 <i class="fas fa-folder-open mr-2"></i>파일 선택
                             </button>
                             <button type="button" onclick="document.getElementById('counseling-camera-input').click()" 
-                                    class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded md:hidden">
+                                    class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
                                 <i class="fas fa-camera mr-2"></i>사진 촬영
                             </button>
                         </div>
@@ -2398,7 +2398,7 @@ window.showInstructorForm = function(code = null) {
                         <i class="fas fa-folder-open mr-2"></i>파일 선택
                     </button>
                     <button type="button" onclick="document.getElementById('instructor-camera-input').click()" 
-                            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm md:hidden">
+                            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
                         <i class="fas fa-camera mr-2"></i>사진 촬영
                     </button>
                 </div>
@@ -4772,7 +4772,7 @@ window.showTrainingLogForm = async function(timetableId) {
                                     <i class="fas fa-folder-open mr-2"></i>파일 선택
                                 </button>
                                 <button type="button" onclick="document.getElementById('training-camera-input').click()" 
-                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded md:hidden">
+                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
                                     <i class="fas fa-camera mr-2"></i>사진 촬영
                                 </button>
                             </div>
@@ -4887,7 +4887,7 @@ window.editTrainingLog = async function(logId, timetableId) {
                                     <i class="fas fa-folder-open mr-2"></i>파일 선택
                                 </button>
                                 <button type="button" onclick="document.getElementById('training-camera-input').click()" 
-                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded md:hidden">
+                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
                                     <i class="fas fa-camera mr-2"></i>사진 촬영
                                 </button>
                             </div>
