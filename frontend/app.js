@@ -151,6 +151,48 @@ window.debouncedFilterCounselings = debounce(() => {
     window.filterCounselings();
 }, 500);
 
+// ==================== 로딩 오버레이 ====================
+window.showLoading = function(message = '데이터를 불러오는 중...') {
+    const overlay = document.getElementById('loading-overlay');
+    const messageEl = document.getElementById('loading-message');
+    const progressEl = document.getElementById('loading-progress');
+    
+    messageEl.textContent = message;
+    progressEl.style.width = '0%';
+    overlay.classList.remove('hidden');
+    
+    // 프로그레스 바 애니메이션
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        progressEl.style.width = progress + '%';
+    }, 200);
+    
+    // interval ID 저장
+    overlay.dataset.intervalId = interval;
+};
+
+window.hideLoading = function() {
+    const overlay = document.getElementById('loading-overlay');
+    const progressEl = document.getElementById('loading-progress');
+    
+    // interval 정리
+    if (overlay.dataset.intervalId) {
+        clearInterval(overlay.dataset.intervalId);
+        delete overlay.dataset.intervalId;
+    }
+    
+    // 100%로 완료 표시
+    progressEl.style.width = '100%';
+    
+    // 짧은 딜레이 후 숨김
+    setTimeout(() => {
+        overlay.classList.add('hidden');
+        progressEl.style.width = '0%';
+    }, 300);
+};
+
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
     console.log('App initialized');
@@ -214,6 +256,7 @@ window.showTab = function(tab) {
 // ==================== 학생 관리 ====================
 async function loadStudents() {
     try {
+        window.showLoading('학생 데이터를 불러오는 중...');
         console.log('Loading students...');
         const [studentsRes, coursesRes] = await Promise.all([
             axios.get(`${API_BASE_URL}/api/students`),
@@ -223,7 +266,9 @@ async function loadStudents() {
         courses = coursesRes.data;
         console.log('Students loaded:', students.length);
         renderStudents();
+        window.hideLoading();
     } catch (error) {
+        window.hideLoading();
         console.error('학생 목록 로드 실패:', error);
         document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">학생 목록을 불러오는데 실패했습니다: ' + error.message + '</div>';
     }
@@ -800,6 +845,7 @@ window.deleteSubject = async function(subjectCode) {
 // ==================== 상담 관리 ====================
 async function loadCounselings() {
     try {
+        window.showLoading('상담 데이터를 불러오는 중...');
         const [counselingsRes, studentsRes, instructorsRes, coursesRes] = await Promise.all([
             axios.get(`${API_BASE_URL}/api/counselings`),
             axios.get(`${API_BASE_URL}/api/students`),
@@ -811,7 +857,9 @@ async function loadCounselings() {
         instructors = instructorsRes.data;
         courses = coursesRes.data;
         renderCounselings();
+        window.hideLoading();
     } catch (error) {
+        window.hideLoading();
         console.error('상담 목록 로드 실패:', error);
         document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">상담 목록을 불러오는데 실패했습니다.</div>';
     }
@@ -1717,10 +1765,13 @@ window.deleteInstructorCode = async function(code) {
 // ==================== 강사 관리 (확장) ====================
 async function loadInstructors() {
     try {
+        window.showLoading('강사 데이터를 불러오는 중...');
         const response = await axios.get(`${API_BASE_URL}/api/instructors`);
         instructors = response.data;
         renderInstructors();
+        window.hideLoading();
     } catch (error) {
+        window.hideLoading();
         console.error('강사 목록 로드 실패:', error);
         document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">강사 목록을 불러오는데 실패했습니다.</div>';
     }
@@ -2014,6 +2065,7 @@ let courseSubjects = {}; // 과정별 선택된 교과목 저장
 
 async function loadCourses() {
     try {
+        window.showLoading('과정 데이터를 불러오는 중...');
         const response = await axios.get(`${API_BASE_URL}/api/courses`);
         courses = response.data;
         
@@ -2025,7 +2077,9 @@ async function loadCourses() {
         });
         
         renderCourses();
+        window.hideLoading();
     } catch (error) {
+        window.hideLoading();
         console.error('과정 목록 로드 실패:', error);
         document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">과정 목록을 불러오는데 실패했습니다.</div>';
     }
@@ -2806,10 +2860,13 @@ let projects = [];
 
 async function loadProjects() {
     try {
+        window.showLoading('프로젝트 데이터를 불러오는 중...');
         const response = await axios.get(`${API_BASE_URL}/api/projects`);
         projects = response.data;
         renderProjects();
+        window.hideLoading();
     } catch (error) {
+        window.hideLoading();
         console.error('프로젝트 목록 로드 실패:', error);
         document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">프로젝트 목록을 불러오는데 실패했습니다.</div>';
     }
@@ -3031,6 +3088,7 @@ function renderTimetableList() {
 
 async function loadTimetables() {
     try {
+        window.showLoading('시간표 데이터를 불러오는 중...');
         // 과정, 과목, 강사 목록도 함께 로드
         const [ttRes, coursesRes, subjectsRes, instructorsRes] = await Promise.all([
             axios.get(`${API_BASE_URL}/api/timetables`),
@@ -3043,7 +3101,9 @@ async function loadTimetables() {
         subjects = subjectsRes.data;
         instructors = instructorsRes.data;
         renderTimetables();
+        window.hideLoading();
     } catch (error) {
+        window.hideLoading();
         console.error('시간표 목록 로드 실패:', error);
         document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">시간표 목록을 불러오는데 실패했습니다.</div>';
     }
@@ -3346,6 +3406,7 @@ let selectedCourseForLogs = null;
 
 async function loadTrainingLogs() {
     try {
+        window.showLoading('훈련일지 데이터를 불러오는 중...');
         // 먼저 과정 목록 로드
         const coursesRes = await axios.get(`${API_BASE_URL}/api/courses`);
         const courses = coursesRes.data;
@@ -3355,7 +3416,9 @@ async function loadTrainingLogs() {
         instructors = instructorsRes.data;
         
         renderTrainingLogsSelection(courses);
+        window.hideLoading();
     } catch (error) {
+        window.hideLoading();
         console.error('훈련일지 초기화 실패:', error);
         document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">훈련일지를 불러오는데 실패했습니다.</div>';
     }
