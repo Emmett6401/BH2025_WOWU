@@ -490,6 +490,79 @@ GenSpark AI Assistant
 
 ## 🎉 최신 업데이트
 
+### 🚀 v3.3 주요 업데이트 (2025-11-14) - 📸 사진 첨부 기능 완전 구현
+
+#### ✨ 사진 업로드 시스템 (photoInsert 브랜치)
+1. **4개 영역 사진 첨부 지원**
+   - 📋 상담일지 사진 첨부
+   - 📝 훈련일지 사진 첨부
+   - 👨‍🎓 학생관리 사진 첨부
+   - 👨‍🏫 강사관리 사진 첨부
+
+2. **FTP 서버 통합**
+   - **서버**: bitnmeta2.synology.me:2121
+   - **자동 디렉토리 분류**:
+     - 상담일지 → `/homes/ha/camFTP/BH2025/guidance`
+     - 훈련일지 → `/homes/ha/camFTP/BH2025/train`
+     - 학생관리 → `/homes/ha/camFTP/BH2025/student`
+     - 강사관리 → `/homes/ha/camFTP/BH2025/teacher`
+   - **자동 파일명**: `{timestamp}_{uuid}.{ext}` 형식
+
+3. **썸네일 시스템**
+   - **자동 썸네일 생성** (200x200px, JPEG)
+   - **EXIF 방향 자동 보정** (회전 이미지 처리)
+   - **로컬 캐싱** (`/backend/thumbnails/`)
+   - **On-demand 생성** (기존 파일도 자동 썸네일 생성)
+   - **Fallback 아이콘** (로딩 실패 시)
+
+4. **사용자 경험 개선**
+   - ✅ **실시간 업로드 진도 표시** (프로그레스 바)
+   - ✅ **자동 저장** (업로드 완료 시 즉시 저장)
+   - ✅ **화면 유지** (업로드/삭제 시 페이지 리프레시 없음)
+   - ✅ **상세 성공 메시지** ("홍길동 학생의 상담일지에 3개 사진 업로드됨")
+   - ✅ **그리드 카메라 아이콘** (사진 유무 한눈에 확인)
+   - ✅ **사진 개수 툴팁** (아이콘에 마우스 오버 시)
+
+5. **다중 업로드 방식**
+   - 📁 **파일 선택** (다중 선택 지원)
+   - 📷 **사진 촬영** (모바일/데스크탑 카메라)
+   - 🗑️ **개별 삭제** (삭제 후 자동 저장)
+
+6. **기술적 세부사항**
+   - **백엔드**: FastAPI + ftplib + Pillow
+   - **프론트엔드**: Vanilla JS + TailwindCSS
+   - **저장 형식**: JSON 배열 (`photo_urls` TEXT 컬럼)
+   - **다운로드 프록시**: `/api/download-image` (FTP → 브라우저)
+   - **썸네일 API**: `/api/thumbnail` (캐싱 + On-demand 생성)
+
+#### 📊 데이터베이스 변경사항
+```sql
+-- 모든 관련 테이블에 photo_urls 컬럼 추가
+ALTER TABLE consultations ADD COLUMN photo_urls TEXT;
+ALTER TABLE training_logs ADD COLUMN photo_urls TEXT;
+ALTER TABLE students ADD COLUMN photo_urls TEXT;
+ALTER TABLE instructors ADD COLUMN photo_urls TEXT;
+```
+
+#### 🎯 사용 방법
+1. **사진 업로드**:
+   - 상담/훈련일지/학생/강사 수정 폼 열기
+   - "파일 선택" 또는 "사진 촬영" 버튼 클릭
+   - 파일 선택 → 자동 업로드 → 자동 저장
+   - 프로그레스 바로 진행 상황 확인
+
+2. **사진 확인**:
+   - 폼 내 썸네일 미리보기
+   - 썸네일 클릭 → 원본 다운로드
+   - 그리드 카메라 아이콘으로 사진 유무 확인
+
+3. **사진 삭제**:
+   - 썸네일 옆 휴지통 아이콘 클릭
+   - 즉시 자동 저장
+   - 화면 유지 (리프레시 없음)
+
+---
+
 ### 🚀 v3.2 주요 업데이트 (2025-11-12)
 
 #### ✨ 과정 관리 UI 완전 재설계
