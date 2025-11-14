@@ -5165,6 +5165,36 @@ window.generateAICounselingLogs = async function() {
         
         window.hideLoading();
         
+        // 최근 생성된 상담일지 조회
+        let generatedCounselingsHTML = '';
+        if (successCount > 0) {
+            try {
+                const counselingsRes = await axios.get(`${API_BASE_URL}/api/counselings`);
+                const recentCounselings = counselingsRes.data
+                    .filter(c => selectedCounselingStudents.includes(c.student_code))
+                    .slice(0, successCount);
+                
+                generatedCounselingsHTML = `
+                    <div class="mt-4 space-y-4">
+                        <h4 class="font-semibold text-gray-800">생성된 상담일지:</h4>
+                        ${recentCounselings.map(c => `
+                            <details class="bg-white border rounded-lg p-4">
+                                <summary class="cursor-pointer font-medium text-blue-600 hover:text-blue-800">
+                                    ${c.student_name} (${c.student_code}) - ${c.consultation_date?.split('T')[0]}
+                                    <i class="fas fa-chevron-down ml-2 text-sm"></i>
+                                </summary>
+                                <div class="mt-3 p-3 bg-gray-50 rounded border-l-4 border-blue-400">
+                                    <pre class="whitespace-pre-wrap text-sm text-gray-700">${c.content}</pre>
+                                </div>
+                            </details>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('상담일지 조회 실패:', error);
+            }
+        }
+        
         const resultSection = document.getElementById('ai-counseling-result-section');
         const resultContent = document.getElementById('ai-counseling-result-content');
         
@@ -5180,9 +5210,13 @@ window.generateAICounselingLogs = async function() {
                     </ul>
                 </details>
             ` : ''}
+            ${generatedCounselingsHTML}
         `;
         
         resultSection.classList.remove('hidden');
+        
+        // 결과 섹션으로 스크롤
+        resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         
         // 다시 조회
         window.searchUncounseledStudents();
