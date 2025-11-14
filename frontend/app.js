@@ -45,7 +45,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // 전역 상태
-let currentTab = 'students';
+let currentTab = 'dashboard';
 let students = [];
 let subjects = [];
 let instructors = [];
@@ -237,11 +237,272 @@ window.hideLoading = function() {
     }, 300);
 };
 
+// ==================== 대시보드 ====================
+async function loadDashboard() {
+    window.showLoading('대시보드 데이터를 불러오는 중...');
+    
+    try {
+        // 모든 데이터 병렬로 가져오기
+        const [
+            studentsRes,
+            instructorsRes,
+            coursesRes,
+            counselingsRes,
+            timetablesRes,
+            projectsRes,
+            trainingLogsRes
+        ] = await Promise.all([
+            axios.get(`${API_BASE_URL}/api/students`),
+            axios.get(`${API_BASE_URL}/api/instructors`),
+            axios.get(`${API_BASE_URL}/api/courses`),
+            axios.get(`${API_BASE_URL}/api/counselings`),
+            axios.get(`${API_BASE_URL}/api/timetables`),
+            axios.get(`${API_BASE_URL}/api/projects`),
+            axios.get(`${API_BASE_URL}/api/training-logs`)
+        ]);
+        
+        const studentsData = studentsRes.data;
+        const instructorsData = instructorsRes.data;
+        const coursesData = coursesRes.data;
+        const counselingsData = counselingsRes.data;
+        const timetablesData = timetablesRes.data;
+        const projectsData = projectsRes.data;
+        const trainingLogsData = trainingLogsRes.data;
+        
+        // 최근 상담 (최근 5건)
+        const recentCounselings = counselingsData
+            .sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date))
+            .slice(0, 5);
+        
+        // 오늘 시간표
+        const today = new Date().toISOString().split('T')[0];
+        const todayTimetables = timetablesData.filter(t => t.class_date === today);
+        
+        // 최근 훈련일지 (최근 5건)
+        const recentTrainingLogs = trainingLogsData
+            .sort((a, b) => new Date(b.training_date) - new Date(a.training_date))
+            .slice(0, 5);
+        
+        // 대시보드 렌더링
+        const app = document.getElementById('app');
+        app.innerHTML = `
+            <div class="p-6">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">
+                    <i class="fas fa-tachometer-alt mr-3"></i>대시보드
+                </h2>
+                
+                <!-- 통계 카드 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <!-- 학생 수 -->
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform cursor-pointer" onclick="showTab('students')">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-blue-100 text-sm font-semibold">학생</p>
+                                <p class="text-4xl font-bold mt-2">${studentsData.length}</p>
+                                <p class="text-blue-100 text-xs mt-2">총 학생 수</p>
+                            </div>
+                            <div class="bg-white bg-opacity-20 rounded-full p-4">
+                                <i class="fas fa-user-graduate text-4xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 강사 수 -->
+                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform cursor-pointer" onclick="showTab('instructors')">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-green-100 text-sm font-semibold">강사</p>
+                                <p class="text-4xl font-bold mt-2">${instructorsData.length}</p>
+                                <p class="text-green-100 text-xs mt-2">총 강사 수</p>
+                            </div>
+                            <div class="bg-white bg-opacity-20 rounded-full p-4">
+                                <i class="fas fa-chalkboard-teacher text-4xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 과정 수 -->
+                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform cursor-pointer" onclick="showTab('courses')">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-purple-100 text-sm font-semibold">과정</p>
+                                <p class="text-4xl font-bold mt-2">${coursesData.length}</p>
+                                <p class="text-purple-100 text-xs mt-2">총 과정 수</p>
+                            </div>
+                            <div class="bg-white bg-opacity-20 rounded-full p-4">
+                                <i class="fas fa-school text-4xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 상담 수 -->
+                    <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform cursor-pointer" onclick="showTab('counselings')">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-orange-100 text-sm font-semibold">상담</p>
+                                <p class="text-4xl font-bold mt-2">${counselingsData.length}</p>
+                                <p class="text-orange-100 text-xs mt-2">총 상담 건수</p>
+                            </div>
+                            <div class="bg-white bg-opacity-20 rounded-full p-4">
+                                <i class="fas fa-comments text-4xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 2단 그리드 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- 오늘의 시간표 -->
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-gray-800">
+                                <i class="fas fa-calendar-day mr-2 text-blue-600"></i>오늘의 시간표
+                            </h3>
+                            <button onclick="showTab('timetables')" class="text-blue-600 hover:text-blue-700 text-sm font-semibold">
+                                전체보기 <i class="fas fa-arrow-right ml-1"></i>
+                            </button>
+                        </div>
+                        <div class="space-y-3">
+                            ${todayTimetables.length > 0 ? todayTimetables.slice(0, 5).map(t => `
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                    <div class="flex-1">
+                                        <p class="font-semibold text-gray-800">${t.subject_name || '과목명 없음'}</p>
+                                        <p class="text-sm text-gray-600">${t.course_name || t.course_code} - ${t.instructor_name || '강사 미정'}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm font-semibold text-blue-600">${t.start_time} - ${t.end_time}</p>
+                                        <p class="text-xs text-gray-500">${t.type === 'lecture' ? '강의' : t.type === 'project' ? '프로젝트' : '인턴십'}</p>
+                                    </div>
+                                </div>
+                            `).join('') : `
+                                <div class="text-center py-8 text-gray-400">
+                                    <i class="fas fa-calendar-times text-4xl mb-3"></i>
+                                    <p>오늘 예정된 수업이 없습니다</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                    
+                    <!-- 최근 상담 -->
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-gray-800">
+                                <i class="fas fa-comments mr-2 text-green-600"></i>최근 상담
+                            </h3>
+                            <button onclick="showTab('counselings')" class="text-green-600 hover:text-green-700 text-sm font-semibold">
+                                전체보기 <i class="fas fa-arrow-right ml-1"></i>
+                            </button>
+                        </div>
+                        <div class="space-y-3">
+                            ${recentCounselings.length > 0 ? recentCounselings.map(c => `
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                    <div class="flex-1">
+                                        <p class="font-semibold text-gray-800">${c.student_name} (${c.student_code})</p>
+                                        <p class="text-sm text-gray-600">${c.topic || '주제 없음'}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm font-semibold text-gray-700">${formatDateWithDay(c.consultation_date)}</p>
+                                        <span class="text-xs px-2 py-1 rounded ${
+                                            c.consultation_type === '긴급' ? 'bg-red-100 text-red-800' :
+                                            c.consultation_type === '정기' ? 'bg-blue-100 text-blue-800' :
+                                            'bg-purple-100 text-purple-800'
+                                        }">
+                                            ${c.consultation_type || '정기'}
+                                        </span>
+                                    </div>
+                                </div>
+                            `).join('') : `
+                                <div class="text-center py-8 text-gray-400">
+                                    <i class="fas fa-comment-slash text-4xl mb-3"></i>
+                                    <p>상담 기록이 없습니다</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 추가 정보 카드 -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- 최근 훈련일지 -->
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-gray-800">
+                                <i class="fas fa-clipboard-list mr-2 text-indigo-600"></i>최근 훈련일지
+                            </h3>
+                            <button onclick="showTab('training-logs')" class="text-indigo-600 hover:text-indigo-700 text-sm font-semibold">
+                                전체 <i class="fas fa-arrow-right ml-1"></i>
+                            </button>
+                        </div>
+                        <div class="space-y-2">
+                            ${recentTrainingLogs.length > 0 ? recentTrainingLogs.map(t => `
+                                <div class="p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
+                                    <p class="text-sm font-semibold text-gray-800">${formatDateWithDay(t.training_date)}</p>
+                                    <p class="text-xs text-gray-600">${t.timetable_subject_name || '과목명 없음'}</p>
+                                </div>
+                            `).join('') : `
+                                <div class="text-center py-6 text-gray-400">
+                                    <p class="text-sm">훈련일지가 없습니다</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                    
+                    <!-- 프로젝트 -->
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-gray-800">
+                                <i class="fas fa-project-diagram mr-2 text-pink-600"></i>팀/프로젝트
+                            </h3>
+                            <button onclick="showTab('projects')" class="text-pink-600 hover:text-pink-700 text-sm font-semibold">
+                                전체 <i class="fas fa-arrow-right ml-1"></i>
+                            </button>
+                        </div>
+                        <div class="text-center">
+                            <div class="inline-block bg-pink-100 rounded-full p-6 mb-3">
+                                <i class="fas fa-users text-5xl text-pink-600"></i>
+                            </div>
+                            <p class="text-4xl font-bold text-gray-800">${projectsData.length}</p>
+                            <p class="text-sm text-gray-600 mt-1">총 팀 수</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 빠른 액션 -->
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">
+                            <i class="fas fa-bolt mr-2 text-yellow-600"></i>빠른 액션
+                        </h3>
+                        <div class="space-y-2">
+                            <button onclick="showTab('students')" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold py-2 px-4 rounded-lg transition-colors text-left">
+                                <i class="fas fa-user-plus mr-2"></i>학생 추가
+                            </button>
+                            <button onclick="showTab('counselings')" class="w-full bg-green-50 hover:bg-green-100 text-green-700 font-semibold py-2 px-4 rounded-lg transition-colors text-left">
+                                <i class="fas fa-comment-medical mr-2"></i>상담 기록
+                            </button>
+                            <button onclick="showTab('timetables')" class="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold py-2 px-4 rounded-lg transition-colors text-left">
+                                <i class="fas fa-calendar-plus mr-2"></i>시간표 등록
+                            </button>
+                            <button onclick="showTab('training-logs')" class="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-2 px-4 rounded-lg transition-colors text-left">
+                                <i class="fas fa-clipboard-check mr-2"></i>훈련일지 작성
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        window.hideLoading();
+    } catch (error) {
+        window.hideLoading();
+        console.error('대시보드 로드 실패:', error);
+        document.getElementById('app').innerHTML = '<div class="p-6 text-red-600">대시보드를 불러오는데 실패했습니다.</div>';
+    }
+}
+
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
     console.log('App initialized');
     loadStudents();
-    showTab('students');
+    showTab('dashboard'); // 첫 페이지를 대시보드로 변경
 });
 
 // 탭 전환
@@ -261,6 +522,9 @@ window.showTab = function(tab) {
     
     // 해당 탭 콘텐츠 로드
     switch(tab) {
+        case 'dashboard':
+            loadDashboard();
+            break;
         case 'instructor-codes':
             loadInstructorCodes();
             break;
