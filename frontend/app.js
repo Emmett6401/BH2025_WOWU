@@ -3071,16 +3071,18 @@ let projects = [];
 async function loadProjects() {
     try {
         window.showLoading('팀 데이터를 불러오는 중...');
-        const [projectsRes, coursesRes, studentsRes, instructorsRes] = await Promise.all([
+        const [projectsRes, coursesRes, studentsRes, instructorsRes, instructorTypesRes] = await Promise.all([
             axios.get(`${API_BASE_URL}/api/projects`),
             axios.get(`${API_BASE_URL}/api/courses`),
             axios.get(`${API_BASE_URL}/api/students`),
-            axios.get(`${API_BASE_URL}/api/instructors`)
+            axios.get(`${API_BASE_URL}/api/instructors`),
+            axios.get(`${API_BASE_URL}/api/instructor-codes`)
         ]);
         projects = projectsRes.data;
         courses = coursesRes.data;
         students = studentsRes.data;
         instructors = instructorsRes.data;
+        instructorTypes = instructorTypesRes.data;
         renderProjects();
         window.hideLoading();
     } catch (error) {
