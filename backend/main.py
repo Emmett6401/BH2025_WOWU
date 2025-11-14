@@ -2504,6 +2504,84 @@ async def upload_image_base64(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"이미지 업로드 실패: {str(e)}")
 
+@app.get("/api/download-image")
+async def download_image(url: str = Query(..., description="FTP URL to download")):
+    """
+    FTP 서버의 이미지를 다운로드하는 프록시 API
+    
+    Args:
+        url: FTP URL (예: ftp://bitnmeta2.synology.me:2121/homes/ha/camFTP/BH2025/guidance/file.jpg)
+    
+    Returns:
+        이미지 파일
+    """
+    try:
+        # FTP URL 파싱
+        if not url.startswith('ftp://'):
+            raise HTTPException(status_code=400, detail="FTP URL이 아닙니다")
+        
+        # URL에서 정보 추출
+        # ftp://bitnmeta2.synology.me:2121/homes/ha/camFTP/BH2025/guidance/file.jpg
+        url_parts = url.replace('ftp://', '').split('/', 1)
+        host_port = url_parts[0]
+        file_path = url_parts[1] if len(url_parts) > 1 else ''
+        
+        # 호스트와 포트 분리
+        if ':' in host_port:
+            host, port = host_port.split(':')
+            port = int(port)
+        else:
+            host = host_port
+            port = 21
+        
+        # 파일명 추출
+        filename = file_path.split('/')[-1]
+        
+        # FTP 연결 및 다운로드
+        ftp = FTP()
+        ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
+        ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
+        
+        # 파일 다운로드
+        file_data = io.BytesIO()
+        ftp.retrbinary(f'RETR /{file_path}', file_data.write)
+        ftp.quit()
+        
+        # 파일 데이터 가져오기
+        file_data.seek(0)
+        file_bytes = file_data.read()
+        
+        # 임시 파일로 저장
+        temp_filename = f"/tmp/{filename}"
+        with open(temp_filename, 'wb') as f:
+            f.write(file_bytes)
+        
+        # 파일 확장자로 MIME 타입 결정
+        ext = os.path.splitext(filename)[1].lower()
+        media_type_map = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.bmp': 'image/bmp',
+            '.webp': 'image/webp'
+        }
+        media_type = media_type_map.get(ext, 'application/octet-stream')
+        
+        return FileResponse(
+            temp_filename,
+            media_type=media_type,
+            filename=filename,
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename}"'
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"이미지 다운로드 실패: {str(e)}")
+
 @app.get("/health")
 async def health_check():
     """헬스 체크"""

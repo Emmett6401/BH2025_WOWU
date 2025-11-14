@@ -677,7 +677,7 @@ function updateStudentPhotoPreview(photoUrls) {
         <div class="flex items-center justify-between bg-white border rounded px-3 py-2 hover:bg-gray-50">
             <div class="flex items-center gap-2">
                 <i class="fas fa-image text-blue-500"></i>
-                <a href="${url}" target="_blank" download class="text-blue-600 hover:underline text-sm">
+                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="text-blue-600 hover:underline text-sm">
                     사진 ${index + 1}
                 </a>
             </div>
@@ -1688,7 +1688,7 @@ function updateCounselingPhotoPreview(photoUrls) {
         <div class="flex items-center justify-between bg-white border rounded px-3 py-2 hover:bg-gray-50">
             <div class="flex items-center gap-2">
                 <i class="fas fa-image text-blue-500"></i>
-                <a href="${url}" target="_blank" download class="text-blue-600 hover:underline text-sm">
+                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="text-blue-600 hover:underline text-sm">
                     사진 ${idx + 1}
                 </a>
             </div>
@@ -2510,7 +2510,7 @@ function updateInstructorPhotoPreview(photoUrls) {
         <div class="flex items-center justify-between bg-white border rounded px-3 py-2 hover:bg-gray-50">
             <div class="flex items-center gap-2">
                 <i class="fas fa-image text-blue-500"></i>
-                <a href="${url}" target="_blank" download class="text-blue-600 hover:underline text-sm">
+                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="text-blue-600 hover:underline text-sm">
                     사진 ${index + 1}
                 </a>
             </div>
@@ -4969,7 +4969,7 @@ function updateTrainingPhotoPreview(photoUrls) {
         <div class="flex items-center justify-between bg-white border rounded px-3 py-2 hover:bg-gray-50">
             <div class="flex items-center gap-2">
                 <i class="fas fa-image text-blue-500"></i>
-                <a href="${url}" target="_blank" download class="text-blue-600 hover:underline text-sm">
+                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="text-blue-600 hover:underline text-sm">
                     사진 ${idx + 1}
                 </a>
             </div>
