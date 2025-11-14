@@ -633,14 +633,14 @@ function renderSubjects() {
                             <p><i class="fas fa-repeat mr-2"></i>빈도: ${getBiweeklyInfo(subject.is_biweekly, subject.week_offset)}</p>
                             <p><i class="fas fa-clock mr-2"></i>강의시수: ${subject.hours || 0}시간</p>
                         </div>
-                        ${subject.description ? `<p class="text-sm text-gray-500 mt-2">${subject.description}</p>` : ''}
+                        ${subject.description ? `<p class="text-sm text-gray-500 mt-2"><i class="fas fa-briefcase mr-1"></i>직무분야: ${subject.description}</p>` : ''}
                         ${(() => {
                             const subs = [1, 2, 3, 4, 5]
                                 .filter(i => subject[`sub_subject_${i}`] && subject[`sub_subject_${i}`].trim())
                                 .map(i => `${subject[`sub_subject_${i}`]} (${subject[`sub_hours_${i}`] || 0}h)`);
                             return subs.length > 0 ? `
                                 <div class="mt-2 pt-2 border-t">
-                                    <p class="text-xs font-semibold text-gray-700 mb-1">세부 교과목:</p>
+                                    <p class="text-xs font-semibold text-gray-700 mb-1">교과목 주제:</p>
                                     <div class="text-xs text-gray-600 space-y-0.5">
                                         ${subs.map(s => `<p>• ${s}</p>`).join('')}
                                     </div>
@@ -726,10 +726,10 @@ window.showSubjectForm = function(subjectCode = null) {
                            class="w-full px-3 py-2 border rounded-lg">
                 </div>
                 
-                <!-- 세부 교과목 5개 -->
+                <!-- 교과목 주제 5개 -->
                 <div class="col-span-2">
                     <label class="block text-gray-700 font-semibold mb-3">
-                        <i class="fas fa-list mr-2"></i>세부 교과목 (최대 5개)
+                        <i class="fas fa-list mr-2"></i>교과목 주제 (최대 5개)
                     </label>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-blue-50 p-4 rounded-lg">
                         ${[1, 2, 3, 4, 5].map(i => `
@@ -737,7 +737,7 @@ window.showSubjectForm = function(subjectCode = null) {
                                 <span class="text-sm font-semibold text-gray-600 w-12">${i}.</span>
                                 <input type="text" name="sub_subject_${i}" 
                                        value="${existingSubject?.[`sub_subject_${i}`] || ''}"
-                                       placeholder="세부교과명 ${i}"
+                                       placeholder="교과목 주제 ${i}"
                                        class="flex-1 px-2 py-1 border rounded text-sm">
                                 <input type="number" name="sub_hours_${i}" 
                                        value="${existingSubject?.[`sub_hours_${i}`] || 0}"
@@ -750,8 +750,8 @@ window.showSubjectForm = function(subjectCode = null) {
                 </div>
                 
                 <div class="col-span-2">
-                    <label class="block text-gray-700 mb-2">설명</label>
-                    <textarea name="description" rows="3" class="w-full px-3 py-2 border rounded-lg">${existingSubject?.description || ''}</textarea>
+                    <label class="block text-gray-700 mb-2">직무분야</label>
+                    <textarea name="description" rows="3" placeholder="예: 웹 개발, 데이터 분석, AI 엔지니어링 등" class="w-full px-3 py-2 border rounded-lg">${existingSubject?.description || ''}</textarea>
                 </div>
             </div>
             <div class="mt-4 space-x-2">
