@@ -536,6 +536,17 @@ window.showStudentForm = function(studentId = null) {
                                onchange="window.handleStudentImageUpload(event)" class="hidden">
                         <input type="file" id="student-camera-input" accept="image/*" capture="environment" 
                                onchange="window.handleStudentImageUpload(event)" class="hidden">
+                        <div id="student-upload-progress" class="hidden mb-3">
+                            <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                <p class="text-sm text-blue-800 mb-2">
+                                    <i class="fas fa-cloud-upload-alt mr-2"></i>
+                                    서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                                </p>
+                                <div class="w-full bg-blue-200 rounded-full h-2">
+                                    <div id="student-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
                         <div id="student-photos-preview" class="flex flex-col gap-2 mt-2"></div>
                         <input type="hidden" id="student-photo-urls" value="${student?.photo_urls || '[]'}">
                     </div>
@@ -614,13 +625,27 @@ window.handleStudentImageUpload = async function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
-    const photoUrlsInput = document.getElementById('student-photo-urls');
-    const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+    // 프로그레스 바 표시
+    const progressDiv = document.getElementById('student-upload-progress');
+    const progressBar = document.getElementById('student-progress-bar');
+    if (progressDiv) {
+        progressDiv.classList.remove('hidden');
+        progressBar.style.width = '0%';
+    }
     
-    for (let file of files) {
-        try {
+    try {
+        const photoUrlsInput = document.getElementById('student-photo-urls');
+        const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+        const totalFiles = files.length;
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
             const formData = new FormData();
             formData.append('file', file);
+            
+            // 프로그레스 업데이트
+            const progress = ((i + 0.5) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${progress}%`;
             
             const response = await axios.post(
                 `${API_BASE_URL}/api/upload-image?category=student`,
@@ -631,22 +656,37 @@ window.handleStudentImageUpload = async function(event) {
             if (response.data.success) {
                 photoUrls.push(response.data.url);
             }
-        } catch (error) {
-            console.error('사진 업로드 실패:', error);
-            alert('사진 업로드에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+            
+            // 완료 프로그레스
+            const completeProgress = ((i + 1) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${completeProgress}%`;
         }
-    }
-    
-    photoUrlsInput.value = JSON.stringify(photoUrls);
-    updateStudentPhotoPreview(photoUrls);
-    
-    alert(`${files.length}개 사진이 업로드되었습니다. 자동 저장 중...`);
-    
-    // 자동 저장
-    const studentIdInput = document.getElementById('student-id');
-    const studentId = studentIdInput ? studentIdInput.value : null;
-    if (studentId) {
-        await window.saveStudent(parseInt(studentId));
+        
+        photoUrlsInput.value = JSON.stringify(photoUrls);
+        updateStudentPhotoPreview(photoUrls);
+        
+        // 자동 저장
+        const studentIdInput = document.getElementById('student-id');
+        const studentId = studentIdInput ? studentIdInput.value : null;
+        if (studentId) {
+            await window.saveStudent(parseInt(studentId));
+        }
+        
+        // 프로그레스 바 숨기기
+        if (progressDiv) {
+            setTimeout(() => {
+                progressDiv.classList.add('hidden');
+            }, 1000);
+        }
+        
+        window.showAlert(`${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        
+    } catch (error) {
+        // 프로그레스 바 숨기기
+        if (progressDiv) progressDiv.classList.add('hidden');
+        
+        console.error('사진 업로드 실패:', error);
+        window.showAlert('사진 업로드 실패: ' + (error.response?.data?.detail || error.message));
     }
     
     // 파일 입력 초기화
@@ -1150,6 +1190,9 @@ function renderCounselings() {
                                         </span>
                                     </td>
                                     <td class="px-3 py-2 text-xs">
+                                        ${c.photo_urls && JSON.parse(c.photo_urls || '[]').length > 0 ? `
+                                            <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(c.photo_urls).length}개 사진"></i>
+                                        ` : ''}
                                         <button onclick="window.editCounseling(${c.id})" class="text-blue-600 hover:text-blue-800 mr-2">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -2406,6 +2449,17 @@ window.showInstructorForm = function(code = null) {
                        onchange="window.handleInstructorImageUpload(event)" class="hidden">
                 <input type="file" id="instructor-camera-input" accept="image/*" capture="environment" 
                        onchange="window.handleInstructorImageUpload(event)" class="hidden">
+                <div id="instructor-upload-progress" class="hidden mb-3">
+                    <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                        <p class="text-sm text-blue-800 mb-2">
+                            <i class="fas fa-cloud-upload-alt mr-2"></i>
+                            서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                        </p>
+                        <div class="w-full bg-blue-200 rounded-full h-2">
+                            <div id="instructor-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
                 <div id="instructor-photos-preview" class="flex flex-col gap-2 mt-2"></div>
                 <input type="hidden" id="instructor-photo-urls" value="${existingInst?.photo_urls || '[]'}">
             </div>
@@ -2489,13 +2543,27 @@ window.handleInstructorImageUpload = async function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
-    const photoUrlsInput = document.getElementById('instructor-photo-urls');
-    const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+    // 프로그레스 바 표시
+    const progressDiv = document.getElementById('instructor-upload-progress');
+    const progressBar = document.getElementById('instructor-progress-bar');
+    if (progressDiv) {
+        progressDiv.classList.remove('hidden');
+        progressBar.style.width = '0%';
+    }
     
-    for (let file of files) {
-        try {
+    try {
+        const photoUrlsInput = document.getElementById('instructor-photo-urls');
+        const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+        const totalFiles = files.length;
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
             const formData = new FormData();
             formData.append('file', file);
+            
+            // 프로그레스 업데이트
+            const progress = ((i + 0.5) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${progress}%`;
             
             const response = await axios.post(
                 `${API_BASE_URL}/api/upload-image?category=teacher`,
@@ -2506,22 +2574,37 @@ window.handleInstructorImageUpload = async function(event) {
             if (response.data.success) {
                 photoUrls.push(response.data.url);
             }
-        } catch (error) {
-            console.error('사진 업로드 실패:', error);
-            alert('사진 업로드에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+            
+            // 완료 프로그레스
+            const completeProgress = ((i + 1) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${completeProgress}%`;
         }
-    }
-    
-    photoUrlsInput.value = JSON.stringify(photoUrls);
-    updateInstructorPhotoPreview(photoUrls);
-    
-    alert(`${files.length}개 사진이 업로드되었습니다. 자동 저장 중...`);
-    
-    // 자동 저장
-    const instructorCodeInput = document.getElementById('instructor-code');
-    const existingCode = instructorCodeInput ? instructorCodeInput.value : null;
-    if (existingCode) {
-        await window.saveInstructor(existingCode);
+        
+        photoUrlsInput.value = JSON.stringify(photoUrls);
+        updateInstructorPhotoPreview(photoUrls);
+        
+        // 자동 저장
+        const instructorCodeInput = document.getElementById('instructor-code');
+        const existingCode = instructorCodeInput ? instructorCodeInput.value : null;
+        if (existingCode) {
+            await window.saveInstructor(existingCode);
+        }
+        
+        // 프로그레스 바 숨기기
+        if (progressDiv) {
+            setTimeout(() => {
+                progressDiv.classList.add('hidden');
+            }, 1000);
+        }
+        
+        window.showAlert(`${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        
+    } catch (error) {
+        // 프로그레스 바 숨기기
+        if (progressDiv) progressDiv.classList.add('hidden');
+        
+        console.error('사진 업로드 실패:', error);
+        window.showAlert('사진 업로드 실패: ' + (error.response?.data?.detail || error.message));
     }
     
     // 파일 입력 초기화
@@ -4780,6 +4863,17 @@ window.showTrainingLogForm = async function(timetableId) {
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
                             <input type="file" id="training-camera-input" accept="image/*" capture="environment" 
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
+                            <div id="training-upload-progress" class="hidden mb-3">
+                                <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                    <p class="text-sm text-blue-800 mb-2">
+                                        <i class="fas fa-cloud-upload-alt mr-2"></i>
+                                        서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                                    </p>
+                                    <div class="w-full bg-blue-200 rounded-full h-2">
+                                        <div id="training-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
                             <div id="training-photos-preview" class="flex flex-col gap-2 mt-2"></div>
                             <input type="hidden" id="training-photo-urls" value="[]">
                             <p class="text-sm text-gray-500 mt-2">
@@ -4895,6 +4989,17 @@ window.editTrainingLog = async function(logId, timetableId) {
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
                             <input type="file" id="training-camera-input" accept="image/*" capture="environment" 
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
+                            <div id="training-upload-progress" class="hidden mb-3">
+                                <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                    <p class="text-sm text-blue-800 mb-2">
+                                        <i class="fas fa-cloud-upload-alt mr-2"></i>
+                                        서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                                    </p>
+                                    <div class="w-full bg-blue-200 rounded-full h-2">
+                                        <div id="training-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
                             <div id="training-photos-preview" class="flex flex-col gap-2 mt-2"></div>
                             <input type="hidden" id="training-photo-urls" value="${log.photo_urls || '[]'}">
                         </div>
@@ -4942,14 +5047,26 @@ window.handleTrainingImageUpload = async function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
-    window.showLoading('사진 업로드 중...');
+    // 프로그레스 바 표시
+    const progressDiv = document.getElementById('training-upload-progress');
+    const progressBar = document.getElementById('training-progress-bar');
+    if (progressDiv) {
+        progressDiv.classList.remove('hidden');
+        progressBar.style.width = '0%';
+    }
     
     try {
         const photoUrls = JSON.parse(document.getElementById('training-photo-urls').value || '[]');
+        const totalFiles = files.length;
         
-        for (let file of files) {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
             const formData = new FormData();
             formData.append('file', file);
+            
+            // 프로그레스 업데이트
+            const progress = ((i + 0.5) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${progress}%`;
             
             const response = await axios.post(
                 `${API_BASE_URL}/api/upload-image?category=train`,
@@ -4962,13 +5079,14 @@ window.handleTrainingImageUpload = async function(event) {
             if (response.data.success) {
                 photoUrls.push(response.data.url);
             }
+            
+            // 완료 프로그레스
+            const completeProgress = ((i + 1) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${completeProgress}%`;
         }
         
         document.getElementById('training-photo-urls').value = JSON.stringify(photoUrls);
         updateTrainingPhotoPreview(photoUrls);
-        
-        window.hideLoading();
-        window.showAlert(`${files.length}개 사진이 업로드되었습니다. 자동 저장 중...`);
         
         // 자동 저장
         const logIdInput = document.getElementById('training-log-id');
@@ -4989,8 +5107,19 @@ window.handleTrainingImageUpload = async function(event) {
             }
         }
         
+        // 프로그레스 바 숨기기
+        if (progressDiv) {
+            setTimeout(() => {
+                progressDiv.classList.add('hidden');
+            }, 1000);
+        }
+        
+        window.showAlert(`${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        
     } catch (error) {
-        window.hideLoading();
+        // 프로그레스 바 숨기기
+        if (progressDiv) progressDiv.classList.add('hidden');
+        
         console.error('사진 업로드 실패:', error);
         window.showAlert('사진 업로드 실패: ' + (error.response?.data?.detail || error.message));
     }
