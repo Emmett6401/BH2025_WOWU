@@ -1685,16 +1685,23 @@ function updateCounselingPhotoPreview(photoUrls) {
     }
     
     previewDiv.innerHTML = photoUrls.map((url, idx) => `
-        <div class="flex items-center justify-between bg-white border rounded px-3 py-2 hover:bg-gray-50">
-            <div class="flex items-center gap-2">
-                <i class="fas fa-image text-blue-500"></i>
-                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="text-blue-600 hover:underline text-sm">
-                    사진 ${idx + 1}
+        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
+            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="flex-shrink-0">
+                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
+                     alt="사진 ${idx + 1}"
+                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
+                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
+            </a>
+            <div class="flex-1">
+                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download 
+                   class="text-blue-600 hover:underline text-sm block">
+                    사진 ${idx + 1} 다운로드
                 </a>
+                <p class="text-xs text-gray-500 mt-1">클릭하여 다운로드</p>
             </div>
             <button type="button" onclick="window.removeCounselingPhoto(${idx})" 
-                    class="text-red-500 hover:text-red-700">
-                <i class="fas fa-trash text-xs"></i>
+                    class="text-red-500 hover:text-red-700 px-2">
+                <i class="fas fa-trash"></i>
             </button>
         </div>
     `).join('');
@@ -2507,16 +2514,23 @@ function updateInstructorPhotoPreview(photoUrls) {
     }
     
     previewDiv.innerHTML = photoUrls.map((url, index) => `
-        <div class="flex items-center justify-between bg-white border rounded px-3 py-2 hover:bg-gray-50">
-            <div class="flex items-center gap-2">
-                <i class="fas fa-image text-blue-500"></i>
-                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="text-blue-600 hover:underline text-sm">
-                    사진 ${index + 1}
+        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
+            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="flex-shrink-0">
+                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
+                     alt="사진 ${index + 1}"
+                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
+                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
+            </a>
+            <div class="flex-1">
+                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download 
+                   class="text-blue-600 hover:underline text-sm block">
+                    사진 ${index + 1} 다운로드
                 </a>
+                <p class="text-xs text-gray-500 mt-1">클릭하여 다운로드</p>
             </div>
             <button type="button" onclick="window.removeInstructorPhoto(${index})" 
-                    class="text-red-500 hover:text-red-700">
-                <i class="fas fa-trash text-xs"></i>
+                    class="text-red-500 hover:text-red-700 px-2">
+                <i class="fas fa-trash"></i>
             </button>
         </div>
     `).join('');

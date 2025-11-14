@@ -13,6 +13,7 @@ import requests
 from ftplib import FTP
 import uuid
 import base64
+from PIL import Image
 
 load_dotenv()
 
@@ -66,9 +67,57 @@ FTP_PATHS = {
     'teacher': '/homes/ha/camFTP/BH2025/teacher'     # 강사
 }
 
+def create_thumbnail(file_data: bytes, filename: str) -> str:
+    """
+    이미지 썸네일 생성 및 로컬 저장
+    
+    Args:
+        file_data: 원본 이미지 바이트 데이터
+        filename: 파일명
+    
+    Returns:
+        썸네일 파일명
+    """
+    try:
+        # 이미지 열기
+        image = Image.open(io.BytesIO(file_data))
+        
+        # EXIF 방향 정보 처리
+        try:
+            from PIL import ImageOps
+            image = ImageOps.exif_transpose(image)
+        except:
+            pass
+        
+        # RGB로 변환 (PNG 투명도 처리)
+        if image.mode in ('RGBA', 'LA', 'P'):
+            background = Image.new('RGB', image.size, (255, 255, 255))
+            if image.mode == 'P':
+                image = image.convert('RGBA')
+            background.paste(image, mask=image.split()[-1] if image.mode == 'RGBA' else None)
+            image = background
+        elif image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # 썸네일 크기 (최대 200x200)
+        image.thumbnail((200, 200), Image.Resampling.LANCZOS)
+        
+        # 썸네일 저장 경로
+        thumb_filename = f"thumb_{filename}"
+        thumb_path = f"/home/user/webapp/backend/thumbnails/{thumb_filename}"
+        
+        # 썸네일 저장
+        image.save(thumb_path, 'JPEG', quality=85, optimize=True)
+        
+        return thumb_filename
+        
+    except Exception as e:
+        print(f"썸네일 생성 실패: {str(e)}")
+        return None
+
 def upload_to_ftp(file_data: bytes, filename: str, category: str) -> str:
     """
-    FTP 서버에 파일 업로드
+    FTP 서버에 파일 업로드 및 썸네일 생성
     
     Args:
         file_data: 파일 바이트 데이터
@@ -79,6 +128,12 @@ def upload_to_ftp(file_data: bytes, filename: str, category: str) -> str:
         업로드된 파일의 FTP URL
     """
     try:
+        # 썸네일 생성 (백그라운드에서 실행, 실패해도 업로드는 계속)
+        try:
+            create_thumbnail(file_data, filename)
+        except Exception as e:
+            print(f"썸네일 생성 중 오류 (무시): {str(e)}")
+        
         # FTP 연결
         ftp = FTP()
         ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
@@ -2581,6 +2636,41 @@ async def download_image(url: str = Query(..., description="FTP URL to download"
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"이미지 다운로드 실패: {str(e)}")
+
+@app.get("/api/thumbnail")
+async def get_thumbnail(url: str = Query(..., description="FTP URL")):
+    """
+    이미지 썸네일 제공 API
+    
+    Args:
+        url: FTP URL
+    
+    Returns:
+        썸네일 이미지 (있으면), 없으면 기본 아이콘
+    """
+    try:
+        # URL에서 파일명 추출
+        filename = url.split('/')[-1]
+        thumb_filename = f"thumb_{filename}"
+        thumb_path = f"/home/user/webapp/backend/thumbnails/{thumb_filename}"
+        
+        # 썸네일이 있으면 반환
+        if os.path.exists(thumb_path):
+            return FileResponse(
+                thumb_path,
+                media_type='image/jpeg',
+                headers={
+                    'Cache-Control': 'public, max-age=86400'  # 1일 캐싱
+                }
+            )
+        else:
+            # 썸네일이 없으면 404
+            raise HTTPException(status_code=404, detail="썸네일을 찾을 수 없습니다")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"썸네일 조회 실패: {str(e)}")
 
 @app.get("/health")
 async def health_check():
