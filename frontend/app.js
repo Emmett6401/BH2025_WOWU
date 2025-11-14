@@ -107,8 +107,12 @@ window.showTab = function(tab) {
 async function loadStudents() {
     try {
         console.log('Loading students...');
-        const response = await axios.get(`${API_BASE_URL}/api/students`);
-        students = response.data;
+        const [studentsRes, coursesRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/api/students`),
+            axios.get(`${API_BASE_URL}/api/courses`)
+        ]);
+        students = studentsRes.data;
+        courses = coursesRes.data;
         console.log('Students loaded:', students.length);
         renderStudents();
     } catch (error) {
@@ -151,12 +155,18 @@ function renderStudents() {
                             <th class="px-4 py-2 text-left">성별</th>
                             <th class="px-4 py-2 text-left">연락처</th>
                             <th class="px-4 py-2 text-left">이메일</th>
+                            <th class="px-4 py-2 text-left">과정</th>
                             <th class="px-4 py-2 text-left">캠퍼스</th>
                             <th class="px-4 py-2 text-left">작업</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${students.map(student => `
+                        ${students.map(student => {
+                            // 과정 정보 찾기
+                            const course = courses.find(c => c.code === student.course_code);
+                            const courseDisplay = course ? `${course.code} - ${course.name || course.code}` : (student.course_code || '-');
+                            
+                            return `
                             <tr class="border-b hover:bg-gray-50">
                                 <td class="px-4 py-2 font-mono">${student.code}</td>
                                 <td class="px-4 py-2 font-semibold">${student.name}</td>
@@ -164,6 +174,7 @@ function renderStudents() {
                                 <td class="px-4 py-2">${student.gender || '-'}</td>
                                 <td class="px-4 py-2">${student.phone || '-'}</td>
                                 <td class="px-4 py-2">${student.email || '-'}</td>
+                                <td class="px-4 py-2 text-sm text-blue-600">${courseDisplay}</td>
                                 <td class="px-4 py-2">${student.campus || '-'}</td>
                                 <td class="px-4 py-2">
                                     <button onclick="window.viewStudent(${student.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="상세보기">
@@ -295,6 +306,17 @@ window.showStudentForm = function(studentId = null) {
                     <input type="text" name="campus" value="${student?.campus || ''}" 
                            class="w-full px-3 py-2 border rounded-lg">
                 </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">과정 선택</label>
+                    <select name="course_code" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="">선택</option>
+                        ${courses.map(c => `
+                            <option value="${c.code}" ${student?.course_code === c.code ? 'selected' : ''}>
+                                ${c.code} - ${c.name || c.code}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
                 <div class="col-span-2">
                     <label class="block text-gray-700 mb-2">학력</label>
                     <input type="text" name="education" value="${student?.education || ''}" 
@@ -342,6 +364,7 @@ window.saveStudent = async function(studentId) {
         education: formData.get('education'),
         introduction: formData.get('introduction'),
         campus: formData.get('campus'),
+        course_code: formData.get('course_code'),
         notes: formData.get('notes')
     };
     
@@ -949,6 +972,22 @@ window.showStudentDetail = async function(studentId) {
         const counselingRes = await axios.get(`${API_BASE_URL}/api/counselings?student_id=${studentId}`);
         const studentCounselings = counselingRes.data;
         
+        // 과정 정보 조회
+        let courseInfo = '';
+        if (student.course_code) {
+            try {
+                const courseRes = await axios.get(`${API_BASE_URL}/api/courses`);
+                const course = courseRes.data.find(c => c.code === student.course_code);
+                if (course) {
+                    courseInfo = `${course.code} - ${course.name || course.code}`;
+                } else {
+                    courseInfo = student.course_code;
+                }
+            } catch (e) {
+                courseInfo = student.course_code;
+            }
+        }
+        
         const detailDiv = document.getElementById('student-detail');
         detailDiv.innerHTML = `
             <div class="flex justify-between items-start mb-4">
@@ -961,7 +1000,7 @@ window.showStudentDetail = async function(studentId) {
             </div>
             
             <!-- 학생 기본 정보 -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div class="bg-white p-4 rounded shadow-sm">
                     <p class="text-xs text-gray-500 mb-1">학생코드</p>
                     <p class="text-lg font-bold">${student.code}</p>
@@ -975,6 +1014,10 @@ window.showStudentDetail = async function(studentId) {
                     <p class="text-lg font-bold">${student.birth_date ? formatDateWithDay(student.birth_date) : '-'}</p>
                 </div>
                 <div class="bg-white p-4 rounded shadow-sm">
+                    <p class="text-xs text-gray-500 mb-1">성별</p>
+                    <p class="text-lg font-bold">${student.gender || '-'}</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm">
                     <p class="text-xs text-gray-500 mb-1">연락처</p>
                     <p class="text-lg font-bold">${student.phone || '-'}</p>
                 </div>
@@ -983,10 +1026,36 @@ window.showStudentDetail = async function(studentId) {
                     <p class="text-lg font-bold">${student.email || '-'}</p>
                 </div>
                 <div class="bg-white p-4 rounded shadow-sm">
+                    <p class="text-xs text-gray-500 mb-1">학교</p>
+                    <p class="text-lg font-bold">${student.school || '-'}</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm">
+                    <p class="text-xs text-gray-500 mb-1">전공</p>
+                    <p class="text-lg font-bold">${student.major || '-'}</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm">
+                    <p class="text-xs text-gray-500 mb-1">캠퍼스</p>
+                    <p class="text-lg font-bold">${student.campus || '-'}</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm">
+                    <p class="text-xs text-gray-500 mb-1">주소</p>
+                    <p class="text-lg font-bold">${student.address || '-'}</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm col-span-2">
                     <p class="text-xs text-gray-500 mb-1">과정</p>
-                    <p class="text-lg font-bold">${student.course_code || '-'}</p>
+                    <p class="text-lg font-bold text-blue-600">${courseInfo || '-'}</p>
                 </div>
             </div>
+            
+            <!-- 자기소개 -->
+            ${student.self_introduction ? `
+                <div class="bg-white p-4 rounded shadow-sm mb-6">
+                    <h4 class="font-bold text-lg mb-2">
+                        <i class="fas fa-file-alt mr-2"></i>자기소개
+                    </h4>
+                    <p class="text-gray-700 whitespace-pre-wrap">${student.self_introduction}</p>
+                </div>
+            ` : ''}
             
             <!-- 상담 이력 -->
             <div class="bg-white p-4 rounded shadow-sm">
