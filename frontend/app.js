@@ -6665,3 +6665,113 @@ window.generateAICounselingLogs = async function() {
 }
 
 console.log('App script loaded successfully');
+
+// ==================== PWA 기능: 오프라인 감지 ====================
+
+// 오프라인 인디케이터 생성
+function createOfflineIndicator() {
+    const indicator = document.createElement('div');
+    indicator.id = 'offline-indicator';
+    indicator.className = 'offline-indicator';
+    indicator.innerHTML = '<i class="fas fa-wifi-slash mr-2"></i>오프라인 모드 - 인터넷 연결을 확인해주세요';
+    document.body.insertBefore(indicator, document.body.firstChild);
+    return indicator;
+}
+
+// 오프라인/온라인 상태 감지
+window.addEventListener('online', () => {
+    console.log('✅ 온라인 상태');
+    const indicator = document.getElementById('offline-indicator');
+    if (indicator) {
+        indicator.classList.remove('show');
+        setTimeout(() => indicator.remove(), 300);
+    }
+    
+    // 온라인 복구 알림
+    if (typeof showAlert === 'function') {
+        showAlert('인터넷 연결이 복구되었습니다.', 'success');
+    }
+});
+
+window.addEventListener('offline', () => {
+    console.log('❌ 오프라인 상태');
+    let indicator = document.getElementById('offline-indicator');
+    if (!indicator) {
+        indicator = createOfflineIndicator();
+    }
+    indicator.classList.add('show');
+    
+    // 오프라인 알림
+    if (typeof showAlert === 'function') {
+        showAlert('오프라인 상태입니다. 일부 기능이 제한될 수 있습니다.', 'warning');
+    }
+});
+
+// 초기 오프라인 상태 확인
+if (!navigator.onLine) {
+    const indicator = createOfflineIndicator();
+    indicator.classList.add('show');
+}
+
+// ==================== PWA 기능: 앱 업데이트 감지 ====================
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        console.log('🔄 Service Worker 업데이트 감지');
+        if (typeof showAlert === 'function') {
+            showAlert('앱이 업데이트되었습니다.', 'info');
+        }
+    });
+}
+
+// ==================== PWA 기능: 백그라운드 동기화 (미래 확장용) ====================
+
+// 오프라인에서 작성한 데이터를 저장
+window.saveOfflineData = function(type, data) {
+    const offlineData = JSON.parse(localStorage.getItem('offline_data') || '[]');
+    offlineData.push({
+        type,
+        data,
+        timestamp: Date.now()
+    });
+    localStorage.setItem('offline_data', JSON.stringify(offlineData));
+    console.log('💾 오프라인 데이터 저장:', type);
+};
+
+// 온라인 복구 시 오프라인 데이터 동기화
+window.syncOfflineData = async function() {
+    const offlineData = JSON.parse(localStorage.getItem('offline_data') || '[]');
+    
+    if (offlineData.length === 0) {
+        return;
+    }
+    
+    console.log(`🔄 ${offlineData.length}개 오프라인 데이터 동기화 시작...`);
+    
+    for (const item of offlineData) {
+        try {
+            // 각 데이터 타입에 맞는 API 호출
+            if (item.type === 'counseling') {
+                await axios.post(`${API_BASE_URL}/api/counselings`, item.data);
+            } else if (item.type === 'training-log') {
+                await axios.post(`${API_BASE_URL}/api/training-logs`, item.data);
+            }
+            console.log('✅ 동기화 성공:', item.type);
+        } catch (error) {
+            console.error('❌ 동기화 실패:', item.type, error);
+        }
+    }
+    
+    // 동기화 완료 후 오프라인 데이터 삭제
+    localStorage.removeItem('offline_data');
+    console.log('✨ 오프라인 데이터 동기화 완료');
+};
+
+// 온라인 복구 시 자동 동기화
+window.addEventListener('online', () => {
+    setTimeout(() => {
+        window.syncOfflineData();
+    }, 1000);
+});
+
+console.log('✅ PWA 기능 초기화 완료');
