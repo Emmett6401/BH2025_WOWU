@@ -454,13 +454,42 @@ webapp/
 - [ ] 실시간 알림 (WebSocket)
 - [ ] 대시보드 통계 차트
 
+## 🚀 프로덕션 배포
+
+### Cafe24 서버호스팅 배포 ✅ 권장
+**간단한 한국형 배포 방식**
+
+```bash
+# SSH 접속 후
+git clone https://github.com/Emmett6401/BH2025_WOWU.git
+cd BH2025_WOWU
+bash deploy_cafe24.sh
+```
+
+- 📖 **상세 가이드**: `CAFE24_DEPLOYMENT_GUIDE.md`
+- 💰 **비용**: 월 33,000원~ (서버호스팅 Basic)
+- 🎯 **권장**: 한국 사용자, 간단한 관리, 안정적인 운영
+
+### Google Cloud Run 배포
+**글로벌 서버리스 배포**
+
+```bash
+gcloud run deploy bhhs-edu-system \
+  --source . \
+  --region asia-northeast3 \
+  --allow-unauthenticated
+```
+
+- 📖 **상세 가이드**: `DEPLOYMENT_GUIDE.md`
+- 💰 **비용**: 무료 할당량 내 운영 가능
+- 🎯 **권장**: 글로벌 서비스, 자동 스케일링, 낮은 트래픽
+
 ## 🏆 권장 다음 단계
 1. **사용자 인증**: JWT 기반 로그인 시스템 추가
 2. **대시보드**: Chart.js로 통계 시각화
 3. **출석 관리**: QR 코드 체크인 시스템
 4. **성적 관리**: 성적 입력 및 분석 기능
 5. **보고서**: PDF 생성 (생기부, 성적표 등)
-6. **프로덕션 배포**: Cloudflare Pages 또는 AWS 배포
 
 ## 🛠 기술 스택
 - **프론트엔드**: Vanilla JavaScript, TailwindCSS, Axios, FontAwesome
