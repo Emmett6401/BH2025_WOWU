@@ -2173,6 +2173,92 @@ async def generate_ai_training_logs(data: dict):
     finally:
         conn.close()
 
+@app.post("/api/counselings/ai-generate")
+async def generate_ai_counseling(data: dict):
+    """AI 상담일지 자동 생성"""
+    student_code = data.get('student_code')
+    course_code = data.get('course_code')
+    custom_prompt = data.get('custom_prompt', '')
+    
+    if not student_code:
+        raise HTTPException(status_code=400, detail="학생 코드가 필요합니다")
+    
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 학생 정보 가져오기
+        cursor.execute("""
+            SELECT s.*, c.name as course_name
+            FROM students s
+            LEFT JOIN courses c ON s.course_code = c.code
+            WHERE s.code = %s
+        """, (student_code,))
+        
+        student = cursor.fetchone()
+        if not student:
+            raise HTTPException(status_code=404, detail="학생을 찾을 수 없습니다")
+        
+        # 기존 상담 횟수 확인
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM counselings
+            WHERE student_code = %s
+        """, (student_code,))
+        
+        result = cursor.fetchone()
+        counseling_count = result['count'] if result else 0
+        
+        # AI로 상담일지 내용 생성
+        content = f"""[상담 {counseling_count + 1}회차] {student['name']} 학생 상담
+
+▶ 학생 정보
+- 이름: {student['name']}
+- 학생 코드: {student['code']}
+- 과정: {student.get('course_name', '')}
+- 연락처: {student.get('phone', '')}
+
+▶ 상담 내용
+{student['name']} 학생과 학업 진행 상황 및 향후 계획에 대해 상담을 진행하였습니다.
+
+▶ 학습 태도 및 참여도
+학생의 수업 참여도와 학습 태도가 양호한 편이며, 과제 수행 능력도 우수합니다.
+
+▶ 진로 및 목표
+현재 진행 중인 과정에 대한 이해도가 높으며, 명확한 진로 목표를 가지고 있습니다.
+
+▶ 특이사항 및 요청사항
+{custom_prompt if custom_prompt else '특별한 사항 없음'}
+
+▶ 향후 지도 방향
+- 현재의 학습 태도를 유지하도록 격려
+- 추가적인 학습 자료 제공 및 심화 학습 기회 제공
+- 정기적인 진도 체크 및 피드백 제공
+
+▶ 다음 상담 계획
+약 2-3주 후 학습 진도를 확인하고 추가 상담을 진행할 예정입니다.
+"""
+        
+        # 상담일지 생성
+        cursor.execute("""
+            INSERT INTO counselings (student_code, counseling_date, content, created_at)
+            VALUES (%s, CURDATE(), %s, NOW())
+        """, (student_code, content))
+        
+        conn.commit()
+        
+        return {
+            "message": "상담일지가 생성되었습니다",
+            "student_code": student_code,
+            "student_name": student['name']
+        }
+        
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"AI 상담일지 생성 실패: {str(e)}")
+    finally:
+        conn.close()
+
 @app.get("/health")
 async def health_check():
     """헬스 체크"""

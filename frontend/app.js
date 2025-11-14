@@ -254,6 +254,9 @@ window.showTab = function(tab) {
         case 'ai-training-log':
             loadAITrainingLog();
             break;
+        case 'ai-counseling':
+            loadAICounseling();
+            break;
     }
 }
 
@@ -604,12 +607,14 @@ window.deleteStudent = async function(id) {
 // ==================== 과목 관리 ====================
 async function loadSubjects() {
     try {
-        const [subjectsRes, instructorsRes] = await Promise.all([
+        const [subjectsRes, instructorsRes, instructorTypesRes] = await Promise.all([
             axios.get(`${API_BASE_URL}/api/subjects`),
-            axios.get(`${API_BASE_URL}/api/instructors`)
+            axios.get(`${API_BASE_URL}/api/instructors`),
+            axios.get(`${API_BASE_URL}/api/instructor-codes`)
         ]);
         subjects = subjectsRes.data;
         instructors = instructorsRes.data;
+        instructorTypes = instructorTypesRes.data;
         renderSubjects();
     } catch (error) {
         console.error('과목 목록 로드 실패:', error);
@@ -723,14 +728,22 @@ window.showSubjectForm = function(subjectCode = null) {
                            class="w-full px-3 py-2 border rounded-lg">
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-2">담당 강사</label>
+                    <label class="block text-gray-700 mb-2">담당 강사 (주강사만)</label>
                     <select name="main_instructor" class="w-full px-3 py-2 border rounded-lg">
                         <option value="">선택</option>
-                        ${instructors.map(inst => `
-                            <option value="${inst.code}" ${existingSubject?.main_instructor === inst.code ? 'selected' : ''}>
-                                ${inst.name} (${inst.code})
-                            </option>
-                        `).join('')}
+                        ${instructors.filter(inst => {
+                            const typeInfo = instructorTypes.find(t => t.code === inst.instructor_type);
+                            return typeInfo && typeInfo.type === '1. 주강사';
+                        }).map(inst => {
+                            const typeInfo = instructorTypes.find(t => t.code === inst.instructor_type);
+                            const typeName = typeInfo ? typeInfo.name : '';
+                            const typeType = typeInfo ? typeInfo.type : '';
+                            return `
+                                <option value="${inst.code}" ${existingSubject?.main_instructor === inst.code ? 'selected' : ''}>
+                                    ${inst.name} - ${inst.code} - ${typeName} - ${typeType}
+                                </option>
+                            `;
+                        }).join('')}
                     </select>
                 </div>
                 <div>
@@ -3632,16 +3645,18 @@ async function loadTimetables() {
     try {
         window.showLoading('시간표 데이터를 불러오는 중...');
         // 과정, 과목, 강사 목록도 함께 로드
-        const [ttRes, coursesRes, subjectsRes, instructorsRes] = await Promise.all([
+        const [ttRes, coursesRes, subjectsRes, instructorsRes, instructorTypesRes] = await Promise.all([
             axios.get(`${API_BASE_URL}/api/timetables`),
             axios.get(`${API_BASE_URL}/api/courses`),
             axios.get(`${API_BASE_URL}/api/subjects`),
-            axios.get(`${API_BASE_URL}/api/instructors`)
+            axios.get(`${API_BASE_URL}/api/instructors`),
+            axios.get(`${API_BASE_URL}/api/instructor-codes`)
         ]);
         timetables = ttRes.data;
         courses = coursesRes.data;
         subjects = subjectsRes.data;
         instructors = instructorsRes.data;
+        instructorTypes = instructorTypesRes.data;
         renderTimetables();
         window.hideLoading();
     } catch (error) {
@@ -3890,11 +3905,16 @@ window.showTimetableForm = function(id = null) {
                 <label class="block text-sm text-gray-700 mb-1">강사</label>
                 <select id="tt-instructor-code" class="w-full border rounded px-3 py-2">
                     <option value="">선택하세요</option>
-                    ${instructors.map(i => `
-                        <option value="${i.code}" ${existing && existing.instructor_code === i.code ? 'selected' : ''}>
-                            ${i.code} - ${i.name}
-                        </option>
-                    `).join('')}
+                    ${instructors.map(i => {
+                        const typeInfo = instructorTypes.find(t => t.code === i.instructor_type);
+                        const typeName = typeInfo ? typeInfo.name : '';
+                        const typeType = typeInfo ? typeInfo.type : '';
+                        return `
+                            <option value="${i.code}" ${existing && existing.instructor_code === i.code ? 'selected' : ''}>
+                                ${i.name} - ${i.code} - ${typeName} - ${typeType}
+                            </option>
+                        `;
+                    }).join('')}
                 </select>
             </div>
             <div>
@@ -4492,14 +4512,16 @@ let selectedAITimetables = []; // 선택된 시간표들
 async function loadAITrainingLog() {
     try {
         window.showLoading('데이터를 불러오는 중...');
-        const [coursesRes, subjectsRes, instructorsRes] = await Promise.all([
+        const [coursesRes, subjectsRes, instructorsRes, instructorTypesRes] = await Promise.all([
             axios.get(`${API_BASE_URL}/api/courses`),
             axios.get(`${API_BASE_URL}/api/subjects`),
-            axios.get(`${API_BASE_URL}/api/instructors`)
+            axios.get(`${API_BASE_URL}/api/instructors`),
+            axios.get(`${API_BASE_URL}/api/instructor-codes`)
         ]);
         courses = coursesRes.data;
         subjects = subjectsRes.data;
         instructors = instructorsRes.data;
+        instructorTypes = instructorTypesRes.data;
         renderAITrainingLog();
         window.hideLoading();
     } catch (error) {
@@ -4547,7 +4569,12 @@ function renderAITrainingLog() {
                         <label class="block text-gray-700 mb-2">강사 선택</label>
                         <select id="ai-instructor" class="w-full border rounded px-3 py-2">
                             <option value="">-- 전체 강사 --</option>
-                            ${instructors.map(i => `<option value="${i.code}">${i.name} (${i.code})</option>`).join('')}
+                            ${instructors.map(i => {
+                                const typeInfo = instructorTypes.find(t => t.code === i.instructor_type);
+                                const typeName = typeInfo ? typeInfo.name : '';
+                                const typeType = typeInfo ? typeInfo.type : '';
+                                return `<option value="${i.code}">${i.name} - ${i.code} - ${typeName} - ${typeType}</option>`;
+                            }).join('')}
                         </select>
                     </div>
                 </div>
@@ -4861,6 +4888,309 @@ window.generateAITrainingLogs = async function() {
         window.hideLoading();
         console.error('AI 훈련일지 작성 실패:', error);
         window.showAlert('AI 훈련일지 작성 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+// ==================== AI 상담일지 자동 작성 ====================
+async function loadAICounseling() {
+    try {
+        window.showLoading('데이터를 불러오는 중...');
+        const [coursesRes, studentsRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/api/courses`),
+            axios.get(`${API_BASE_URL}/api/students`)
+        ]);
+        courses = coursesRes.data;
+        students = studentsRes.data;
+        renderAICounseling();
+        window.hideLoading();
+    } catch (error) {
+        window.hideLoading();
+        console.error('AI 상담일지 로드 실패:', error);
+        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">데이터를 불러오는데 실패했습니다.</div>';
+    }
+}
+
+function renderAICounseling() {
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                    <i class="fas fa-comments mr-2 text-purple-600"></i>AI 상담일지 자동 작성
+                </h2>
+                <p class="text-gray-600">미상담 학생을 조회하고 AI가 상담일지를 자동으로 작성해드립니다.</p>
+            </div>
+            
+            <!-- 필터 영역 -->
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <p class="text-blue-700 mb-4">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    과정을 선택하고 회차 조건을 지정하여 미상담 학생을 조회하세요
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">과정 선택 *</label>
+                        <select id="ai-counseling-course" class="w-full border rounded px-3 py-2">
+                            <option value="">-- 과정 선택 --</option>
+                            ${courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">상담 회차 필터</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="number" id="ai-counseling-count" min="0" value="3" class="w-24 border rounded px-3 py-2">
+                            <span class="text-gray-700">회 이하</span>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-1">예: 3회 이하 = 0~3회 상담한 학생 조회</p>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button onclick="window.searchUncounseledStudents()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                        <i class="fas fa-search mr-2"></i>미상담 학생 조회
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 미상담 학생 목록 -->
+            <div id="ai-counseling-list" class="mb-6"></div>
+            
+            <!-- AI 프롬프트 가이드 -->
+            <div id="ai-counseling-prompt-section" class="hidden mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">
+                    <i class="fas fa-magic mr-2 text-purple-600"></i>AI 작성 가이드
+                </h3>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <label class="block text-gray-700 mb-2">프롬프트 (선택사항)</label>
+                    <textarea id="ai-counseling-prompt" rows="4" class="w-full border rounded px-3 py-2" placeholder="예시:
+- 학생의 학습 태도와 참여도를 중점적으로 작성해주세요
+- 진로 상담 내용을 포함해주세요
+- 학생의 강점을 구체적으로 언급해주세요
+- 향후 개선 방향을 제시해주세요"></textarea>
+                    <p class="text-sm text-gray-500 mt-2">
+                        <i class="fas fa-lightbulb mr-1"></i>
+                        AI가 상담일지를 작성할 때 참고할 가이드를 입력하세요 (비워두면 기본 형식으로 작성됩니다)
+                    </p>
+                </div>
+                
+                <div class="mt-4 flex space-x-2">
+                    <button onclick="window.generateAICounselingLogs()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg">
+                        <i class="fas fa-robot mr-2"></i>선택된 학생 상담일지 AI 작성 (<span id="counseling-selected-count">0</span>건)
+                    </button>
+                    <button onclick="window.selectAllCounselingStudents()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg">
+                        <i class="fas fa-check-square mr-2"></i>전체 선택
+                    </button>
+                    <button onclick="window.deselectAllCounselingStudents()" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-3 rounded-lg">
+                        <i class="fas fa-square mr-2"></i>전체 해제
+                    </button>
+                </div>
+            </div>
+            
+            <!-- AI 작성 결과 -->
+            <div id="ai-counseling-result-section" class="hidden">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">
+                    <i class="fas fa-check-circle mr-2 text-green-600"></i>작성 완료
+                </h3>
+                <div id="ai-counseling-result-content" class="bg-green-50 border-l-4 border-green-400 p-4 rounded"></div>
+            </div>
+        </div>
+    `;
+}
+
+let selectedCounselingStudents = [];
+
+window.searchUncounseledStudents = async function() {
+    const courseCode = document.getElementById('ai-counseling-course').value;
+    const maxCount = parseInt(document.getElementById('ai-counseling-count').value);
+    
+    if (!courseCode) {
+        window.showAlert('과정을 선택해주세요.');
+        return;
+    }
+    
+    if (isNaN(maxCount) || maxCount < 0) {
+        window.showAlert('올바른 회차를 입력해주세요.');
+        return;
+    }
+    
+    try {
+        window.showLoading('미상담 학생을 조회하는 중...');
+        
+        // 선택된 과정의 모든 학생 조회
+        const studentsRes = await axios.get(`${API_BASE_URL}/api/students`);
+        const allStudents = studentsRes.data.filter(s => s.course_code === courseCode);
+        
+        // 각 학생의 상담 기록 조회
+        const counselingsRes = await axios.get(`${API_BASE_URL}/api/counselings`);
+        const allCounselings = counselingsRes.data;
+        
+        // 학생별 상담 횟수 계산
+        const studentCounselingCount = {};
+        allStudents.forEach(student => {
+            const count = allCounselings.filter(c => c.student_code === student.code).length;
+            studentCounselingCount[student.code] = count;
+        });
+        
+        // 필터링: maxCount 이하인 학생들
+        const uncounseledStudents = allStudents.filter(student => 
+            studentCounselingCount[student.code] <= maxCount
+        );
+        
+        window.hideLoading();
+        
+        if (uncounseledStudents.length === 0) {
+            document.getElementById('ai-counseling-list').innerHTML = `
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <p class="text-yellow-700">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        상담 ${maxCount}회 이하인 학생이 없습니다.
+                    </p>
+                </div>
+            `;
+            document.getElementById('ai-counseling-prompt-section').classList.add('hidden');
+            return;
+        }
+        
+        // 미상담 학생 목록 표시
+        document.getElementById('ai-counseling-list').innerHTML = `
+            <div class="bg-white border rounded-lg">
+                <div class="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
+                    <h3 class="font-semibold text-gray-800">
+                        <i class="fas fa-users mr-2"></i>미상담 학생 목록 (총 ${uncounseledStudents.length}명)
+                    </h3>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="select-all-counseling-checkbox" 
+                               onchange="window.toggleAllCounselingStudents(this.checked)" 
+                               class="w-4 h-4">
+                        <span class="text-sm text-gray-600">전체 선택</span>
+                    </label>
+                </div>
+                <div class="divide-y max-h-96 overflow-y-auto">
+                    ${uncounseledStudents.map(student => `
+                        <div class="px-4 py-3 hover:bg-gray-50 flex items-center justify-between">
+                            <label class="flex items-center space-x-3 cursor-pointer flex-1">
+                                <input type="checkbox" class="ai-counseling-checkbox w-4 h-4" 
+                                       data-code="${student.code}"
+                                       onchange="window.updateCounselingSelectedCount()">
+                                <div>
+                                    <p class="font-medium">${student.name} (${student.code})</p>
+                                    <p class="text-sm text-gray-600">
+                                        연락처: ${student.phone || '-'} | 
+                                        상담 횟수: ${studentCounselingCount[student.code]}회
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('ai-counseling-prompt-section').classList.remove('hidden');
+        selectedCounselingStudents = [];
+        updateCounselingSelectedCount();
+        
+    } catch (error) {
+        window.hideLoading();
+        console.error('미상담 학생 조회 실패:', error);
+        window.showAlert('미상담 학생 조회 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+window.toggleAllCounselingStudents = function(checked) {
+    const checkboxes = document.querySelectorAll('.ai-counseling-checkbox');
+    checkboxes.forEach(cb => cb.checked = checked);
+    updateCounselingSelectedCount();
+}
+
+window.selectAllCounselingStudents = function() {
+    document.getElementById('select-all-counseling-checkbox').checked = true;
+    window.toggleAllCounselingStudents(true);
+}
+
+window.deselectAllCounselingStudents = function() {
+    document.getElementById('select-all-counseling-checkbox').checked = false;
+    window.toggleAllCounselingStudents(false);
+}
+
+window.updateCounselingSelectedCount = function() {
+    const checkboxes = document.querySelectorAll('.ai-counseling-checkbox:checked');
+    selectedCounselingStudents = Array.from(checkboxes).map(cb => cb.dataset.code);
+    document.getElementById('counseling-selected-count').textContent = selectedCounselingStudents.length;
+}
+
+window.generateAICounselingLogs = async function() {
+    if (selectedCounselingStudents.length === 0) {
+        window.showAlert('상담일지를 작성할 학생을 선택해주세요.');
+        return;
+    }
+    
+    const prompt = document.getElementById('ai-counseling-prompt').value.trim();
+    const courseCode = document.getElementById('ai-counseling-course').value;
+    
+    const confirmed = await window.showConfirm(
+        `선택된 ${selectedCounselingStudents.length}명의 학생에 대한 상담일지를 AI로 작성하시겠습니까?\n\n` +
+        `이 작업은 몇 분이 소요될 수 있습니다.`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        window.showLoading(`AI 상담일지 작성 중... (0/${selectedCounselingStudents.length})`);
+        
+        let successCount = 0;
+        let failCount = 0;
+        const errors = [];
+        
+        for (let i = 0; i < selectedCounselingStudents.length; i++) {
+            const studentCode = selectedCounselingStudents[i];
+            const student = students.find(s => s.code === studentCode);
+            
+            window.showLoading(`AI 상담일지 작성 중... (${i + 1}/${selectedCounselingStudents.length}) - ${student.name}`);
+            
+            try {
+                await axios.post(`${API_BASE_URL}/api/counselings/ai-generate`, {
+                    student_code: studentCode,
+                    course_code: courseCode,
+                    custom_prompt: prompt
+                });
+                successCount++;
+            } catch (error) {
+                console.error(`${student.name} 상담일지 작성 실패:`, error);
+                failCount++;
+                errors.push(`${student.name}: ${error.response?.data?.detail || error.message}`);
+            }
+        }
+        
+        window.hideLoading();
+        
+        const resultSection = document.getElementById('ai-counseling-result-section');
+        const resultContent = document.getElementById('ai-counseling-result-content');
+        
+        resultContent.innerHTML = `
+            <p class="font-semibold mb-2">작성 완료!</p>
+            <p class="mb-2">✅ 성공: ${successCount}건</p>
+            ${failCount > 0 ? `
+                <p class="mb-2">❌ 실패: ${failCount}건</p>
+                <details class="mt-2">
+                    <summary class="cursor-pointer text-red-600">실패 상세 보기</summary>
+                    <ul class="mt-2 text-sm text-red-600">
+                        ${errors.map(err => `<li>• ${err}</li>`).join('')}
+                    </ul>
+                </details>
+            ` : ''}
+        `;
+        
+        resultSection.classList.remove('hidden');
+        
+        // 다시 조회
+        window.searchUncounseledStudents();
+        
+    } catch (error) {
+        window.hideLoading();
+        console.error('AI 상담일지 작성 실패:', error);
+        window.showAlert('AI 상담일지 작성 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
