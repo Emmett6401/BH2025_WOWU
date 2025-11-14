@@ -668,12 +668,14 @@ window.deleteSubject = async function(subjectCode) {
 // ==================== 상담 관리 ====================
 async function loadCounselings() {
     try {
-        const [counselingsRes, studentsRes] = await Promise.all([
+        const [counselingsRes, studentsRes, instructorsRes] = await Promise.all([
             axios.get(`${API_BASE_URL}/api/counselings`),
-            axios.get(`${API_BASE_URL}/api/students`)
+            axios.get(`${API_BASE_URL}/api/students`),
+            axios.get(`${API_BASE_URL}/api/instructors`)
         ]);
         counselings = counselingsRes.data;
         students = studentsRes.data;
+        instructors = instructorsRes.data;
         renderCounselings();
     } catch (error) {
         console.error('상담 목록 로드 실패:', error);
@@ -685,55 +687,113 @@ function renderCounselings() {
     const app = document.getElementById('app');
     app.innerHTML = `
         <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">
-                    <i class="fas fa-comments mr-2"></i>상담 목록 (총 ${counselings.length}건)
-                </h2>
-                <div class="space-x-2">
-                    <select id="filter-student" class="border rounded px-3 py-2" onchange="window.filterCounselings()">
-                        <option value="">전체 학생</option>
-                        ${students.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join('')}
-                    </select>
-                    <button onclick="window.showCounselingForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                <i class="fas fa-comments mr-2"></i>상담 관리
+            </h2>
+            
+            <!-- 검색 및 필터 -->
+            <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm text-gray-700 mb-1">학생 선택</label>
+                        <select id="filter-student" class="w-full border rounded px-3 py-2">
+                            <option value="">전체 학생</option>
+                            ${students.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-700 mb-1">상담 선생님</label>
+                        <select id="filter-instructor" class="w-full border rounded px-3 py-2">
+                            <option value="">전체</option>
+                            ${instructors.map(i => `<option value="${i.code}">${i.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-700 mb-1">시작 날짜</label>
+                        <input type="date" id="filter-start-date" class="w-full border rounded px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-700 mb-1">종료 날짜</label>
+                        <input type="date" id="filter-end-date" class="w-full border rounded px-3 py-2">
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="filter-content" placeholder="상담 내용 검색..." 
+                           class="flex-1 border rounded px-3 py-2">
+                    <button onclick="window.filterCounselings()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
+                        <i class="fas fa-search mr-2"></i>검색
+                    </button>
+                    <button onclick="window.resetCounselingFilters()" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded">
+                        <i class="fas fa-redo mr-2"></i>초기화
+                    </button>
+                    <button onclick="window.showCounselingForm()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
                         <i class="fas fa-plus mr-2"></i>상담 추가
                     </button>
                 </div>
             </div>
             
-            <div id="counseling-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg"></div>
+            <div id="counseling-form" class="hidden mb-6 p-4 bg-blue-50 rounded-lg"></div>
+            <div id="student-detail" class="hidden mb-6 p-4 bg-green-50 rounded-lg"></div>
             
-            <div class="space-y-4">
-                ${counselings.map(counseling => `
-                    <div class="border rounded-lg p-4 hover:shadow-lg transition-shadow ${counseling.status === '완료' ? 'bg-green-50' : ''}">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <h3 class="text-xl font-bold text-blue-600">${counseling.main_topic || '상담'}</h3>
-                                <p class="text-gray-600 text-sm">
-                                    <i class="fas fa-user mr-2"></i>${counseling.student_name} (${counseling.student_code}) | 
-                                    <i class="fas fa-calendar mr-2"></i>${counseling.consultation_date?.substring(0, 10)}
-                                </p>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    <i class="fas fa-tag mr-2"></i>${counseling.consultation_type || '정기'} | 
-                                    <i class="fas fa-check-circle mr-2"></i>${counseling.status || '완료'}
-                                </p>
-                            </div>
-                            <div class="flex space-x-2">
-                                <button onclick="window.viewCounseling(${counseling.id})" class="text-blue-600 hover:text-blue-800">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button onclick="window.editCounseling(${counseling.id})" class="text-green-600 hover:text-green-800">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button onclick="window.deleteCounseling(${counseling.id})" class="text-red-600 hover:text-red-800">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="text-gray-700 mt-3">
-                            <p class="line-clamp-2">${counseling.content || '-'}</p>
-                        </div>
-                    </div>
-                `).join('')}
+            <!-- 상담 목록 그리드 -->
+            <div id="counseling-list">
+                <p class="text-sm text-gray-600 mb-4">총 ${counselings.length}건의 상담</p>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs">날짜</th>
+                                <th class="px-3 py-2 text-left text-xs">학생</th>
+                                <th class="px-3 py-2 text-left text-xs">상담선생님</th>
+                                <th class="px-3 py-2 text-left text-xs">유형</th>
+                                <th class="px-3 py-2 text-left text-xs">상담내용</th>
+                                <th class="px-3 py-2 text-left text-xs">상태</th>
+                                <th class="px-3 py-2 text-left text-xs">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${counselings.map(c => `
+                                <tr class="border-t hover:bg-gray-50">
+                                    <td class="px-3 py-2 text-xs">${c.consultation_date?.substring(0, 10) || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">
+                                        <button onclick="window.showStudentDetail(${c.student_id})" 
+                                                class="text-blue-600 hover:underline">
+                                            ${c.student_name} (${c.student_code})
+                                        </button>
+                                    </td>
+                                    <td class="px-3 py-2 text-xs">${c.instructor_name || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">
+                                        <span class="px-2 py-1 rounded text-xs ${
+                                            c.consultation_type === '긴급' ? 'bg-red-100 text-red-800' :
+                                            c.consultation_type === '정기' ? 'bg-blue-100 text-blue-800' :
+                                            'bg-gray-100 text-gray-800'
+                                        }">
+                                            ${c.consultation_type || '정기'}
+                                        </span>
+                                    </td>
+                                    <td class="px-3 py-2 text-xs max-w-xs truncate">${c.content || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">
+                                        <span class="px-2 py-1 rounded text-xs ${
+                                            c.status === '완료' ? 'bg-green-100 text-green-800' :
+                                            c.status === '취소' ? 'bg-gray-100 text-gray-800' :
+                                            'bg-yellow-100 text-yellow-800'
+                                        }">
+                                            ${c.status || '완료'}
+                                        </span>
+                                    </td>
+                                    <td class="px-3 py-2 text-xs">
+                                        <button onclick="window.editCounseling(${c.id})" class="text-blue-600 hover:text-blue-800 mr-2">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button onclick="window.deleteCounseling(${c.id})" class="text-red-600 hover:text-red-800">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     `;
@@ -741,22 +801,223 @@ function renderCounselings() {
 
 window.filterCounselings = async function() {
     const studentId = document.getElementById('filter-student').value;
+    const instructorCode = document.getElementById('filter-instructor').value;
+    const startDate = document.getElementById('filter-start-date').value;
+    const endDate = document.getElementById('filter-end-date').value;
+    const contentSearch = document.getElementById('filter-content').value;
+    
     try {
-        const url = studentId ? `${API_BASE_URL}/api/counselings?student_id=${studentId}` : `${API_BASE_URL}/api/counselings`;
+        let url = `${API_BASE_URL}/api/counselings?`;
+        if (studentId) url += `student_id=${studentId}&`;
+        
         const response = await axios.get(url);
-        counselings = response.data;
-        renderCounselings();
+        let filtered = response.data;
+        
+        // 프론트엔드에서 추가 필터링
+        if (instructorCode) {
+            filtered = filtered.filter(c => c.instructor_code === instructorCode);
+        }
+        if (startDate) {
+            filtered = filtered.filter(c => c.consultation_date >= startDate);
+        }
+        if (endDate) {
+            filtered = filtered.filter(c => c.consultation_date <= endDate);
+        }
+        if (contentSearch) {
+            const search = contentSearch.toLowerCase();
+            filtered = filtered.filter(c => 
+                (c.content && c.content.toLowerCase().includes(search)) ||
+                (c.main_topic && c.main_topic.toLowerCase().includes(search))
+            );
+        }
+        
+        counselings = filtered;
+        
+        // 목록만 다시 렌더링
+        const listDiv = document.getElementById('counseling-list');
+        listDiv.innerHTML = `
+            <p class="text-sm text-gray-600 mb-4">총 ${counselings.length}건의 상담</p>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs">날짜</th>
+                            <th class="px-3 py-2 text-left text-xs">학생</th>
+                            <th class="px-3 py-2 text-left text-xs">상담선생님</th>
+                            <th class="px-3 py-2 text-left text-xs">유형</th>
+                            <th class="px-3 py-2 text-left text-xs">상담내용</th>
+                            <th class="px-3 py-2 text-left text-xs">상태</th>
+                            <th class="px-3 py-2 text-left text-xs">작업</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${counselings.map(c => `
+                            <tr class="border-t hover:bg-gray-50">
+                                <td class="px-3 py-2 text-xs">${c.consultation_date?.substring(0, 10) || '-'}</td>
+                                <td class="px-3 py-2 text-xs">
+                                    <button onclick="window.showStudentDetail(${c.student_id})" 
+                                            class="text-blue-600 hover:underline">
+                                        ${c.student_name} (${c.student_code})
+                                    </button>
+                                </td>
+                                <td class="px-3 py-2 text-xs">${c.instructor_name || '-'}</td>
+                                <td class="px-3 py-2 text-xs">
+                                    <span class="px-2 py-1 rounded text-xs ${
+                                        c.consultation_type === '긴급' ? 'bg-red-100 text-red-800' :
+                                        c.consultation_type === '정기' ? 'bg-blue-100 text-blue-800' :
+                                        'bg-gray-100 text-gray-800'
+                                    }">
+                                        ${c.consultation_type || '정기'}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 text-xs max-w-xs truncate">${c.content || '-'}</td>
+                                <td class="px-3 py-2 text-xs">
+                                    <span class="px-2 py-1 rounded text-xs ${
+                                        c.status === '완료' ? 'bg-green-100 text-green-800' :
+                                        c.status === '취소' ? 'bg-gray-100 text-gray-800' :
+                                        'bg-yellow-100 text-yellow-800'
+                                    }">
+                                        ${c.status || '완료'}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 text-xs">
+                                    <button onclick="window.editCounseling(${c.id})" class="text-blue-600 hover:text-blue-800 mr-2">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="window.deleteCounseling(${c.id})" class="text-red-600 hover:text-red-800">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
     } catch (error) {
         console.error('상담 필터링 실패:', error);
     }
+}
+
+window.resetCounselingFilters = function() {
+    document.getElementById('filter-student').value = '';
+    document.getElementById('filter-instructor').value = '';
+    document.getElementById('filter-start-date').value = '';
+    document.getElementById('filter-end-date').value = '';
+    document.getElementById('filter-content').value = '';
+    loadCounselings();
+}
+
+window.showStudentDetail = async function(studentId) {
+    try {
+        // 학생 정보 조회
+        const studentRes = await axios.get(`${API_BASE_URL}/api/students/${studentId}`);
+        const student = studentRes.data;
+        
+        // 해당 학생의 상담 이력 조회
+        const counselingRes = await axios.get(`${API_BASE_URL}/api/counselings?student_id=${studentId}`);
+        const studentCounselings = counselingRes.data;
+        
+        const detailDiv = document.getElementById('student-detail');
+        detailDiv.innerHTML = `
+            <div class="flex justify-between items-start mb-4">
+                <h3 class="text-xl font-bold text-gray-800">
+                    <i class="fas fa-user-circle mr-2"></i>학생 상세 정보
+                </h3>
+                <button onclick="window.hideStudentDetail()" class="text-gray-600 hover:text-gray-800">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- 학생 기본 정보 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white p-4 rounded shadow-sm">
+                    <p class="text-xs text-gray-500 mb-1">학생코드</p>
+                    <p class="text-lg font-bold">${student.code}</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm">
+                    <p class="text-xs text-gray-500 mb-1">이름</p>
+                    <p class="text-lg font-bold">${student.name}</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm">
+                    <p class="text-xs text-gray-500 mb-1">생년월일</p>
+                    <p class="text-lg font-bold">${student.birth_date || '-'}</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm">
+                    <p class="text-xs text-gray-500 mb-1">연락처</p>
+                    <p class="text-lg font-bold">${student.phone || '-'}</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm">
+                    <p class="text-xs text-gray-500 mb-1">이메일</p>
+                    <p class="text-lg font-bold">${student.email || '-'}</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm">
+                    <p class="text-xs text-gray-500 mb-1">과정</p>
+                    <p class="text-lg font-bold">${student.course_code || '-'}</p>
+                </div>
+            </div>
+            
+            <!-- 상담 이력 -->
+            <div class="bg-white p-4 rounded shadow-sm">
+                <h4 class="font-bold text-lg mb-3">
+                    <i class="fas fa-history mr-2"></i>상담 이력 (${studentCounselings.length}건)
+                </h4>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full border">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs">날짜</th>
+                                <th class="px-3 py-2 text-left text-xs">선생님</th>
+                                <th class="px-3 py-2 text-left text-xs">유형</th>
+                                <th class="px-3 py-2 text-left text-xs">상담내용</th>
+                                <th class="px-3 py-2 text-left text-xs">상태</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${studentCounselings.map(c => `
+                                <tr class="border-t hover:bg-gray-50">
+                                    <td class="px-3 py-2 text-xs">${c.consultation_date?.substring(0, 10) || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.instructor_name || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.consultation_type || '정기'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.content || '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.status || '완료'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+        detailDiv.classList.remove('hidden');
+        detailDiv.scrollIntoView({ behavior: 'smooth' });
+    } catch (error) {
+        console.error('학생 정보 조회 실패:', error);
+        window.showAlert('학생 정보를 불러오는데 실패했습니다.');
+    }
+}
+
+window.hideStudentDetail = function() {
+    document.getElementById('student-detail').classList.add('hidden');
 }
 
 window.showCounselingForm = function(counselingId = null) {
     const formDiv = document.getElementById('counseling-form');
     const existingCounseling = counselingId ? counselings.find(c => c.id === counselingId) : null;
     
+    // 기존 데이터에 main_topic이 있으면 content와 합침
+    let mergedContent = existingCounseling?.content || '';
+    if (existingCounseling?.main_topic && !mergedContent.includes(existingCounseling.main_topic)) {
+        mergedContent = `[${existingCounseling.main_topic}]\n\n${mergedContent}`;
+    }
+    
     formDiv.innerHTML = `
-        <h3 class="text-lg font-semibold mb-4">${counselingId ? '상담 수정' : '상담 추가'}</h3>
+        <div class="flex justify-between items-start mb-4">
+            <h3 class="text-lg font-semibold">${counselingId ? '상담 수정' : '상담 추가'}</h3>
+            <button onclick="window.hideCounselingForm()" class="text-gray-600 hover:text-gray-800">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
         <form id="counseling-save-form">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -766,6 +1027,17 @@ window.showCounselingForm = function(counselingId = null) {
                         ${students.map(s => `
                             <option value="${s.id}" ${existingCounseling?.student_id === s.id ? 'selected' : ''}>
                                 ${s.name} (${s.code})
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">상담 선생님 *</label>
+                    <select name="instructor_code" required class="w-full px-3 py-2 border rounded-lg">
+                        <option value="">선택하세요</option>
+                        ${instructors.map(i => `
+                            <option value="${i.code}" ${existingCounseling?.instructor_code === i.code ? 'selected' : ''}>
+                                ${i.name}
                             </option>
                         `).join('')}
                     </select>
@@ -794,14 +1066,9 @@ window.showCounselingForm = function(counselingId = null) {
                     </select>
                 </div>
                 <div class="col-span-2">
-                    <label class="block text-gray-700 mb-2">주제 *</label>
-                    <input type="text" name="main_topic" value="${existingCounseling?.main_topic || ''}" 
-                           required placeholder="상담 주제를 입력하세요"
-                           class="w-full px-3 py-2 border rounded-lg">
-                </div>
-                <div class="col-span-2">
                     <label class="block text-gray-700 mb-2">상담 내용 *</label>
-                    <textarea name="content" rows="4" required class="w-full px-3 py-2 border rounded-lg">${existingCounseling?.content || ''}</textarea>
+                    <textarea name="content" rows="6" required placeholder="상담 내용을 상세히 작성하세요..." 
+                              class="w-full px-3 py-2 border rounded-lg">${mergedContent}</textarea>
                 </div>
             </div>
             <div class="mt-4 space-x-2">
@@ -816,6 +1083,7 @@ window.showCounselingForm = function(counselingId = null) {
     `;
     
     formDiv.classList.remove('hidden');
+    formDiv.scrollIntoView({ behavior: 'smooth' });
 }
 
 window.hideCounselingForm = function() {
@@ -827,9 +1095,10 @@ window.saveCounseling = async function(counselingId) {
     const formData = new FormData(form);
     const data = {
         student_id: parseInt(formData.get('student_id')),
+        instructor_code: formData.get('instructor_code'),
         consultation_date: formData.get('consultation_date'),
         consultation_type: formData.get('consultation_type'),
-        main_topic: formData.get('main_topic'),
+        main_topic: '', // 주제는 더 이상 사용하지 않음
         content: formData.get('content'),
         status: formData.get('status')
     };
@@ -837,27 +1106,16 @@ window.saveCounseling = async function(counselingId) {
     try {
         if (counselingId) {
             await axios.put(`${API_BASE_URL}/api/counselings/${counselingId}`, data);
-            alert('상담이 수정되었습니다.');
+            window.showAlert('상담이 수정되었습니다.');
         } else {
             await axios.post(`${API_BASE_URL}/api/counselings`, data);
-            alert('상담이 추가되었습니다.');
+            window.showAlert('상담이 추가되었습니다.');
         }
         window.hideCounselingForm();
         loadCounselings();
     } catch (error) {
         console.error('상담 저장 실패:', error);
-        alert('저장 실패: ' + (error.response?.data?.detail || error.message));
-    }
-}
-
-window.viewCounseling = async function(counselingId) {
-    try {
-        const response = await axios.get(`${API_BASE_URL}/api/counselings/${counselingId}`);
-        const c = response.data;
-        alert(`[상담 상세]\n\n학생: ${c.student_name}\n날짜: ${c.consultation_date?.substring(0, 10)}\n유형: ${c.consultation_type}\n주제: ${c.main_topic}\n\n내용:\n${c.content}`);
-    } catch (error) {
-        console.error('상담 조회 실패:', error);
-        alert('조회 실패');
+        window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
@@ -866,15 +1124,16 @@ window.editCounseling = function(counselingId) {
 }
 
 window.deleteCounseling = async function(counselingId) {
-    if (!confirm('이 상담 기록을 삭제하시겠습니까?')) return;
+    const confirmed = await window.showConfirm('이 상담 기록을 삭제하시겠습니까?');
+    if (!confirmed) return;
     
     try {
         await axios.delete(`${API_BASE_URL}/api/counselings/${counselingId}`);
-        alert('상담이 삭제되었습니다.');
+        window.showAlert('상담이 삭제되었습니다.');
         loadCounselings();
     } catch (error) {
         console.error('상담 삭제 실패:', error);
-        alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('삭제 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
@@ -2600,6 +2859,12 @@ function timeToSeconds(timeStr) {
     return parseInt(hours) * 3600 + parseInt(minutes) * 60;
 }
 
+function calculateDuration(startSeconds, endSeconds) {
+    if (!startSeconds || !endSeconds) return 0;
+    const durationSeconds = endSeconds - startSeconds;
+    return Math.round(durationSeconds / 3600); // 시간 단위로 반환
+}
+
 window.filterTimetables = async function() {
     const courseCode = document.getElementById('tt-course').value;
     const startDate = document.getElementById('tt-start-date').value;
@@ -2867,6 +3132,29 @@ function renderTrainingLogsTable(timetables) {
         return;
     }
     
+    // 과정 시작일 (2024-11-07)
+    const courseStartDate = new Date('2024-11-07');
+    
+    // 과목별 총 시수 계산 (같은 과목 코드로 그룹핑)
+    const subjectHoursMap = {};
+    const subjectCurrentHoursMap = {};
+    
+    timetables.forEach((tt, index) => {
+        if (tt.subject_code) {
+            if (!subjectHoursMap[tt.subject_code]) {
+                subjectHoursMap[tt.subject_code] = 0;
+                subjectCurrentHoursMap[tt.subject_code] = 0;
+            }
+            
+            // 총 시수 계산 (모든 시간표 항목)
+            const duration = calculateDuration(tt.start_time, tt.end_time);
+            subjectHoursMap[tt.subject_code] += duration;
+            
+            // 현재 시수 계산 (현재 항목까지)
+            subjectCurrentHoursMap[tt.subject_code] += duration;
+        }
+    });
+    
     listDiv.innerHTML = `
         <div class="mb-4">
             <p class="text-sm text-gray-600">총 ${timetables.length}건의 시간표</p>
@@ -2878,6 +3166,7 @@ function renderTrainingLogsTable(timetables) {
                         <th class="px-3 py-2 text-left text-xs">날짜</th>
                         <th class="px-3 py-2 text-left text-xs">주차</th>
                         <th class="px-3 py-2 text-left text-xs">일차</th>
+                        <th class="px-3 py-2 text-left text-xs">강의시수</th>
                         <th class="px-3 py-2 text-left text-xs">과목</th>
                         <th class="px-3 py-2 text-left text-xs">강사</th>
                         <th class="px-3 py-2 text-left text-xs">시간</th>
@@ -2887,15 +3176,40 @@ function renderTrainingLogsTable(timetables) {
                     </tr>
                 </thead>
                 <tbody>
-                    ${timetables.map(tt => {
+                    ${timetables.map((tt, index) => {
                         const hasLog = tt.training_log_id != null;
                         const logContent = tt.training_content ? tt.training_content.substring(0, 30) + '...' : '';
                         
+                        // 날짜에서 요일 계산
+                        const classDate = new Date(tt.class_date);
+                        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+                        const dayOfWeek = dayNames[classDate.getDay()];
+                        
+                        // 주차 계산 (2024-11-07 기준)
+                        const diffTime = classDate - courseStartDate;
+                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                        const weekNumber = Math.floor(diffDays / 7) + 1;
+                        
+                        // 강의시수 계산 (현재시수/총시수)
+                        let hoursDisplay = '-';
+                        if (tt.subject_code) {
+                            // 현재 항목까지의 누적 시수 계산
+                            let currentHours = 0;
+                            for (let i = 0; i <= index; i++) {
+                                if (timetables[i].subject_code === tt.subject_code) {
+                                    currentHours += calculateDuration(timetables[i].start_time, timetables[i].end_time);
+                                }
+                            }
+                            const totalHours = subjectHoursMap[tt.subject_code];
+                            hoursDisplay = `${currentHours}h / ${totalHours}h`;
+                        }
+                        
                         return `
                             <tr class="border-b hover:bg-gray-50">
-                                <td class="px-3 py-2 text-xs">${tt.class_date}</td>
-                                <td class="px-3 py-2 text-xs">${tt.week_number || '-'}주차</td>
+                                <td class="px-3 py-2 text-xs">${tt.class_date} (${dayOfWeek})</td>
+                                <td class="px-3 py-2 text-xs">${weekNumber}주차</td>
                                 <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
+                                <td class="px-3 py-2 text-xs font-semibold text-blue-600">${hoursDisplay}</td>
                                 <td class="px-3 py-2 text-xs">${tt.subject_name || '-'}</td>
                                 <td class="px-3 py-2 text-xs">${tt.instructor_name || '-'}</td>
                                 <td class="px-3 py-2 text-xs">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>

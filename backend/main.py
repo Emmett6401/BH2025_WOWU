@@ -1033,9 +1033,11 @@ async def get_counselings(
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
         query = """
-            SELECT c.*, s.name as student_name, s.code as student_code, s.course_code
+            SELECT c.*, s.name as student_name, s.code as student_code, s.course_code,
+                   i.name as instructor_name
             FROM consultations c
             LEFT JOIN students s ON c.student_id = s.id
+            LEFT JOIN instructors i ON c.instructor_code = i.code
             WHERE 1=1
         """
         params = []
@@ -1073,9 +1075,11 @@ async def get_counseling(counseling_id: int):
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute("""
-            SELECT c.*, s.name as student_name, s.code as student_code
+            SELECT c.*, s.name as student_name, s.code as student_code,
+                   i.name as instructor_name
             FROM consultations c
             LEFT JOIN students s ON c.student_id = s.id
+            LEFT JOIN instructors i ON c.instructor_code = i.code
             WHERE c.id = %s
         """, (counseling_id,))
         counseling = cursor.fetchone()
@@ -1101,12 +1105,13 @@ async def create_counseling(data: dict):
         # consultations 테이블 구조에 맞게 조정
         query = """
             INSERT INTO consultations 
-            (student_id, consultation_date, consultation_type, main_topic, content, status)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            (student_id, instructor_code, consultation_date, consultation_type, main_topic, content, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         
         cursor.execute(query, (
             data.get('student_id'),
+            data.get('instructor_code'),
             data.get('consultation_date') or data.get('counseling_date'),
             data.get('consultation_type', '정기'),
             data.get('main_topic') or data.get('topic', ''),
@@ -1130,13 +1135,14 @@ async def update_counseling(counseling_id: int, data: dict):
         
         query = """
             UPDATE consultations 
-            SET student_id = %s, consultation_date = %s, consultation_type = %s,
+            SET student_id = %s, instructor_code = %s, consultation_date = %s, consultation_type = %s,
                 main_topic = %s, content = %s, status = %s
             WHERE id = %s
         """
         
         cursor.execute(query, (
             data.get('student_id'),
+            data.get('instructor_code'),
             data.get('consultation_date') or data.get('counseling_date'),
             data.get('consultation_type', '정기'),
             data.get('main_topic') or data.get('topic', ''),
