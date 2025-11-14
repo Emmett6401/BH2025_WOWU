@@ -1297,11 +1297,14 @@ async def create_counseling(data: dict):
     try:
         cursor = conn.cursor()
         
+        # photo_urls 컬럼 확인 및 추가
+        ensure_photo_urls_column(cursor, 'consultations')
+        
         # consultations 테이블 구조에 맞게 조정
         query = """
             INSERT INTO consultations 
-            (student_id, instructor_code, consultation_date, consultation_type, main_topic, content, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (student_id, instructor_code, consultation_date, consultation_type, main_topic, content, status, photo_urls)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         cursor.execute(query, (
@@ -1311,7 +1314,8 @@ async def create_counseling(data: dict):
             data.get('consultation_type', '정기'),
             data.get('main_topic') or data.get('topic', ''),
             data.get('content'),
-            data.get('status', '완료')
+            data.get('status', '완료'),
+            data.get('photo_urls')
         ))
         
         conn.commit()
@@ -1328,10 +1332,13 @@ async def update_counseling(counseling_id: int, data: dict):
     try:
         cursor = conn.cursor()
         
+        # photo_urls 컬럼 확인 및 추가
+        ensure_photo_urls_column(cursor, 'consultations')
+        
         query = """
             UPDATE consultations 
             SET student_id = %s, instructor_code = %s, consultation_date = %s, consultation_type = %s,
-                main_topic = %s, content = %s, status = %s
+                main_topic = %s, content = %s, status = %s, photo_urls = %s
             WHERE id = %s
         """
         
@@ -1343,6 +1350,7 @@ async def update_counseling(counseling_id: int, data: dict):
             data.get('main_topic') or data.get('topic', ''),
             data.get('content'),
             data.get('status', '완료'),
+            data.get('photo_urls'),
             counseling_id
         ))
         

@@ -1400,6 +1400,45 @@ window.showCounselingForm = function(counselingId = null) {
                     <textarea name="content" rows="6" required placeholder="상담 내용을 상세히 작성하세요..." 
                               class="w-full px-3 py-2 border rounded-lg">${mergedContent}</textarea>
                 </div>
+                
+                <!-- 사진 업로드 -->
+                <div class="col-span-2">
+                    <label class="block text-gray-700 mb-2">
+                        <i class="fas fa-camera mr-2"></i>사진 첨부
+                    </label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <button type="button" onclick="document.getElementById('counseling-file-input').click()" 
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                                <i class="fas fa-folder-open mr-2"></i>파일 선택
+                            </button>
+                            <button type="button" onclick="document.getElementById('counseling-camera-input').click()" 
+                                    class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                                <i class="fas fa-camera mr-2"></i>사진 촬영
+                            </button>
+                        </div>
+                        <input type="file" id="counseling-file-input" accept="image/*" multiple 
+                               onchange="window.handleCounselingImageUpload(event)" class="hidden">
+                        <input type="file" id="counseling-camera-input" accept="image/*" capture="environment" 
+                               onchange="window.handleCounselingImageUpload(event)" class="hidden">
+                        <div id="counseling-photos-preview" class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                            ${existingCounseling?.photo_urls ? JSON.parse(existingCounseling.photo_urls).map((url, idx) => `
+                                <div class="relative group">
+                                    <img src="${url}" class="w-full h-24 object-cover rounded border">
+                                    <button type="button" onclick="window.removeCounselingPhoto(${idx})" 
+                                            class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                        <i class="fas fa-times text-xs"></i>
+                                    </button>
+                                </div>
+                            `).join('') : ''}
+                        </div>
+                        <input type="hidden" id="counseling-photo-urls" value='${existingCounseling?.photo_urls || "[]"}'>
+                        <p class="text-sm text-gray-500 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            최대 10MB, JPG/PNG/GIF 형식
+                        </p>
+                    </div>
+                </div>
             </div>
             <div class="mt-4 space-x-2">
                 <button type="button" onclick="window.saveCounseling(${counselingId || 'null'})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
@@ -1423,6 +1462,8 @@ window.hideCounselingForm = function() {
 window.saveCounseling = async function(counselingId) {
     const form = document.getElementById('counseling-save-form');
     const formData = new FormData(form);
+    const photoUrls = document.getElementById('counseling-photo-urls').value || '[]';
+    
     const data = {
         student_id: parseInt(formData.get('student_id')),
         instructor_code: formData.get('instructor_code'),
@@ -1430,7 +1471,8 @@ window.saveCounseling = async function(counselingId) {
         consultation_type: formData.get('consultation_type'),
         main_topic: '', // 주제는 더 이상 사용하지 않음
         content: formData.get('content'),
-        status: formData.get('status')
+        status: formData.get('status'),
+        photo_urls: photoUrls  // 사진 URL 추가
     };
     
     try {
@@ -1447,6 +1489,72 @@ window.saveCounseling = async function(counselingId) {
         console.error('상담 저장 실패:', error);
         window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
     }
+}
+
+// 상담일지 사진 업로드 처리
+window.handleCounselingImageUpload = async function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    window.showLoading('사진 업로드 중...');
+    
+    try {
+        const photoUrls = JSON.parse(document.getElementById('counseling-photo-urls').value || '[]');
+        
+        for (let file of files) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await axios.post(
+                `${API_BASE_URL}/api/upload-image?category=guidance`,
+                formData,
+                {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                }
+            );
+            
+            if (response.data.success) {
+                photoUrls.push(response.data.url);
+            }
+        }
+        
+        // hidden input 업데이트
+        document.getElementById('counseling-photo-urls').value = JSON.stringify(photoUrls);
+        
+        // 미리보기 업데이트
+        updateCounselingPhotoPreview(photoUrls);
+        
+        window.hideLoading();
+        window.showAlert(`${files.length}개 사진이 업로드되었습니다.`);
+        
+    } catch (error) {
+        window.hideLoading();
+        console.error('사진 업로드 실패:', error);
+        window.showAlert('사진 업로드 실패: ' + (error.response?.data?.detail || error.message));
+    }
+    
+    // input 초기화
+    event.target.value = '';
+}
+
+window.removeCounselingPhoto = function(index) {
+    const photoUrls = JSON.parse(document.getElementById('counseling-photo-urls').value || '[]');
+    photoUrls.splice(index, 1);
+    document.getElementById('counseling-photo-urls').value = JSON.stringify(photoUrls);
+    updateCounselingPhotoPreview(photoUrls);
+}
+
+function updateCounselingPhotoPreview(photoUrls) {
+    const previewDiv = document.getElementById('counseling-photos-preview');
+    previewDiv.innerHTML = photoUrls.map((url, idx) => `
+        <div class="relative group">
+            <img src="${url}" class="w-full h-24 object-cover rounded border" alt="사진 ${idx + 1}">
+            <button type="button" onclick="window.removeCounselingPhoto(${idx})" 
+                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                <i class="fas fa-times text-xs"></i>
+            </button>
+        </div>
+    `).join('');
 }
 
 window.editCounseling = function(counselingId) {
