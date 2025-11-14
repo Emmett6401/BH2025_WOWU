@@ -435,6 +435,7 @@ window.showStudentForm = function(studentId = null) {
     formDiv.innerHTML = `
         <h3 class="text-lg font-bold mb-4">${student ? '학생 정보 수정' : '새 학생 추가'}</h3>
         <form id="student-save-form">
+            <input type="hidden" id="student-id" value="${studentId || ''}">
             <div class="grid grid-cols-2 gap-4">
                 ${!student ? `
                 <div>
@@ -638,6 +639,15 @@ window.handleStudentImageUpload = async function(event) {
     
     photoUrlsInput.value = JSON.stringify(photoUrls);
     updateStudentPhotoPreview(photoUrls);
+    
+    alert(`${files.length}개 사진이 업로드되었습니다. 자동 저장 중...`);
+    
+    // 자동 저장
+    const studentIdInput = document.getElementById('student-id');
+    const studentId = studentIdInput ? studentIdInput.value : null;
+    if (studentId) {
+        await window.saveStudent(parseInt(studentId));
+    }
     
     // 파일 입력 초기화
     event.target.value = '';
@@ -1462,6 +1472,7 @@ window.showCounselingForm = function(counselingId = null) {
             </button>
         </div>
         <form id="counseling-save-form">
+            <input type="hidden" id="counseling-id" value="${counselingId || ''}">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-gray-700 mb-2">학생 선택 *</label>
@@ -1639,7 +1650,15 @@ window.handleCounselingImageUpload = async function(event) {
         updateCounselingPhotoPreview(photoUrls);
         
         window.hideLoading();
-        window.showAlert(`${files.length}개 사진이 업로드되었습니다.`);
+        window.showAlert(`${files.length}개 사진이 업로드되었습니다. 자동 저장 중...`);
+        
+        // 자동 저장
+        const counselingIdInput = document.getElementById('counseling-id');
+        const counselingId = counselingIdInput ? counselingIdInput.value : null;
+        if (counselingId) {
+            // 기존 상담일지 업데이트
+            await window.saveCounseling(parseInt(counselingId));
+        }
         
     } catch (error) {
         window.hideLoading();
@@ -2290,6 +2309,7 @@ window.showInstructorForm = function(code = null) {
     
     formDiv.innerHTML = `
         <h3 class="text-lg font-semibold mb-4">${code ? '강사 수정' : '강사 추가'}</h3>
+        <input type="hidden" id="instructor-code" value="${code || ''}">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label class="block text-gray-700 mb-1">강사코드 *</label>
@@ -2452,6 +2472,15 @@ window.handleInstructorImageUpload = async function(event) {
     
     photoUrlsInput.value = JSON.stringify(photoUrls);
     updateInstructorPhotoPreview(photoUrls);
+    
+    alert(`${files.length}개 사진이 업로드되었습니다. 자동 저장 중...`);
+    
+    // 자동 저장
+    const instructorCodeInput = document.getElementById('instructor-code');
+    const existingCode = instructorCodeInput ? instructorCodeInput.value : null;
+    if (existingCode) {
+        await window.saveInstructor(existingCode);
+    }
     
     // 파일 입력 초기화
     event.target.value = '';
@@ -4660,6 +4689,11 @@ window.showTrainingLogForm = async function(timetableId) {
                 ${subSubjectsHTML}
             </div>
             <form id="training-log-save-form">
+                <input type="hidden" id="training-log-id" value="">
+                <input type="hidden" id="training-timetable-id" value="${timetableId}">
+                <input type="hidden" id="training-course-code" value="${tt.course_code}">
+                <input type="hidden" id="training-instructor-code" value="${tt.instructor_code}">
+                <input type="hidden" id="training-class-date" value="${tt.class_date}">
                 <div class="space-y-4">
                     <div>
                         <label class="block text-gray-700 mb-2">수업 내용 *</label>
@@ -4773,6 +4807,11 @@ window.editTrainingLog = async function(logId, timetableId) {
                 ${subSubjectsHTML}
             </div>
             <form id="training-log-save-form">
+                <input type="hidden" id="training-log-id" value="${logId}">
+                <input type="hidden" id="training-timetable-id" value="${timetableId}">
+                <input type="hidden" id="training-course-code" value="${tt.course_code}">
+                <input type="hidden" id="training-instructor-code" value="${tt.instructor_code}">
+                <input type="hidden" id="training-class-date" value="${tt.class_date}">
                 <div class="space-y-4">
                     <div>
                         <label class="block text-gray-700 mb-2">수업 내용 *</label>
@@ -4785,6 +4824,31 @@ window.editTrainingLog = async function(logId, timetableId) {
                     <div>
                         <label class="block text-gray-700 mb-2">비고</label>
                         <textarea name="notes" rows="2" class="w-full px-3 py-2 border rounded-lg">${log.notes || ''}</textarea>
+                    </div>
+                    
+                    <!-- 사진 업로드 -->
+                    <div>
+                        <label class="block text-gray-700 mb-2">
+                            <i class="fas fa-camera mr-2"></i>사진 첨부
+                        </label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <button type="button" onclick="document.getElementById('training-file-input').click()" 
+                                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                                    <i class="fas fa-folder-open mr-2"></i>파일 선택
+                                </button>
+                                <button type="button" onclick="document.getElementById('training-camera-input').click()" 
+                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                                    <i class="fas fa-camera mr-2"></i>사진 촬영
+                                </button>
+                            </div>
+                            <input type="file" id="training-file-input" accept="image/*" multiple 
+                                   onchange="window.handleTrainingImageUpload(event)" class="hidden">
+                            <input type="file" id="training-camera-input" accept="image/*" capture="environment" 
+                                   onchange="window.handleTrainingImageUpload(event)" class="hidden">
+                            <div id="training-photos-preview" class="flex flex-col gap-2 mt-2"></div>
+                            <input type="hidden" id="training-photo-urls" value="${log.photo_urls || '[]'}">
+                        </div>
                     </div>
                 </div>
                 <div class="mt-4 space-x-2">
@@ -4806,6 +4870,18 @@ window.editTrainingLog = async function(logId, timetableId) {
         
         formDiv.classList.remove('hidden');
         formDiv.scrollIntoView({ behavior: 'smooth' });
+        
+        // 기존 사진 미리보기 표시
+        if (log.photo_urls) {
+            try {
+                const photoUrls = typeof log.photo_urls === 'string' 
+                    ? JSON.parse(log.photo_urls) 
+                    : log.photo_urls;
+                updateTrainingPhotoPreview(photoUrls);
+            } catch (e) {
+                console.error('사진 URL 파싱 오류:', e);
+            }
+        }
     } catch (error) {
         console.error('훈련일지 조회 실패:', error);
         window.showAlert('훈련일지를 불러오는데 실패했습니다');
@@ -4843,7 +4919,26 @@ window.handleTrainingImageUpload = async function(event) {
         updateTrainingPhotoPreview(photoUrls);
         
         window.hideLoading();
-        window.showAlert(`${files.length}개 사진이 업로드되었습니다.`);
+        window.showAlert(`${files.length}개 사진이 업로드되었습니다. 자동 저장 중...`);
+        
+        // 자동 저장
+        const logIdInput = document.getElementById('training-log-id');
+        const logId = logIdInput ? logIdInput.value : null;
+        
+        if (logId) {
+            // 기존 훈련일지 수정
+            await window.updateTrainingLog(parseInt(logId));
+        } else {
+            // 새 훈련일지 - hidden input에서 정보 가져오기
+            const timetableId = document.getElementById('training-timetable-id')?.value;
+            const courseCode = document.getElementById('training-course-code')?.value;
+            const instructorCode = document.getElementById('training-instructor-code')?.value;
+            const classDate = document.getElementById('training-class-date')?.value;
+            
+            if (timetableId && courseCode && instructorCode && classDate) {
+                await window.saveTrainingLog(parseInt(timetableId), courseCode, instructorCode, classDate);
+            }
+        }
         
     } catch (error) {
         window.hideLoading();
