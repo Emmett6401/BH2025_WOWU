@@ -835,6 +835,10 @@ function renderCounselings() {
 }
 
 window.filterCounselings = async function() {
+    // 학생 상세정보와 상담 수정창 닫기
+    window.hideStudentDetail();
+    window.hideCounselingForm();
+    
     const courseCode = document.getElementById('filter-course').value;
     const studentId = document.getElementById('filter-student').value;
     const instructorCode = document.getElementById('filter-instructor').value;
@@ -938,6 +942,10 @@ window.filterCounselings = async function() {
 }
 
 window.resetCounselingFilters = function() {
+    // 학생 상세정보와 상담 수정창 닫기
+    window.hideStudentDetail();
+    window.hideCounselingForm();
+    
     document.getElementById('filter-course').value = '';
     document.getElementById('filter-student').value = '';
     document.getElementById('filter-instructor').value = '';
