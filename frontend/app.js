@@ -510,11 +510,16 @@ async function loadDashboard() {
                         </div>
                         <div class="space-y-2">
                             ${recentTrainingLogs.length > 0 ? recentTrainingLogs.map(t => `
-                                <div class="p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
-                                    <p class="text-sm font-semibold text-gray-800">${formatDateWithDay(t['t.class_date'] || t.class_date)}</p>
-                                    <p class="text-xs text-gray-600">${t.subject_name || t.timetable_subject_name || '과목명 없음'}</p>
-                                    <p class="text-xs text-green-600 mt-1">
+                                <div class="p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <p class="text-sm font-semibold text-gray-800">${formatDateWithDay(t['t.class_date'] || t.class_date)}</p>
+                                        <span class="text-xs text-gray-500">${t.subject_name || t.timetable_subject_name || '과목명 없음'}</span>
+                                    </div>
+                                    <p class="text-xs text-green-600 font-medium mb-1">
                                         <i class="fas fa-chalkboard-teacher mr-1"></i>${t.instructor_name || '강사명 없음'}
+                                    </p>
+                                    <p class="text-xs text-gray-600 line-clamp-2">
+                                        ${t.content ? (t.content.length > 60 ? t.content.substring(0, 60) + '...' : t.content) : '내용 없음'}
                                     </p>
                                 </div>
                             `).join('') : `
