@@ -10,6 +10,10 @@ from datetime import datetime, date
 from openai import OpenAI
 from dotenv import load_dotenv
 import requests
+from ftplib import FTP
+import uuid
+import base64
+from PIL import Image
 
 load_dotenv()
 
@@ -37,6 +41,138 @@ DB_CONFIG = {
 def get_db_connection():
     """데이터베이스 연결"""
     return pymysql.connect(**DB_CONFIG)
+
+def ensure_photo_urls_column(cursor, table_name: str):
+    """photo_urls 컬럼이 없으면 추가"""
+    try:
+        cursor.execute(f"SHOW COLUMNS FROM {table_name} LIKE 'photo_urls'")
+        if not cursor.fetchone():
+            cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN photo_urls TEXT")
+    except:
+        pass  # 이미 존재하거나 권한 문제
+
+# FTP 설정
+FTP_CONFIG = {
+    'host': 'bitnmeta2.synology.me',
+    'port': 2121,
+    'user': 'ha',
+    'passwd': 'dodan1004~'
+}
+
+# FTP 경로 설정
+FTP_PATHS = {
+    'guidance': '/homes/ha/camFTP/BH2025/guidance',  # 상담일지
+    'train': '/homes/ha/camFTP/BH2025/train',        # 훈련일지
+    'student': '/homes/ha/camFTP/BH2025/student',    # 학생
+    'teacher': '/homes/ha/camFTP/BH2025/teacher',    # 강사
+    'team': '/homes/ha/camFTP/BH2025/team'           # 팀(프로젝트)
+}
+
+def create_thumbnail(file_data: bytes, filename: str) -> str:
+    """
+    이미지 썸네일 생성 및 로컬 저장
+    
+    Args:
+        file_data: 원본 이미지 바이트 데이터
+        filename: 파일명
+    
+    Returns:
+        썸네일 파일명
+    """
+    try:
+        # 이미지 열기
+        image = Image.open(io.BytesIO(file_data))
+        
+        # EXIF 방향 정보 처리
+        try:
+            from PIL import ImageOps
+            image = ImageOps.exif_transpose(image)
+        except:
+            pass
+        
+        # RGB로 변환 (PNG 투명도 처리)
+        if image.mode in ('RGBA', 'LA', 'P'):
+            background = Image.new('RGB', image.size, (255, 255, 255))
+            if image.mode == 'P':
+                image = image.convert('RGBA')
+            background.paste(image, mask=image.split()[-1] if image.mode == 'RGBA' else None)
+            image = background
+        elif image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # 썸네일 크기 (최대 200x200)
+        image.thumbnail((200, 200), Image.Resampling.LANCZOS)
+        
+        # 썸네일 저장 경로
+        thumb_filename = f"thumb_{filename}"
+        thumb_path = f"/home/user/webapp/backend/thumbnails/{thumb_filename}"
+        
+        # 썸네일 저장
+        image.save(thumb_path, 'JPEG', quality=85, optimize=True)
+        
+        return thumb_filename
+        
+    except Exception as e:
+        print(f"썸네일 생성 실패: {str(e)}")
+        return None
+
+def upload_to_ftp(file_data: bytes, filename: str, category: str) -> str:
+    """
+    FTP 서버에 파일 업로드 및 썸네일 생성
+    
+    Args:
+        file_data: 파일 바이트 데이터
+        filename: 저장할 파일명 (확장자 포함)
+        category: 카테고리 (guidance, train, student, teacher)
+    
+    Returns:
+        업로드된 파일의 FTP URL
+    """
+    try:
+        # 썸네일 생성 (백그라운드에서 실행, 실패해도 업로드는 계속)
+        try:
+            create_thumbnail(file_data, filename)
+        except Exception as e:
+            print(f"썸네일 생성 중 오류 (무시): {str(e)}")
+        
+        # FTP 연결
+        ftp = FTP()
+        ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
+        ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
+        ftp.encoding = 'utf-8'
+        
+        # 경로 이동
+        target_path = FTP_PATHS.get(category)
+        if not target_path:
+            raise ValueError(f"Invalid category: {category}")
+        
+        try:
+            ftp.cwd(target_path)
+        except:
+            # 경로가 없으면 생성
+            path_parts = target_path.split('/')
+            current_path = ''
+            for part in path_parts:
+                if not part:
+                    continue
+                current_path += '/' + part
+                try:
+                    ftp.cwd(current_path)
+                except:
+                    ftp.mkd(current_path)
+                    ftp.cwd(current_path)
+        
+        # 파일 업로드
+        ftp.storbinary(f'STOR {filename}', io.BytesIO(file_data))
+        
+        # URL 생성 (FTP URL)
+        file_url = f"ftp://{FTP_CONFIG['host']}:{FTP_CONFIG['port']}{target_path}/{filename}"
+        
+        ftp.quit()
+        return file_url
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FTP 업로드 실패: {str(e)}")
 
 # ==================== 학생 관리 API ====================
 
@@ -109,6 +245,9 @@ async def create_student(data: dict):
     try:
         cursor = conn.cursor()
         
+        # photo_urls 컬럼이 없으면 자동 생성
+        ensure_photo_urls_column(cursor, 'students')
+        
         # 자동으로 학생 코드 생성
         cursor.execute("SELECT MAX(CAST(SUBSTRING(code, 2) AS UNSIGNED)) as max_code FROM students WHERE code LIKE 'S%'")
         result = cursor.fetchone()
@@ -117,8 +256,8 @@ async def create_student(data: dict):
         
         query = """
             INSERT INTO students 
-            (code, name, birth_date, gender, phone, email, address, interests, education, introduction, campus, course_code, notes)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (code, name, birth_date, gender, phone, email, address, interests, education, introduction, campus, course_code, notes, photo_urls)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         cursor.execute(query, (
@@ -134,7 +273,8 @@ async def create_student(data: dict):
             data.get('introduction'),
             data.get('campus'),
             data.get('course_code'),
-            data.get('notes')
+            data.get('notes'),
+            data.get('photo_urls')
         ))
         
         conn.commit()
@@ -149,11 +289,14 @@ async def update_student(student_id: int, data: dict):
     try:
         cursor = conn.cursor()
         
+        # photo_urls 컬럼이 없으면 자동 생성
+        ensure_photo_urls_column(cursor, 'students')
+        
         query = """
             UPDATE students 
             SET name = %s, birth_date = %s, gender = %s, phone = %s, email = %s,
                 address = %s, interests = %s, education = %s, introduction = %s,
-                campus = %s, course_code = %s, notes = %s, updated_at = NOW()
+                campus = %s, course_code = %s, notes = %s, photo_urls = %s, updated_at = NOW()
             WHERE id = %s
         """
         
@@ -170,6 +313,7 @@ async def update_student(student_id: int, data: dict):
             data.get('campus'),
             data.get('course_code'),
             data.get('notes'),
+            data.get('photo_urls'),
             student_id
         ))
         
@@ -566,13 +710,18 @@ async def create_instructor(data: dict):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        
+        # photo_urls 컬럼이 없으면 자동 생성
+        ensure_photo_urls_column(cursor, 'instructors')
+        
         query = """
-            INSERT INTO instructors (code, name, phone, major, instructor_type, email)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO instructors (code, name, phone, major, instructor_type, email, photo_urls)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
             data['code'], data['name'], data.get('phone'),
-            data.get('major'), data.get('instructor_type'), data.get('email')
+            data.get('major'), data.get('instructor_type'), data.get('email'),
+            data.get('photo_urls')
         ))
         conn.commit()
         return {"code": data['code']}
@@ -585,14 +734,18 @@ async def update_instructor(code: str, data: dict):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        
+        # photo_urls 컬럼이 없으면 자동 생성
+        ensure_photo_urls_column(cursor, 'instructors')
+        
         query = """
             UPDATE instructors
-            SET name = %s, phone = %s, major = %s, instructor_type = %s, email = %s
+            SET name = %s, phone = %s, major = %s, instructor_type = %s, email = %s, photo_urls = %s
             WHERE code = %s
         """
         cursor.execute(query, (
             data['name'], data.get('phone'), data.get('major'),
-            data.get('instructor_type'), data.get('email'), code
+            data.get('instructor_type'), data.get('email'), data.get('photo_urls'), code
         ))
         conn.commit()
         return {"code": code}
@@ -819,6 +972,9 @@ async def get_projects(course_code: Optional[str] = None):
         except:
             pass  # Columns might already exist
         
+        # Check if photo_urls column exists, if not, add it
+        ensure_photo_urls_column(cursor, 'projects')
+        
         query = """
             SELECT p.*, 
                    c.name as course_name,
@@ -902,6 +1058,9 @@ async def create_project(data: dict):
         except:
             pass  # Columns might already exist
         
+        # Ensure photo_urls column exists
+        ensure_photo_urls_column(cursor, 'projects')
+        
         query = """
             INSERT INTO projects (code, name, group_type, course_code, instructor_code, mentor_code,
                                  member1_name, member1_phone, member1_code,
@@ -913,9 +1072,10 @@ async def create_project(data: dict):
                                  account2_name, account2_id, account2_pw,
                                  account3_name, account3_id, account3_pw,
                                  account4_name, account4_id, account4_pw,
-                                 account5_name, account5_id, account5_pw)
+                                 account5_name, account5_id, account5_pw,
+                                 photo_urls)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
             data['code'], data['name'], data.get('group_type'), data.get('course_code'),
@@ -929,7 +1089,8 @@ async def create_project(data: dict):
             data.get('account2_name'), data.get('account2_id'), data.get('account2_pw'),
             data.get('account3_name'), data.get('account3_id'), data.get('account3_pw'),
             data.get('account4_name'), data.get('account4_id'), data.get('account4_pw'),
-            data.get('account5_name'), data.get('account5_id'), data.get('account5_pw')
+            data.get('account5_name'), data.get('account5_id'), data.get('account5_pw'),
+            data.get('photo_urls', '[]')
         ))
         conn.commit()
         return {"code": data['code']}
@@ -942,6 +1103,9 @@ async def update_project(code: str, data: dict):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        # Ensure photo_urls column exists
+        ensure_photo_urls_column(cursor, 'projects')
+        
         query = """
             UPDATE projects
             SET name = %s, group_type = %s, course_code = %s, 
@@ -955,7 +1119,8 @@ async def update_project(code: str, data: dict):
                 account2_name = %s, account2_id = %s, account2_pw = %s,
                 account3_name = %s, account3_id = %s, account3_pw = %s,
                 account4_name = %s, account4_id = %s, account4_pw = %s,
-                account5_name = %s, account5_id = %s, account5_pw = %s
+                account5_name = %s, account5_id = %s, account5_pw = %s,
+                photo_urls = %s
             WHERE code = %s
         """
         cursor.execute(query, (
@@ -971,6 +1136,7 @@ async def update_project(code: str, data: dict):
             data.get('account3_name'), data.get('account3_id'), data.get('account3_pw'),
             data.get('account4_name'), data.get('account4_id'), data.get('account4_pw'),
             data.get('account5_name'), data.get('account5_id'), data.get('account5_pw'),
+            data.get('photo_urls', '[]'),
             code
         ))
         conn.commit()
@@ -1011,7 +1177,8 @@ async def get_timetables(
                    s.name as subject_name,
                    i.name as instructor_name,
                    tl.id as training_log_id,
-                   tl.content as training_content
+                   tl.content as training_content,
+                   tl.photo_urls as training_log_photo_urls
             FROM timetables t
             LEFT JOIN courses c ON t.course_code = c.code
             LEFT JOIN subjects s ON t.subject_code = s.code
@@ -1144,6 +1311,9 @@ async def get_counselings(
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
+        # photo_urls 컬럼 확인 및 추가
+        ensure_photo_urls_column(cursor, 'consultations')
+        
         query = """
             SELECT c.*, s.name as student_name, s.code as student_code, s.course_code,
                    i.name as instructor_name
@@ -1214,27 +1384,38 @@ async def create_counseling(data: dict):
     try:
         cursor = conn.cursor()
         
+        # photo_urls 컬럼 확인 및 추가
+        ensure_photo_urls_column(cursor, 'consultations')
+        
         # consultations 테이블 구조에 맞게 조정
         query = """
             INSERT INTO consultations 
-            (student_id, instructor_code, consultation_date, consultation_type, main_topic, content, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (student_id, instructor_code, consultation_date, consultation_type, main_topic, content, status, photo_urls)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
+        
+        # instructor_code가 빈 문자열이면 None으로 처리
+        instructor_code = data.get('instructor_code')
+        if instructor_code == '':
+            instructor_code = None
         
         cursor.execute(query, (
             data.get('student_id'),
-            data.get('instructor_code'),
+            instructor_code,
             data.get('consultation_date') or data.get('counseling_date'),
             data.get('consultation_type', '정기'),
             data.get('main_topic') or data.get('topic', ''),
             data.get('content'),
-            data.get('status', '완료')
+            data.get('status', '완료'),
+            data.get('photo_urls')
         ))
         
         conn.commit()
         return {"id": cursor.lastrowid}
     except pymysql.err.OperationalError as e:
         raise HTTPException(status_code=500, detail=f"데이터베이스 오류: {str(e)}")
+    except pymysql.err.IntegrityError as e:
+        raise HTTPException(status_code=400, detail=f"데이터 무결성 오류: {str(e)}")
     finally:
         conn.close()
 
@@ -1245,21 +1426,30 @@ async def update_counseling(counseling_id: int, data: dict):
     try:
         cursor = conn.cursor()
         
+        # photo_urls 컬럼 확인 및 추가
+        ensure_photo_urls_column(cursor, 'consultations')
+        
         query = """
             UPDATE consultations 
             SET student_id = %s, instructor_code = %s, consultation_date = %s, consultation_type = %s,
-                main_topic = %s, content = %s, status = %s
+                main_topic = %s, content = %s, status = %s, photo_urls = %s
             WHERE id = %s
         """
         
+        # instructor_code가 빈 문자열이면 None으로 처리
+        instructor_code = data.get('instructor_code')
+        if instructor_code == '':
+            instructor_code = None
+        
         cursor.execute(query, (
             data.get('student_id'),
-            data.get('instructor_code'),
+            instructor_code,
             data.get('consultation_date') or data.get('counseling_date'),
             data.get('consultation_type', '정기'),
             data.get('main_topic') or data.get('topic', ''),
             data.get('content'),
             data.get('status', '완료'),
+            data.get('photo_urls'),
             counseling_id
         ))
         
@@ -1401,10 +1591,13 @@ async def create_training_log(data: dict):
     try:
         cursor = conn.cursor()
         
+        # photo_urls 컬럼이 없으면 자동 생성
+        ensure_photo_urls_column(cursor, 'training_logs')
+        
         query = """
             INSERT INTO training_logs 
-            (timetable_id, course_code, instructor_code, class_date, content, homework, notes)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (timetable_id, course_code, instructor_code, class_date, content, homework, notes, photo_urls)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         cursor.execute(query, (
@@ -1414,7 +1607,8 @@ async def create_training_log(data: dict):
             data.get('class_date'),
             data.get('content', ''),
             data.get('homework', ''),
-            data.get('notes', '')
+            data.get('notes', ''),
+            data.get('photo_urls')
         ))
         
         conn.commit()
@@ -1431,9 +1625,12 @@ async def update_training_log(log_id: int, data: dict):
     try:
         cursor = conn.cursor()
         
+        # photo_urls 컬럼이 없으면 자동 생성
+        ensure_photo_urls_column(cursor, 'training_logs')
+        
         query = """
             UPDATE training_logs 
-            SET content = %s, homework = %s, notes = %s
+            SET content = %s, homework = %s, notes = %s, photo_urls = %s
             WHERE id = %s
         """
         
@@ -1441,6 +1638,7 @@ async def update_training_log(log_id: int, data: dict):
             data.get('content', ''),
             data.get('homework', ''),
             data.get('notes', ''),
+            data.get('photo_urls'),
             log_id
         ))
         
@@ -2261,6 +2459,269 @@ async def generate_ai_counseling(data: dict):
         raise HTTPException(status_code=500, detail=f"AI 상담일지 생성 실패: {str(e)}")
     finally:
         conn.close()
+
+@app.post("/api/upload-image")
+async def upload_image(
+    file: UploadFile = File(...),
+    category: str = Query(..., description="guidance, train, student, teacher, team")
+):
+    """
+    이미지 파일을 FTP 서버에 업로드
+    
+    Args:
+        file: 업로드할 이미지 파일
+        category: 저장 카테고리 (guidance=상담일지, train=훈련일지, student=학생, teacher=강사, team=팀)
+    
+    Returns:
+        업로드된 파일의 URL
+    """
+    try:
+        # 파일 확장자 검증
+        allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        
+        if file_ext not in allowed_extensions:
+            raise HTTPException(
+                status_code=400,
+                detail=f"허용되지 않는 파일 형식입니다. 허용 형식: {', '.join(allowed_extensions)}"
+            )
+        
+        # 파일 읽기
+        file_data = await file.read()
+        
+        # 파일 크기 체크 (10MB 제한)
+        if len(file_data) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="파일 크기는 10MB를 초과할 수 없습니다")
+        
+        # 고유한 파일명 생성 (타임스탬프 + UUID + 원본 확장자)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_id = str(uuid.uuid4())[:8]
+        new_filename = f"{timestamp}_{unique_id}{file_ext}"
+        
+        # FTP 업로드
+        file_url = upload_to_ftp(file_data, new_filename, category)
+        
+        return {
+            "success": True,
+            "url": file_url,
+            "filename": new_filename,
+            "size": len(file_data)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"이미지 업로드 실패: {str(e)}")
+
+@app.post("/api/upload-image-base64")
+async def upload_image_base64(data: dict):
+    """
+    Base64 인코딩된 이미지를 FTP 서버에 업로드 (모바일 카메라 촬영용)
+    
+    Args:
+        data: {
+            "image": "data:image/jpeg;base64,...",
+            "category": "guidance|train|student|teacher"
+        }
+    
+    Returns:
+        업로드된 파일의 URL
+    """
+    try:
+        image_data = data.get('image')
+        category = data.get('category')
+        
+        if not image_data or not category:
+            raise HTTPException(status_code=400, detail="image와 category는 필수입니다")
+        
+        # Base64 데이터 파싱
+        if ',' in image_data:
+            header, base64_data = image_data.split(',', 1)
+            # 이미지 타입 추출 (data:image/jpeg;base64 -> jpeg)
+            if 'image/' in header:
+                image_type = header.split('image/')[1].split(';')[0]
+                file_ext = f'.{image_type}'
+            else:
+                file_ext = '.jpg'
+        else:
+            base64_data = image_data
+            file_ext = '.jpg'
+        
+        # Base64 디코딩
+        file_data = base64.b64decode(base64_data)
+        
+        # 파일 크기 체크 (10MB 제한)
+        if len(file_data) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="파일 크기는 10MB를 초과할 수 없습니다")
+        
+        # 고유한 파일명 생성
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_id = str(uuid.uuid4())[:8]
+        new_filename = f"{timestamp}_{unique_id}{file_ext}"
+        
+        # FTP 업로드
+        file_url = upload_to_ftp(file_data, new_filename, category)
+        
+        return {
+            "success": True,
+            "url": file_url,
+            "filename": new_filename,
+            "size": len(file_data)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"이미지 업로드 실패: {str(e)}")
+
+@app.get("/api/download-image")
+async def download_image(url: str = Query(..., description="FTP URL to download")):
+    """
+    FTP 서버의 이미지를 다운로드하는 프록시 API
+    
+    Args:
+        url: FTP URL (예: ftp://bitnmeta2.synology.me:2121/homes/ha/camFTP/BH2025/guidance/file.jpg)
+    
+    Returns:
+        이미지 파일
+    """
+    try:
+        # FTP URL 파싱
+        if not url.startswith('ftp://'):
+            raise HTTPException(status_code=400, detail="FTP URL이 아닙니다")
+        
+        # URL에서 정보 추출
+        # ftp://bitnmeta2.synology.me:2121/homes/ha/camFTP/BH2025/guidance/file.jpg
+        url_parts = url.replace('ftp://', '').split('/', 1)
+        host_port = url_parts[0]
+        file_path = url_parts[1] if len(url_parts) > 1 else ''
+        
+        # 호스트와 포트 분리
+        if ':' in host_port:
+            host, port = host_port.split(':')
+            port = int(port)
+        else:
+            host = host_port
+            port = 21
+        
+        # 파일명 추출
+        filename = file_path.split('/')[-1]
+        
+        # FTP 연결 및 다운로드
+        ftp = FTP()
+        ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
+        ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
+        
+        # 파일 다운로드
+        file_data = io.BytesIO()
+        ftp.retrbinary(f'RETR /{file_path}', file_data.write)
+        ftp.quit()
+        
+        # 파일 데이터 가져오기
+        file_data.seek(0)
+        file_bytes = file_data.read()
+        
+        # 임시 파일로 저장
+        temp_filename = f"/tmp/{filename}"
+        with open(temp_filename, 'wb') as f:
+            f.write(file_bytes)
+        
+        # 파일 확장자로 MIME 타입 결정
+        ext = os.path.splitext(filename)[1].lower()
+        media_type_map = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.bmp': 'image/bmp',
+            '.webp': 'image/webp'
+        }
+        media_type = media_type_map.get(ext, 'application/octet-stream')
+        
+        return FileResponse(
+            temp_filename,
+            media_type=media_type,
+            filename=filename,
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename}"'
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"이미지 다운로드 실패: {str(e)}")
+
+@app.get("/api/thumbnail")
+async def get_thumbnail(url: str = Query(..., description="FTP URL")):
+    """
+    이미지 썸네일 제공 API
+    
+    Args:
+        url: FTP URL
+    
+    Returns:
+        썸네일 이미지 (있으면 제공, 없으면 FTP에서 다운로드하여 생성)
+    """
+    try:
+        # URL에서 파일명 추출
+        filename = url.split('/')[-1]
+        thumb_filename = f"thumb_{filename}"
+        thumb_path = f"/home/user/webapp/backend/thumbnails/{thumb_filename}"
+        
+        # 썸네일이 있으면 반환
+        if os.path.exists(thumb_path):
+            return FileResponse(
+                thumb_path,
+                media_type='image/jpeg',
+                headers={
+                    'Cache-Control': 'public, max-age=86400'  # 1일 캐싱
+                }
+            )
+        
+        # 썸네일이 없으면 FTP에서 원본 다운로드하여 생성
+        try:
+            # FTP URL 파싱
+            url_parts = url.replace('ftp://', '').split('/', 1)
+            file_path = url_parts[1] if len(url_parts) > 1 else ''
+            
+            # FTP 연결 및 다운로드
+            ftp = FTP()
+            ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
+            ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
+            
+            # 파일 다운로드
+            file_data = io.BytesIO()
+            ftp.retrbinary(f'RETR /{file_path}', file_data.write)
+            ftp.quit()
+            
+            # 파일 데이터 가져오기
+            file_data.seek(0)
+            file_bytes = file_data.read()
+            
+            # 썸네일 생성
+            thumb_result = create_thumbnail(file_bytes, filename)
+            
+            if thumb_result and os.path.exists(thumb_path):
+                return FileResponse(
+                    thumb_path,
+                    media_type='image/jpeg',
+                    headers={
+                        'Cache-Control': 'public, max-age=86400'
+                    }
+                )
+            else:
+                # 썸네일 생성 실패
+                raise HTTPException(status_code=404, detail="썸네일 생성 실패")
+                
+        except Exception as e:
+            print(f"FTP 다운로드 및 썸네일 생성 실패: {str(e)}")
+            raise HTTPException(status_code=404, detail="썸네일을 생성할 수 없습니다")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"썸네일 조회 실패: {str(e)}")
 
 @app.get("/health")
 async def health_check():

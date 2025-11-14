@@ -337,6 +337,9 @@ function renderStudents() {
                                 <td class="px-4 py-2 text-sm text-blue-600">${courseDisplay}</td>
                                 <td class="px-4 py-2">${student.campus || '-'}</td>
                                 <td class="px-4 py-2">
+                                    ${student.photo_urls && JSON.parse(student.photo_urls || '[]').length > 0 ? `
+                                        <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(student.photo_urls).length}개 사진"></i>
+                                    ` : ''}
                                     <button onclick="window.viewStudent(${student.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="상세보기">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -435,6 +438,7 @@ window.showStudentForm = function(studentId = null) {
     formDiv.innerHTML = `
         <h3 class="text-lg font-bold mb-4">${student ? '학생 정보 수정' : '새 학생 추가'}</h3>
         <form id="student-save-form">
+            <input type="hidden" id="student-id" value="${studentId || ''}">
             <div class="grid grid-cols-2 gap-4">
                 ${!student ? `
                 <div>
@@ -514,6 +518,42 @@ window.showStudentForm = function(studentId = null) {
                     <label class="block text-gray-700 mb-2">비고</label>
                     <textarea name="notes" rows="2" class="w-full px-3 py-2 border rounded-lg">${student?.notes || ''}</textarea>
                 </div>
+                
+                <!-- 사진 업로드 -->
+                <div class="col-span-2">
+                    <label class="block text-gray-700 mb-2">
+                        <i class="fas fa-camera mr-2"></i>사진 첨부
+                    </label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <button type="button" onclick="document.getElementById('student-file-input').click()" 
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                                <i class="fas fa-folder-open mr-2"></i>파일 선택
+                            </button>
+                            <button type="button" onclick="document.getElementById('student-camera-input').click()" 
+                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
+                                <i class="fas fa-camera mr-2"></i>사진 촬영
+                            </button>
+                        </div>
+                        <input type="file" id="student-file-input" accept="image/*" multiple 
+                               onchange="window.handleStudentImageUpload(event)" class="hidden">
+                        <input type="file" id="student-camera-input" accept="image/*"  
+                               onchange="window.handleStudentImageUpload(event)" class="hidden">
+                        <div id="student-upload-progress" class="hidden mb-3">
+                            <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                <p class="text-sm text-blue-800 mb-2">
+                                    <i class="fas fa-cloud-upload-alt mr-2"></i>
+                                    서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                                </p>
+                                <div class="w-full bg-blue-200 rounded-full h-2">
+                                    <div id="student-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="student-photos-preview" class="flex flex-col gap-2 mt-2"></div>
+                        <input type="hidden" id="student-photo-urls" value='${student && student.photo_urls ? student.photo_urls : "[]"}'>
+                    </div>
+                </div>
             </div>
             <div class="mt-4 space-x-2">
                 <button type="button" onclick="window.saveStudent(${studentId})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
@@ -527,15 +567,32 @@ window.showStudentForm = function(studentId = null) {
     `;
     
     formDiv.classList.remove('hidden');
+    
+    // 기존 사진 미리보기 표시
+    if (student?.photo_urls) {
+        try {
+            const photoUrls = typeof student.photo_urls === 'string' 
+                ? JSON.parse(student.photo_urls) 
+                : student.photo_urls;
+            updateStudentPhotoPreview(photoUrls);
+        } catch (e) {
+            console.error('사진 URL 파싱 오류:', e);
+        }
+    }
 }
 
 window.hideStudentForm = function() {
     document.getElementById('student-form').classList.add('hidden');
 }
 
-window.saveStudent = async function(studentId) {
+window.saveStudent = async function(studentId, autoSave = false) {
     const form = document.getElementById('student-save-form');
     const formData = new FormData(form);
+    
+    // 사진 URL 가져오기
+    const photoUrlsInput = document.getElementById('student-photo-urls');
+    const photoUrls = photoUrlsInput ? JSON.parse(photoUrlsInput.value || '[]') : [];
+    
     const data = {
         name: formData.get('name'),
         birth_date: formData.get('birth_date'),
@@ -548,7 +605,8 @@ window.saveStudent = async function(studentId) {
         introduction: formData.get('introduction'),
         campus: formData.get('campus'),
         course_code: formData.get('course_code'),
-        notes: formData.get('notes')
+        notes: formData.get('notes'),
+        photo_urls: JSON.stringify(photoUrls)
     };
     
     try {
@@ -557,12 +615,147 @@ window.saveStudent = async function(studentId) {
         } else {
             await axios.post(`${API_BASE_URL}/api/students`, data);
         }
-        window.hideStudentForm();
-        loadStudents();
+        if (!autoSave) {
+            window.hideStudentForm();
+            loadStudents();
+        }
     } catch (error) {
         console.error('학생 저장 실패:', error);
         alert('학생 저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
     }
+}
+
+// 학생 사진 업로드 핸들러
+window.handleStudentImageUpload = async function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    // 프로그레스 바 표시
+    const progressDiv = document.getElementById('student-upload-progress');
+    const progressBar = document.getElementById('student-progress-bar');
+    if (progressDiv) {
+        progressDiv.classList.remove('hidden');
+        progressBar.style.width = '0%';
+    }
+    
+    try {
+        const photoUrlsInput = document.getElementById('student-photo-urls');
+        const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+        const totalFiles = files.length;
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // 프로그레스 업데이트
+            const progress = ((i + 0.5) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${progress}%`;
+            
+            const response = await axios.post(
+                `${API_BASE_URL}/api/upload-image?category=student`,
+                formData,
+                { headers: { 'Content-Type': 'multipart/form-data' } }
+            );
+            
+            if (response.data.success) {
+                photoUrls.push(response.data.url);
+            }
+            
+            // 완료 프로그레스
+            const completeProgress = ((i + 1) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${completeProgress}%`;
+        }
+        
+        photoUrlsInput.value = JSON.stringify(photoUrls);
+        updateStudentPhotoPreview(photoUrls);
+        
+        // 자동 저장 (화면 유지)
+        const studentIdInput = document.getElementById('student-id');
+        const studentId = studentIdInput ? studentIdInput.value : null;
+        if (studentId) {
+            await window.saveStudent(parseInt(studentId), true);
+        }
+        
+        // 프로그레스 바 숨기기
+        if (progressDiv) {
+            setTimeout(() => {
+                progressDiv.classList.add('hidden');
+            }, 1000);
+        }
+        
+        // 학생 이름 가져오기
+        const studentNameInput = document.querySelector('input[name="name"]');
+        const studentName = studentNameInput ? studentNameInput.value : '';
+        const contextMsg = studentName ? `${studentName} 학생에게 ` : '학생에게 ';
+        window.showAlert(`${contextMsg}${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        
+    } catch (error) {
+        // 프로그레스 바 숨기기
+        if (progressDiv) progressDiv.classList.add('hidden');
+        
+        console.error('사진 업로드 실패:', error);
+        window.showAlert('사진 업로드 실패: ' + (error.response?.data?.detail || error.message));
+    }
+    
+    // 파일 입력 초기화
+    event.target.value = '';
+}
+
+// 학생 사진 삭제
+window.removeStudentPhoto = async function(index) {
+    const photoUrlsInput = document.getElementById('student-photo-urls');
+    const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+    
+    photoUrls.splice(index, 1);
+    photoUrlsInput.value = JSON.stringify(photoUrls);
+    updateStudentPhotoPreview(photoUrls);
+    
+    // 자동 저장
+    const studentIdInput = document.getElementById('student-id');
+    const studentId = studentIdInput ? studentIdInput.value : null;
+    if (studentId) {
+        await window.saveStudent(parseInt(studentId), true);
+        
+        // 학생 이름 가져오기
+        const studentNameInput = document.querySelector('input[name="name"]');
+        const studentName = studentNameInput ? studentNameInput.value : '';
+        const contextMsg = studentName ? `${studentName} 학생에게서 ` : '학생에게서 ';
+        window.showAlert(`${contextMsg}사진이 삭제되고 자동 저장되었습니다.`);
+    }
+}
+
+// 학생 사진 미리보기 업데이트
+function updateStudentPhotoPreview(photoUrls) {
+    const previewDiv = document.getElementById('student-photos-preview');
+    if (!previewDiv) return;
+    
+    if (!photoUrls || photoUrls.length === 0) {
+        previewDiv.innerHTML = '<p class="text-gray-400 text-sm">첨부된 사진이 없습니다</p>';
+        return;
+    }
+    
+    previewDiv.innerHTML = photoUrls.map((url, index) => `
+        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
+            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="flex-shrink-0">
+                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
+                     alt="사진 ${index + 1}"
+                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
+                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
+            </a>
+            <div class="flex-1">
+                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download 
+                   class="text-blue-600 hover:underline text-sm block">
+                    사진 ${index + 1} 다운로드
+                </a>
+                <p class="text-xs text-gray-500 mt-1">클릭하여 다운로드</p>
+            </div>
+            <button type="button" onclick="window.removeStudentPhoto(${index})" 
+                    class="text-red-500 hover:text-red-700 px-2">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `).join('');
 }
 
 window.editStudent = function(id) {
@@ -1026,6 +1219,9 @@ function renderCounselings() {
                                         </span>
                                     </td>
                                     <td class="px-3 py-2 text-xs">
+                                        ${c.photo_urls && JSON.parse(c.photo_urls || '[]').length > 0 ? `
+                                            <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(c.photo_urls).length}개 사진"></i>
+                                        ` : ''}
                                         <button onclick="window.editCounseling(${c.id})" class="text-blue-600 hover:text-blue-800 mr-2">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -1348,6 +1544,7 @@ window.showCounselingForm = function(counselingId = null) {
             </button>
         </div>
         <form id="counseling-save-form">
+            <input type="hidden" id="counseling-id" value="${counselingId || ''}">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-gray-700 mb-2">학생 선택 *</label>
@@ -1400,6 +1597,56 @@ window.showCounselingForm = function(counselingId = null) {
                     <textarea name="content" rows="6" required placeholder="상담 내용을 상세히 작성하세요..." 
                               class="w-full px-3 py-2 border rounded-lg">${mergedContent}</textarea>
                 </div>
+                
+                <!-- 사진 업로드 -->
+                <div class="col-span-2">
+                    <label class="block text-gray-700 mb-2">
+                        <i class="fas fa-camera mr-2"></i>사진 첨부
+                    </label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <button type="button" onclick="document.getElementById('counseling-file-input').click()" 
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                                <i class="fas fa-folder-open mr-2"></i>파일 선택
+                            </button>
+                            <button type="button" onclick="document.getElementById('counseling-camera-input').click()" 
+                                    class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                                <i class="fas fa-camera mr-2"></i>사진 촬영
+                            </button>
+                        </div>
+                        <div id="counseling-upload-progress" class="hidden mb-3">
+                            <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                <p class="text-sm text-blue-800 mb-2">
+                                    <i class="fas fa-cloud-upload-alt mr-2"></i>
+                                    서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                                </p>
+                                <div class="w-full bg-blue-200 rounded-full h-2">
+                                    <div id="counseling-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="file" id="counseling-file-input" accept="image/*" multiple 
+                               onchange="window.handleCounselingImageUpload(event)" class="hidden">
+                        <input type="file" id="counseling-camera-input" accept="image/*"  
+                               onchange="window.handleCounselingImageUpload(event)" class="hidden">
+                        <div id="counseling-photos-preview" class="flex flex-col gap-2 mt-2">
+                            ${existingCounseling?.photo_urls ? JSON.parse(existingCounseling.photo_urls).map((url, idx) => `
+                                <div class="relative group">
+                                    <img src="${url}" class="w-full h-24 object-cover rounded border">
+                                    <button type="button" onclick="window.removeCounselingPhoto(${idx})" 
+                                            class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                        <i class="fas fa-times text-xs"></i>
+                                    </button>
+                                </div>
+                            `).join('') : ''}
+                        </div>
+                        <input type="hidden" id="counseling-photo-urls" value='${existingCounseling?.photo_urls || "[]"}'>
+                        <p class="text-sm text-gray-500 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            최대 10MB, JPG/PNG/GIF 형식
+                        </p>
+                    </div>
+                </div>
             </div>
             <div class="mt-4 space-x-2">
                 <button type="button" onclick="window.saveCounseling(${counselingId || 'null'})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
@@ -1414,15 +1661,29 @@ window.showCounselingForm = function(counselingId = null) {
     
     formDiv.classList.remove('hidden');
     formDiv.scrollIntoView({ behavior: 'smooth' });
+    
+    // 기존 사진 미리보기 표시
+    if (existingCounseling && existingCounseling.photo_urls) {
+        try {
+            const photoUrls = typeof existingCounseling.photo_urls === 'string' 
+                ? JSON.parse(existingCounseling.photo_urls) 
+                : existingCounseling.photo_urls;
+            updateCounselingPhotoPreview(photoUrls);
+        } catch (e) {
+            console.error('사진 URL 파싱 오류:', e);
+        }
+    }
 }
 
 window.hideCounselingForm = function() {
     document.getElementById('counseling-form').classList.add('hidden');
 }
 
-window.saveCounseling = async function(counselingId) {
+window.saveCounseling = async function(counselingId, autoSave = false) {
     const form = document.getElementById('counseling-save-form');
     const formData = new FormData(form);
+    const photoUrls = document.getElementById('counseling-photo-urls').value || '[]';
+    
     const data = {
         student_id: parseInt(formData.get('student_id')),
         instructor_code: formData.get('instructor_code'),
@@ -1430,23 +1691,162 @@ window.saveCounseling = async function(counselingId) {
         consultation_type: formData.get('consultation_type'),
         main_topic: '', // 주제는 더 이상 사용하지 않음
         content: formData.get('content'),
-        status: formData.get('status')
+        status: formData.get('status'),
+        photo_urls: photoUrls  // 사진 URL 추가
     };
     
     try {
         if (counselingId) {
             await axios.put(`${API_BASE_URL}/api/counselings/${counselingId}`, data);
-            window.showAlert('상담이 수정되었습니다.');
+            if (!autoSave) {
+                window.showAlert('상담이 수정되었습니다.');
+            }
         } else {
             await axios.post(`${API_BASE_URL}/api/counselings`, data);
-            window.showAlert('상담이 추가되었습니다.');
+            if (!autoSave) {
+                window.showAlert('상담이 추가되었습니다.');
+            }
         }
-        window.hideCounselingForm();
-        loadCounselings();
+        if (!autoSave) {
+            window.hideCounselingForm();
+            loadCounselings();
+        }
     } catch (error) {
         console.error('상담 저장 실패:', error);
         window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
     }
+}
+
+// 상담일지 사진 업로드 처리
+window.handleCounselingImageUpload = async function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    // 프로그레스 바 표시
+    const progressDiv = document.getElementById('counseling-upload-progress');
+    const progressBar = document.getElementById('counseling-progress-bar');
+    if (progressDiv) {
+        progressDiv.classList.remove('hidden');
+        progressBar.style.width = '0%';
+    }
+    
+    try {
+        const photoUrls = JSON.parse(document.getElementById('counseling-photo-urls').value || '[]');
+        const totalFiles = files.length;
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // 프로그레스 업데이트
+            const progress = ((i + 0.5) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${progress}%`;
+            
+            const response = await axios.post(
+                `${API_BASE_URL}/api/upload-image?category=guidance`,
+                formData,
+                {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                }
+            );
+            
+            if (response.data.success) {
+                photoUrls.push(response.data.url);
+            }
+            
+            // 완료 프로그레스
+            const completeProgress = ((i + 1) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${completeProgress}%`;
+        }
+        
+        // hidden input 업데이트
+        document.getElementById('counseling-photo-urls').value = JSON.stringify(photoUrls);
+        
+        // 미리보기 업데이트
+        updateCounselingPhotoPreview(photoUrls);
+        
+        // 자동 저장 (화면 유지)
+        const counselingIdInput = document.getElementById('counseling-id');
+        const counselingId = counselingIdInput ? counselingIdInput.value : null;
+        if (counselingId) {
+            // 기존 상담일지 업데이트
+            await window.saveCounseling(parseInt(counselingId), true);
+        }
+        
+        // 프로그레스 바 숨기기
+        if (progressDiv) {
+            setTimeout(() => {
+                progressDiv.classList.add('hidden');
+            }, 1000);
+        }
+        
+        // 학생 이름 가져오기
+        const studentSelect = document.querySelector('#counseling-save-form select[name="student_id"]');
+        const studentName = studentSelect ? studentSelect.options[studentSelect.selectedIndex].text : '';
+        const contextMsg = studentName ? `${studentName} 학생의 상담일지에 ` : '';
+        window.showAlert(`${contextMsg}${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        
+    } catch (error) {
+        // 프로그레스 바 숨기기
+        if (progressDiv) progressDiv.classList.add('hidden');
+        
+        console.error('사진 업로드 실패:', error);
+        window.showAlert('사진 업로드 실패: ' + (error.response?.data?.detail || error.message));
+    }
+    
+    // input 초기화
+    event.target.value = '';
+}
+
+window.removeCounselingPhoto = async function(index) {
+    const photoUrls = JSON.parse(document.getElementById('counseling-photo-urls').value || '[]');
+    photoUrls.splice(index, 1);
+    document.getElementById('counseling-photo-urls').value = JSON.stringify(photoUrls);
+    updateCounselingPhotoPreview(photoUrls);
+    
+    // 자동 저장 (화면 유지)
+    const counselingIdInput = document.getElementById('counseling-id');
+    const counselingId = counselingIdInput ? counselingIdInput.value : null;
+    if (counselingId) {
+        await window.saveCounseling(parseInt(counselingId), true);
+        
+        // 학생 이름 가져오기
+        const studentSelect = document.querySelector('#counseling-save-form select[name="student_id"]');
+        const studentName = studentSelect ? studentSelect.options[studentSelect.selectedIndex].text : '';
+        const contextMsg = studentName ? `${studentName} 학생의 상담일지에서 ` : '';
+        window.showAlert(`${contextMsg}사진이 삭제되고 자동 저장되었습니다.`);
+    }
+}
+
+function updateCounselingPhotoPreview(photoUrls) {
+    const previewDiv = document.getElementById('counseling-photos-preview');
+    if (!photoUrls || photoUrls.length === 0) {
+        previewDiv.innerHTML = '<p class="text-gray-400 text-sm">첨부된 사진이 없습니다</p>';
+        return;
+    }
+    
+    previewDiv.innerHTML = photoUrls.map((url, idx) => `
+        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
+            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="flex-shrink-0">
+                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
+                     alt="사진 ${idx + 1}"
+                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
+                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
+            </a>
+            <div class="flex-1">
+                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download 
+                   class="text-blue-600 hover:underline text-sm block">
+                    사진 ${idx + 1} 다운로드
+                </a>
+                <p class="text-xs text-gray-500 mt-1">클릭하여 다운로드</p>
+            </div>
+            <button type="button" onclick="window.removeCounselingPhoto(${idx})" 
+                    class="text-red-500 hover:text-red-700 px-2">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `).join('');
 }
 
 window.editCounseling = function(counselingId) {
@@ -1958,8 +2358,11 @@ function renderInstructors() {
                                     return typeInfo ? typeInfo.type : '';
                                 })()}</td>
                                 <td class="px-4 py-2">${inst.phone || ''}</td>
-                                <td class="px-4 py-2">${inst.email || ''}< /td>
+                                <td class="px-4 py-2">${inst.email || ''}</td>
                                 <td class="px-4 py-2">
+                                    ${inst.photo_urls && JSON.parse(inst.photo_urls || '[]').length > 0 ? `
+                                        <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(inst.photo_urls).length}개 사진"></i>
+                                    ` : ''}
                                     <button onclick="window.editInstructor('${inst.code}')" class="text-blue-600 hover:text-blue-800 mr-2">
                                         <i class="fas fa-edit"></i>
                                     </button>
@@ -2058,6 +2461,7 @@ window.showInstructorForm = function(code = null) {
     
     formDiv.innerHTML = `
         <h3 class="text-lg font-semibold mb-4">${code ? '강사 수정' : '강사 추가'}</h3>
+        <input type="hidden" id="instructor-code" value="${code || ''}">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label class="block text-gray-700 mb-1">강사코드 *</label>
@@ -2091,6 +2495,43 @@ window.showInstructorForm = function(code = null) {
                 <input type="email" id="inst-email" placeholder="email@example.com" value="${existingInst ? existingInst.email || '' : ''}" class="w-full border rounded px-3 py-2">
             </div>
         </div>
+        
+        <!-- 사진 업로드 -->
+        <div class="mt-4">
+            <label class="block text-gray-700 mb-2">
+                <i class="fas fa-camera mr-2"></i>사진 첨부
+            </label>
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <button type="button" onclick="document.getElementById('instructor-file-input').click()" 
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                        <i class="fas fa-folder-open mr-2"></i>파일 선택
+                    </button>
+                    <button type="button" onclick="document.getElementById('instructor-camera-input').click()" 
+                            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
+                        <i class="fas fa-camera mr-2"></i>사진 촬영
+                    </button>
+                </div>
+                <input type="file" id="instructor-file-input" accept="image/*" multiple 
+                       onchange="window.handleInstructorImageUpload(event)" class="hidden">
+                <input type="file" id="instructor-camera-input" accept="image/*"  
+                       onchange="window.handleInstructorImageUpload(event)" class="hidden">
+                <div id="instructor-upload-progress" class="hidden mb-3">
+                    <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                        <p class="text-sm text-blue-800 mb-2">
+                            <i class="fas fa-cloud-upload-alt mr-2"></i>
+                            서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                        </p>
+                        <div class="w-full bg-blue-200 rounded-full h-2">
+                            <div id="instructor-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="instructor-photos-preview" class="flex flex-col gap-2 mt-2"></div>
+                <input type="hidden" id="instructor-photo-urls" value='${existingInst && existingInst.photo_urls ? existingInst.photo_urls : "[]"}'>
+            </div>
+        </div>
+        
         <div class="mt-4 space-x-2">
             <button onclick="window.saveInstructor('${code || ''}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
                 <i class="fas fa-save mr-2"></i>저장
@@ -2100,32 +2541,55 @@ window.showInstructorForm = function(code = null) {
             </button>
         </div>
     `;
+    
+    // 기존 사진 미리보기 표시
+    if (existingInst?.photo_urls) {
+        try {
+            const photoUrls = typeof existingInst.photo_urls === 'string' 
+                ? JSON.parse(existingInst.photo_urls) 
+                : existingInst.photo_urls;
+            updateInstructorPhotoPreview(photoUrls);
+        } catch (e) {
+            console.error('사진 URL 파싱 오류:', e);
+        }
+    }
 }
 
 window.hideInstructorForm = function() {
     document.getElementById('instructor-form').classList.add('hidden');
 }
 
-window.saveInstructor = async function(existingCode) {
+window.saveInstructor = async function(existingCode, autoSave = false) {
+    // 사진 URL 가져오기
+    const photoUrlsInput = document.getElementById('instructor-photo-urls');
+    const photoUrls = photoUrlsInput ? JSON.parse(photoUrlsInput.value || '[]') : [];
+    
     const data = {
         code: document.getElementById('inst-code').value,
         name: document.getElementById('inst-name').value,
         major: document.getElementById('inst-major').value,
         instructor_type: document.getElementById('inst-type').value,
         phone: document.getElementById('inst-phone').value,
-        email: document.getElementById('inst-email').value
+        email: document.getElementById('inst-email').value,
+        photo_urls: JSON.stringify(photoUrls)
     };
     
     try {
         if (existingCode) {
             await axios.put(`${API_BASE_URL}/api/instructors/${existingCode}`, data);
-            alert('강사 정보가 수정되었습니다.');
+            if (!autoSave) {
+                alert('강사 정보가 수정되었습니다.');
+            }
         } else {
             await axios.post(`${API_BASE_URL}/api/instructors`, data);
-            alert('강사가 추가되었습니다.');
+            if (!autoSave) {
+                alert('강사가 추가되었습니다.');
+            }
         }
-        window.hideInstructorForm();
-        loadInstructors();
+        if (!autoSave) {
+            window.hideInstructorForm();
+            loadInstructors();
+        }
     } catch (error) {
         alert('저장 실패: ' + error.response?.data?.detail || error.message);
     }
@@ -2145,6 +2609,139 @@ window.deleteInstructor = async function(code) {
     } catch (error) {
         alert('삭제 실패: ' + error.response?.data?.detail || error.message);
     }
+}
+
+// 강사 사진 업로드 핸들러
+window.handleInstructorImageUpload = async function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    // 프로그레스 바 표시
+    const progressDiv = document.getElementById('instructor-upload-progress');
+    const progressBar = document.getElementById('instructor-progress-bar');
+    if (progressDiv) {
+        progressDiv.classList.remove('hidden');
+        progressBar.style.width = '0%';
+    }
+    
+    try {
+        const photoUrlsInput = document.getElementById('instructor-photo-urls');
+        const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+        const totalFiles = files.length;
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // 프로그레스 업데이트
+            const progress = ((i + 0.5) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${progress}%`;
+            
+            const response = await axios.post(
+                `${API_BASE_URL}/api/upload-image?category=teacher`,
+                formData,
+                { headers: { 'Content-Type': 'multipart/form-data' } }
+            );
+            
+            if (response.data.success) {
+                photoUrls.push(response.data.url);
+            }
+            
+            // 완료 프로그레스
+            const completeProgress = ((i + 1) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${completeProgress}%`;
+        }
+        
+        photoUrlsInput.value = JSON.stringify(photoUrls);
+        updateInstructorPhotoPreview(photoUrls);
+        
+        // 자동 저장 (화면 유지)
+        const instructorCodeInput = document.getElementById('instructor-code');
+        const existingCode = instructorCodeInput ? instructorCodeInput.value : null;
+        if (existingCode) {
+            await window.saveInstructor(existingCode, true);
+        }
+        
+        // 프로그레스 바 숨기기
+        if (progressDiv) {
+            setTimeout(() => {
+                progressDiv.classList.add('hidden');
+            }, 1000);
+        }
+        
+        // 강사 이름 가져오기
+        const instructorNameInput = document.querySelector('input[name="name"]');
+        const instructorName = instructorNameInput ? instructorNameInput.value : '';
+        const contextMsg = instructorName ? `${instructorName} 강사에게 ` : '강사에게 ';
+        window.showAlert(`${contextMsg}${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        
+    } catch (error) {
+        // 프로그레스 바 숨기기
+        if (progressDiv) progressDiv.classList.add('hidden');
+        
+        console.error('사진 업로드 실패:', error);
+        window.showAlert('사진 업로드 실패: ' + (error.response?.data?.detail || error.message));
+    }
+    
+    // 파일 입력 초기화
+    event.target.value = '';
+}
+
+// 강사 사진 삭제
+window.removeInstructorPhoto = async function(index) {
+    const photoUrlsInput = document.getElementById('instructor-photo-urls');
+    const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+    
+    photoUrls.splice(index, 1);
+    photoUrlsInput.value = JSON.stringify(photoUrls);
+    updateInstructorPhotoPreview(photoUrls);
+    
+    // 자동 저장 (화면 유지)
+    const instructorCodeInput = document.getElementById('instructor-code');
+    const existingCode = instructorCodeInput ? instructorCodeInput.value : null;
+    if (existingCode) {
+        await window.saveInstructor(existingCode, true);
+        
+        // 강사 이름 가져오기
+        const instructorNameInput = document.querySelector('input[name="name"]');
+        const instructorName = instructorNameInput ? instructorNameInput.value : '';
+        const contextMsg = instructorName ? `${instructorName} 강사에게서 ` : '강사에게서 ';
+        window.showAlert(`${contextMsg}사진이 삭제되고 자동 저장되었습니다.`);
+    }
+}
+
+// 강사 사진 미리보기 업데이트
+function updateInstructorPhotoPreview(photoUrls) {
+    const previewDiv = document.getElementById('instructor-photos-preview');
+    if (!previewDiv) return;
+    
+    if (!photoUrls || photoUrls.length === 0) {
+        previewDiv.innerHTML = '<p class="text-gray-400 text-sm">첨부된 사진이 없습니다</p>';
+        return;
+    }
+    
+    previewDiv.innerHTML = photoUrls.map((url, index) => `
+        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
+            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="flex-shrink-0">
+                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
+                     alt="사진 ${index + 1}"
+                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
+                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
+            </a>
+            <div class="flex-1">
+                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download 
+                   class="text-blue-600 hover:underline text-sm block">
+                    사진 ${index + 1} 다운로드
+                </a>
+                <p class="text-xs text-gray-500 mt-1">클릭하여 다운로드</p>
+            </div>
+            <button type="button" onclick="window.removeInstructorPhoto(${index})" 
+                    class="text-red-500 hover:text-red-700 px-2">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `).join('');
 }
 
 // ==================== 공휴일 관리 ====================
@@ -3244,7 +3841,9 @@ window.renderProjectsList = function() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${filteredProjects.map(p => `
+                    ${filteredProjects.map(p => {
+                        const photoUrls = p.photo_urls ? (typeof p.photo_urls === 'string' ? JSON.parse(p.photo_urls) : p.photo_urls) : [];
+                        return `
                         <tr class="border-t hover:bg-gray-50">
                             <td class="px-4 py-2 text-xs font-mono">${p.code}</td>
                             <td class="px-4 py-2 text-xs font-semibold">${p.name}</td>
@@ -3258,6 +3857,9 @@ window.renderProjectsList = function() {
                             <td class="px-4 py-2 text-xs">${p.member4_name || '-'}</td>
                             <td class="px-4 py-2 text-xs">${p.member5_name || '-'}</td>
                             <td class="px-4 py-2 text-xs">
+                                ${photoUrls.length > 0 ? `
+                                    <i class="fas fa-camera text-green-600 mr-2" title="${photoUrls.length}개 사진"></i>
+                                ` : ''}
                                 <button onclick="window.editProject('${p.code}')" class="text-blue-600 hover:text-blue-800 mr-2">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -3266,7 +3868,8 @@ window.renderProjectsList = function() {
                                 </button>
                             </td>
                         </tr>
-                    `).join('')}
+                    `;
+                    }).join('')}
                 </tbody>
             </table>
         </div>
@@ -3377,6 +3980,48 @@ window.showProjectForm = function(code = null) {
                 </div>
             `).join('')}
         </div>
+        
+        <!-- 사진 업로드 섹션 -->
+        <div class="mt-6">
+            <h4 class="font-semibold mb-2">
+                <i class="fas fa-camera mr-2"></i>사진 첨부
+            </h4>
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <button type="button" onclick="document.getElementById('project-file-input').click()" 
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                        <i class="fas fa-folder-open mr-2"></i>파일 선택
+                    </button>
+                    <button type="button" onclick="document.getElementById('project-camera-input').click()" 
+                            class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                        <i class="fas fa-camera mr-2"></i>사진 촬영
+                    </button>
+                </div>
+                <div id="project-upload-progress" class="hidden mb-3">
+                    <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                        <p class="text-sm text-blue-800 mb-2">
+                            <i class="fas fa-cloud-upload-alt mr-2"></i>
+                            서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                        </p>
+                        <div class="w-full bg-blue-200 rounded-full h-2">
+                            <div id="project-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <input type="file" id="project-file-input" accept="image/*" multiple 
+                       onchange="window.handleProjectImageUpload(event)" class="hidden">
+                <input type="file" id="project-camera-input" accept="image/*" 
+                       onchange="window.handleProjectImageUpload(event)" class="hidden">
+                <div id="project-photos-preview" class="flex flex-col gap-2 mt-2"></div>
+                <input type="hidden" id="project-photo-urls" value='${existing && existing.photo_urls ? existing.photo_urls : "[]"}'>
+                <input type="hidden" id="project-code" value="${code || ''}">
+                <p class="text-sm text-gray-500 mt-2">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    최대 10MB, JPG/PNG/GIF 형식
+                </p>
+            </div>
+        </div>
+        
         <div class="mt-4 space-x-2">
             <button onclick="window.saveProject('${code || ''}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
                 <i class="fas fa-save mr-2"></i>저장
@@ -3389,6 +4034,18 @@ window.showProjectForm = function(code = null) {
     
     // 초기 학생 목록 업데이트
     window.updateProjectStudentList();
+    
+    // 기존 사진 미리보기 표시
+    if (existing && existing.photo_urls) {
+        try {
+            const photoUrls = typeof existing.photo_urls === 'string' 
+                ? JSON.parse(existing.photo_urls) 
+                : existing.photo_urls;
+            updateProjectPhotoPreview(photoUrls);
+        } catch (e) {
+            console.error('사진 URL 파싱 오류:', e);
+        }
+    }
 }
 
 window.updateProjectStudentList = function() {
@@ -3454,7 +4111,7 @@ window.hideProjectForm = function() {
     document.getElementById('project-form').classList.add('hidden');
 }
 
-window.saveProject = async function(existingCode) {
+window.saveProject = async function(existingCode, autoSave = false) {
     const code = document.getElementById('proj-code').value;
     const name = document.getElementById('proj-name').value;
     const groupType = document.getElementById('proj-group').value;
@@ -3479,6 +4136,10 @@ window.saveProject = async function(existingCode) {
         window.showAlert('과정을 선택하세요.');
         return;
     }
+    
+    // 사진 URL 가져오기
+    const photoUrlsInput = document.getElementById('project-photo-urls');
+    const photoUrls = photoUrlsInput ? photoUrlsInput.value : '[]';
     
     const data = {
         code: code,
@@ -3517,19 +4178,26 @@ window.saveProject = async function(existingCode) {
         account4_pw: document.getElementById('account4-pw').value || null,
         account5_name: document.getElementById('account5-name').value || null,
         account5_id: document.getElementById('account5-id').value || null,
-        account5_pw: document.getElementById('account5-pw').value || null
+        account5_pw: document.getElementById('account5-pw').value || null,
+        photo_urls: photoUrls
     };
     
     try {
         if (existingCode) {
             await axios.put(`${API_BASE_URL}/api/projects/${existingCode}`, data);
-            window.showAlert('팀이 수정되었습니다.');
+            if (!autoSave) {
+                window.showAlert('팀이 수정되었습니다.');
+            }
         } else {
             await axios.post(`${API_BASE_URL}/api/projects`, data);
-            window.showAlert('팀이 추가되었습니다.');
+            if (!autoSave) {
+                window.showAlert('팀이 추가되었습니다.');
+            }
         }
-        window.hideProjectForm();
-        loadProjects();
+        if (!autoSave) {
+            window.hideProjectForm();
+            loadProjects();
+        }
     } catch (error) {
         window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
     }
@@ -3553,6 +4221,129 @@ window.deleteProject = async function(code) {
         window.hideLoading();
         window.showAlert('삭제 실패: ' + (error.response?.data?.detail || error.message));
     }
+}
+
+// 팀 사진 업로드 핸들러
+window.handleProjectImageUpload = async function(event) {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+
+    const progressDiv = document.getElementById('project-upload-progress');
+    const progressBar = document.getElementById('project-progress-bar');
+    progressDiv?.classList.remove('hidden');
+    if (progressBar) progressBar.style.width = '0%';
+
+    const projectCode = document.getElementById('project-code')?.value || '';
+    const projectName = document.getElementById('project-name')?.value || '이름 미지정';
+
+    try {
+        let photoUrls = [];
+        const existingUrlsInput = document.getElementById('project-photo-urls');
+        if (existingUrlsInput && existingUrlsInput.value) {
+            try {
+                photoUrls = JSON.parse(existingUrlsInput.value);
+            } catch (e) {
+                console.error('기존 URL 파싱 오류:', e);
+            }
+        }
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=team`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    const totalPercent = Math.round(((i + percentCompleted / 100) / files.length) * 100);
+                    if (progressBar) progressBar.style.width = totalPercent + '%';
+                }
+            });
+
+            if (response.data.url) {
+                photoUrls.push(response.data.url);
+            }
+        }
+
+        if (existingUrlsInput) {
+            existingUrlsInput.value = JSON.stringify(photoUrls);
+        }
+
+        updateProjectPhotoPreview(photoUrls);
+
+        // Auto-save
+        await window.saveProject(projectCode, true);
+
+        window.showAlert(`사진 ${files.length}개가 업로드되고 팀(${projectName})에 자동 저장되었습니다.`);
+    } catch (error) {
+        console.error('업로드 오류:', error);
+        window.showAlert('업로드 실패: ' + (error.response?.data?.detail || error.message));
+    } finally {
+        progressDiv?.classList.add('hidden');
+        if (progressBar) progressBar.style.width = '0%';
+        event.target.value = '';
+    }
+}
+
+// 팀 사진 삭제 핸들러
+window.removeProjectPhoto = async function(index) {
+    if (!confirm('이 사진을 삭제하시겠습니까?')) return;
+
+    const photoUrlsInput = document.getElementById('project-photo-urls');
+    const projectCode = document.getElementById('project-code')?.value || '';
+    const projectName = document.getElementById('project-name')?.value || '이름 미지정';
+
+    if (!photoUrlsInput) return;
+
+    try {
+        let photoUrls = JSON.parse(photoUrlsInput.value);
+        photoUrls.splice(index, 1);
+        photoUrlsInput.value = JSON.stringify(photoUrls);
+
+        updateProjectPhotoPreview(photoUrls);
+
+        // Auto-save
+        await window.saveProject(projectCode, true);
+
+        window.showAlert(`사진이 삭제되고 팀(${projectName})에 자동 저장되었습니다.`);
+    } catch (error) {
+        console.error('삭제 오류:', error);
+        window.showAlert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+// 팀 사진 미리보기 업데이트
+function updateProjectPhotoPreview(photoUrls) {
+    const previewDiv = document.getElementById('project-photos-preview');
+    if (!previewDiv) return;
+
+    if (!photoUrls || photoUrls.length === 0) {
+        previewDiv.innerHTML = '<p class="text-gray-400 text-sm">첨부된 사진이 없습니다</p>';
+        return;
+    }
+
+    previewDiv.innerHTML = photoUrls.map((url, idx) => `
+        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
+            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="flex-shrink-0">
+                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
+                     alt="사진 ${idx + 1}"
+                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
+                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27100%27 height=%27100%27%3E%3Crect fill=%27%23ddd%27 width=%27100%27 height=%27100%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27 fill=%27%23999%27%3E이미지 없음%3C/text%3E%3C/svg%3E';">
+            </a>
+            <div class="flex-1">
+                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download 
+                   class="text-blue-600 hover:underline text-sm block">
+                    사진 ${idx + 1} 다운로드
+                </a>
+                <p class="text-xs text-gray-500 mt-1">클릭하여 다운로드</p>
+            </div>
+            <button type="button" onclick="window.removeProjectPhoto(${idx})" 
+                    class="text-red-500 hover:text-red-700 px-2">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `).join('');
 }
 
 // ==================== 시간표 관리 ====================
@@ -4172,6 +4963,8 @@ function renderTrainingLogsTable(timetables) {
     });
     
     listDiv.innerHTML = `
+        <div id="training-log-form" class="hidden mb-6 p-4 bg-blue-50 rounded-lg"></div>
+        
         <div class="mb-4">
             <p class="text-sm text-gray-600">총 ${timetables.length}건의 시간표</p>
         </div>
@@ -4251,6 +5044,9 @@ function renderTrainingLogsTable(timetables) {
                                     `}
                                 </td>
                                 <td class="px-3 py-2 text-xs">
+                                    ${hasLog && tt.training_log_photo_urls && JSON.parse(tt.training_log_photo_urls || '[]').length > 0 ? `
+                                        <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(tt.training_log_photo_urls).length}개 사진"></i>
+                                    ` : ''}
                                     ${hasLog ? `
                                         <button onclick="window.editTrainingLog(${tt.training_log_id}, ${tt.id})" class="text-blue-600 hover:text-blue-800 mr-2">
                                             <i class="fas fa-edit"></i> 수정
@@ -4267,8 +5063,6 @@ function renderTrainingLogsTable(timetables) {
                 </tbody>
             </table>
         </div>
-        
-        <div id="training-log-form" class="hidden mt-6 p-4 bg-blue-50 rounded-lg"></div>
     `;
 }
 
@@ -4314,6 +5108,11 @@ window.showTrainingLogForm = async function(timetableId) {
                 ${subSubjectsHTML}
             </div>
             <form id="training-log-save-form">
+                <input type="hidden" id="training-log-id" value="">
+                <input type="hidden" id="training-timetable-id" value="${timetableId}">
+                <input type="hidden" id="training-course-code" value="${tt.course_code}">
+                <input type="hidden" id="training-instructor-code" value="${tt.instructor_code}">
+                <input type="hidden" id="training-class-date" value="${tt.class_date}">
                 <div class="space-y-4">
                     <div>
                         <label class="block text-gray-700 mb-2">수업 내용 *</label>
@@ -4329,6 +5128,46 @@ window.showTrainingLogForm = async function(timetableId) {
                         <label class="block text-gray-700 mb-2">비고</label>
                         <textarea name="notes" rows="2" class="w-full px-3 py-2 border rounded-lg" 
                                   placeholder="기타 특이사항이나 참고사항을 작성해주세요..."></textarea>
+                    </div>
+                    
+                    <!-- 사진 업로드 -->
+                    <div>
+                        <label class="block text-gray-700 mb-2">
+                            <i class="fas fa-camera mr-2"></i>사진 첨부
+                        </label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <button type="button" onclick="document.getElementById('training-file-input').click()" 
+                                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                                    <i class="fas fa-folder-open mr-2"></i>파일 선택
+                                </button>
+                                <button type="button" onclick="document.getElementById('training-camera-input').click()" 
+                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                                    <i class="fas fa-camera mr-2"></i>사진 촬영
+                                </button>
+                            </div>
+                            <input type="file" id="training-file-input" accept="image/*" multiple 
+                                   onchange="window.handleTrainingImageUpload(event)" class="hidden">
+                            <input type="file" id="training-camera-input" accept="image/*"  
+                                   onchange="window.handleTrainingImageUpload(event)" class="hidden">
+                            <div id="training-upload-progress" class="hidden mb-3">
+                                <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                    <p class="text-sm text-blue-800 mb-2">
+                                        <i class="fas fa-cloud-upload-alt mr-2"></i>
+                                        서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                                    </p>
+                                    <div class="w-full bg-blue-200 rounded-full h-2">
+                                        <div id="training-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="training-photos-preview" class="flex flex-col gap-2 mt-2"></div>
+                            <input type="hidden" id="training-photo-urls" value="[]">
+                            <p class="text-sm text-gray-500 mt-2">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                최대 10MB, JPG/PNG/GIF 형식
+                            </p>
+                        </div>
                     </div>
                 </div>
                 <div class="mt-4 space-x-2">
@@ -4398,6 +5237,11 @@ window.editTrainingLog = async function(logId, timetableId) {
                 ${subSubjectsHTML}
             </div>
             <form id="training-log-save-form">
+                <input type="hidden" id="training-log-id" value="${logId}">
+                <input type="hidden" id="training-timetable-id" value="${timetableId}">
+                <input type="hidden" id="training-course-code" value="${tt.course_code}">
+                <input type="hidden" id="training-instructor-code" value="${tt.instructor_code}">
+                <input type="hidden" id="training-class-date" value="${tt.class_date}">
                 <div class="space-y-4">
                     <div>
                         <label class="block text-gray-700 mb-2">수업 내용 *</label>
@@ -4410,6 +5254,42 @@ window.editTrainingLog = async function(logId, timetableId) {
                     <div>
                         <label class="block text-gray-700 mb-2">비고</label>
                         <textarea name="notes" rows="2" class="w-full px-3 py-2 border rounded-lg">${log.notes || ''}</textarea>
+                    </div>
+                    
+                    <!-- 사진 업로드 -->
+                    <div>
+                        <label class="block text-gray-700 mb-2">
+                            <i class="fas fa-camera mr-2"></i>사진 첨부
+                        </label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <button type="button" onclick="document.getElementById('training-file-input').click()" 
+                                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                                    <i class="fas fa-folder-open mr-2"></i>파일 선택
+                                </button>
+                                <button type="button" onclick="document.getElementById('training-camera-input').click()" 
+                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                                    <i class="fas fa-camera mr-2"></i>사진 촬영
+                                </button>
+                            </div>
+                            <input type="file" id="training-file-input" accept="image/*" multiple 
+                                   onchange="window.handleTrainingImageUpload(event)" class="hidden">
+                            <input type="file" id="training-camera-input" accept="image/*"  
+                                   onchange="window.handleTrainingImageUpload(event)" class="hidden">
+                            <div id="training-upload-progress" class="hidden mb-3">
+                                <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                    <p class="text-sm text-blue-800 mb-2">
+                                        <i class="fas fa-cloud-upload-alt mr-2"></i>
+                                        서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                                    </p>
+                                    <div class="w-full bg-blue-200 rounded-full h-2">
+                                        <div id="training-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="training-photos-preview" class="flex flex-col gap-2 mt-2"></div>
+                            <input type="hidden" id="training-photo-urls" value='${log && log.photo_urls ? log.photo_urls : "[]"}'>
+                        </div>
                     </div>
                 </div>
                 <div class="mt-4 space-x-2">
@@ -4431,15 +5311,174 @@ window.editTrainingLog = async function(logId, timetableId) {
         
         formDiv.classList.remove('hidden');
         formDiv.scrollIntoView({ behavior: 'smooth' });
+        
+        // 기존 사진 미리보기 표시
+        if (log.photo_urls) {
+            try {
+                const photoUrls = typeof log.photo_urls === 'string' 
+                    ? JSON.parse(log.photo_urls) 
+                    : log.photo_urls;
+                updateTrainingPhotoPreview(photoUrls);
+            } catch (e) {
+                console.error('사진 URL 파싱 오류:', e);
+            }
+        }
     } catch (error) {
         console.error('훈련일지 조회 실패:', error);
         window.showAlert('훈련일지를 불러오는데 실패했습니다');
     }
 }
 
-window.saveTrainingLog = async function(timetableId, courseCode, instructorCode, classDate) {
+// 훈련일지 사진 업로드 처리
+window.handleTrainingImageUpload = async function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    // 프로그레스 바 표시
+    const progressDiv = document.getElementById('training-upload-progress');
+    const progressBar = document.getElementById('training-progress-bar');
+    if (progressDiv) {
+        progressDiv.classList.remove('hidden');
+        progressBar.style.width = '0%';
+    }
+    
+    try {
+        const photoUrls = JSON.parse(document.getElementById('training-photo-urls').value || '[]');
+        const totalFiles = files.length;
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // 프로그레스 업데이트
+            const progress = ((i + 0.5) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${progress}%`;
+            
+            const response = await axios.post(
+                `${API_BASE_URL}/api/upload-image?category=train`,
+                formData,
+                {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                }
+            );
+            
+            if (response.data.success) {
+                photoUrls.push(response.data.url);
+            }
+            
+            // 완료 프로그레스
+            const completeProgress = ((i + 1) / totalFiles) * 100;
+            if (progressBar) progressBar.style.width = `${completeProgress}%`;
+        }
+        
+        document.getElementById('training-photo-urls').value = JSON.stringify(photoUrls);
+        updateTrainingPhotoPreview(photoUrls);
+        
+        // 자동 저장
+        const logIdInput = document.getElementById('training-log-id');
+        const logId = logIdInput ? logIdInput.value : null;
+        
+        if (logId) {
+            // 기존 훈련일지 수정 (화면 유지)
+            await window.updateTrainingLog(parseInt(logId), true);
+        } else {
+            // 새 훈련일지 - hidden input에서 정보 가져오기 (화면 유지)
+            const timetableId = document.getElementById('training-timetable-id')?.value;
+            const courseCode = document.getElementById('training-course-code')?.value;
+            const instructorCode = document.getElementById('training-instructor-code')?.value;
+            const classDate = document.getElementById('training-class-date')?.value;
+            
+            if (timetableId && courseCode && instructorCode && classDate) {
+                await window.saveTrainingLog(parseInt(timetableId), courseCode, instructorCode, classDate, true);
+            }
+        }
+        
+        // 프로그레스 바 숨기기
+        if (progressDiv) {
+            setTimeout(() => {
+                progressDiv.classList.add('hidden');
+            }, 1000);
+        }
+        
+        // 과정명과 날짜 정보 가져오기
+        const courseCodeInput = document.getElementById('training-course-code');
+        const classDateInput = document.getElementById('training-class-date');
+        const courseName = courseCodeInput?.dataset?.courseName || '';
+        const classDate = classDateInput?.value || '';
+        const contextMsg = courseName && classDate ? `${courseName} (${classDate}) 훈련일지에 ` : '훈련일지에 ';
+        window.showAlert(`${contextMsg}${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        
+    } catch (error) {
+        // 프로그레스 바 숨기기
+        if (progressDiv) progressDiv.classList.add('hidden');
+        
+        console.error('사진 업로드 실패:', error);
+        window.showAlert('사진 업로드 실패: ' + (error.response?.data?.detail || error.message));
+    }
+    
+    event.target.value = '';
+}
+
+window.removeTrainingPhoto = async function(index) {
+    const photoUrls = JSON.parse(document.getElementById('training-photo-urls').value || '[]');
+    photoUrls.splice(index, 1);
+    document.getElementById('training-photo-urls').value = JSON.stringify(photoUrls);
+    updateTrainingPhotoPreview(photoUrls);
+    
+    // 자동 저장
+    const logIdInput = document.getElementById('training-log-id');
+    const logId = logIdInput ? logIdInput.value : null;
+    
+    if (logId) {
+        await window.updateTrainingLog(parseInt(logId), true);
+        
+        // 과정명과 날짜 정보 가져오기
+        const courseCodeInput = document.getElementById('training-course-code');
+        const classDateInput = document.getElementById('training-class-date');
+        const courseName = courseCodeInput?.dataset?.courseName || '';
+        const classDate = classDateInput?.value || '';
+        const contextMsg = courseName && classDate ? `${courseName} (${classDate}) 훈련일지에서 ` : '훈련일지에서 ';
+        window.showAlert(`${contextMsg}사진이 삭제되고 자동 저장되었습니다.`);
+    }
+}
+
+function updateTrainingPhotoPreview(photoUrls) {
+    const previewDiv = document.getElementById('training-photos-preview');
+    if (!previewDiv) return;
+    
+    if (!photoUrls || photoUrls.length === 0) {
+        previewDiv.innerHTML = '<p class="text-gray-400 text-sm">첨부된 사진이 없습니다</p>';
+        return;
+    }
+    
+    previewDiv.innerHTML = photoUrls.map((url, idx) => `
+        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
+            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="flex-shrink-0">
+                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
+                     alt="사진 ${idx + 1}"
+                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
+                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
+            </a>
+            <div class="flex-1">
+                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download 
+                   class="text-blue-600 hover:underline text-sm block">
+                    사진 ${idx + 1} 다운로드
+                </a>
+                <p class="text-xs text-gray-500 mt-1">클릭하여 다운로드</p>
+            </div>
+            <button type="button" onclick="window.removeTrainingPhoto(${idx})" 
+                    class="text-red-500 hover:text-red-700 px-2">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+window.saveTrainingLog = async function(timetableId, courseCode, instructorCode, classDate, autoSave = false) {
     const form = document.getElementById('training-log-save-form');
     const formData = new FormData(form);
+    const photoUrls = document.getElementById('training-photo-urls').value || '[]';
     
     const data = {
         timetable_id: timetableId,
@@ -4448,35 +5487,42 @@ window.saveTrainingLog = async function(timetableId, courseCode, instructorCode,
         class_date: classDate,
         content: formData.get('content'),
         homework: formData.get('homework'),
-        notes: formData.get('notes')
+        notes: formData.get('notes'),
+        photo_urls: photoUrls
     };
     
     try {
         await axios.post(`${API_BASE_URL}/api/training-logs`, data);
-        window.showAlert('훈련일지가 저장되었습니다.');
-        window.hideTrainingLogForm();
-        window.filterTrainingLogs();
+        if (!autoSave) {
+            window.showAlert('훈련일지가 저장되었습니다.');
+            window.hideTrainingLogForm();
+            window.filterTrainingLogs();
+        }
     } catch (error) {
         console.error('훈련일지 저장 실패:', error);
         window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
-window.updateTrainingLog = async function(logId) {
+window.updateTrainingLog = async function(logId, autoSave = false) {
     const form = document.getElementById('training-log-save-form');
     const formData = new FormData(form);
+    const photoUrls = document.getElementById('training-photo-urls').value || '[]';
     
     const data = {
         content: formData.get('content'),
         homework: formData.get('homework'),
-        notes: formData.get('notes')
+        notes: formData.get('notes'),
+        photo_urls: photoUrls
     };
     
     try {
         await axios.put(`${API_BASE_URL}/api/training-logs/${logId}`, data);
-        window.showAlert('훈련일지가 수정되었습니다.');
-        window.hideTrainingLogForm();
-        window.filterTrainingLogs();
+        if (!autoSave) {
+            window.showAlert('훈련일지가 수정되었습니다.');
+            window.hideTrainingLogForm();
+            window.filterTrainingLogs();
+        }
     } catch (error) {
         console.error('훈련일지 수정 실패:', error);
         window.showAlert('수정 실패: ' + (error.response?.data?.detail || error.message));
