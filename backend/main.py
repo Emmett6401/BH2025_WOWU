@@ -189,6 +189,9 @@ async def create_student(data: dict):
     try:
         cursor = conn.cursor()
         
+        # photo_urls 컬럼이 없으면 자동 생성
+        ensure_photo_urls_column(cursor, 'students')
+        
         # 자동으로 학생 코드 생성
         cursor.execute("SELECT MAX(CAST(SUBSTRING(code, 2) AS UNSIGNED)) as max_code FROM students WHERE code LIKE 'S%'")
         result = cursor.fetchone()
@@ -197,8 +200,8 @@ async def create_student(data: dict):
         
         query = """
             INSERT INTO students 
-            (code, name, birth_date, gender, phone, email, address, interests, education, introduction, campus, course_code, notes)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (code, name, birth_date, gender, phone, email, address, interests, education, introduction, campus, course_code, notes, photo_urls)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         cursor.execute(query, (
@@ -214,7 +217,8 @@ async def create_student(data: dict):
             data.get('introduction'),
             data.get('campus'),
             data.get('course_code'),
-            data.get('notes')
+            data.get('notes'),
+            data.get('photo_urls')
         ))
         
         conn.commit()
@@ -229,11 +233,14 @@ async def update_student(student_id: int, data: dict):
     try:
         cursor = conn.cursor()
         
+        # photo_urls 컬럼이 없으면 자동 생성
+        ensure_photo_urls_column(cursor, 'students')
+        
         query = """
             UPDATE students 
             SET name = %s, birth_date = %s, gender = %s, phone = %s, email = %s,
                 address = %s, interests = %s, education = %s, introduction = %s,
-                campus = %s, course_code = %s, notes = %s, updated_at = NOW()
+                campus = %s, course_code = %s, notes = %s, photo_urls = %s, updated_at = NOW()
             WHERE id = %s
         """
         
@@ -250,6 +257,7 @@ async def update_student(student_id: int, data: dict):
             data.get('campus'),
             data.get('course_code'),
             data.get('notes'),
+            data.get('photo_urls'),
             student_id
         ))
         
@@ -646,13 +654,18 @@ async def create_instructor(data: dict):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        
+        # photo_urls 컬럼이 없으면 자동 생성
+        ensure_photo_urls_column(cursor, 'instructors')
+        
         query = """
-            INSERT INTO instructors (code, name, phone, major, instructor_type, email)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO instructors (code, name, phone, major, instructor_type, email, photo_urls)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
             data['code'], data['name'], data.get('phone'),
-            data.get('major'), data.get('instructor_type'), data.get('email')
+            data.get('major'), data.get('instructor_type'), data.get('email'),
+            data.get('photo_urls')
         ))
         conn.commit()
         return {"code": data['code']}
@@ -665,14 +678,18 @@ async def update_instructor(code: str, data: dict):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        
+        # photo_urls 컬럼이 없으면 자동 생성
+        ensure_photo_urls_column(cursor, 'instructors')
+        
         query = """
             UPDATE instructors
-            SET name = %s, phone = %s, major = %s, instructor_type = %s, email = %s
+            SET name = %s, phone = %s, major = %s, instructor_type = %s, email = %s, photo_urls = %s
             WHERE code = %s
         """
         cursor.execute(query, (
             data['name'], data.get('phone'), data.get('major'),
-            data.get('instructor_type'), data.get('email'), code
+            data.get('instructor_type'), data.get('email'), data.get('photo_urls'), code
         ))
         conn.commit()
         return {"code": code}

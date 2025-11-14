@@ -514,6 +514,31 @@ window.showStudentForm = function(studentId = null) {
                     <label class="block text-gray-700 mb-2">비고</label>
                     <textarea name="notes" rows="2" class="w-full px-3 py-2 border rounded-lg">${student?.notes || ''}</textarea>
                 </div>
+                
+                <!-- 사진 업로드 -->
+                <div class="col-span-2">
+                    <label class="block text-gray-700 mb-2">
+                        <i class="fas fa-camera mr-2"></i>사진 첨부
+                    </label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <button type="button" onclick="document.getElementById('student-file-input').click()" 
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                                <i class="fas fa-folder-open mr-2"></i>파일 선택
+                            </button>
+                            <button type="button" onclick="document.getElementById('student-camera-input').click()" 
+                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
+                                <i class="fas fa-camera mr-2"></i>사진 촬영
+                            </button>
+                        </div>
+                        <input type="file" id="student-file-input" accept="image/*" multiple 
+                               onchange="window.handleStudentImageUpload(event)" class="hidden">
+                        <input type="file" id="student-camera-input" accept="image/*" capture="environment" 
+                               onchange="window.handleStudentImageUpload(event)" class="hidden">
+                        <div id="student-photos-preview" class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2"></div>
+                        <input type="hidden" id="student-photo-urls" value="${student?.photo_urls || '[]'}">
+                    </div>
+                </div>
             </div>
             <div class="mt-4 space-x-2">
                 <button type="button" onclick="window.saveStudent(${studentId})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
@@ -527,6 +552,18 @@ window.showStudentForm = function(studentId = null) {
     `;
     
     formDiv.classList.remove('hidden');
+    
+    // 기존 사진 미리보기 표시
+    if (student?.photo_urls) {
+        try {
+            const photoUrls = typeof student.photo_urls === 'string' 
+                ? JSON.parse(student.photo_urls) 
+                : student.photo_urls;
+            updateStudentPhotoPreview(photoUrls);
+        } catch (e) {
+            console.error('사진 URL 파싱 오류:', e);
+        }
+    }
 }
 
 window.hideStudentForm = function() {
@@ -536,6 +573,11 @@ window.hideStudentForm = function() {
 window.saveStudent = async function(studentId) {
     const form = document.getElementById('student-save-form');
     const formData = new FormData(form);
+    
+    // 사진 URL 가져오기
+    const photoUrlsInput = document.getElementById('student-photo-urls');
+    const photoUrls = photoUrlsInput ? JSON.parse(photoUrlsInput.value || '[]') : [];
+    
     const data = {
         name: formData.get('name'),
         birth_date: formData.get('birth_date'),
@@ -548,7 +590,8 @@ window.saveStudent = async function(studentId) {
         introduction: formData.get('introduction'),
         campus: formData.get('campus'),
         course_code: formData.get('course_code'),
-        notes: formData.get('notes')
+        notes: formData.get('notes'),
+        photo_urls: JSON.stringify(photoUrls)
     };
     
     try {
@@ -563,6 +606,75 @@ window.saveStudent = async function(studentId) {
         console.error('학생 저장 실패:', error);
         alert('학생 저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
     }
+}
+
+// 학생 사진 업로드 핸들러
+window.handleStudentImageUpload = async function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    const photoUrlsInput = document.getElementById('student-photo-urls');
+    const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+    
+    for (let file of files) {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await axios.post(
+                `${API_BASE_URL}/api/upload-image?category=student`,
+                formData,
+                { headers: { 'Content-Type': 'multipart/form-data' } }
+            );
+            
+            if (response.data.success) {
+                photoUrls.push(response.data.url);
+            }
+        } catch (error) {
+            console.error('사진 업로드 실패:', error);
+            alert('사진 업로드에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+        }
+    }
+    
+    photoUrlsInput.value = JSON.stringify(photoUrls);
+    updateStudentPhotoPreview(photoUrls);
+    
+    // 파일 입력 초기화
+    event.target.value = '';
+}
+
+// 학생 사진 삭제
+window.removeStudentPhoto = function(index) {
+    const photoUrlsInput = document.getElementById('student-photo-urls');
+    const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+    
+    photoUrls.splice(index, 1);
+    photoUrlsInput.value = JSON.stringify(photoUrls);
+    updateStudentPhotoPreview(photoUrls);
+}
+
+// 학생 사진 미리보기 업데이트
+function updateStudentPhotoPreview(photoUrls) {
+    const previewDiv = document.getElementById('student-photos-preview');
+    if (!previewDiv) return;
+    
+    if (!photoUrls || photoUrls.length === 0) {
+        previewDiv.innerHTML = '<p class="text-gray-400 text-sm">첨부된 사진이 없습니다</p>';
+        return;
+    }
+    
+    previewDiv.innerHTML = photoUrls.map((url, index) => `
+        <div class="relative group">
+            <img src="${url}" alt="학생 사진 ${index + 1}" 
+                 class="w-full h-24 object-cover rounded border">
+            <button type="button" 
+                    onclick="window.removeStudentPhoto(${index})"
+                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 
+                           opacity-0 group-hover:opacity-100 transition-opacity">
+                <i class="fas fa-times text-xs"></i>
+            </button>
+        </div>
+    `).join('');
 }
 
 window.editStudent = function(id) {
@@ -2199,6 +2311,32 @@ window.showInstructorForm = function(code = null) {
                 <input type="email" id="inst-email" placeholder="email@example.com" value="${existingInst ? existingInst.email || '' : ''}" class="w-full border rounded px-3 py-2">
             </div>
         </div>
+        
+        <!-- 사진 업로드 -->
+        <div class="mt-4">
+            <label class="block text-gray-700 mb-2">
+                <i class="fas fa-camera mr-2"></i>사진 첨부
+            </label>
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <button type="button" onclick="document.getElementById('instructor-file-input').click()" 
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                        <i class="fas fa-folder-open mr-2"></i>파일 선택
+                    </button>
+                    <button type="button" onclick="document.getElementById('instructor-camera-input').click()" 
+                            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
+                        <i class="fas fa-camera mr-2"></i>사진 촬영
+                    </button>
+                </div>
+                <input type="file" id="instructor-file-input" accept="image/*" multiple 
+                       onchange="window.handleInstructorImageUpload(event)" class="hidden">
+                <input type="file" id="instructor-camera-input" accept="image/*" capture="environment" 
+                       onchange="window.handleInstructorImageUpload(event)" class="hidden">
+                <div id="instructor-photos-preview" class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2"></div>
+                <input type="hidden" id="instructor-photo-urls" value="${existingInst?.photo_urls || '[]'}">
+            </div>
+        </div>
+        
         <div class="mt-4 space-x-2">
             <button onclick="window.saveInstructor('${code || ''}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
                 <i class="fas fa-save mr-2"></i>저장
@@ -2208,6 +2346,18 @@ window.showInstructorForm = function(code = null) {
             </button>
         </div>
     `;
+    
+    // 기존 사진 미리보기 표시
+    if (existingInst?.photo_urls) {
+        try {
+            const photoUrls = typeof existingInst.photo_urls === 'string' 
+                ? JSON.parse(existingInst.photo_urls) 
+                : existingInst.photo_urls;
+            updateInstructorPhotoPreview(photoUrls);
+        } catch (e) {
+            console.error('사진 URL 파싱 오류:', e);
+        }
+    }
 }
 
 window.hideInstructorForm = function() {
@@ -2215,13 +2365,18 @@ window.hideInstructorForm = function() {
 }
 
 window.saveInstructor = async function(existingCode) {
+    // 사진 URL 가져오기
+    const photoUrlsInput = document.getElementById('instructor-photo-urls');
+    const photoUrls = photoUrlsInput ? JSON.parse(photoUrlsInput.value || '[]') : [];
+    
     const data = {
         code: document.getElementById('inst-code').value,
         name: document.getElementById('inst-name').value,
         major: document.getElementById('inst-major').value,
         instructor_type: document.getElementById('inst-type').value,
         phone: document.getElementById('inst-phone').value,
-        email: document.getElementById('inst-email').value
+        email: document.getElementById('inst-email').value,
+        photo_urls: JSON.stringify(photoUrls)
     };
     
     try {
@@ -2253,6 +2408,75 @@ window.deleteInstructor = async function(code) {
     } catch (error) {
         alert('삭제 실패: ' + error.response?.data?.detail || error.message);
     }
+}
+
+// 강사 사진 업로드 핸들러
+window.handleInstructorImageUpload = async function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    const photoUrlsInput = document.getElementById('instructor-photo-urls');
+    const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+    
+    for (let file of files) {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await axios.post(
+                `${API_BASE_URL}/api/upload-image?category=teacher`,
+                formData,
+                { headers: { 'Content-Type': 'multipart/form-data' } }
+            );
+            
+            if (response.data.success) {
+                photoUrls.push(response.data.url);
+            }
+        } catch (error) {
+            console.error('사진 업로드 실패:', error);
+            alert('사진 업로드에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+        }
+    }
+    
+    photoUrlsInput.value = JSON.stringify(photoUrls);
+    updateInstructorPhotoPreview(photoUrls);
+    
+    // 파일 입력 초기화
+    event.target.value = '';
+}
+
+// 강사 사진 삭제
+window.removeInstructorPhoto = function(index) {
+    const photoUrlsInput = document.getElementById('instructor-photo-urls');
+    const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+    
+    photoUrls.splice(index, 1);
+    photoUrlsInput.value = JSON.stringify(photoUrls);
+    updateInstructorPhotoPreview(photoUrls);
+}
+
+// 강사 사진 미리보기 업데이트
+function updateInstructorPhotoPreview(photoUrls) {
+    const previewDiv = document.getElementById('instructor-photos-preview');
+    if (!previewDiv) return;
+    
+    if (!photoUrls || photoUrls.length === 0) {
+        previewDiv.innerHTML = '<p class="text-gray-400 text-sm">첨부된 사진이 없습니다</p>';
+        return;
+    }
+    
+    previewDiv.innerHTML = photoUrls.map((url, index) => `
+        <div class="relative group">
+            <img src="${url}" alt="강사 사진 ${index + 1}" 
+                 class="w-full h-24 object-cover rounded border">
+            <button type="button" 
+                    onclick="window.removeInstructorPhoto(${index})"
+                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 
+                           opacity-0 group-hover:opacity-100 transition-opacity">
+                <i class="fas fa-times text-xs"></i>
+            </button>
+        </div>
+    `).join('');
 }
 
 // ==================== 공휴일 관리 ====================
