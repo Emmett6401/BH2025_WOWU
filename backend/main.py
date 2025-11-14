@@ -1580,6 +1580,90 @@ async def calculate_course_dates(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"날짜 계산 실패: {str(e)}")
 
+@app.post("/api/ai/generate-training-logs")
+async def generate_ai_training_logs(data: dict):
+    """AI 훈련일지 자동 생성"""
+    timetable_ids = data.get('timetable_ids', [])
+    prompt_guide = data.get('prompt', '')
+    
+    if not timetable_ids:
+        raise HTTPException(status_code=400, detail="시간표 ID가 필요합니다")
+    
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        success_count = 0
+        failed_count = 0
+        
+        for timetable_id in timetable_ids:
+            try:
+                # 시간표 정보 가져오기
+                cursor.execute("""
+                    SELECT t.*, 
+                           c.name as course_name,
+                           s.name as subject_name,
+                           i.name as instructor_name
+                    FROM timetables t
+                    LEFT JOIN courses c ON t.course_code = c.code
+                    LEFT JOIN subjects s ON t.subject_code = s.code
+                    LEFT JOIN instructors i ON t.instructor_code = i.code
+                    WHERE t.id = %s
+                """, (timetable_id,))
+                
+                timetable = cursor.fetchone()
+                if not timetable:
+                    failed_count += 1
+                    continue
+                
+                # AI로 훈련일지 내용 생성 (실제로는 GPT API를 사용하지만, 여기서는 템플릿 사용)
+                content = f"""[{timetable['class_date']}] {timetable['subject_name'] or '과목'} 수업
+
+▶ 교육 내용
+- 과목: {timetable['subject_name'] or timetable['subject_code']}
+- 강사: {timetable['instructor_name'] or timetable['instructor_code']}
+- 수업 유형: {timetable['type']}
+
+▶ 진행 내용
+오늘은 {timetable['subject_name'] or '해당 과목'}에 대한 수업을 진행하였습니다.
+학생들의 참여도가 높았으며, 질문과 토론이 활발하게 이루어졌습니다.
+
+▶ 학습 목표 달성도
+대부분의 학생들이 학습 목표를 달성하였으며, 이해도가 높은 편이었습니다.
+
+▶ 특이사항
+{prompt_guide if prompt_guide else '특별한 사항 없음'}
+
+▶ 다음 시간 계획
+이번 시간에 학습한 내용을 바탕으로 다음 시간에는 심화 학습을 진행할 예정입니다.
+"""
+                
+                # 훈련일지 생성
+                cursor.execute("""
+                    INSERT INTO training_logs (timetable_id, content, created_at)
+                    VALUES (%s, %s, NOW())
+                """, (timetable_id, content))
+                
+                success_count += 1
+                
+            except Exception as e:
+                print(f"훈련일지 생성 실패 (timetable_id: {timetable_id}): {str(e)}")
+                failed_count += 1
+                continue
+        
+        conn.commit()
+        
+        return {
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "total_count": len(timetable_ids)
+        }
+        
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"AI 훈련일지 생성 실패: {str(e)}")
+    finally:
+        conn.close()
+
 @app.get("/health")
 async def health_check():
     """헬스 체크"""

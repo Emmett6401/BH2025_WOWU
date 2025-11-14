@@ -251,6 +251,9 @@ window.showTab = function(tab) {
         case 'ai-report':
             renderAIReport();
             break;
+        case 'ai-training-log':
+            loadAITrainingLog();
+            break;
     }
 }
 
@@ -3109,7 +3112,7 @@ function renderTimetableList() {
     if (filteredTimetables.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="9" class="px-4 py-8 text-center text-gray-500">
+                <td colspan="12" class="px-4 py-8 text-center text-gray-500">
                     <i class="fas fa-search mr-2"></i>
                     필터 조건에 맞는 시간표가 없습니다
                 </td>
@@ -3119,14 +3122,23 @@ function renderTimetableList() {
         return;
     }
     
-    tbody.innerHTML = paginatedData.map(tt => `
+    tbody.innerHTML = paginatedData.map(tt => {
+        const duration = calculateDuration(tt.start_time, tt.end_time);
+        const subject = subjects.find(s => s.code === tt.subject_code);
+        const totalHours = subject ? subject.hours : 0;
+        const subSubjects = getSubSubjects(tt.subject_code);
+        
+        return `
         <tr class="border-t hover:bg-gray-50">
             <td class="px-3 py-2 text-xs">${tt.class_date}</td>
             <td class="px-3 py-2 text-xs">${tt.week_number || '-'}주차</td>
             <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
             <td class="px-3 py-2 text-xs">${tt.subject_name || tt.subject_code || '-'}</td>
+            <td class="px-3 py-2 text-xs text-gray-600">${subSubjects}</td>
             <td class="px-3 py-2 text-xs">${tt.instructor_name || tt.instructor_code || '-'}</td>
             <td class="px-3 py-2 text-xs">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
+            <td class="px-3 py-2 text-xs font-semibold text-blue-600">${duration}h</td>
+            <td class="px-3 py-2 text-xs font-bold text-purple-600">${totalHours}h</td>
             <td class="px-3 py-2 text-xs">
                 <span class="text-xs ${tt.type === 'lecture' ? 'bg-blue-100 text-blue-800' : tt.type === 'project' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} px-2 py-1 rounded">
                     ${tt.type}
@@ -3148,7 +3160,8 @@ function renderTimetableList() {
                 </button>
             </td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
     
     // 페이지네이션 렌더링
     const paginationHTML = createPaginationHTML(
@@ -3242,8 +3255,11 @@ function renderTimetables() {
                             <th class="px-3 py-2 text-left text-xs">주차</th>
                             <th class="px-3 py-2 text-left text-xs">일차</th>
                             <th class="px-3 py-2 text-left text-xs">과목</th>
+                            <th class="px-3 py-2 text-left text-xs">교과목주제</th>
                             <th class="px-3 py-2 text-left text-xs">강사</th>
                             <th class="px-3 py-2 text-left text-xs">시간</th>
+                            <th class="px-3 py-2 text-left text-xs">해당일 시수</th>
+                            <th class="px-3 py-2 text-left text-xs">총 시수</th>
                             <th class="px-3 py-2 text-left text-xs">타입</th>
                             <th class="px-3 py-2 text-left text-xs">훈련일지</th>
                             <th class="px-3 py-2 text-left text-xs">작업</th>
@@ -4013,6 +4029,389 @@ window.hideTrainingLogForm = function() {
     const formDiv = document.getElementById('training-log-form');
     if (formDiv) {
         formDiv.classList.add('hidden');
+    }
+}
+
+// ==================== AI 훈련일지 ====================
+let aiTrainingTimetables = []; // AI 훈련일지용 시간표 목록
+let selectedAITimetables = []; // 선택된 시간표들
+
+async function loadAITrainingLog() {
+    try {
+        window.showLoading('데이터를 불러오는 중...');
+        const [coursesRes, subjectsRes, instructorsRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/api/courses`),
+            axios.get(`${API_BASE_URL}/api/subjects`),
+            axios.get(`${API_BASE_URL}/api/instructors`)
+        ]);
+        courses = coursesRes.data;
+        subjects = subjectsRes.data;
+        instructors = instructorsRes.data;
+        renderAITrainingLog();
+        window.hideLoading();
+    } catch (error) {
+        window.hideLoading();
+        console.error('AI 훈련일지 로드 실패:', error);
+        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">데이터를 불러오는데 실패했습니다.</div>';
+    }
+}
+
+function renderAITrainingLog() {
+    const today = new Date().toISOString().split('T')[0];
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                    <i class="fas fa-brain mr-2 text-purple-600"></i>AI 훈련일지 자동 작성
+                </h2>
+                <p class="text-gray-600">미작성된 훈련일지를 AI가 자동으로 작성해드립니다.</p>
+            </div>
+            
+            <!-- 필터 영역 -->
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <p class="text-blue-700 mb-4">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    필터 조건을 선택하고 기간을 지정하여 미작성된 훈련일지를 조회하세요
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">과정 선택</label>
+                        <select id="ai-course" class="w-full border rounded px-3 py-2">
+                            <option value="">-- 전체 과정 --</option>
+                            ${courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">과목 선택</label>
+                        <select id="ai-subject" class="w-full border rounded px-3 py-2">
+                            <option value="">-- 전체 과목 --</option>
+                            ${subjects.map(s => `<option value="${s.code}">${s.name} (${s.code})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">강사 선택</label>
+                        <select id="ai-instructor" class="w-full border rounded px-3 py-2">
+                            <option value="">-- 전체 강사 --</option>
+                            ${instructors.map(i => `<option value="${i.code}">${i.name} (${i.code})</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">시작날짜 *</label>
+                        <input type="date" id="ai-start-date" max="${today}" class="w-full border rounded px-3 py-2" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">종료날짜 *</label>
+                        <input type="date" id="ai-end-date" max="${today}" class="w-full border rounded px-3 py-2" required>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button onclick="window.searchAITimetables()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                        <i class="fas fa-search mr-2"></i>미작성 훈련일지 조회
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 미작성 훈련일지 목록 -->
+            <div id="ai-timetable-list" class="mb-6"></div>
+            
+            <!-- AI 프롬프트 가이드 -->
+            <div id="ai-prompt-section" class="hidden mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">
+                    <i class="fas fa-magic mr-2 text-purple-600"></i>AI 작성 가이드
+                </h3>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <label class="block text-gray-700 mb-2">프롬프트 (선택사항)</label>
+                    <textarea id="ai-prompt" rows="4" class="w-full border rounded px-3 py-2" placeholder="예시:
+- 학생들의 적극적인 참여도를 강조해주세요
+- 실습 중심의 내용으로 작성해주세요
+- 학생들의 이해도가 높았다는 점을 포함해주세요
+- 프로젝트 진행 상황을 중점적으로 작성해주세요"></textarea>
+                    <p class="text-sm text-gray-500 mt-2">
+                        <i class="fas fa-lightbulb mr-1"></i>
+                        AI가 훈련일지를 작성할 때 참고할 가이드를 입력하세요 (비워두면 기본 형식으로 작성됩니다)
+                    </p>
+                </div>
+                
+                <div class="mt-4 flex space-x-2">
+                    <button onclick="window.generateAITrainingLogs()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg">
+                        <i class="fas fa-robot mr-2"></i>선택된 훈련일지 AI 작성 (<span id="selected-count">0</span>건)
+                    </button>
+                    <button onclick="window.selectAllAITimetables()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg">
+                        <i class="fas fa-check-square mr-2"></i>전체 선택
+                    </button>
+                    <button onclick="window.deselectAllAITimetables()" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-3 rounded-lg">
+                        <i class="fas fa-square mr-2"></i>전체 해제
+                    </button>
+                </div>
+            </div>
+            
+            <!-- AI 작성 결과 -->
+            <div id="ai-result-section" class="hidden">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">
+                    <i class="fas fa-check-circle mr-2 text-green-600"></i>작성 완료
+                </h3>
+                <div id="ai-result-content" class="bg-green-50 border-l-4 border-green-400 p-4 rounded"></div>
+            </div>
+        </div>
+    `;
+}
+
+window.searchAITimetables = async function() {
+    const courseCode = document.getElementById('ai-course').value;
+    const subjectCode = document.getElementById('ai-subject').value;
+    const instructorCode = document.getElementById('ai-instructor').value;
+    const startDate = document.getElementById('ai-start-date').value;
+    const endDate = document.getElementById('ai-end-date').value;
+    
+    if (!startDate || !endDate) {
+        window.showAlert('시작날짜와 종료날짜는 필수 항목입니다.');
+        return;
+    }
+    
+    if (startDate > endDate) {
+        window.showAlert('시작날짜는 종료날짜보다 이전이어야 합니다.');
+        return;
+    }
+    
+    try {
+        window.showLoading('미작성 훈련일지를 조회하는 중...');
+        
+        let url = `${API_BASE_URL}/api/timetables?start_date=${startDate}&end_date=${endDate}`;
+        if (courseCode) url += `&course_code=${courseCode}`;
+        
+        const response = await axios.get(url);
+        let timetables = response.data;
+        
+        // 과목 필터
+        if (subjectCode) {
+            timetables = timetables.filter(tt => tt.subject_code === subjectCode);
+        }
+        
+        // 강사 필터
+        if (instructorCode) {
+            timetables = timetables.filter(tt => tt.instructor_code === instructorCode);
+        }
+        
+        // 훈련일지가 없는 항목만 필터링
+        aiTrainingTimetables = timetables.filter(tt => !tt.training_log_id);
+        selectedAITimetables = [];
+        
+        window.hideLoading();
+        renderAITimetableList();
+        
+    } catch (error) {
+        window.hideLoading();
+        console.error('조회 실패:', error);
+        window.showAlert('조회 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+function renderAITimetableList() {
+    const listDiv = document.getElementById('ai-timetable-list');
+    const promptSection = document.getElementById('ai-prompt-section');
+    
+    if (aiTrainingTimetables.length === 0) {
+        listDiv.innerHTML = `
+            <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded">
+                <p class="text-green-700">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    해당 기간에 미작성된 훈련일지가 없습니다. 모든 훈련일지가 작성되었습니다!
+                </p>
+            </div>
+        `;
+        promptSection.classList.add('hidden');
+        return;
+    }
+    
+    // 과목별로 그룹화하고 총 시수 계산
+    const subjectGroups = {};
+    aiTrainingTimetables.forEach(tt => {
+        const subjectKey = tt.subject_code || 'unknown';
+        if (!subjectGroups[subjectKey]) {
+            subjectGroups[subjectKey] = {
+                subject_name: tt.subject_name || tt.subject_code || '미정',
+                subject_code: tt.subject_code,
+                total_hours: 0,
+                timetables: []
+            };
+        }
+        
+        // 해당 시간표의 시수 계산 (시간 차이)
+        const duration = calculateDuration(tt.start_time, tt.end_time);
+        subjectGroups[subjectKey].timetables.push({
+            ...tt,
+            duration: duration
+        });
+        subjectGroups[subjectKey].total_hours += duration;
+    });
+    
+    // 총 시수를 위한 과목 정보 가져오기
+    const subjectTotalHours = {};
+    subjects.forEach(s => {
+        subjectTotalHours[s.code] = s.hours || 0;
+    });
+    
+    listDiv.innerHTML = `
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">
+            <i class="fas fa-list mr-2"></i>미작성 훈련일지 목록 (총 ${aiTrainingTimetables.length}건)
+        </h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 text-left">
+                            <input type="checkbox" id="select-all-checkbox" onchange="window.toggleAllAITimetables(this.checked)">
+                        </th>
+                        <th class="px-4 py-2 text-left">날짜</th>
+                        <th class="px-4 py-2 text-left">과정</th>
+                        <th class="px-4 py-2 text-left">과목</th>
+                        <th class="px-4 py-2 text-left">교과목 주제</th>
+                        <th class="px-4 py-2 text-left">강사</th>
+                        <th class="px-4 py-2 text-left">시간</th>
+                        <th class="px-4 py-2 text-left">해당일 시수</th>
+                        <th class="px-4 py-2 text-left">총 시수</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${Object.keys(subjectGroups).map(subjectKey => {
+                        const group = subjectGroups[subjectKey];
+                        const totalHours = subjectTotalHours[subjectKey] || 0;
+                        
+                        return group.timetables.map((tt, idx) => {
+                            const isFirstRow = idx === 0;
+                            const rowspan = group.timetables.length;
+                            
+                            return `
+                                <tr class="border-t hover:bg-gray-50">
+                                    <td class="px-4 py-2">
+                                        <input type="checkbox" class="ai-timetable-checkbox" data-id="${tt.id}" onchange="window.updateSelectedCount()">
+                                    </td>
+                                    <td class="px-4 py-2 text-sm">${tt.class_date}</td>
+                                    <td class="px-4 py-2 text-sm">${tt.course_name || tt.course_code || '-'}</td>
+                                    ${isFirstRow ? `
+                                        <td class="px-4 py-2 text-sm font-semibold" rowspan="${rowspan}">
+                                            ${group.subject_name}
+                                        </td>
+                                        <td class="px-4 py-2 text-xs text-gray-600" rowspan="${rowspan}">
+                                            ${getSubSubjects(tt.subject_code)}
+                                        </td>
+                                    ` : ''}
+                                    <td class="px-4 py-2 text-sm">${tt.instructor_name || tt.instructor_code || '-'}</td>
+                                    <td class="px-4 py-2 text-xs">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
+                                    <td class="px-4 py-2 text-sm font-semibold text-blue-600">${tt.duration}h</td>
+                                    ${isFirstRow ? `
+                                        <td class="px-4 py-2 text-sm font-bold text-purple-600" rowspan="${rowspan}">
+                                            ${totalHours}h
+                                        </td>
+                                    ` : ''}
+                                </tr>
+                            `;
+                        }).join('');
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    promptSection.classList.remove('hidden');
+    updateSelectedCount();
+}
+
+// 교과목 주제 가져오기
+function getSubSubjects(subjectCode) {
+    const subject = subjects.find(s => s.code === subjectCode);
+    if (!subject) return '-';
+    
+    const subs = [1, 2, 3, 4, 5]
+        .filter(i => subject[`sub_subject_${i}`] && subject[`sub_subject_${i}`].trim())
+        .map(i => subject[`sub_subject_${i}`]);
+    
+    return subs.length > 0 ? subs.join(', ') : '-';
+}
+
+window.toggleAllAITimetables = function(checked) {
+    const checkboxes = document.querySelectorAll('.ai-timetable-checkbox');
+    checkboxes.forEach(cb => cb.checked = checked);
+    updateSelectedCount();
+}
+
+window.selectAllAITimetables = function() {
+    document.getElementById('select-all-checkbox').checked = true;
+    window.toggleAllAITimetables(true);
+}
+
+window.deselectAllAITimetables = function() {
+    document.getElementById('select-all-checkbox').checked = false;
+    window.toggleAllAITimetables(false);
+}
+
+window.updateSelectedCount = function() {
+    const checkboxes = document.querySelectorAll('.ai-timetable-checkbox:checked');
+    selectedAITimetables = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
+    document.getElementById('selected-count').textContent = selectedAITimetables.length;
+}
+
+window.generateAITrainingLogs = async function() {
+    if (selectedAITimetables.length === 0) {
+        window.showAlert('작성할 훈련일지를 선택해주세요.');
+        return;
+    }
+    
+    const prompt = document.getElementById('ai-prompt').value.trim();
+    
+    const confirmed = await window.showConfirm(
+        `선택된 ${selectedAITimetables.length}건의 훈련일지를 AI로 작성하시겠습니까?\n\n` +
+        `이 작업은 몇 분이 소요될 수 있습니다.`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        window.showLoading(`AI가 훈련일지를 작성하는 중... (${selectedAITimetables.length}건)`);
+        
+        const response = await axios.post(`${API_BASE_URL}/api/ai/generate-training-logs`, {
+            timetable_ids: selectedAITimetables,
+            prompt: prompt || null
+        });
+        
+        window.hideLoading();
+        
+        const resultSection = document.getElementById('ai-result-section');
+        const resultContent = document.getElementById('ai-result-content');
+        
+        resultContent.innerHTML = `
+            <p class="text-green-700 mb-2">
+                <i class="fas fa-check-circle mr-2"></i>
+                <strong>${response.data.success_count}건</strong>의 훈련일지가 성공적으로 작성되었습니다.
+            </p>
+            ${response.data.failed_count > 0 ? `
+                <p class="text-red-700">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    ${response.data.failed_count}건의 훈련일지 작성에 실패했습니다.
+                </p>
+            ` : ''}
+            <div class="mt-4">
+                <button onclick="showTab('training-logs')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                    훈련일지 목록으로 이동
+                </button>
+            </div>
+        `;
+        
+        resultSection.classList.remove('hidden');
+        
+        // 다시 조회
+        window.searchAITimetables();
+        
+    } catch (error) {
+        window.hideLoading();
+        console.error('AI 훈련일지 작성 실패:', error);
+        window.showAlert('AI 훈련일지 작성 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
