@@ -966,6 +966,11 @@ window.updateStudentsByCourse = function() {
 
 window.showStudentDetail = async function(studentId) {
     try {
+        // 기존 상세 정보 초기화
+        const detailDiv = document.getElementById('student-detail');
+        detailDiv.innerHTML = '<div class="p-4 text-center"><i class="fas fa-spinner fa-spin mr-2"></i>로딩 중...</div>';
+        detailDiv.classList.remove('hidden');
+        
         // 학생 정보 조회
         const studentRes = await axios.get(`${API_BASE_URL}/api/students/${studentId}`);
         const student = studentRes.data;
@@ -990,7 +995,7 @@ window.showStudentDetail = async function(studentId) {
             }
         }
         
-        const detailDiv = document.getElementById('student-detail');
+        // detailDiv는 함수 시작 부분에서 이미 선언됨
         detailDiv.innerHTML = `
             <div class="flex justify-between items-start mb-4">
                 <h3 class="text-xl font-bold text-gray-800">
@@ -1001,68 +1006,100 @@ window.showStudentDetail = async function(studentId) {
                 </button>
             </div>
             
-            <!-- 학생 기본 정보 -->
+            <div class="flex gap-6 mb-6">
+                <!-- 사진 영역 -->
+                ${student.photo_path || student.thumbnail ? `
+                    <div class="flex-shrink-0">
+                        <img src="${student.thumbnail || student.photo_path}" 
+                             alt="${student.name}" 
+                             class="w-32 h-32 object-cover rounded-lg shadow-md"
+                             onerror="this.style.display='none'">
+                    </div>
+                ` : ''}
+                
+                <!-- 기본 정보 -->
+                <div class="flex-1">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="bg-white p-4 rounded shadow-sm">
+                            <p class="text-xs text-gray-500 mb-1">학생코드</p>
+                            <p class="text-lg font-bold">${student.code}</p>
+                        </div>
+                        <div class="bg-white p-4 rounded shadow-sm">
+                            <p class="text-xs text-gray-500 mb-1">이름</p>
+                            <p class="text-lg font-bold">${student.name}</p>
+                        </div>
+                        <div class="bg-white p-4 rounded shadow-sm">
+                            <p class="text-xs text-gray-500 mb-1">생년월일</p>
+                            <p class="text-lg font-bold">${student.birth_date ? formatDateWithDay(student.birth_date) : '-'}</p>
+                        </div>
+                        <div class="bg-white p-4 rounded shadow-sm">
+                            <p class="text-xs text-gray-500 mb-1">성별</p>
+                            <p class="text-lg font-bold">${student.gender || '-'}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 연락처 및 학적 정보 -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div class="bg-white p-4 rounded shadow-sm">
-                    <p class="text-xs text-gray-500 mb-1">학생코드</p>
-                    <p class="text-lg font-bold">${student.code}</p>
-                </div>
-                <div class="bg-white p-4 rounded shadow-sm">
-                    <p class="text-xs text-gray-500 mb-1">이름</p>
-                    <p class="text-lg font-bold">${student.name}</p>
-                </div>
-                <div class="bg-white p-4 rounded shadow-sm">
-                    <p class="text-xs text-gray-500 mb-1">생년월일</p>
-                    <p class="text-lg font-bold">${student.birth_date ? formatDateWithDay(student.birth_date) : '-'}</p>
-                </div>
-                <div class="bg-white p-4 rounded shadow-sm">
-                    <p class="text-xs text-gray-500 mb-1">성별</p>
-                    <p class="text-lg font-bold">${student.gender || '-'}</p>
-                </div>
-                <div class="bg-white p-4 rounded shadow-sm">
                     <p class="text-xs text-gray-500 mb-1">연락처</p>
-                    <p class="text-lg font-bold">${student.phone || '-'}</p>
+                    <p class="text-sm font-semibold">${student.phone || '-'}</p>
                 </div>
-                <div class="bg-white p-4 rounded shadow-sm">
+                <div class="bg-white p-4 rounded shadow-sm col-span-2">
                     <p class="text-xs text-gray-500 mb-1">이메일</p>
-                    <p class="text-lg font-bold">${student.email || '-'}</p>
-                </div>
-                <div class="bg-white p-4 rounded shadow-sm">
-                    <p class="text-xs text-gray-500 mb-1">학교</p>
-                    <p class="text-lg font-bold">${student.school || '-'}</p>
-                </div>
-                <div class="bg-white p-4 rounded shadow-sm">
-                    <p class="text-xs text-gray-500 mb-1">전공</p>
-                    <p class="text-lg font-bold">${student.major || '-'}</p>
+                    <p class="text-sm font-semibold">${student.email || '-'}</p>
                 </div>
                 <div class="bg-white p-4 rounded shadow-sm">
                     <p class="text-xs text-gray-500 mb-1">캠퍼스</p>
-                    <p class="text-lg font-bold">${student.campus || '-'}</p>
+                    <p class="text-sm font-semibold">${student.campus || '-'}</p>
                 </div>
-                <div class="bg-white p-4 rounded shadow-sm">
-                    <p class="text-xs text-gray-500 mb-1">주소</p>
-                    <p class="text-lg font-bold">${student.address || '-'}</p>
+                <div class="bg-white p-4 rounded shadow-sm col-span-2">
+                    <p class="text-xs text-gray-500 mb-1">학력</p>
+                    <p class="text-sm font-semibold">${student.education || '-'}</p>
                 </div>
                 <div class="bg-white p-4 rounded shadow-sm col-span-2">
                     <p class="text-xs text-gray-500 mb-1">과정</p>
-                    <p class="text-lg font-bold text-blue-600">${courseInfo || '-'}</p>
+                    <p class="text-sm font-semibold text-blue-600">${courseInfo || '-'}</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm col-span-2">
+                    <p class="text-xs text-gray-500 mb-1">관심분야</p>
+                    <p class="text-sm font-semibold">${student.interests || '-'}</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm col-span-2">
+                    <p class="text-xs text-gray-500 mb-1">주소</p>
+                    <p class="text-sm font-semibold">${student.address || '-'}</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm">
+                    <p class="text-xs text-gray-500 mb-1">등록일</p>
+                    <p class="text-sm font-semibold">${student.registered_at ? formatDateWithDay(student.registered_at.split('T')[0]) : '-'}</p>
                 </div>
             </div>
             
             <!-- 자기소개 -->
-            ${student.self_introduction ? `
+            ${student.introduction || student.self_introduction ? `
                 <div class="bg-white p-4 rounded shadow-sm mb-6">
                     <h4 class="font-bold text-lg mb-2">
                         <i class="fas fa-file-alt mr-2"></i>자기소개
                     </h4>
-                    <p class="text-gray-700 whitespace-pre-wrap">${student.self_introduction}</p>
+                    <p class="text-gray-700 whitespace-pre-wrap">${student.introduction || student.self_introduction}</p>
                 </div>
             ` : ''}
             
-            <!-- 상담 이력 -->
+            <!-- 비고 -->
+            ${student.notes ? `
+                <div class="bg-white p-4 rounded shadow-sm mb-6">
+                    <h4 class="font-bold text-lg mb-2">
+                        <i class="fas fa-sticky-note mr-2"></i>비고
+                    </h4>
+                    <p class="text-gray-700 whitespace-pre-wrap">${student.notes}</p>
+                </div>
+            ` : ''}
+            
+            <!-- 상담 내역 그리드 -->
             <div class="bg-white p-4 rounded shadow-sm">
                 <h4 class="font-bold text-lg mb-3">
-                    <i class="fas fa-history mr-2"></i>상담 이력 (${studentCounselings.length}건)
+                    <i class="fas fa-comments mr-2"></i>상담 내역
                 </h4>
                 <div class="overflow-x-auto">
                     <table class="min-w-full border">
@@ -1076,7 +1113,7 @@ window.showStudentDetail = async function(studentId) {
                             </tr>
                         </thead>
                         <tbody>
-                            ${studentCounselings.map(c => `
+                            ${studentCounselings.length > 0 ? studentCounselings.map(c => `
                                 <tr class="border-t hover:bg-gray-50">
                                     <td class="px-3 py-2 text-xs">${formatDateWithDay(c.consultation_date)}</td>
                                     <td class="px-3 py-2 text-xs">${c.instructor_name || '-'}</td>
@@ -1084,18 +1121,23 @@ window.showStudentDetail = async function(studentId) {
                                     <td class="px-3 py-2 text-xs">${c.content || '-'}</td>
                                     <td class="px-3 py-2 text-xs">${c.status || '완료'}</td>
                                 </tr>
-                            `).join('')}
+                            `).join('') : `
+                                <tr>
+                                    <td colspan="5" class="px-3 py-4 text-center text-gray-500">상담 내역이 없습니다.</td>
+                                </tr>
+                            `}
                         </tbody>
                     </table>
                 </div>
             </div>
         `;
         
-        detailDiv.classList.remove('hidden');
+        // detailDiv는 이미 함수 시작 부분에서 표시됨
         detailDiv.scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
         console.error('학생 정보 조회 실패:', error);
-        window.showAlert('학생 정보를 불러오는데 실패했습니다.');
+        const detailDiv = document.getElementById('student-detail');
+        detailDiv.innerHTML = '<div class="p-4 text-center text-red-600"><i class="fas fa-exclamation-triangle mr-2"></i>학생 정보를 불러오는데 실패했습니다.</div>';
     }
 }
 
