@@ -316,7 +316,11 @@ async function loadDashboard() {
         
         // 최근 훈련일지 (최근 5건)
         const recentTrainingLogs = trainingLogsData
-            .sort((a, b) => new Date(b.training_date) - new Date(a.training_date))
+            .sort((a, b) => {
+                const dateA = new Date(a['t.class_date'] || a.class_date || 0);
+                const dateB = new Date(b['t.class_date'] || b.class_date || 0);
+                return dateB - dateA;
+            })
             .slice(0, 5);
         
         // 대시보드 렌더링
@@ -464,7 +468,12 @@ async function loadDashboard() {
                                 <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                                     <div class="flex-1">
                                         <p class="font-semibold text-gray-800">${c.student_name} (${c.student_code})</p>
-                                        <p class="text-sm text-gray-600">${c.topic || '주제 없음'}</p>
+                                        <p class="text-xs text-green-600 font-medium mb-1">
+                                            <i class="fas fa-user-tie mr-1"></i>${c.instructor_name || '상담자 미정'}
+                                        </p>
+                                        <p class="text-sm text-gray-600 line-clamp-1">
+                                            ${c.content ? (c.content.length > 50 ? c.content.substring(0, 50) + '...' : c.content) : '내용 없음'}
+                                        </p>
                                     </div>
                                     <div class="text-right">
                                         <p class="text-sm font-semibold text-gray-700">${formatDateWithDay(c.consultation_date)}</p>
@@ -502,8 +511,11 @@ async function loadDashboard() {
                         <div class="space-y-2">
                             ${recentTrainingLogs.length > 0 ? recentTrainingLogs.map(t => `
                                 <div class="p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
-                                    <p class="text-sm font-semibold text-gray-800">${formatDateWithDay(t.training_date)}</p>
-                                    <p class="text-xs text-gray-600">${t.timetable_subject_name || '과목명 없음'}</p>
+                                    <p class="text-sm font-semibold text-gray-800">${formatDateWithDay(t['t.class_date'] || t.class_date)}</p>
+                                    <p class="text-xs text-gray-600">${t.subject_name || t.timetable_subject_name || '과목명 없음'}</p>
+                                    <p class="text-xs text-green-600 mt-1">
+                                        <i class="fas fa-chalkboard-teacher mr-1"></i>${t.instructor_name || '강사명 없음'}
+                                    </p>
                                 </div>
                             `).join('') : `
                                 <div class="text-center py-6 text-gray-400">
