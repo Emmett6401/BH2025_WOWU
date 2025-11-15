@@ -6,6 +6,13 @@
 - **주요 기능**: 9개 관리 모듈 + AI 생기부 작성
 
 ## 🌐 URL
+
+### 🚀 프로덕션 서버 (Cafe24)
+- **메인 접속**: http://114.202.247.97/
+- **API 문서 (Swagger)**: http://114.202.247.97/api/docs
+- **GitHub**: https://github.com/Emmett6401/BH2025_WOWU
+
+### 🧪 개발 서버 (Sandbox)
 - **프론트엔드**: https://3000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai
 - **백엔드 API**: https://8000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai
 - **API 문서 (Swagger)**: https://8000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai/docs
@@ -452,12 +459,21 @@ webapp/
 - ✅ **모바일 최적화**: 터치 친화적 UI, 반응형 디자인
 - ✅ **자동 업데이트**: 앱스토어 없이 즉시 업데이트
 - ✅ **크로스 플랫폼**: iOS, Android, Windows, macOS 모두 지원
+- ✅ **8가지 아이콘**: 72x72 ~ 512x512px 모든 디바이스 대응
+- ✅ **Apple Touch Icon**: iOS Safari 최적화
+- ✅ **Favicon**: 브라우저 탭 아이콘
 
 **설치 방법**:
 - Android/Windows: 주소창 오른쪽 '설치' 아이콘 클릭
 - iOS: Safari → 공유 → 홈 화면에 추가
+- Desktop: Chrome → 설치 버튼 → "BH2025" 앱으로 설치
 
-**상세 가이드**: `PWA_GUIDE.md` 참조
+**PWA 테스트** (http://114.202.247.97/):
+1. Chrome DevTools → Application → Manifest (아이콘 8개 확인)
+2. Service Workers → 등록 상태 확인
+3. Lighthouse → PWA 점수 확인
+
+**상세 가이드**: `PWA_GUIDE.md` 및 `UPDATE_CAFE24.md` 참조
 
 ## 🎓 미구현 기능 (향후 개발)
 - [✅] ~~사용자 인증~~ (완료)
@@ -530,11 +546,54 @@ GenSpark AI Assistant
 
 ---
 
-**마지막 업데이트**: 2025-11-14  
-**버전**: 3.4 🎉  
-**상태**: ✅ **10개 모듈 완전 구현** + 📱 **PWA 완전 구현** + 🔐 **로그인 시스템**
+**마지막 업데이트**: 2025-11-15  
+**버전**: 3.5 🎉  
+**상태**: ✅ **10개 모듈 완전 구현** + 📱 **PWA 완전 구현** + 🔐 **로그인 시스템** + 🚀 **Cafe24 프로덕션 배포**
 
 ## 🎉 최신 업데이트
+
+### 🚀 v3.5 주요 업데이트 (2025-11-15) - 🌐 Cafe24 프로덕션 배포 완료
+
+#### ✨ 프로덕션 환경 구축
+1. **Cafe24 서버 배포**
+   - **접속 URL**: http://114.202.247.97/
+   - Nginx 웹서버 설정 (포트 80)
+   - Backend API 프록시 (`/api/`)
+   - Frontend 정적 파일 서빙
+   - 방화벽 설정 (3000, 8000 포트 차단)
+
+2. **PWA 아이콘 완전 구현**
+   - ✅ **8가지 크기 아이콘**: 72x72, 96x96, 128x128, 144x144, 152x152, 192x192, 384x384, 512x512
+   - ✅ **Apple Touch Icon**: 180x180px (iOS Safari)
+   - ✅ **Favicon**: 16x16, 32x32, .ico 파일
+   - ✅ **ImageMagick 자동 생성**: 고품질 KDT v3.0 로고
+   - ✅ **Manifest 연동**: 모든 아이콘 경로 설정 완료
+
+3. **배포 자동화 스크립트**
+   - `update_frontend.sh`: 원클릭 업데이트 스크립트
+   - `UPDATE_CAFE24.md`: 상세 배포 가이드
+   - Git pull → 프로세스 재시작 → 자동 테스트
+
+4. **GitHub 통합**
+   - 최신 코드 자동 동기화
+   - Branch: main (프로덕션)
+   - Commit: f692d2c (PWA 아이콘 + 배포 스크립트)
+
+#### 🎯 서버 업데이트 방법
+```bash
+# Cafe24 서버 SSH 접속 후
+cd /var/www/webapp
+bash update_frontend.sh
+```
+
+**자동 수행 작업**:
+- GitHub에서 최신 코드 다운로드
+- 기존 프로세스 종료
+- Frontend 재시작 (포트 3000)
+- Nginx 리로드
+- 서비스 정상 작동 확인
+
+---
 
 ### 🚀 v3.4 주요 업데이트 (2025-11-14) - 📱 PWA (Progressive Web App) 완전 구현
 
