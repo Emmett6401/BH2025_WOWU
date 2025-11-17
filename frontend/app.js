@@ -1,10 +1,61 @@
 // API 베이스 URL
 const API_BASE_URL = 'https://8000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai';
 
+// ==================== 로컬 캐싱 유틸리티 ====================
+const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
+
+window.getCachedData = async function(key, fetchFunction) {
+    const cacheKey = `cache_${key}`;
+    const timestampKey = `cache_${key}_timestamp`;
+    
+    const cached = localStorage.getItem(cacheKey);
+    const timestamp = localStorage.getItem(timestampKey);
+    
+    // 캐시가 유효한 경우
+    if (cached && timestamp && (Date.now() - parseInt(timestamp)) < CACHE_DURATION) {
+        console.log(`✅ 캐시 사용: ${key} (${((Date.now() - parseInt(timestamp)) / 1000).toFixed(1)}초 전)`);
+        
+        // 백그라운드에서 최신 데이터 업데이트
+        fetchFunction().then(data => {
+            localStorage.setItem(cacheKey, JSON.stringify(data));
+            localStorage.setItem(timestampKey, Date.now().toString());
+            console.log(`🔄 백그라운드 업데이트 완료: ${key}`);
+        }).catch(err => {
+            console.error(`❌ 백그라운드 업데이트 실패: ${key}`, err);
+        });
+        
+        return JSON.parse(cached);
+    }
+    
+    // 캐시 없음 또는 만료됨
+    console.log(`📡 새로 로드: ${key}`);
+    const data = await fetchFunction();
+    localStorage.setItem(cacheKey, JSON.stringify(data));
+    localStorage.setItem(timestampKey, Date.now().toString());
+    return data;
+}
+
+// 캐시 초기화 함수
+window.clearCache = function(key) {
+    if (key) {
+        localStorage.removeItem(`cache_${key}`);
+        localStorage.removeItem(`cache_${key}_timestamp`);
+        console.log(`🗑️ 캐시 삭제: ${key}`);
+    } else {
+        // 전체 캐시 삭제
+        Object.keys(localStorage).forEach(k => {
+            if (k.startsWith('cache_')) {
+                localStorage.removeItem(k);
+            }
+        });
+        console.log('🗑️ 전체 캐시 삭제');
+    }
+}
+
 // ==================== 로그인 체크 ====================
 function checkLogin() {
-    const loggedIn = sessionStorage.getItem('logged_in');
-    const instructor = sessionStorage.getItem('instructor');
+    const loggedIn = localStorage.getItem('logged_in');
+    const instructor = localStorage.getItem('instructor');
     
     if (!loggedIn || !instructor) {
         // 로그인되지 않았으면 로그인 페이지로 리다이렉트
@@ -27,7 +78,7 @@ function checkLogin() {
 // 주강사 권한 체크 함수
 function isMainInstructor() {
     try {
-        const instructor = sessionStorage.getItem('instructor');
+        const instructor = localStorage.getItem('instructor');
         if (!instructor) return false;
         const instructorData = JSON.parse(instructor);
         return instructorData.instructor_type_type === '1. 주강사';
@@ -39,9 +90,12 @@ function isMainInstructor() {
 // 로그아웃 함수
 function logout() {
     if (confirm('로그아웃 하시겠습니까?')) {
-        // 세션 스토리지 삭제
-        sessionStorage.removeItem('logged_in');
-        sessionStorage.removeItem('instructor');
+        // 로컬 스토리지에서 로그인 정보 삭제
+        localStorage.removeItem('logged_in');
+        localStorage.removeItem('instructor');
+        
+        // 캐시도 전체 삭제
+        window.clearCache();
         
         // 로그인 페이지로 이동
         window.location.href = '/login.html';
@@ -254,32 +308,24 @@ async function loadDashboard() {
     window.showLoading('대시보드 데이터를 불러오는 중...');
     
     try {
-        // 모든 데이터 병렬로 가져오기
+        // 모든 데이터를 캐싱과 함께 병렬로 가져오기
         const [
-            studentsRes,
-            instructorsRes,
-            coursesRes,
-            counselingsRes,
-            timetablesRes,
-            projectsRes,
-            trainingLogsRes
+            studentsData,
+            instructorsData,
+            coursesData,
+            counselingsData,
+            timetablesData,
+            projectsData,
+            trainingLogsData
         ] = await Promise.all([
-            axios.get(`${API_BASE_URL}/api/students`),
-            axios.get(`${API_BASE_URL}/api/instructors`),
-            axios.get(`${API_BASE_URL}/api/courses`),
-            axios.get(`${API_BASE_URL}/api/counselings`),
-            axios.get(`${API_BASE_URL}/api/timetables`),
-            axios.get(`${API_BASE_URL}/api/projects`),
-            axios.get(`${API_BASE_URL}/api/training-logs`)
+            window.getCachedData('students', () => axios.get(`${API_BASE_URL}/api/students`).then(r => r.data)),
+            window.getCachedData('instructors', () => axios.get(`${API_BASE_URL}/api/instructors`).then(r => r.data)),
+            window.getCachedData('courses', () => axios.get(`${API_BASE_URL}/api/courses`).then(r => r.data)),
+            window.getCachedData('counselings', () => axios.get(`${API_BASE_URL}/api/counselings`).then(r => r.data)),
+            window.getCachedData('timetables', () => axios.get(`${API_BASE_URL}/api/timetables`).then(r => r.data)),
+            window.getCachedData('projects', () => axios.get(`${API_BASE_URL}/api/projects`).then(r => r.data)),
+            window.getCachedData('training-logs', () => axios.get(`${API_BASE_URL}/api/training-logs`).then(r => r.data))
         ]);
-        
-        const studentsData = studentsRes.data;
-        const instructorsData = instructorsRes.data;
-        const coursesData = coursesRes.data;
-        const counselingsData = counselingsRes.data;
-        const timetablesData = timetablesRes.data;
-        const projectsData = projectsRes.data;
-        const trainingLogsData = trainingLogsRes.data;
         
         // 최근 상담 (최근 5건)
         const recentCounselings = counselingsData
@@ -946,12 +992,12 @@ async function loadStudents() {
     try {
         window.showLoading('학생 데이터를 불러오는 중...');
         console.log('Loading students...');
-        const [studentsRes, coursesRes] = await Promise.all([
-            axios.get(`${API_BASE_URL}/api/students`),
-            axios.get(`${API_BASE_URL}/api/courses`)
+        const [studentsData, coursesData] = await Promise.all([
+            window.getCachedData('students', () => axios.get(`${API_BASE_URL}/api/students`).then(r => r.data)),
+            window.getCachedData('courses', () => axios.get(`${API_BASE_URL}/api/courses`).then(r => r.data))
         ]);
-        students = studentsRes.data;
-        courses = coursesRes.data;
+        students = studentsData;
+        courses = coursesData;
         console.log('Students loaded:', students.length);
         renderStudents();
         window.hideLoading();
@@ -1296,6 +1342,10 @@ window.saveStudent = async function(studentId, autoSave = false) {
         } else {
             await axios.post(`${API_BASE_URL}/api/students`, data);
         }
+        
+        // 캐시 삭제 (학생 데이터가 변경되었으므로)
+        window.clearCache('students');
+        
         if (!autoSave) {
             window.hideStudentForm();
             loadStudents();
@@ -1472,6 +1522,10 @@ window.deleteStudent = async function(id) {
     
     try {
         await axios.delete(`${API_BASE_URL}/api/students/${id}`);
+        
+        // 캐시 삭제
+        window.clearCache('students');
+        
         loadStudents();
     } catch (error) {
         alert('학생 삭제에 실패했습니다');
@@ -1773,16 +1827,16 @@ window.deleteSubject = async function(subjectCode) {
 async function loadCounselings() {
     try {
         window.showLoading('상담 데이터를 불러오는 중...');
-        const [counselingsRes, studentsRes, instructorsRes, coursesRes] = await Promise.all([
-            axios.get(`${API_BASE_URL}/api/counselings`),
-            axios.get(`${API_BASE_URL}/api/students`),
-            axios.get(`${API_BASE_URL}/api/instructors`),
-            axios.get(`${API_BASE_URL}/api/courses`)
+        const [counselingsData, studentsData, instructorsData, coursesData] = await Promise.all([
+            window.getCachedData('counselings', () => axios.get(`${API_BASE_URL}/api/counselings`).then(r => r.data)),
+            window.getCachedData('students', () => axios.get(`${API_BASE_URL}/api/students`).then(r => r.data)),
+            window.getCachedData('instructors', () => axios.get(`${API_BASE_URL}/api/instructors`).then(r => r.data)),
+            window.getCachedData('courses', () => axios.get(`${API_BASE_URL}/api/courses`).then(r => r.data))
         ]);
-        counselings = counselingsRes.data;
-        students = studentsRes.data;
-        instructors = instructorsRes.data;
-        courses = coursesRes.data;
+        counselings = counselingsData;
+        students = studentsData;
+        instructors = instructorsData;
+        courses = coursesData;
         renderCounselings();
         window.hideLoading();
     } catch (error) {
@@ -2453,6 +2507,10 @@ window.saveCounseling = async function(counselingId, autoSave = false) {
                 window.showAlert('상담이 추가되었습니다.');
             }
         }
+        
+        // 캐시 삭제
+        window.clearCache('counselings');
+        
         if (!autoSave) {
             window.hideCounselingForm();
             loadCounselings();
@@ -2605,6 +2663,10 @@ window.deleteCounseling = async function(counselingId) {
     
     try {
         await axios.delete(`${API_BASE_URL}/api/counselings/${counselingId}`);
+        
+        // 캐시 삭제
+        window.clearCache('counselings');
+        
         window.showAlert('상담이 삭제되었습니다.');
         loadCounselings();
     } catch (error) {
@@ -3029,12 +3091,12 @@ window.deleteInstructorCode = async function(code) {
 async function loadInstructors() {
     try {
         window.showLoading('강사 데이터를 불러오는 중...');
-        const [instructorsRes, typesRes] = await Promise.all([
-            axios.get(`${API_BASE_URL}/api/instructors`),
-            axios.get(`${API_BASE_URL}/api/instructor-codes`)
+        const [instructorsData, typesData] = await Promise.all([
+            window.getCachedData('instructors', () => axios.get(`${API_BASE_URL}/api/instructors`).then(r => r.data)),
+            window.getCachedData('instructor-codes', () => axios.get(`${API_BASE_URL}/api/instructor-codes`).then(r => r.data))
         ]);
-        instructors = instructorsRes.data;
-        instructorTypes = typesRes.data;
+        instructors = instructorsData;
+        instructorTypes = typesData;
         renderInstructors();
         window.hideLoading();
     } catch (error) {

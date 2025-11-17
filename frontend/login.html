@@ -188,9 +188,9 @@
                     // 로그인 성공
                     const instructor = response.data.instructor;
                     
-                    // 세션 스토리지에 강사 정보 저장
-                    sessionStorage.setItem('instructor', JSON.stringify(instructor));
-                    sessionStorage.setItem('logged_in', 'true');
+                    // 로컬 스토리지에 강사 정보 저장 (뒤로가기 시에도 유지)
+                    localStorage.setItem('instructor', JSON.stringify(instructor));
+                    localStorage.setItem('logged_in', 'true');
                     
                     // 아이디 저장 옵션
                     if (rememberName) {
