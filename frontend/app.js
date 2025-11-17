@@ -17,11 +17,31 @@ function checkLogin() {
         const instructorData = JSON.parse(instructor);
         document.getElementById('instructorName').textContent = instructorData.name || '강사';
         document.getElementById('instructorType').textContent = instructorData.instructor_type_name || '';
+        
+        // 주강사인 경우 로그인 관리 메뉴 표시
+        if (instructorData.instructor_type_type === '1. 주강사') {
+            const loginManagementMenu = document.getElementById('login-management-menu');
+            if (loginManagementMenu) {
+                loginManagementMenu.classList.remove('hidden');
+            }
+        }
     } catch (e) {
         console.error('강사 정보 파싱 오류:', e);
     }
     
     return true;
+}
+
+// 주강사 권한 체크 함수
+function isMainInstructor() {
+    try {
+        const instructor = sessionStorage.getItem('instructor');
+        if (!instructor) return false;
+        const instructorData = JSON.parse(instructor);
+        return instructorData.instructor_type_type === '1. 주강사';
+    } catch (e) {
+        return false;
+    }
 }
 
 // 로그아웃 함수
@@ -645,6 +665,9 @@ window.showTab = function(tab) {
             break;
         case 'ai-counseling':
             loadAICounseling();
+            break;
+        case 'login-management':
+            loadLoginManagement();
             break;
     }
 }
@@ -6882,3 +6905,218 @@ window.addEventListener('online', () => {
 });
 
 console.log('✅ PWA 기능 초기화 완료');
+
+// ==================== 로그인 관리 (주강사 전용) ====================
+async function loadLoginManagement() {
+    // 주강사 권한 체크
+    if (!isMainInstructor()) {
+        document.getElementById('app').innerHTML = `
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="text-center text-red-600">
+                    <i class="fas fa-lock text-6xl mb-4"></i>
+                    <h2 class="text-2xl font-bold mb-2">접근 권한 없음</h2>
+                    <p>이 메뉴는 주강사만 접근할 수 있습니다.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    try {
+        window.showLoading('로그인 정보를 불러오는 중...');
+        
+        // 모든 강사 정보 조회
+        const instructorsRes = await axios.get(`${API_BASE_URL}/api/instructors`);
+        const instructors = instructorsRes.data;
+        
+        window.hideLoading();
+        
+        const app = document.getElementById('app');
+        app.innerHTML = `
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-key mr-2"></i>로그인 관리 (주강사 전용)
+                    </h2>
+                    <div class="text-sm text-gray-600">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        강사별 로그인 비밀번호를 관리할 수 있습니다
+                    </div>
+                </div>
+                
+                <div class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p class="text-sm text-blue-800">
+                        <i class="fas fa-shield-alt mr-2"></i>
+                        <strong>보안 안내:</strong> 비밀번호는 안전하게 암호화되어 저장됩니다. 
+                        기본 비밀번호는 <code class="bg-blue-100 px-2 py-1 rounded">kdt2025</code>입니다.
+                    </p>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-sm font-semibold">강사코드</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold">이름</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold">구분</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold">타입</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold">현재 비밀번호</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${instructors.map(inst => `
+                                <tr class="border-t hover:bg-gray-50">
+                                    <td class="px-4 py-3 text-sm font-mono">${inst.code}</td>
+                                    <td class="px-4 py-3 text-sm font-semibold">${inst.name}</td>
+                                    <td class="px-4 py-3 text-sm">${inst.instructor_type_name || '-'}</td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <span class="px-2 py-1 rounded text-xs ${
+                                            inst.instructor_type_type === '1. 주강사' ? 'bg-blue-100 text-blue-800' :
+                                            inst.instructor_type_type === '2. 보조강사' ? 'bg-green-100 text-green-800' :
+                                            inst.instructor_type_type === '3. 멘토' ? 'bg-purple-100 text-purple-800' :
+                                            inst.instructor_type_type === '4. 행정지원' ? 'bg-yellow-100 text-yellow-800' :
+                                            inst.instructor_type_type === '5. 가디언' ? 'bg-pink-100 text-pink-800' :
+                                            'bg-gray-100 text-gray-800'
+                                        }">
+                                            ${inst.instructor_type_type || '-'}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <span class="text-gray-500">
+                                            <i class="fas fa-lock mr-1"></i>
+                                            ${inst.password === 'kdt2025' ? '기본 비밀번호' : '변경됨'}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <button onclick="window.showPasswordChangeForm('${inst.code}', '${inst.name}')" 
+                                                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs mr-2">
+                                            <i class="fas fa-key mr-1"></i>비밀번호 변경
+                                        </button>
+                                        <button onclick="window.resetPassword('${inst.code}', '${inst.name}')" 
+                                                class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs">
+                                            <i class="fas fa-redo mr-1"></i>초기화
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 비밀번호 변경 폼 -->
+                <div id="password-change-form" class="hidden mt-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                    <h3 class="text-lg font-bold mb-4">비밀번호 변경</h3>
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">강사</label>
+                            <input type="text" id="pwd-instructor-name" readonly 
+                                   class="w-full px-3 py-2 border rounded bg-gray-100">
+                            <input type="hidden" id="pwd-instructor-code">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">새 비밀번호 *</label>
+                            <input type="password" id="pwd-new-password" placeholder="새 비밀번호 입력" 
+                                   class="w-full px-3 py-2 border rounded">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                영문, 숫자 조합 4자 이상
+                            </p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">비밀번호 확인 *</label>
+                            <input type="password" id="pwd-confirm-password" placeholder="비밀번호 재입력" 
+                                   class="w-full px-3 py-2 border rounded">
+                        </div>
+                    </div>
+                    <div class="mt-4 space-x-2">
+                        <button onclick="window.changePassword()" 
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                            <i class="fas fa-save mr-2"></i>변경
+                        </button>
+                        <button onclick="window.hidePasswordChangeForm()" 
+                                class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded">
+                            취소
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        window.hideLoading();
+        console.error('로그인 관리 로드 실패:', error);
+        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">로그인 관리를 불러오는데 실패했습니다.</div>';
+    }
+}
+
+// 비밀번호 변경 폼 표시
+window.showPasswordChangeForm = function(code, name) {
+    const formDiv = document.getElementById('password-change-form');
+    document.getElementById('pwd-instructor-code').value = code;
+    document.getElementById('pwd-instructor-name').value = `${name} (${code})`;
+    document.getElementById('pwd-new-password').value = '';
+    document.getElementById('pwd-confirm-password').value = '';
+    formDiv.classList.remove('hidden');
+    formDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+// 비밀번호 변경 폼 숨기기
+window.hidePasswordChangeForm = function() {
+    document.getElementById('password-change-form').classList.add('hidden');
+}
+
+// 비밀번호 변경
+window.changePassword = async function() {
+    const code = document.getElementById('pwd-instructor-code').value;
+    const newPassword = document.getElementById('pwd-new-password').value;
+    const confirmPassword = document.getElementById('pwd-confirm-password').value;
+    
+    // 유효성 검사
+    if (!newPassword) {
+        window.showAlert('새 비밀번호를 입력하세요.');
+        return;
+    }
+    
+    if (newPassword.length < 4) {
+        window.showAlert('비밀번호는 최소 4자 이상이어야 합니다.');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        window.showAlert('비밀번호가 일치하지 않습니다.');
+        return;
+    }
+    
+    try {
+        await axios.post(`${API_BASE_URL}/api/auth/change-password`, {
+            instructor_code: code,
+            new_password: newPassword
+        });
+        
+        window.showAlert('비밀번호가 변경되었습니다.');
+        window.hidePasswordChangeForm();
+        loadLoginManagement(); // 목록 새로고침
+    } catch (error) {
+        console.error('비밀번호 변경 실패:', error);
+        window.showAlert('비밀번호 변경에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+// 비밀번호 초기화
+window.resetPassword = async function(code, name) {
+    const confirmed = await window.showConfirm(`${name} 강사의 비밀번호를 기본값(kdt2025)으로 초기화하시겠습니까?`);
+    if (!confirmed) return;
+    
+    try {
+        await axios.post(`${API_BASE_URL}/api/auth/change-password`, {
+            instructor_code: code,
+            new_password: 'kdt2025'
+        });
+        
+        window.showAlert('비밀번호가 초기화되었습니다. (기본값: kdt2025)');
+        loadLoginManagement(); // 목록 새로고침
+    } catch (error) {
+        console.error('비밀번호 초기화 실패:', error);
+        window.showAlert('비밀번호 초기화에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+    }
+}

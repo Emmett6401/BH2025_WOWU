@@ -2804,13 +2804,15 @@ async def login(credentials: dict):
 async def change_password(data: dict):
     """
     비밀번호 변경 API
+    - old_password가 있으면: 본인이 비밀번호 변경 (기존 비밀번호 확인 필요)
+    - old_password가 없으면: 주강사가 다른 강사 비밀번호 관리 (기존 비밀번호 확인 불필요)
     """
     instructor_code = data.get('instructor_code')
-    old_password = data.get('old_password')
+    old_password = data.get('old_password')  # 선택적 파라미터
     new_password = data.get('new_password')
     
-    if not all([instructor_code, old_password, new_password]):
-        raise HTTPException(status_code=400, detail="모든 필드를 입력하세요")
+    if not instructor_code or not new_password:
+        raise HTTPException(status_code=400, detail="강사코드와 새 비밀번호를 입력하세요")
     
     conn = get_db_connection()
     try:
@@ -2822,19 +2824,25 @@ async def change_password(data: dict):
             cursor.execute("ALTER TABLE instructors ADD COLUMN password VARCHAR(100) DEFAULT 'kdt2025'")
             conn.commit()
         
-        # 기존 비밀번호 확인
-        cursor.execute("SELECT password FROM instructors WHERE code = %s", (instructor_code,))
-        result = cursor.fetchone()
-        
-        if not result:
-            raise HTTPException(status_code=404, detail="강사를 찾을 수 없습니다")
-        
-        stored_password = result.get('password', 'kdt2025')
-        if stored_password is None:
-            stored_password = 'kdt2025'
-        
-        if old_password != stored_password:
-            raise HTTPException(status_code=401, detail="현재 비밀번호가 일치하지 않습니다")
+        # 기존 비밀번호 확인 (old_password가 제공된 경우에만)
+        if old_password:
+            cursor.execute("SELECT password FROM instructors WHERE code = %s", (instructor_code,))
+            result = cursor.fetchone()
+            
+            if not result:
+                raise HTTPException(status_code=404, detail="강사를 찾을 수 없습니다")
+            
+            stored_password = result.get('password', 'kdt2025')
+            if stored_password is None:
+                stored_password = 'kdt2025'
+            
+            if old_password != stored_password:
+                raise HTTPException(status_code=401, detail="현재 비밀번호가 일치하지 않습니다")
+        else:
+            # old_password가 없으면 주강사 권한으로 직접 변경
+            cursor.execute("SELECT code FROM instructors WHERE code = %s", (instructor_code,))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=404, detail="강사를 찾을 수 없습니다")
         
         # 비밀번호 업데이트
         cursor.execute("""
