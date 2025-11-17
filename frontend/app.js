@@ -780,6 +780,8 @@ async function loadDashboard() {
         
         // 차트 그리기
         setTimeout(() => {
+            console.log('📊 차트 렌더링 시작...', { last7Days });
+            
             // 진로 결정 현황 도넛 차트 (5가지 옵션)
             const careerCtx = document.getElementById('careerChart');
             if (careerCtx) {
@@ -857,7 +859,10 @@ async function loadDashboard() {
             
             // 최근 7일 상담 추이 라인 차트
             const counselingTrendCtx = document.getElementById('counselingTrendChart');
+            console.log('counselingTrendChart 캔버스:', counselingTrendCtx);
+            console.log('last7Days 데이터:', last7Days);
             if (counselingTrendCtx) {
+                console.log('✅ counselingTrendChart 렌더링 시작');
                 new Chart(counselingTrendCtx, {
                     type: 'line',
                     data: {
