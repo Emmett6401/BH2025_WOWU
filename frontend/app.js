@@ -3534,6 +3534,14 @@ function renderInstructors() {
             </div>
         </div>
     `;
+    
+    // 검색 필드 강제 초기화
+    setTimeout(() => {
+        const searchInput = document.getElementById('instructor-search');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+    }, 0);
 }
 
 window.filterInstructors = async function() {
@@ -5107,6 +5115,7 @@ window.renderProjectsList = function() {
             <table class="min-w-full bg-white border">
                 <thead class="bg-gray-100">
                     <tr>
+                        <th class="px-2 py-2 text-center text-xs font-medium text-gray-700 w-12">사진</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀 코드</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀명</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">그룹구분</th>
@@ -5127,6 +5136,13 @@ window.renderProjectsList = function() {
                         const photoUrls = p.photo_urls ? (typeof p.photo_urls === 'string' ? JSON.parse(p.photo_urls) : p.photo_urls) : [];
                         return `
                         <tr class="border-t hover:bg-gray-50">
+                            <td class="px-2 py-2 text-center text-xs">
+                                ${photoUrls.length > 0 ? `
+                                    <i class="fas fa-camera text-green-600" title="${photoUrls.length}개 사진"></i>
+                                ` : `
+                                    <i class="fas fa-camera text-gray-300" title="사진 없음"></i>
+                                `}
+                            </td>
                             <td class="px-4 py-2 text-xs font-mono">${p.code}</td>
                             <td class="px-4 py-2 text-xs font-semibold">${p.name}</td>
                             <td class="px-4 py-2 text-xs">${p.group_type || '-'}</td>
@@ -5140,9 +5156,6 @@ window.renderProjectsList = function() {
                             <td class="px-4 py-2 text-xs">${p.member5_name || '-'}</td>
                             <td class="px-4 py-2 text-xs">${p.member6_name || '-'}</td>
                             <td class="px-4 py-2 text-xs">
-                                ${photoUrls.length > 0 ? `
-                                    <i class="fas fa-camera text-green-600 mr-2" title="${photoUrls.length}개 사진"></i>
-                                ` : ''}
                                 <button onclick="window.editProject('${p.code}')" class="text-blue-600 hover:text-blue-800 mr-2">
                                     <i class="fas fa-edit"></i>
                                 </button>
