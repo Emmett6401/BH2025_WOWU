@@ -140,16 +140,35 @@ let pagination = {
 };
 
 // ==================== 커스텀 알림 모달 ====================
+// 알림 타이머 저장
+let alertTimer = null;
+
 window.showAlert = function(message) {
     const alertModal = document.getElementById('custom-alert');
     const alertMessage = document.getElementById('alert-message');
     alertMessage.textContent = message;
     alertModal.classList.remove('hidden');
+    
+    // 기존 타이머가 있으면 취소
+    if (alertTimer) {
+        clearTimeout(alertTimer);
+    }
+    
+    // 3초 후 자동으로 사라지게
+    alertTimer = setTimeout(() => {
+        window.hideAlert();
+    }, 3000);
 };
 
 window.hideAlert = function() {
     const alertModal = document.getElementById('custom-alert');
     alertModal.classList.add('hidden');
+    
+    // 타이머 취소
+    if (alertTimer) {
+        clearTimeout(alertTimer);
+        alertTimer = null;
+    }
 };
 
 // 확인 모달용 콜백 저장
@@ -2278,6 +2297,7 @@ window.filterCounselings = async function() {
                 <table class="min-w-full bg-white border">
                     <thead class="bg-gray-100">
                         <tr>
+                            <th class="px-2 py-2 text-center text-xs w-12">사진</th>
                             <th class="px-3 py-2 text-left text-xs">날짜</th>
                             <th class="px-3 py-2 text-left text-xs">학생 (상담횟수)</th>
                             <th class="px-3 py-2 text-left text-xs">상담선생님</th>
@@ -2292,6 +2312,13 @@ window.filterCounselings = async function() {
                             const studentCounselingCount = counselings.filter(item => item.student_id === c.student_id).length;
                             return `
                             <tr class="border-t hover:bg-gray-50">
+                                <td class="px-2 py-2 text-center text-xs">
+                                    ${c.photo_urls && JSON.parse(c.photo_urls || '[]').length > 0 ? `
+                                        <i class="fas fa-camera text-green-600" title="${JSON.parse(c.photo_urls).length}개 사진"></i>
+                                    ` : `
+                                        <i class="fas fa-camera text-gray-300" title="사진 없음"></i>
+                                    `}
+                                </td>
                                 <td class="px-3 py-2 text-xs">${formatDateWithDay(c.consultation_date)}</td>
                                 <td class="px-3 py-2 text-xs">
                                     <button onclick="window.showStudentDetail(${c.student_id})" 
@@ -2547,11 +2574,23 @@ window.showCounselingForm = function(counselingId = null) {
                     <label class="block text-gray-700 mb-2">학생 선택 *</label>
                     <select name="student_id" required class="w-full px-3 py-2 border rounded-lg">
                         <option value="">선택하세요</option>
-                        ${students.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko')).map(s => `
-                            <option value="${s.id}" ${existingCounseling?.student_id === s.id ? 'selected' : ''}>
-                                ${s.name}(${s.code}) - ${s.birth_date ? s.birth_date.split('T')[0] : '-'} - ${s.final_school || '-'}
-                            </option>
-                        `).join('')}
+                        ${(() => {
+                            // 현재 선택된 과정 필터 가져오기
+                            const courseFilter = document.getElementById('filter-course')?.value || '';
+                            let filteredStudents = students;
+                            
+                            // 과정 필터 적용
+                            if (courseFilter) {
+                                filteredStudents = students.filter(s => s.course_code === courseFilter);
+                            }
+                            
+                            // 이름순 정렬
+                            return filteredStudents.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko')).map(s => `
+                                <option value="${s.id}" ${existingCounseling?.student_id === s.id ? 'selected' : ''}>
+                                    ${s.name}(${s.code}) - ${s.birth_date ? s.birth_date.split('T')[0] : '-'} - ${s.final_school || '-'}
+                                </option>
+                            `).join('');
+                        })()}
                     </select>
                 </div>
                 <div>
@@ -3362,7 +3401,7 @@ function renderInstructors() {
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-2">검색 (이름, 전공)</label>
-                    <input type="text" id="instructor-search" placeholder="검색어 입력..." class="w-full border rounded px-3 py-2" onkeyup="window.filterInstructors()">
+                    <input type="text" id="instructor-search" value="" placeholder="검색어 입력..." class="w-full border rounded px-3 py-2" onkeyup="window.filterInstructors()">
                 </div>
             </div>
             
