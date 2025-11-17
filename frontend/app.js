@@ -4543,8 +4543,13 @@ window.updateProjectStudentList = function() {
         ? students.filter(s => s.course_code === selectedCourse)
         : students;
     
-    // 각 팀원 선택 드롭다운 업데이트
-    for (let i = 1; i <= 5; i++) {
+    // 학생 목록을 이름순으로 정렬
+    const sortedStudents = filteredStudents.sort((a, b) => 
+        (a.name || '').localeCompare(b.name || '', 'ko')
+    );
+    
+    // 각 팀원 선택 드롭다운 업데이트 (member6 포함)
+    for (let i = 1; i <= 6; i++) {
         const select = document.getElementById(`member${i}-select`);
         const nameInput = document.getElementById(`member${i}-name`);
         const codeInput = document.getElementById(`member${i}-code`);
@@ -4553,7 +4558,7 @@ window.updateProjectStudentList = function() {
             const currentValue = codeInput ? codeInput.value : '';
             select.innerHTML = `
                 <option value="">선택 안함</option>
-                ${filteredStudents.map(s => `
+                ${sortedStudents.map(s => `
                     <option value="${s.code}" ${s.code === currentValue ? 'selected' : ''}>
                         ${s.name} (${s.code})
                     </option>
