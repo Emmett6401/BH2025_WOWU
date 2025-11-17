@@ -669,7 +669,9 @@ async def get_instructors(search: Optional[str] = None):
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
         query = """
-            SELECT i.*, ic.name as type_name
+            SELECT i.code, TRIM(i.name) as name, i.phone, i.major, i.instructor_type, 
+                   i.email, i.created_at, i.updated_at, i.photo_urls, i.password,
+                   ic.name as instructor_type_name, ic.type as instructor_type_type
             FROM instructors i
             LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
             WHERE 1=1
@@ -2756,13 +2758,13 @@ async def login(credentials: dict):
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
-        # 강사 테이블에서 이름으로 검색
+        # 강사 테이블에서 이름으로 검색 (공백 제거하여 비교)
         cursor.execute("""
             SELECT i.*, ic.name as instructor_type_name, ic.type as instructor_type_type
             FROM instructors i
             LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
-            WHERE i.name = %s
-        """, (instructor_name,))
+            WHERE TRIM(i.name) = %s
+        """, (instructor_name.strip(),))
         
         instructor = cursor.fetchone()
         
