@@ -2758,7 +2758,7 @@ async def login(credentials: dict):
         
         # 강사 테이블에서 이름으로 검색
         cursor.execute("""
-            SELECT i.*, ic.name as instructor_type_name
+            SELECT i.*, ic.name as instructor_type_name, ic.type as instructor_type_type
             FROM instructors i
             LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
             WHERE i.name = %s
