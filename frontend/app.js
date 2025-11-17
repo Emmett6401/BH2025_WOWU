@@ -371,11 +371,23 @@ async function loadDashboard() {
             });
         }
         
+        // 진로 결정 현황 계산
+        const careerEmployed = studentsData.filter(s => s.career_path === '취업' || s.career_path === '취업 희망').length;
+        const careerUniversity = studentsData.filter(s => s.career_path === '진학' || s.career_path === '진학 희망').length;
+        const careerUndecided = studentsData.filter(s => !s.career_path || s.career_path === '미정').length;
+        
+        // 강사 유형별 통계
+        const instructorsByType = {};
+        instructorsData.forEach(i => {
+            const typeName = i.instructor_type_name || '미분류';
+            instructorsByType[typeName] = (instructorsByType[typeName] || 0) + 1;
+        });
+        
         // 대시보드 렌더링
         const app = document.getElementById('app');
         app.innerHTML = `
-            <div class="p-4">
-                <div class="flex justify-between items-center mb-4">
+            <div class="p-3">
+                <div class="flex justify-between items-center mb-3">
                     <h2 class="text-2xl font-bold text-gray-800">
                         <i class="fas fa-tachometer-alt mr-2"></i>대시보드
                     </h2>
@@ -384,111 +396,176 @@ async function loadDashboard() {
                     </div>
                 </div>
                 
-                <!-- 상단 통계 카드 (4개 → 6개로 확대) -->
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+                <!-- 상단 통계 카드 (6개 컴팩트) -->
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-3">
                     <!-- 학생 -->
-                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-4 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('students')">
-                        <div class="flex items-center justify-between mb-2">
-                            <i class="fas fa-user-graduate text-2xl"></i>
-                            <p class="text-3xl font-bold">${studentsData.length}</p>
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('students')">
+                        <div class="flex items-center justify-between mb-1">
+                            <i class="fas fa-user-graduate text-xl"></i>
+                            <p class="text-2xl font-bold">${studentsData.length}</p>
                         </div>
-                        <p class="text-xs text-blue-100">학생</p>
+                        <p class="text-xs text-blue-100">전체 학생</p>
                     </div>
                     
                     <!-- 강사 -->
-                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow p-4 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('instructors')">
-                        <div class="flex items-center justify-between mb-2">
-                            <i class="fas fa-chalkboard-teacher text-2xl"></i>
-                            <p class="text-3xl font-bold">${instructorsData.length}</p>
+                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('instructors')">
+                        <div class="flex items-center justify-between mb-1">
+                            <i class="fas fa-chalkboard-teacher text-xl"></i>
+                            <p class="text-2xl font-bold">${instructorsData.length}</p>
                         </div>
-                        <p class="text-xs text-green-100">강사</p>
+                        <p class="text-xs text-green-100">전체 강사</p>
                     </div>
                     
                     <!-- 과정 -->
-                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow p-4 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('courses')">
-                        <div class="flex items-center justify-between mb-2">
-                            <i class="fas fa-school text-2xl"></i>
-                            <p class="text-3xl font-bold">${coursesData.length}</p>
+                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('courses')">
+                        <div class="flex items-center justify-between mb-1">
+                            <i class="fas fa-school text-xl"></i>
+                            <p class="text-2xl font-bold">${coursesData.length}</p>
                         </div>
-                        <p class="text-xs text-purple-100">과정</p>
+                        <p class="text-xs text-purple-100">운영 과정</p>
                     </div>
                     
                     <!-- 오늘 수업 -->
-                    <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow p-4 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('timetables')">
-                        <div class="flex items-center justify-between mb-2">
-                            <i class="fas fa-calendar-day text-2xl"></i>
-                            <p class="text-3xl font-bold">${todayTimetables.length}</p>
+                    <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('timetables')">
+                        <div class="flex items-center justify-between mb-1">
+                            <i class="fas fa-calendar-day text-xl"></i>
+                            <p class="text-2xl font-bold">${todayTimetables.length}</p>
                         </div>
                         <p class="text-xs text-indigo-100">오늘 수업</p>
                     </div>
                     
                     <!-- 상담 -->
-                    <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow p-4 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('counselings')">
-                        <div class="flex items-center justify-between mb-2">
-                            <i class="fas fa-comments text-2xl"></i>
-                            <p class="text-3xl font-bold">${counselingsData.length}</p>
+                    <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('counselings')">
+                        <div class="flex items-center justify-between mb-1">
+                            <i class="fas fa-comments text-xl"></i>
+                            <p class="text-2xl font-bold">${todayCounselings}</p>
                         </div>
-                        <p class="text-xs text-orange-100">상담 (오늘 ${todayCounselings})</p>
+                        <p class="text-xs text-orange-100">오늘 상담 (총 ${counselingsData.length})</p>
                     </div>
                     
                     <!-- 팀 -->
-                    <div class="bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg shadow p-4 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('projects')">
-                        <div class="flex items-center justify-between mb-2">
-                            <i class="fas fa-users text-2xl"></i>
-                            <p class="text-3xl font-bold">${projectsData.length}</p>
+                    <div class="bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('projects')">
+                        <div class="flex items-center justify-between mb-1">
+                            <i class="fas fa-users text-xl"></i>
+                            <p class="text-2xl font-bold">${projectsData.length}</p>
                         </div>
                         <p class="text-xs text-pink-100">팀 프로젝트</p>
                     </div>
                 </div>
                 
-                <!-- 과정별 학생 현황 -->
-                <div class="bg-white rounded-lg shadow p-4 mb-4">
-                    <h3 class="text-lg font-bold text-gray-800 mb-3">
-                        <i class="fas fa-chart-bar mr-2 text-purple-600"></i>과정별 학생 현황
+                <!-- 차트 섹션 (3개 차트) -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                    <!-- 진로 결정 현황 (도넛 차트) -->
+                    <div class="bg-white rounded-lg shadow p-3">
+                        <h3 class="text-sm font-bold text-gray-800 mb-2 flex items-center">
+                            <i class="fas fa-chart-pie mr-2 text-blue-600"></i>진로 결정 현황
+                        </h3>
+                        <canvas id="careerChart" class="w-full" style="max-height: 180px;"></canvas>
+                        <div class="mt-2 grid grid-cols-3 gap-1 text-xs">
+                            <div class="text-center">
+                                <div class="w-3 h-3 bg-blue-500 rounded-full mx-auto mb-1"></div>
+                                <p class="font-bold text-blue-600">${careerEmployed}</p>
+                                <p class="text-gray-600">취업</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="w-3 h-3 bg-green-500 rounded-full mx-auto mb-1"></div>
+                                <p class="font-bold text-green-600">${careerUniversity}</p>
+                                <p class="text-gray-600">진학</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="w-3 h-3 bg-gray-400 rounded-full mx-auto mb-1"></div>
+                                <p class="font-bold text-gray-600">${careerUndecided}</p>
+                                <p class="text-gray-600">미정</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 강사 유형별 분포 (파이 차트) -->
+                    <div class="bg-white rounded-lg shadow p-3">
+                        <h3 class="text-sm font-bold text-gray-800 mb-2 flex items-center">
+                            <i class="fas fa-user-tie mr-2 text-green-600"></i>강사 유형별 분포
+                        </h3>
+                        <canvas id="instructorChart" class="w-full" style="max-height: 180px;"></canvas>
+                        <div class="mt-2 text-xs text-gray-600">
+                            ${Object.entries(instructorsByType).slice(0, 4).map(([type, count], idx) => `
+                                <div class="flex items-center justify-between py-0.5">
+                                    <span class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full mr-1" style="background-color: ${['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'][idx]}"></span>
+                                        ${type}
+                                    </span>
+                                    <span class="font-semibold">${count}명</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <!-- 최근 7일 상담 추이 (라인 차트) -->
+                    <div class="bg-white rounded-lg shadow p-3">
+                        <h3 class="text-sm font-bold text-gray-800 mb-2 flex items-center">
+                            <i class="fas fa-chart-line mr-2 text-orange-600"></i>최근 7일 상담 추이
+                        </h3>
+                        <canvas id="counselingTrendChart" class="w-full" style="max-height: 180px;"></canvas>
+                        <div class="mt-2 flex justify-between text-xs text-gray-600">
+                            <div>
+                                <span class="text-gray-500">오늘:</span>
+                                <span class="font-bold text-orange-600">${todayCounselings}건</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">이번 주:</span>
+                                <span class="font-bold text-blue-600">${thisWeekCounselings}건</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 과정별 학생 현황 (컴팩트) -->
+                <div class="bg-white rounded-lg shadow p-3 mb-3">
+                    <h3 class="text-sm font-bold text-gray-800 mb-2">
+                        <i class="fas fa-school mr-2 text-purple-600"></i>과정별 학생 현황
                     </h3>
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                        ${coursesData.slice(0, 6).map(c => `
-                            <div class="border rounded p-3 hover:bg-gray-50 cursor-pointer" onclick="showTab('courses')">
-                                <p class="text-xs text-gray-500 mb-1 truncate" title="${c.name || c.code}">${c.name || c.code}</p>
-                                <p class="text-2xl font-bold text-blue-600">${studentsByCourse[c.code] || 0}</p>
+                    <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                        ${coursesData.slice(0, 8).map(c => `
+                            <div class="border rounded p-2 hover:bg-gray-50 cursor-pointer transition" onclick="showTab('courses')">
+                                <p class="text-xs text-gray-500 truncate mb-1" title="${c.name || c.code}">${c.name || c.code}</p>
+                                <p class="text-xl font-bold text-blue-600">${studentsByCourse[c.code] || 0}</p>
                                 <p class="text-xs text-gray-600">명</p>
                             </div>
                         `).join('')}
-                        ${coursesData.length > 6 ? `
-                            <div class="border rounded p-3 hover:bg-gray-50 cursor-pointer flex items-center justify-center" onclick="showTab('courses')">
+                        ${coursesData.length > 8 ? `
+                            <div class="border rounded p-2 hover:bg-gray-50 cursor-pointer transition flex items-center justify-center" onclick="showTab('courses')">
                                 <div class="text-center">
-                                    <i class="fas fa-ellipsis-h text-2xl text-gray-400 mb-1"></i>
-                                    <p class="text-xs text-gray-500">+${coursesData.length - 6}개</p>
+                                    <i class="fas fa-plus-circle text-xl text-gray-400"></i>
+                                    <p class="text-xs text-gray-500 mt-1">+${coursesData.length - 8}</p>
                                 </div>
                             </div>
                         ` : ''}
                     </div>
                 </div>
                 
-                <!-- 2열 그리드 -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                <!-- 2열 그리드 (컴팩트) -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
                     <!-- 오늘의 시간표 -->
-                    <div class="bg-white rounded-lg shadow p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-lg font-bold text-gray-800">
+                    <div class="bg-white rounded-lg shadow p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-sm font-bold text-gray-800">
                                 <i class="fas fa-calendar-day mr-2 text-blue-600"></i>오늘 시간표
                             </h3>
                             <button onclick="showTab('timetables')" class="text-blue-600 hover:text-blue-700 text-xs font-semibold">
                                 전체 <i class="fas fa-arrow-right ml-1"></i>
                             </button>
                         </div>
-                        <div class="space-y-2">
-                            ${todayTimetables.length > 0 ? todayTimetables.slice(0, 6).map(t => `
-                                <div class="border-l-4 ${
+                        <div class="space-y-1.5">
+                            ${todayTimetables.length > 0 ? todayTimetables.slice(0, 5).map(t => `
+                                <div class="border-l-3 ${
                                     t.type === 'lecture' ? 'border-blue-500' : 
                                     t.type === 'project' ? 'border-green-500' : 
                                     'border-purple-500'
-                                } bg-gray-50 rounded p-3 hover:bg-gray-100 transition">
+                                } bg-gray-50 rounded p-2 hover:bg-gray-100 transition">
                                     <div class="flex items-start justify-between">
                                         <div class="flex-1 min-w-0">
-                                            <div class="flex items-center gap-1 mb-1">
-                                                <h4 class="font-bold text-gray-800 text-sm truncate">${t.subject_name || '과목명 없음'}</h4>
-                                                <span class="text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${
+                                            <div class="flex items-center gap-1 mb-0.5">
+                                                <h4 class="font-bold text-gray-800 text-xs truncate">${t.subject_name || '과목명 없음'}</h4>
+                                                <span class="text-xs px-1 py-0.5 rounded flex-shrink-0 ${
                                                     t.type === 'lecture' ? 'bg-blue-100 text-blue-700' : 
                                                     t.type === 'project' ? 'bg-green-100 text-green-700' : 
                                                     'bg-purple-100 text-purple-700'
@@ -499,49 +576,47 @@ async function loadDashboard() {
                                             <p class="text-xs text-gray-600 truncate">
                                                 <i class="fas fa-chalkboard-teacher mr-1"></i>${t.instructor_name || '미정'}
                                             </p>
-                                            <p class="text-xs text-gray-500 truncate">${t.course_name || t.course_code}</p>
                                         </div>
                                         <div class="text-right ml-2 flex-shrink-0">
-                                            <p class="text-sm font-bold text-blue-600">${t.start_time.substring(0,5)}</p>
+                                            <p class="text-xs font-bold text-blue-600">${t.start_time.substring(0,5)}</p>
                                             <p class="text-xs text-gray-500">${t.end_time.substring(0,5)}</p>
-                                            ${t.daysFromStart > 0 ? `<p class="text-xs text-gray-600 mt-1">${t.daysFromStart}일째</p>` : ''}
                                         </div>
                                     </div>
                                 </div>
                             `).join('') : `
-                                <div class="text-center py-6 text-gray-400">
-                                    <i class="fas fa-calendar-times text-3xl mb-2"></i>
-                                    <p class="text-sm">오늘 수업 없음</p>
+                                <div class="text-center py-4 text-gray-400">
+                                    <i class="fas fa-calendar-times text-2xl mb-1"></i>
+                                    <p class="text-xs">오늘 수업 없음</p>
                                 </div>
                             `}
                         </div>
                     </div>
                     
                     <!-- 최근 상담 -->
-                    <div class="bg-white rounded-lg shadow p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-lg font-bold text-gray-800">
+                    <div class="bg-white rounded-lg shadow p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-sm font-bold text-gray-800">
                                 <i class="fas fa-comments mr-2 text-green-600"></i>최근 상담
                             </h3>
                             <button onclick="showTab('counselings')" class="text-green-600 hover:text-green-700 text-xs font-semibold">
                                 전체 <i class="fas fa-arrow-right ml-1"></i>
                             </button>
                         </div>
-                        <div class="space-y-2">
-                            ${recentCounselings.length > 0 ? recentCounselings.slice(0, 6).map(c => `
+                        <div class="space-y-1.5">
+                            ${recentCounselings.length > 0 ? recentCounselings.slice(0, 5).map(c => `
                                 <div class="flex items-start justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition">
                                     <div class="flex-1 min-w-0">
-                                        <p class="font-semibold text-sm text-gray-800 truncate">${c.student_name} (${c.student_code})</p>
+                                        <p class="font-semibold text-xs text-gray-800 truncate">${c.student_name} (${c.student_code})</p>
                                         <p class="text-xs text-gray-600 truncate">
                                             <i class="fas fa-user-tie mr-1"></i>${c.instructor_name || '미정'}
                                         </p>
-                                        <p class="text-xs text-gray-500 line-clamp-1 mt-1">
-                                            ${c.content ? (c.content.length > 40 ? c.content.substring(0, 40) + '...' : c.content) : '내용 없음'}
+                                        <p class="text-xs text-gray-500 truncate mt-0.5">
+                                            ${c.content ? (c.content.length > 30 ? c.content.substring(0, 30) + '...' : c.content) : '내용 없음'}
                                         </p>
                                     </div>
                                     <div class="text-right ml-2 flex-shrink-0">
                                         <p class="text-xs font-semibold text-gray-700">${new Date(c.consultation_date).getMonth()+1}/${new Date(c.consultation_date).getDate()}</p>
-                                        <span class="text-xs px-1.5 py-0.5 rounded mt-1 inline-block ${
+                                        <span class="text-xs px-1 py-0.5 rounded mt-1 inline-block ${
                                             c.consultation_type === '긴급' ? 'bg-red-100 text-red-800' :
                                             c.consultation_type === '정기' ? 'bg-blue-100 text-blue-800' :
                                             'bg-purple-100 text-purple-800'
@@ -551,115 +626,252 @@ async function loadDashboard() {
                                     </div>
                                 </div>
                             `).join('') : `
-                                <div class="text-center py-6 text-gray-400">
-                                    <i class="fas fa-comment-slash text-3xl mb-2"></i>
-                                    <p class="text-sm">상담 기록 없음</p>
+                                <div class="text-center py-4 text-gray-400">
+                                    <i class="fas fa-comment-slash text-2xl mb-1"></i>
+                                    <p class="text-xs">상담 기록 없음</p>
                                 </div>
                             `}
                         </div>
                     </div>
                 </div>
                 
-                <!-- 3열 그리드 -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <!-- 3열 그리드 (컴팩트) -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
                     <!-- 최근 훈련일지 -->
-                    <div class="bg-white rounded-lg shadow p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-lg font-bold text-gray-800">
+                    <div class="bg-white rounded-lg shadow p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-sm font-bold text-gray-800">
                                 <i class="fas fa-clipboard-list mr-2 text-indigo-600"></i>훈련일지
                             </h3>
                             <button onclick="showTab('training-logs')" class="text-indigo-600 hover:text-indigo-700 text-xs font-semibold">
                                 전체 <i class="fas fa-arrow-right ml-1"></i>
                             </button>
                         </div>
-                        <div class="space-y-2">
-                            ${recentTrainingLogs.length > 0 ? recentTrainingLogs.slice(0, 5).map(t => `
+                        <div class="space-y-1.5">
+                            ${recentTrainingLogs.length > 0 ? recentTrainingLogs.slice(0, 4).map(t => `
                                 <div class="p-2 bg-gray-50 rounded hover:bg-gray-100 transition">
-                                    <div class="flex items-start justify-between mb-1">
+                                    <div class="flex items-start justify-between mb-0.5">
                                         <p class="text-xs font-semibold text-gray-800">${new Date(t['t.class_date'] || t.class_date).getMonth()+1}/${new Date(t['t.class_date'] || t.class_date).getDate()}</p>
-                                        <span class="text-xs text-gray-500 truncate ml-2">${(t.subject_name || t.timetable_subject_name || '').substring(0, 10)}</span>
+                                        <span class="text-xs text-gray-500 truncate ml-2">${(t.subject_name || t.timetable_subject_name || '').substring(0, 8)}</span>
                                     </div>
                                     <p class="text-xs text-green-600 truncate">
                                         <i class="fas fa-chalkboard-teacher mr-1"></i>${t.instructor_name || '미정'}
                                     </p>
-                                    <p class="text-xs text-gray-600 line-clamp-2 mt-1">
-                                        ${t.content ? (t.content.length > 50 ? t.content.substring(0, 50) + '...' : t.content) : '내용 없음'}
+                                    <p class="text-xs text-gray-600 truncate mt-0.5">
+                                        ${t.content ? (t.content.length > 35 ? t.content.substring(0, 35) + '...' : t.content) : '내용 없음'}
                                     </p>
                                 </div>
                             `).join('') : `
-                                <div class="text-center py-6 text-gray-400">
-                                    <p class="text-sm">훈련일지 없음</p>
+                                <div class="text-center py-4 text-gray-400">
+                                    <p class="text-xs">훈련일지 없음</p>
                                 </div>
                             `}
                         </div>
                     </div>
                     
-                    <!-- 상담 통계 -->
-                    <div class="bg-white rounded-lg shadow p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-lg font-bold text-gray-800">
-                                <i class="fas fa-chart-line mr-2 text-orange-600"></i>상담 추이
+                    <!-- 최근 프로젝트 -->
+                    <div class="bg-white rounded-lg shadow p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-sm font-bold text-gray-800">
+                                <i class="fas fa-users mr-2 text-pink-600"></i>최근 프로젝트
                             </h3>
-                            <button onclick="showTab('counselings')" class="text-orange-600 hover:text-orange-700 text-xs font-semibold">
+                            <button onclick="showTab('projects')" class="text-pink-600 hover:text-pink-700 text-xs font-semibold">
                                 전체 <i class="fas fa-arrow-right ml-1"></i>
                             </button>
                         </div>
-                        <div class="grid grid-cols-2 gap-3 mb-3">
-                            <div class="bg-blue-50 rounded p-3">
-                                <p class="text-xs text-gray-600 mb-1">오늘</p>
-                                <p class="text-2xl font-bold text-blue-600">${todayCounselings}</p>
-                            </div>
-                            <div class="bg-green-50 rounded p-3">
-                                <p class="text-xs text-gray-600 mb-1">이번 주</p>
-                                <p class="text-2xl font-bold text-green-600">${thisWeekCounselings}</p>
-                            </div>
-                        </div>
-                        <div class="border-t pt-3">
-                            <p class="text-xs text-gray-600 mb-2">최근 7일</p>
-                            <div class="flex items-end justify-between h-20">
-                                ${last7Days.map((day, idx) => {
-                                    const maxCount = Math.max(...last7Days.map(d => d.count), 1);
-                                    const height = (day.count / maxCount) * 100;
-                                    return `
-                                        <div class="flex-1 mx-0.5">
-                                            <div class="bg-orange-200 rounded-t hover:bg-orange-300 transition cursor-pointer" 
-                                                 style="height: ${height}%"
-                                                 title="${day.date}: ${day.count}건">
-                                            </div>
-                                            <p class="text-xs text-gray-500 text-center mt-1">${new Date(day.date).getDate()}</p>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
+                        <div class="space-y-1.5">
+                            ${projectsData.length > 0 ? projectsData.slice(0, 4).map(p => `
+                                <div class="p-2 bg-gray-50 rounded hover:bg-gray-100 transition">
+                                    <p class="text-xs font-semibold text-gray-800 truncate mb-0.5">${p.name || '프로젝트명 없음'}</p>
+                                    <div class="flex items-center justify-between text-xs">
+                                        <span class="text-gray-600 truncate flex-1">
+                                            <i class="fas fa-user-friends mr-1"></i>팀원 ${[p.member1_name, p.member2_name, p.member3_name, p.member4_name, p.member5_name, p.member6_name].filter(m => m).length}명
+                                        </span>
+                                        <span class="text-gray-500 ml-2">${p.course_name || p.course_code || ''}</span>
+                                    </div>
+                                </div>
+                            `).join('') : `
+                                <div class="text-center py-4 text-gray-400">
+                                    <p class="text-xs">프로젝트 없음</p>
+                                </div>
+                            `}
                         </div>
                     </div>
                     
-                    <!-- 빠른 액션 -->
-                    <div class="bg-white rounded-lg shadow p-4">
-                        <h3 class="text-lg font-bold text-gray-800 mb-3">
+                    <!-- 빠른 액션 (컴팩트) -->
+                    <div class="bg-white rounded-lg shadow p-3">
+                        <h3 class="text-sm font-bold text-gray-800 mb-2">
                             <i class="fas fa-bolt mr-2 text-yellow-600"></i>빠른 액션
                         </h3>
-                        <div class="space-y-2">
-                            <button onclick="showTab('students')" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold py-2 px-3 rounded text-sm transition text-left">
-                                <i class="fas fa-user-plus mr-2"></i>학생 추가
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="showTab('students')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold py-2 px-2 rounded text-xs transition">
+                                <i class="fas fa-user-plus mr-1"></i>학생
                             </button>
-                            <button onclick="showTab('counselings')" class="w-full bg-green-50 hover:bg-green-100 text-green-700 font-semibold py-2 px-3 rounded text-sm transition text-left">
-                                <i class="fas fa-comment-medical mr-2"></i>상담 기록
+                            <button onclick="showTab('counselings')" class="bg-green-50 hover:bg-green-100 text-green-700 font-semibold py-2 px-2 rounded text-xs transition">
+                                <i class="fas fa-comment-medical mr-1"></i>상담
                             </button>
-                            <button onclick="showTab('timetables')" class="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold py-2 px-3 rounded text-sm transition text-left">
-                                <i class="fas fa-calendar-plus mr-2"></i>시간표 등록
+                            <button onclick="showTab('timetables')" class="bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold py-2 px-2 rounded text-xs transition">
+                                <i class="fas fa-calendar-plus mr-1"></i>시간표
                             </button>
-                            <button onclick="showTab('training-logs')" class="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-2 px-3 rounded text-sm transition text-left">
-                                <i class="fas fa-clipboard-check mr-2"></i>훈련일지
+                            <button onclick="showTab('training-logs')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-2 px-2 rounded text-xs transition">
+                                <i class="fas fa-clipboard-check mr-1"></i>일지
                             </button>
-                            <button onclick="showTab('projects')" class="w-full bg-pink-50 hover:bg-pink-100 text-pink-700 font-semibold py-2 px-3 rounded text-sm transition text-left">
-                                <i class="fas fa-users mr-2"></i>팀 관리
+                            <button onclick="showTab('projects')" class="bg-pink-50 hover:bg-pink-100 text-pink-700 font-semibold py-2 px-2 rounded text-xs transition">
+                                <i class="fas fa-users mr-1"></i>팀
+                            </button>
+                            <button onclick="showTab('instructors')" class="bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold py-2 px-2 rounded text-xs transition">
+                                <i class="fas fa-chalkboard-teacher mr-1"></i>강사
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
         `;
+        
+        // 차트 그리기
+        setTimeout(() => {
+            // 진로 결정 현황 도넛 차트
+            const careerCtx = document.getElementById('careerChart');
+            if (careerCtx) {
+                new Chart(careerCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['취업', '진학', '미정'],
+                        datasets: [{
+                            data: [careerEmployed, careerUniversity, careerUndecided],
+                            backgroundColor: ['#3B82F6', '#10B981', '#9CA3AF'],
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const total = careerEmployed + careerUniversity + careerUndecided;
+                                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                                        return context.label + ': ' + context.parsed + '명 (' + percentage + '%)';
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '65%'
+                    }
+                });
+            }
+            
+            // 강사 유형별 분포 파이 차트
+            const instructorCtx = document.getElementById('instructorChart');
+            if (instructorCtx) {
+                const instructorTypes = Object.keys(instructorsByType);
+                const instructorCounts = Object.values(instructorsByType);
+                const colors = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'];
+                
+                new Chart(instructorCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: instructorTypes,
+                        datasets: [{
+                            data: instructorCounts,
+                            backgroundColor: colors.slice(0, instructorTypes.length),
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const total = instructorCounts.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                                        return context.label + ': ' + context.parsed + '명 (' + percentage + '%)';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // 최근 7일 상담 추이 라인 차트
+            const counselingTrendCtx = document.getElementById('counselingTrendChart');
+            if (counselingTrendCtx) {
+                new Chart(counselingTrendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: last7Days.map(d => {
+                            const date = new Date(d.date);
+                            return (date.getMonth() + 1) + '/' + date.getDate();
+                        }),
+                        datasets: [{
+                            label: '상담 건수',
+                            data: last7Days.map(d => d.count),
+                            borderColor: '#F59E0B',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: '#F59E0B',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return '상담: ' + context.parsed.y + '건';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1,
+                                    font: {
+                                        size: 10
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    font: {
+                                        size: 10
+                                    }
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }, 100);
         
         window.hideLoading();
     } catch (error) {
