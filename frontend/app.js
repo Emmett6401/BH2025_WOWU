@@ -409,10 +409,12 @@ async function loadDashboard() {
             });
         }
         
-        // 진로 결정 현황 계산
-        const careerEmployed = studentsData.filter(s => s.career_path === '취업' || s.career_path === '취업 희망').length;
-        const careerUniversity = studentsData.filter(s => s.career_path === '진학' || s.career_path === '진학 희망').length;
-        const careerUndecided = studentsData.filter(s => !s.career_path || s.career_path === '미정').length;
+        // 진로 결정 현황 계산 (새로운 career_path 필드 기반)
+        const careerStudy = studentsData.filter(s => s.career_path === '1. 학업').length;
+        const careerEmployed = studentsData.filter(s => s.career_path === '2. 취업').length;
+        const careerStartup = studentsData.filter(s => s.career_path === '3. 창업').length;
+        const careerUndecided = studentsData.filter(s => !s.career_path || s.career_path === '4. 미정').length;
+        const careerOther = studentsData.filter(s => s.career_path === '5. 기타').length;
         
         // 강사 유형별 통계
         const instructorsByType = {};
@@ -499,21 +501,31 @@ async function loadDashboard() {
                             <i class="fas fa-chart-pie mr-2 text-blue-600"></i>진로 결정 현황
                         </h3>
                         <canvas id="careerChart" class="w-full" style="max-height: 180px;"></canvas>
-                        <div class="mt-2 grid grid-cols-3 gap-1 text-xs">
+                        <div class="mt-2 grid grid-cols-5 gap-1 text-xs">
                             <div class="text-center">
                                 <div class="w-3 h-3 bg-blue-500 rounded-full mx-auto mb-1"></div>
-                                <p class="font-bold text-blue-600">${careerEmployed}</p>
-                                <p class="text-gray-600">취업</p>
+                                <p class="font-bold text-blue-600">${careerStudy}</p>
+                                <p class="text-gray-600">학업</p>
                             </div>
                             <div class="text-center">
                                 <div class="w-3 h-3 bg-green-500 rounded-full mx-auto mb-1"></div>
-                                <p class="font-bold text-green-600">${careerUniversity}</p>
-                                <p class="text-gray-600">진학</p>
+                                <p class="font-bold text-green-600">${careerEmployed}</p>
+                                <p class="text-gray-600">취업</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="w-3 h-3 bg-yellow-500 rounded-full mx-auto mb-1"></div>
+                                <p class="font-bold text-yellow-600">${careerStartup}</p>
+                                <p class="text-gray-600">창업</p>
                             </div>
                             <div class="text-center">
                                 <div class="w-3 h-3 bg-gray-400 rounded-full mx-auto mb-1"></div>
                                 <p class="font-bold text-gray-600">${careerUndecided}</p>
                                 <p class="text-gray-600">미정</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="w-3 h-3 bg-purple-500 rounded-full mx-auto mb-1"></div>
+                                <p class="font-bold text-purple-600">${careerOther}</p>
+                                <p class="text-gray-600">기타</p>
                             </div>
                         </div>
                     </div>
@@ -768,16 +780,16 @@ async function loadDashboard() {
         
         // 차트 그리기
         setTimeout(() => {
-            // 진로 결정 현황 도넛 차트
+            // 진로 결정 현황 도넛 차트 (5가지 옵션)
             const careerCtx = document.getElementById('careerChart');
             if (careerCtx) {
                 new Chart(careerCtx, {
                     type: 'doughnut',
                     data: {
-                        labels: ['취업', '진학', '미정'],
+                        labels: ['학업', '취업', '창업', '미정', '기타'],
                         datasets: [{
-                            data: [careerEmployed, careerUniversity, careerUndecided],
-                            backgroundColor: ['#3B82F6', '#10B981', '#9CA3AF'],
+                            data: [careerStudy, careerEmployed, careerStartup, careerUndecided, careerOther],
+                            backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#9CA3AF', '#8B5CF6'],
                             borderWidth: 2,
                             borderColor: '#fff'
                         }]
@@ -792,7 +804,7 @@ async function loadDashboard() {
                             tooltip: {
                                 callbacks: {
                                     label: function(context) {
-                                        const total = careerEmployed + careerUniversity + careerUndecided;
+                                        const total = careerStudy + careerEmployed + careerStartup + careerUndecided + careerOther;
                                         const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
                                         return context.label + ': ' + context.parsed + '명 (' + percentage + '%)';
                                     }
@@ -1231,6 +1243,16 @@ window.showStudentForm = function(studentId = null) {
                         `).join('')}
                     </select>
                 </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">진로 분야</label>
+                    <select name="career_path" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="1. 학업" ${student?.career_path === '1. 학업' ? 'selected' : ''}>1. 학업</option>
+                        <option value="2. 취업" ${student?.career_path === '2. 취업' ? 'selected' : ''}>2. 취업</option>
+                        <option value="3. 창업" ${student?.career_path === '3. 창업' ? 'selected' : ''}>3. 창업</option>
+                        <option value="4. 미정" ${student?.career_path === '4. 미정' || !student?.career_path ? 'selected' : ''}>4. 미정</option>
+                        <option value="5. 기타" ${student?.career_path === '5. 기타' ? 'selected' : ''}>5. 기타</option>
+                    </select>
+                </div>
                 <div class="col-span-2">
                     <label class="block text-gray-700 mb-2">학력</label>
                     <input type="text" name="education" value="${student?.education || ''}" 
@@ -1333,7 +1355,8 @@ window.saveStudent = async function(studentId, autoSave = false) {
         campus: formData.get('campus'),
         course_code: formData.get('course_code'),
         notes: formData.get('notes'),
-        photo_urls: JSON.stringify(photoUrls)
+        photo_urls: JSON.stringify(photoUrls),
+        career_path: formData.get('career_path') || '4. 미정'
     };
     
     try {
@@ -1878,7 +1901,7 @@ function renderCounselings() {
                         <label class="block text-sm text-gray-700 mb-1">상담 선생님</label>
                         <select id="filter-instructor" class="w-full border rounded px-3 py-2" onchange="window.filterCounselings()">
                             <option value="">전체</option>
-                            ${instructors.map(i => `<option value="${i.code}">${i.name}</option>`).join('')}
+                            ${instructors.sort((a, b) => a.name.localeCompare(b.name, 'ko')).map(i => `<option value="${i.code}">${i.name}</option>`).join('')}
                         </select>
                     </div>
                     <div>
@@ -3124,8 +3147,10 @@ function renderInstructors() {
                 <div>
                     <label class="block text-gray-700 mb-2">강사구분 필터</label>
                     <select id="instructor-type-filter" class="w-full border rounded px-3 py-2" onchange="window.filterInstructors()">
-                        <option value="">-- 전체 강사구분 --</option>
-                        ${instructorTypes.map(type => `
+                        <option value="" selected>-- 전체 강사구분 --</option>
+                        ${instructorTypes
+                            .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+                            .map(type => `
                             <option value="${type.code}">${type.name}</option>
                         `).join('')}
                     </select>
@@ -7605,5 +7630,8 @@ window.resetPassword = async function(code, name) {
     } catch (error) {
         console.error('비밀번호 초기화 실패:', error);
         window.showAlert('비밀번호 초기화에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+    }
+}
+초기화에 실패했습니다: ' + (error.response?.data?.detail || error.message));
     }
 }

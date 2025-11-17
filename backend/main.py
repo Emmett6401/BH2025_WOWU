@@ -55,6 +55,20 @@ def ensure_photo_urls_column(cursor, table_name: str):
     except:
         pass  # 이미 존재하거나 권한 문제
 
+def ensure_career_path_column(cursor):
+    """students 테이블에 career_path 컬럼이 없으면 추가하고 기본값 설정"""
+    try:
+        cursor.execute("SHOW COLUMNS FROM students LIKE 'career_path'")
+        if not cursor.fetchone():
+            # 컬럼 추가
+            cursor.execute("ALTER TABLE students ADD COLUMN career_path VARCHAR(50) DEFAULT '4. 미정'")
+            # 기존 데이터의 NULL 값을 '4. 미정'으로 업데이트
+            cursor.execute("UPDATE students SET career_path = '4. 미정' WHERE career_path IS NULL")
+            print("✅ students 테이블에 career_path 컬럼 추가 완료")
+    except Exception as e:
+        print(f"⚠️ career_path 컬럼 추가 실패: {e}")
+        pass  # 이미 존재하거나 권한 문제
+
 # FTP 설정
 FTP_CONFIG = {
     'host': 'bitnmeta2.synology.me',
@@ -190,6 +204,9 @@ async def get_students(
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
+        # career_path 컬럼 확인 및 추가
+        ensure_career_path_column(cursor)
+        
         query = "SELECT * FROM students WHERE 1=1"
         params = []
         
@@ -300,7 +317,7 @@ async def update_student(student_id: int, data: dict):
             UPDATE students 
             SET name = %s, birth_date = %s, gender = %s, phone = %s, email = %s,
                 address = %s, interests = %s, education = %s, introduction = %s,
-                campus = %s, course_code = %s, notes = %s, photo_urls = %s, updated_at = NOW()
+                campus = %s, course_code = %s, notes = %s, photo_urls = %s, career_path = %s, updated_at = NOW()
             WHERE id = %s
         """
         
@@ -318,6 +335,7 @@ async def update_student(student_id: int, data: dict):
             data.get('course_code'),
             data.get('notes'),
             data.get('photo_urls'),
+            data.get('career_path', '4. 미정'),
             student_id
         ))
         
