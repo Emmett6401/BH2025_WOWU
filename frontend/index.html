@@ -230,12 +230,36 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    
+    <!-- 캐시 완전 우회 스크립트 -->
+    <script>
+        // 서비스 워커 완전 제거
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                    console.log('🗑️ Service Worker 제거됨');
+                }
+            });
+        }
+        
+        // 모든 캐시 스토리지 삭제
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    caches.delete(name);
+                    console.log('🗑️ 캐시 스토리지 삭제:', name);
+                }
+            });
+        }
+    </script>
+    
     <script src="/app.js?v=1.1.0"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>
-        // Service Worker 등록
-        if ('serviceWorker' in navigator) {
+        // Service Worker 임시 비활성화 (캐시 문제 해결 위해)
+        if ('serviceWorker' in navigator && false) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/service-worker.js')
                     .then((registration) => {
