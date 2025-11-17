@@ -3286,7 +3286,7 @@ window.filterInstructors = async function() {
         if (filteredInstructors.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                    <td colspan="8" class="px-4 py-8 text-center text-gray-500">
                         <i class="fas fa-search mr-2"></i>
                         조건에 맞는 강사가 없습니다
                     </td>
@@ -3300,14 +3300,23 @@ window.filterInstructors = async function() {
                 <td class="px-4 py-2">${inst.code}</td>
                 <td class="px-4 py-2">${inst.name}</td>
                 <td class="px-4 py-2">${inst.major || ''}</td>
-                <td class="px-4 py-2">${inst.type_name || ''}</td>
+                <td class="px-4 py-2">${inst.instructor_type_name || inst.type_name || ''}</td>
+                <td class="px-4 py-2">${inst.instructor_type_type || ''}</td>
                 <td class="px-4 py-2">${inst.phone || ''}</td>
                 <td class="px-4 py-2">${inst.email || ''}</td>
                 <td class="px-4 py-2">
-                    <button onclick="window.editInstructor('${inst.code}')" class="text-blue-600 hover:text-blue-800 mr-2">
+                    ${inst.photo_urls && JSON.parse(inst.photo_urls || '[]').length > 0 ? `
+                        <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(inst.photo_urls).length}개 사진"></i>
+                    ` : ''}
+                    <button onclick="window.editInstructor('${inst.code}')" class="text-blue-600 hover:text-blue-800 mr-2" title="수정">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="window.deleteInstructor('${inst.code}')" class="text-red-600 hover:text-red-800">
+                    ${isMainInstructor() ? `
+                        <button onclick="window.showPasswordChangeModal('${inst.code}', '${inst.name}')" class="text-green-600 hover:text-green-800 mr-2" title="비밀번호 변경">
+                            <i class="fas fa-key"></i>
+                        </button>
+                    ` : ''}
+                    <button onclick="window.deleteInstructor('${inst.code}')" class="text-red-600 hover:text-red-800" title="삭제">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
