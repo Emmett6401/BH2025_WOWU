@@ -231,7 +231,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     
-    <!-- 완전 캐시 제거 -->
+    <!-- 완전 캐시 제거 (로그인 정보는 유지) -->
     <script>
         // 서비스 워커 완전 제거
         if ('serviceWorker' in navigator) {
@@ -251,9 +251,15 @@
             });
         }
         
-        // localStorage/sessionStorage 완전 초기화
-        localStorage.clear();
-        sessionStorage.clear();
+        // 캐시만 삭제 (로그인 정보는 유지)
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('cache_')) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
     </script>
     
     <script>
