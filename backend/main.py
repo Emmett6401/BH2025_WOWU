@@ -668,14 +668,28 @@ async def get_instructors(search: Optional[str] = None):
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
-        query = """
-            SELECT i.code, TRIM(i.name) as name, i.phone, i.major, i.instructor_type, 
-                   i.email, i.created_at, i.updated_at, i.photo_urls, i.password,
-                   ic.name as instructor_type_name, ic.type as instructor_type_type
-            FROM instructors i
-            LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
-            WHERE 1=1
-        """
+        # password 컬럼 존재 여부 확인
+        cursor.execute("SHOW COLUMNS FROM instructors LIKE 'password'")
+        has_password = cursor.fetchone() is not None
+        
+        if has_password:
+            query = """
+                SELECT i.code, TRIM(i.name) as name, i.phone, i.major, i.instructor_type, 
+                       i.email, i.created_at, i.updated_at, i.photo_urls, i.password,
+                       ic.name as instructor_type_name, ic.type as instructor_type_type
+                FROM instructors i
+                LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
+                WHERE 1=1
+            """
+        else:
+            query = """
+                SELECT i.code, TRIM(i.name) as name, i.phone, i.major, i.instructor_type, 
+                       i.email, i.created_at, i.updated_at, i.photo_urls,
+                       ic.name as instructor_type_name, ic.type as instructor_type_type
+                FROM instructors i
+                LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
+                WHERE 1=1
+            """
         params = []
         
         if search:
