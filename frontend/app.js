@@ -17,14 +17,6 @@ function checkLogin() {
         const instructorData = JSON.parse(instructor);
         document.getElementById('instructorName').textContent = instructorData.name || '강사';
         document.getElementById('instructorType').textContent = instructorData.instructor_type_name || '';
-        
-        // 주강사인 경우 로그인 관리 메뉴 표시
-        if (instructorData.instructor_type_type === '1. 주강사') {
-            const loginManagementMenu = document.getElementById('login-management-menu');
-            if (loginManagementMenu) {
-                loginManagementMenu.classList.remove('hidden');
-            }
-        }
     } catch (e) {
         console.error('강사 정보 파싱 오류:', e);
     }
@@ -945,9 +937,6 @@ window.showTab = function(tab) {
             break;
         case 'ai-counseling':
             loadAICounseling();
-            break;
-        case 'login-management':
-            loadLoginManagement();
             break;
     }
 }
@@ -3087,6 +3076,71 @@ function renderInstructors() {
             
             <div id="instructor-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg"></div>
             
+            <!-- 비밀번호 변경 모달 (주강사 전용) -->
+            ${isMainInstructor() ? `
+                <div id="password-change-modal" class="hidden mb-6">
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="text-lg font-bold text-gray-800">
+                                <i class="fas fa-key mr-2 text-blue-600"></i>비밀번호 변경 (주강사 전용)
+                            </h3>
+                            <button onclick="window.hidePasswordChangeModal()" class="text-gray-600 hover:text-gray-800">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="bg-white rounded p-4 mb-4">
+                            <p class="text-sm text-blue-800 mb-2">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                <strong>대상 강사:</strong> <span id="pwd-target-instructor" class="font-bold"></span>
+                            </p>
+                            <p class="text-xs text-gray-600">
+                                기본 비밀번호는 <code class="bg-gray-100 px-2 py-0.5 rounded">kdt2025</code>입니다.
+                            </p>
+                        </div>
+                        
+                        <input type="hidden" id="pwd-instructor-code-modal">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    새 비밀번호 *
+                                </label>
+                                <input type="password" id="pwd-new-password-modal" 
+                                       placeholder="새 비밀번호 입력" 
+                                       class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">
+                                    <i class="fas fa-lock mr-1"></i>영문, 숫자 조합 4자 이상
+                                </p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    비밀번호 확인 *
+                                </label>
+                                <input type="password" id="pwd-confirm-password-modal" 
+                                       placeholder="비밀번호 재입력" 
+                                       class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 flex space-x-2">
+                            <button onclick="window.changePasswordFromModal()" 
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition">
+                                <i class="fas fa-save mr-2"></i>변경
+                            </button>
+                            <button onclick="window.resetPasswordFromModal()" 
+                                    class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition">
+                                <i class="fas fa-redo mr-2"></i>기본값으로 초기화
+                            </button>
+                            <button onclick="window.hidePasswordChangeModal()" 
+                                    class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg transition">
+                                취소
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+            
             <div class="overflow-x-auto">
                 <table class="min-w-full bg-white">
                     <thead class="bg-gray-100">
@@ -3121,10 +3175,15 @@ function renderInstructors() {
                                     ${inst.photo_urls && JSON.parse(inst.photo_urls || '[]').length > 0 ? `
                                         <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(inst.photo_urls).length}개 사진"></i>
                                     ` : ''}
-                                    <button onclick="window.editInstructor('${inst.code}')" class="text-blue-600 hover:text-blue-800 mr-2">
+                                    <button onclick="window.editInstructor('${inst.code}')" class="text-blue-600 hover:text-blue-800 mr-2" title="수정">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button onclick="window.deleteInstructor('${inst.code}')" class="text-red-600 hover:text-red-800">
+                                    ${isMainInstructor() ? `
+                                        <button onclick="window.showPasswordChangeModal('${inst.code}', '${inst.name}')" class="text-green-600 hover:text-green-800 mr-2" title="비밀번호 변경">
+                                            <i class="fas fa-key"></i>
+                                        </button>
+                                    ` : ''}
+                                    <button onclick="window.deleteInstructor('${inst.code}')" class="text-red-600 hover:text-red-800" title="삭제">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </td>
@@ -3366,6 +3425,83 @@ window.deleteInstructor = async function(code) {
         loadInstructors();
     } catch (error) {
         alert('삭제 실패: ' + error.response?.data?.detail || error.message);
+    }
+}
+
+// ==================== 비밀번호 관리 (주강사 전용) ====================
+
+window.showPasswordChangeModal = function(code, name) {
+    const modal = document.getElementById('password-change-modal');
+    if (!modal) return;
+    
+    document.getElementById('pwd-instructor-code-modal').value = code;
+    document.getElementById('pwd-target-instructor').textContent = `${name} (${code})`;
+    document.getElementById('pwd-new-password-modal').value = '';
+    document.getElementById('pwd-confirm-password-modal').value = '';
+    modal.classList.remove('hidden');
+    
+    // 스크롤을 모달 위치로 이동
+    modal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+window.hidePasswordChangeModal = function() {
+    const modal = document.getElementById('password-change-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+window.changePasswordFromModal = async function() {
+    const instructorCode = document.getElementById('pwd-instructor-code-modal').value;
+    const newPassword = document.getElementById('pwd-new-password-modal').value;
+    const confirmPassword = document.getElementById('pwd-confirm-password-modal').value;
+    
+    if (!newPassword || !confirmPassword) {
+        alert('새 비밀번호를 입력해주세요.');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        alert('비밀번호가 일치하지 않습니다.');
+        return;
+    }
+    
+    if (newPassword.length < 4) {
+        alert('비밀번호는 최소 4자 이상이어야 합니다.');
+        return;
+    }
+    
+    try {
+        await axios.post(`${API_BASE_URL}/api/auth/change-password`, {
+            instructor_code: instructorCode,
+            new_password: newPassword
+        });
+        
+        alert('비밀번호가 변경되었습니다.');
+        window.hidePasswordChangeModal();
+    } catch (error) {
+        alert('비밀번호 변경 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+window.resetPasswordFromModal = async function() {
+    const instructorCode = document.getElementById('pwd-instructor-code-modal').value;
+    const targetName = document.getElementById('pwd-target-instructor').textContent;
+    
+    if (!confirm(`${targetName}의 비밀번호를 기본값(kdt2025)으로 초기화하시겠습니까?`)) {
+        return;
+    }
+    
+    try {
+        await axios.post(`${API_BASE_URL}/api/auth/change-password`, {
+            instructor_code: instructorCode,
+            new_password: 'kdt2025'
+        });
+        
+        alert('비밀번호가 초기화되었습니다. (기본값: kdt2025)');
+        window.hidePasswordChangeModal();
+    } catch (error) {
+        alert('비밀번호 초기화 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
