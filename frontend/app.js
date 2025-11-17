@@ -3371,6 +3371,9 @@ async function loadInstructors() {
 }
 
 function renderInstructors() {
+    // 초기 로딩 시 이름순으로 정렬
+    const sortedInstructors = [...instructors].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+    
     const app = document.getElementById('app');
     app.innerHTML = `
         <div class="bg-white rounded-lg shadow-md p-6">
@@ -3399,7 +3402,7 @@ function renderInstructors() {
                 <div>
                     <label class="block text-gray-700 mb-2">정렬</label>
                     <select id="instructor-sort" class="w-full border rounded px-3 py-2" onchange="window.filterInstructors()">
-                        <option value="name">이름순</option>
+                        <option value="name" selected>이름순</option>
                         <option value="code">강사코드순</option>
                     </select>
                 </div>
@@ -3492,7 +3495,7 @@ function renderInstructors() {
                         </tr>
                     </thead>
                     <tbody id="instructor-list">
-                        ${instructors.map(inst => `
+                        ${sortedInstructors.map(inst => `
                             <tr class="border-t hover:bg-gray-50">
                                 <td class="px-2 py-2 text-center">
                                     ${inst.photo_urls && JSON.parse(inst.photo_urls || '[]').length > 0 ? `
