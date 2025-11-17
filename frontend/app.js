@@ -4201,6 +4201,16 @@ function renderProjects() {
                     </select>
                 </div>
                 <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">정렬</label>
+                    <select id="projects-sort-filter" onchange="window.filterProjects()" class="w-full border rounded px-3 py-2">
+                        <option value="">기본 순서</option>
+                        <option value="name-asc">팀명 (가나다순)</option>
+                        <option value="name-desc">팀명 (역순)</option>
+                        <option value="member-name-asc">팀원1 이름순</option>
+                        <option value="member-code-asc">팀원1 코드순</option>
+                    </select>
+                </div>
+                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">검색 (팀명 또는 팀원)</label>
                     <input type="text" id="projects-search" oninput="window.searchProjects()" placeholder="검색어를 입력하세요..." class="w-full border rounded px-3 py-2">
                 </div>
@@ -4251,7 +4261,8 @@ window.renderProjectsList = function() {
                    p.member2_code === projectsFilterStudent ||
                    p.member3_code === projectsFilterStudent ||
                    p.member4_code === projectsFilterStudent ||
-                   p.member5_code === projectsFilterStudent;
+                   p.member5_code === projectsFilterStudent ||
+                   p.member6_code === projectsFilterStudent;
         });
     }
     
@@ -4264,8 +4275,23 @@ window.renderProjectsList = function() {
             const matchMember3 = (p.member3_name || '').toLowerCase().includes(projectsSearchQuery);
             const matchMember4 = (p.member4_name || '').toLowerCase().includes(projectsSearchQuery);
             const matchMember5 = (p.member5_name || '').toLowerCase().includes(projectsSearchQuery);
-            return matchName || matchMember1 || matchMember2 || matchMember3 || matchMember4 || matchMember5;
+            const matchMember6 = (p.member6_name || '').toLowerCase().includes(projectsSearchQuery);
+            return matchName || matchMember1 || matchMember2 || matchMember3 || matchMember4 || matchMember5 || matchMember6;
         });
+    }
+    
+    // 정렬
+    const sortFilter = document.getElementById('projects-sort-filter');
+    const sortType = sortFilter ? sortFilter.value : '';
+    
+    if (sortType === 'name-asc') {
+        filteredProjects.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+    } else if (sortType === 'name-desc') {
+        filteredProjects.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'ko'));
+    } else if (sortType === 'member-name-asc') {
+        filteredProjects.sort((a, b) => (a.member1_name || '').localeCompare(b.member1_name || '', 'ko'));
+    } else if (sortType === 'member-code-asc') {
+        filteredProjects.sort((a, b) => (a.member1_code || '').localeCompare(b.member1_code || ''));
     }
     
     const listDiv = document.getElementById('projects-list');
@@ -4291,6 +4317,7 @@ window.renderProjectsList = function() {
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀원3</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀원4</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀원5</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀원6</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">작업</th>
                     </tr>
                 </thead>
@@ -4310,6 +4337,7 @@ window.renderProjectsList = function() {
                             <td class="px-4 py-2 text-xs">${p.member3_name || '-'}</td>
                             <td class="px-4 py-2 text-xs">${p.member4_name || '-'}</td>
                             <td class="px-4 py-2 text-xs">${p.member5_name || '-'}</td>
+                            <td class="px-4 py-2 text-xs">${p.member6_name || '-'}</td>
                             <td class="px-4 py-2 text-xs">
                                 ${photoUrls.length > 0 ? `
                                     <i class="fas fa-camera text-green-600 mr-2" title="${photoUrls.length}개 사진"></i>
@@ -4352,7 +4380,7 @@ window.showProjectForm = function(code = null) {
     
     formDiv.innerHTML = `
         <h3 class="text-lg font-semibold mb-4">${code ? '팀 수정' : '팀 추가'}</h3>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">팀 코드</label>
                 <input type="text" id="proj-code" placeholder="팀코드" value="${existing ? existing.code : autoCode}" ${code ? 'readonly' : 'readonly'} class="border rounded px-3 py-2 w-full bg-gray-100">
@@ -4360,6 +4388,10 @@ window.showProjectForm = function(code = null) {
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">팀명 *</label>
                 <input type="text" id="proj-name" placeholder="팀명" value="${existing ? existing.name : ''}" class="border rounded px-3 py-2 w-full">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">설명</label>
+                <input type="text" id="proj-description" placeholder="프로젝트 설명" value="${existing ? existing.description || '' : ''}" class="border rounded px-3 py-2 w-full">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">그룹 구분 *</label>
@@ -4420,9 +4452,9 @@ window.showProjectForm = function(code = null) {
             `).join('')}
         </div>
         
-        <h4 class="font-semibold mb-2">팀원 정보 (최대 5명)</h4>
+        <h4 class="font-semibold mb-2">팀원 정보 (최대 6명)</h4>
         <div class="space-y-2">
-            ${[1, 2, 3, 4, 5].map(i => `
+            ${[1, 2, 3, 4, 5, 6].map(i => `
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">팀원${i}</label>
                     <select id="member${i}-select" onchange="window.selectProjectMember(${i})" class="border rounded px-3 py-2 w-full">
@@ -4568,6 +4600,7 @@ window.hideProjectForm = function() {
 window.saveProject = async function(existingCode, autoSave = false) {
     const code = document.getElementById('proj-code').value;
     const name = document.getElementById('proj-name').value;
+    const description = document.getElementById('proj-description').value;
     const groupType = document.getElementById('proj-group').value;
     const courseCode = document.getElementById('proj-course').value;
     const instructorCode = document.getElementById('proj-instructor').value;
@@ -4598,6 +4631,7 @@ window.saveProject = async function(existingCode, autoSave = false) {
     const data = {
         code: code,
         name: name,
+        description: description || null,
         group_type: groupType,
         course_code: courseCode,
         instructor_code: instructorCode || null,
@@ -4617,6 +4651,9 @@ window.saveProject = async function(existingCode, autoSave = false) {
         member5_name: document.getElementById('member5-name').value,
         member5_phone: document.getElementById('member5-phone').value,
         member5_code: document.getElementById('member5-code').value,
+        member6_name: document.getElementById('member6-name').value,
+        member6_phone: document.getElementById('member6-phone').value,
+        member6_code: document.getElementById('member6-code').value,
         // 공유계정 필드 추가
         account1_name: document.getElementById('account1-name').value || null,
         account1_id: document.getElementById('account1-id').value || null,
