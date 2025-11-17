@@ -252,9 +252,16 @@
                 }
             });
         }
+        
+        // localStorage 강제 초기화
+        console.log('🗑️ localStorage 초기화');
+        localStorage.clear();
+        
+        // 강제 새로고침 경고
+        alert('⚠️ 캐시를 완전히 삭제했습니다.\n\n지금 "확인"을 누른 후:\n\n1. Ctrl+Shift+R (하드 리프레시)를 3번 연속 누르세요.\n2. 또는 시크릿 모드로 새 창을 여세요.\n\n이 알림은 한 번만 나타납니다.');
     </script>
     
-    <script src="/app.js?v=1.1.0"></script>
+    <script src="/app.js?v=1763371427"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>
