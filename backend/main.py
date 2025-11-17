@@ -2215,7 +2215,7 @@ async def calculate_course_dates(data: dict):
     - start_date: 시작일
     - lecture_hours: 강의시간
     - project_hours: 프로젝트시간
-    - internship_hours: 인턴십시간
+    - internship_hours: 현장실습시간
     """
     from datetime import timedelta
     

@@ -92,17 +92,6 @@
                                 <i class="fas fa-user-check mr-1 text-blue-500"></i>아이디 저장
                             </span>
                         </label>
-                        
-                        <label class="flex items-center cursor-pointer">
-                            <input 
-                                type="checkbox" 
-                                id="autoLogin" 
-                                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                            >
-                            <span class="ml-2 text-sm text-gray-700">
-                                <i class="fas fa-sign-in-alt mr-1 text-green-500"></i>자동 로그인 (비밀번호 저장)
-                            </span>
-                        </label>
                     </div>
                     
                     <!-- 로그인 버튼 -->
@@ -143,7 +132,6 @@
         const instructorNameInput = document.getElementById('instructorName');
         const passwordInput = document.getElementById('password');
         const rememberNameCheckbox = document.getElementById('rememberName');
-        const autoLoginCheckbox = document.getElementById('autoLogin');
         const loginButton = document.getElementById('loginButton');
         const alertMessage = document.getElementById('alertMessage');
         const togglePasswordBtn = document.getElementById('togglePassword');
@@ -152,27 +140,17 @@
         // 페이지 로드 시 저장된 정보 불러오기
         window.addEventListener('DOMContentLoaded', () => {
             const savedName = localStorage.getItem('instructor_name');
-            const savedPassword = localStorage.getItem('instructor_password');
             const rememberName = localStorage.getItem('remember_name') === 'true';
-            const autoLogin = localStorage.getItem('auto_login') === 'true';
             
+            // 아이디 저장만 지원 (자동 로그인 제거)
             if (rememberName && savedName) {
                 instructorNameInput.value = savedName;
                 rememberNameCheckbox.checked = true;
             }
             
-            if (autoLogin && savedPassword) {
-                passwordInput.value = savedPassword;
-                autoLoginCheckbox.checked = true;
-                
-                // 자동 로그인 체크되어 있고 이름과 비밀번호 모두 있으면 자동 로그인
-                if (savedName && savedPassword) {
-                    showAlert('자동 로그인 중...', 'info');
-                    setTimeout(() => {
-                        loginForm.dispatchEvent(new Event('submit'));
-                    }, 500);
-                }
-            }
+            // 자동 로그인 관련 저장값 초기화
+            localStorage.removeItem('instructor_password');
+            localStorage.removeItem('auto_login');
         });
         
         // 비밀번호 표시/숨김 토글
@@ -190,7 +168,6 @@
             const name = instructorNameInput.value.trim();
             const password = passwordInput.value;
             const rememberName = rememberNameCheckbox.checked;
-            const autoLogin = autoLoginCheckbox.checked;
             
             if (!name || !password) {
                 showAlert('이름과 비밀번호를 입력하세요', 'error');
@@ -224,14 +201,9 @@
                         localStorage.removeItem('remember_name');
                     }
                     
-                    // 자동 로그인 옵션 (비밀번호 저장)
-                    if (autoLogin) {
-                        localStorage.setItem('instructor_password', password);
-                        localStorage.setItem('auto_login', 'true');
-                    } else {
-                        localStorage.removeItem('instructor_password');
-                        localStorage.removeItem('auto_login');
-                    }
+                    // 자동 로그인 관련 저장값 제거 (보안 강화)
+                    localStorage.removeItem('instructor_password');
+                    localStorage.removeItem('auto_login');
                     
                     showAlert(response.data.message, 'success');
                     

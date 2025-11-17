@@ -418,7 +418,7 @@ async function loadDashboard() {
                                                     t.type === 'project' ? 'bg-green-100 text-green-700' : 
                                                     'bg-purple-100 text-purple-700'
                                                 }">
-                                                    ${t.type === 'lecture' ? '강의' : t.type === 'project' ? '프로젝트' : '인턴십'}
+                                                    ${t.type === 'lecture' ? '강의' : t.type === 'project' ? '프로젝트' : '현장실습'}
                                                 </span>
                                             </div>
                                             <p class="text-sm text-gray-600 mb-2">
@@ -2654,6 +2654,7 @@ window.showInstructorCodeForm = function(code = null) {
                     <option value="2. 보조강사" ${existingCode && existingCode.type === '2. 보조강사' ? 'selected' : ''}>2. 보조강사</option>
                     <option value="3. 멘토" ${existingCode && existingCode.type === '3. 멘토' ? 'selected' : ''}>3. 멘토</option>
                     <option value="4. 행정지원" ${existingCode && existingCode.type === '4. 행정지원' ? 'selected' : ''}>4. 행정지원</option>
+                    <option value="5. 가디언" ${existingCode && existingCode.type === '5. 가디언' ? 'selected' : ''}>5. 가디언</option>
                 </select>
             </div>
         </div>
@@ -3440,7 +3441,7 @@ function renderCourseDetail(course) {
                         </div>
                     </div>
                     <div class="bg-red-100 p-3 rounded">
-                        <label class="block text-xs text-gray-600 mb-2">인턴십</label>
+                        <label class="block text-xs text-gray-600 mb-2">현장실습</label>
                         <div class="flex items-center mb-2">
                             <input type="number" id="intern-hours" value="${course.internship_hours || 120}" 
                                    class="w-20 px-2 py-1 border rounded text-sm" onchange="window.updateCourseHours('${course.code}')">
@@ -3469,7 +3470,7 @@ function renderCourseDetail(course) {
                     <div class="text-center p-3 bg-white rounded shadow-sm">
                         <div class="text-xs text-gray-500 mb-1">근무일</div>
                         <div class="text-xl font-bold text-green-600">${workDays}일</div>
-                        <div class="text-xs text-gray-600 mt-1">= 이론(${lectureDays}) + 프로젝트(${projectDays}) + 인턴십(${internDays})</div>
+                        <div class="text-xs text-gray-600 mt-1">= 이론(${lectureDays}) + 프로젝트(${projectDays}) + 현장실습(${internDays})</div>
                     </div>
                     <div class="text-center p-3 bg-white rounded shadow-sm">
                         <div class="text-xs text-gray-500 mb-1">제외일</div>
@@ -3556,7 +3557,7 @@ function renderCourseDetail(course) {
                                 <th class="px-3 py-2 text-left text-xs">시작일</th>
                                 <th class="px-3 py-2 text-left text-xs">강의종료</th>
                                 <th class="px-3 py-2 text-left text-xs">프로젝트종료</th>
-                                <th class="px-3 py-2 text-left text-xs">인턴십종료</th>
+                                <th class="px-3 py-2 text-left text-xs">현장실습종료</th>
                                 <th class="px-3 py-2 text-left text-xs">종기간</th>
                                 <th class="px-3 py-2 text-left text-xs">인원</th>
                                 <th class="px-3 py-2 text-left text-xs">장소</th>
@@ -5221,7 +5222,7 @@ window.showTimetableForm = function(id = null) {
                 <select id="tt-type" class="w-full border rounded px-3 py-2" required>
                     <option value="lecture" ${existing && existing.type === 'lecture' ? 'selected' : ''}>강의</option>
                     <option value="project" ${existing && existing.type === 'project' ? 'selected' : ''}>프로젝트</option>
-                    <option value="internship" ${existing && existing.type === 'internship' ? 'selected' : ''}>인턴십</option>
+                    <option value="internship" ${existing && existing.type === 'internship' ? 'selected' : ''}>현장실습</option>
                 </select>
             </div>
             <div>
