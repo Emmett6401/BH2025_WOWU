@@ -2,7 +2,24 @@
 const API_BASE_URL = 'https://8000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai';
 
 // ==================== 로컬 캐싱 유틸리티 ====================
+const CACHE_VERSION = '1.1.0'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
+
+// 캐시 버전 체크 및 초기화
+(function checkCacheVersion() {
+    const currentVersion = localStorage.getItem('cache_version');
+    if (currentVersion !== CACHE_VERSION) {
+        console.log(`🔄 캐시 버전 업데이트: ${currentVersion} → ${CACHE_VERSION}`);
+        // 전체 캐시 삭제
+        Object.keys(localStorage).forEach(k => {
+            if (k.startsWith('cache_')) {
+                localStorage.removeItem(k);
+            }
+        });
+        localStorage.setItem('cache_version', CACHE_VERSION);
+        console.log('✅ 캐시 초기화 완료');
+    }
+})();
 
 window.getCachedData = async function(key, fetchFunction) {
     const cacheKey = `cache_${key}`;
@@ -308,6 +325,8 @@ async function loadDashboard() {
     window.showLoading('대시보드 데이터를 불러오는 중...');
     
     try {
+        console.log('🚀 대시보드 로딩 시작...');
+        
         // 모든 데이터를 캐싱과 함께 병렬로 가져오기
         const [
             studentsData,
@@ -326,6 +345,13 @@ async function loadDashboard() {
             window.getCachedData('projects', () => axios.get(`${API_BASE_URL}/api/projects`).then(r => r.data)),
             window.getCachedData('training-logs', () => axios.get(`${API_BASE_URL}/api/training-logs`).then(r => r.data))
         ]);
+        
+        console.log('✅ 데이터 로딩 완료:', {
+            students: studentsData.length,
+            instructors: instructorsData.length,
+            courses: coursesData.length,
+            counselings: counselingsData.length
+        });
         
         // 최근 상담 (최근 5건)
         const recentCounselings = counselingsData
@@ -929,10 +955,38 @@ async function loadDashboard() {
         }, 100);
         
         window.hideLoading();
+        console.log('✅ 대시보드 렌더링 완료');
     } catch (error) {
         window.hideLoading();
-        console.error('대시보드 로드 실패:', error);
-        document.getElementById('app').innerHTML = '<div class="p-6 text-red-600">대시보드를 불러오는데 실패했습니다.</div>';
+        console.error('❌ 대시보드 로드 실패:', error);
+        console.error('에러 상세:', {
+            message: error.message,
+            stack: error.stack,
+            response: error.response
+        });
+        
+        // 캐시 삭제 후 재시도 버튼 제공
+        document.getElementById('app').innerHTML = `
+            <div class="p-6">
+                <div class="bg-red-50 border border-red-200 rounded-lg p-6 max-w-2xl mx-auto">
+                    <div class="flex items-center mb-4">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-3xl mr-3"></i>
+                        <h3 class="text-xl font-bold text-red-800">대시보드를 불러오는데 실패했습니다</h3>
+                    </div>
+                    <p class="text-red-700 mb-4">
+                        ${error.message || '알 수 없는 오류가 발생했습니다.'}
+                    </p>
+                    <div class="space-x-2">
+                        <button onclick="location.reload()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+                            <i class="fas fa-sync mr-2"></i>새로고침
+                        </button>
+                        <button onclick="window.clearCache(); location.reload();" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                            <i class="fas fa-trash mr-2"></i>캐시 삭제 후 새로고침
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 }
 
@@ -3118,6 +3172,7 @@ window.deleteInstructorCode = async function(code) {
 // ==================== 강사 관리 (확장) ====================
 async function loadInstructors() {
     try {
+        console.log('🚀 강사 데이터 로딩 시작...');
         window.showLoading('강사 데이터를 불러오는 중...');
         const [instructorsData, typesData] = await Promise.all([
             window.getCachedData('instructors', () => axios.get(`${API_BASE_URL}/api/instructors`).then(r => r.data)),
@@ -3125,12 +3180,22 @@ async function loadInstructors() {
         ]);
         instructors = instructorsData;
         instructorTypes = typesData;
+        console.log('✅ 강사 데이터 로드 완료:', { instructors: instructors.length, types: instructorTypes.length });
         renderInstructors();
         window.hideLoading();
     } catch (error) {
         window.hideLoading();
-        console.error('강사 목록 로드 실패:', error);
-        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">강사 목록을 불러오는데 실패했습니다.</div>';
+        console.error('❌ 강사 목록 로드 실패:', error);
+        document.getElementById('app').innerHTML = `
+            <div class="p-6">
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p class="text-red-600 mb-3">강사 목록을 불러오는데 실패했습니다: ${error.message}</p>
+                    <button onclick="location.reload()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+                        <i class="fas fa-sync mr-2"></i>새로고침
+                    </button>
+                </div>
+            </div>
+        `;
     }
 }
 
