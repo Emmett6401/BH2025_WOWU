@@ -2772,15 +2772,29 @@ async def login(credentials: dict):
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
+        # password 컬럼 존재 여부 확인
+        cursor.execute("SHOW COLUMNS FROM instructors LIKE 'password'")
+        has_password = cursor.fetchone() is not None
+        
         # 강사 테이블에서 이름으로 검색 (공백 제거하여 비교 및 반환)
-        cursor.execute("""
-            SELECT i.code, TRIM(i.name) as name, i.phone, i.major, i.instructor_type, 
-                   i.email, i.created_at, i.updated_at, i.photo_urls, i.password,
-                   ic.name as instructor_type_name, ic.type as instructor_type_type
-            FROM instructors i
-            LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
-            WHERE TRIM(i.name) = %s
-        """, (instructor_name.strip(),))
+        if has_password:
+            cursor.execute("""
+                SELECT i.code, TRIM(i.name) as name, i.phone, i.major, i.instructor_type, 
+                       i.email, i.created_at, i.updated_at, i.photo_urls, i.password,
+                       ic.name as instructor_type_name, ic.type as instructor_type_type
+                FROM instructors i
+                LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
+                WHERE TRIM(i.name) = %s
+            """, (instructor_name.strip(),))
+        else:
+            cursor.execute("""
+                SELECT i.code, TRIM(i.name) as name, i.phone, i.major, i.instructor_type, 
+                       i.email, i.created_at, i.updated_at, i.photo_urls,
+                       ic.name as instructor_type_name, ic.type as instructor_type_type
+                FROM instructors i
+                LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
+                WHERE TRIM(i.name) = %s
+            """, (instructor_name.strip(),))
         
         instructor = cursor.fetchone()
         
