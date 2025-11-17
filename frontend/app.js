@@ -2585,11 +2585,15 @@ window.showCounselingForm = function(counselingId = null) {
                             }
                             
                             // 이름순 정렬
-                            return filteredStudents.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko')).map(s => `
-                                <option value="${s.id}" ${existingCounseling?.student_id === s.id ? 'selected' : ''}>
-                                    ${s.name}(${s.code}) - ${s.birth_date ? s.birth_date.split('T')[0] : '-'} - ${s.final_school || '-'}
-                                </option>
-                            `).join('');
+                            return filteredStudents.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko')).map(s => {
+                                const course = courses.find(c => c.code === s.course_code);
+                                const courseName = course ? course.name || course.code : '-';
+                                return `
+                                    <option value="${s.id}" ${existingCounseling?.student_id === s.id ? 'selected' : ''}>
+                                        ${s.name}(${s.code}) - ${courseName} - ${s.birth_date ? s.birth_date.split('T')[0] : '-'} - ${s.final_school || '-'}
+                                    </option>
+                                `;
+                            }).join('');
                         })()}
                     </select>
                 </div>
@@ -3401,7 +3405,7 @@ function renderInstructors() {
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-2">검색 (이름, 전공)</label>
-                    <input type="text" id="instructor-search" value="" placeholder="검색어 입력..." class="w-full border rounded px-3 py-2" onkeyup="window.filterInstructors()">
+                    <input type="text" id="instructor-search" value="" placeholder="검색어 입력..." class="w-full border rounded px-3 py-2" onkeyup="window.filterInstructors()" autocomplete="off">
                 </div>
             </div>
             
@@ -5355,11 +5359,15 @@ window.updateProjectStudentList = function() {
             const currentValue = codeInput ? codeInput.value : '';
             select.innerHTML = `
                 <option value="">선택 안함</option>
-                ${sortedStudents.map(s => `
-                    <option value="${s.code}" ${s.code === currentValue ? 'selected' : ''}>
-                        ${s.name} (${s.code})
-                    </option>
-                `).join('')}
+                ${sortedStudents.map(s => {
+                    const course = courses.find(c => c.code === s.course_code);
+                    const courseName = course ? course.name || course.code : '-';
+                    return `
+                        <option value="${s.code}" ${s.code === currentValue ? 'selected' : ''}>
+                            ${s.name}(${s.code}) - ${courseName} - ${s.birth_date ? s.birth_date.split('T')[0] : '-'} - ${s.final_school || '-'}
+                        </option>
+                    `;
+                }).join('')}
             `;
             
             // 기존 값이 있으면 표시 업데이트
