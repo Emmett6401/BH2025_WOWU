@@ -231,14 +231,13 @@
 
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     
-    <!-- 캐시 완전 우회 스크립트 -->
+    <!-- 완전 캐시 제거 -->
     <script>
         // 서비스 워커 완전 제거
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for(let registration of registrations) {
                     registration.unregister();
-                    console.log('🗑️ Service Worker 제거됨');
                 }
             });
         }
@@ -248,20 +247,22 @@
             caches.keys().then(function(names) {
                 for (let name of names) {
                     caches.delete(name);
-                    console.log('🗑️ 캐시 스토리지 삭제:', name);
                 }
             });
         }
         
-        // localStorage 강제 초기화
-        console.log('🗑️ localStorage 초기화');
+        // localStorage/sessionStorage 완전 초기화
         localStorage.clear();
-        
-        // 강제 새로고침 경고
-        alert('⚠️ 캐시를 완전히 삭제했습니다.\n\n지금 "확인"을 누른 후:\n\n1. Ctrl+Shift+R (하드 리프레시)를 3번 연속 누르세요.\n2. 또는 시크릿 모드로 새 창을 여세요.\n\n이 알림은 한 번만 나타납니다.');
+        sessionStorage.clear();
     </script>
     
-    <script src="/app.js?v=1763371427"></script>
+    <script>
+        // 타임스탬프로 완전한 캐시 버스팅
+        const timestamp = new Date().getTime();
+        const script = document.createElement('script');
+        script.src = '/app.js?v=' + timestamp;
+        document.head.appendChild(script);
+    </script>
     
     <!-- PWA Service Worker Registration -->
     <script>
