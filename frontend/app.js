@@ -3405,7 +3405,7 @@ function renderInstructors() {
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-2">검색 (이름, 전공)</label>
-                    <input type="text" id="instructor-search" value="" placeholder="검색어 입력..." class="w-full border rounded px-3 py-2" onkeyup="window.filterInstructors()" autocomplete="off">
+                    <input type="text" id="instructor-search" placeholder="검색어 입력..." class="w-full border rounded px-3 py-2" onkeyup="window.filterInstructors()" autocomplete="off" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');">
                 </div>
             </div>
             
@@ -3535,13 +3535,23 @@ function renderInstructors() {
         </div>
     `;
     
-    // 검색 필드 강제 초기화
-    setTimeout(() => {
+    // 검색 필드 강제 초기화 (여러 번 시도)
+    const clearSearchField = () => {
         const searchInput = document.getElementById('instructor-search');
         if (searchInput) {
             searchInput.value = '';
+            searchInput.defaultValue = '';
+            // 입력 이벤트 강제 발생하여 브라우저 캐시 무효화
+            searchInput.dispatchEvent(new Event('input', { bubbles: true }));
         }
-    }, 0);
+    };
+    
+    // 즉시 실행
+    clearSearchField();
+    // 약간의 지연 후 다시 실행
+    setTimeout(clearSearchField, 0);
+    setTimeout(clearSearchField, 50);
+    setTimeout(clearSearchField, 100);
 }
 
 window.filterInstructors = async function() {
