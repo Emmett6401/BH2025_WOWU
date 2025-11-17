@@ -35,12 +35,17 @@
         <header class="bg-blue-600 text-white shadow-lg">
             <div class="container mx-auto px-4 py-6">
                 <div class="flex justify-between items-start">
-                    <div>
-                        <h1 class="text-3xl font-bold">
-                            <i class="fas fa-school mr-3"></i>
-                            KDT교육관리시스템 v3.0
-                        </h1>
-                        <p class="text-blue-100 mt-2">보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단 바이오헬스아카데미 올인원테크 이노베이터</p>
+                    <div class="flex items-center gap-4">
+                        <div class="bg-white rounded-lg p-2 flex items-center justify-center" style="min-width: 80px; height: 80px;">
+                            <img src="https://www.wsu.ac.kr/images/kor/sub/sym_logo01.jpg" alt="우송대학교" class="max-h-full max-w-full object-contain">
+                        </div>
+                        <div>
+                            <h1 class="text-3xl font-bold flex items-center">
+                                <i class="fas fa-school mr-3"></i>
+                                KDT교육관리시스템 v3.0
+                            </h1>
+                            <p class="text-blue-100 mt-2">보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단 바이오헬스아카데미 올인원테크 이노베이터</p>
+                        </div>
                     </div>
                     <div class="flex items-center gap-4">
                         <div id="userInfo" class="text-right">
@@ -262,18 +267,23 @@
         keysToRemove.forEach(key => localStorage.removeItem(key));
     </script>
     
-    <script>
-        // 타임스탬프로 완전한 캐시 버스팅
-        const timestamp = new Date().getTime();
-        const script = document.createElement('script');
-        script.src = '/app.js?v=' + timestamp;
-        document.head.appendChild(script);
-    </script>
+    <!-- 캐시 버스팅을 위한 버전 쿼리 -->
+    <script src="/app.js?v=2.0.0"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>
-        // Service Worker 임시 비활성화 (캐시 문제 해결 위해)
-        if ('serviceWorker' in navigator && false) {
+        // Service Worker 완전 비활성화
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                    console.log('Service Worker unregistered');
+                }
+            });
+        }
+        
+        // 아래 코드는 실행되지 않음
+        if (false) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/service-worker.js')
                     .then((registration) => {

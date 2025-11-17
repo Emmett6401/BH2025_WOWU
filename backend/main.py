@@ -69,6 +69,17 @@ def ensure_career_path_column(cursor):
         print(f"⚠️ career_path 컬럼 추가 실패: {e}")
         pass  # 이미 존재하거나 권한 문제
 
+def ensure_career_decision_column(cursor):
+    """consultations 테이블에 career_decision 컬럼이 없으면 추가"""
+    try:
+        cursor.execute("SHOW COLUMNS FROM consultations LIKE 'career_decision'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE consultations ADD COLUMN career_decision VARCHAR(50) DEFAULT NULL")
+            print("✅ consultations 테이블에 career_decision 컬럼 추가 완료")
+    except Exception as e:
+        print(f"⚠️ career_decision 컬럼 추가 실패: {e}")
+        pass
+
 # FTP 설정
 FTP_CONFIG = {
     'host': 'bitnmeta2.synology.me',
@@ -1349,8 +1360,9 @@ async def get_counselings(
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
-        # photo_urls 컬럼 확인 및 추가
+        # photo_urls, career_decision 컬럼 확인 및 추가
         ensure_photo_urls_column(cursor, 'consultations')
+        ensure_career_decision_column(cursor)
         
         query = """
             SELECT c.*, s.name as student_name, s.code as student_code, s.course_code,
@@ -1422,14 +1434,15 @@ async def create_counseling(data: dict):
     try:
         cursor = conn.cursor()
         
-        # photo_urls 컬럼 확인 및 추가
+        # photo_urls, career_decision 컬럼 확인 및 추가
         ensure_photo_urls_column(cursor, 'consultations')
+        ensure_career_decision_column(cursor)
         
         # consultations 테이블 구조에 맞게 조정
         query = """
             INSERT INTO consultations 
-            (student_id, instructor_code, consultation_date, consultation_type, main_topic, content, status, photo_urls)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (student_id, instructor_code, consultation_date, consultation_type, main_topic, content, status, photo_urls, career_decision)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         # instructor_code가 빈 문자열이면 None으로 처리
@@ -1445,7 +1458,8 @@ async def create_counseling(data: dict):
             data.get('main_topic') or data.get('topic', ''),
             data.get('content'),
             data.get('status', '완료'),
-            data.get('photo_urls')
+            data.get('photo_urls'),
+            data.get('career_decision')
         ))
         
         conn.commit()
@@ -1464,13 +1478,14 @@ async def update_counseling(counseling_id: int, data: dict):
     try:
         cursor = conn.cursor()
         
-        # photo_urls 컬럼 확인 및 추가
+        # photo_urls, career_decision 컬럼 확인 및 추가
         ensure_photo_urls_column(cursor, 'consultations')
+        ensure_career_decision_column(cursor)
         
         query = """
             UPDATE consultations 
             SET student_id = %s, instructor_code = %s, consultation_date = %s, consultation_type = %s,
-                main_topic = %s, content = %s, status = %s, photo_urls = %s
+                main_topic = %s, content = %s, status = %s, photo_urls = %s, career_decision = %s
             WHERE id = %s
         """
         
@@ -1488,6 +1503,7 @@ async def update_counseling(counseling_id: int, data: dict):
             data.get('content'),
             data.get('status', '완료'),
             data.get('photo_urls'),
+            data.get('career_decision'),
             counseling_id
         ))
         

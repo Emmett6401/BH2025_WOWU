@@ -2,7 +2,7 @@
 const API_BASE_URL = '';
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.0'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '1.3.0'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -433,40 +433,12 @@ async function loadDashboard() {
             });
         }
         
-        // 진로 결정 현황 계산 (학생별 마지막 상담의 career_decision 기반)
-        const careerCounts = { study: 0, employed: 0, startup: 0, undecided: 0, other: 0 };
-        
-        studentsData.forEach(student => {
-            // 해당 학생의 모든 상담 찾기
-            const studentCounselings = counselingsData.filter(c => c.student_id === student.id);
-            
-            if (studentCounselings.length > 0) {
-                // 날짜순 정렬하여 마지막 상담 찾기
-                studentCounselings.sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date));
-                const lastCounseling = studentCounselings[0];
-                
-                // career_decision이 있으면 집계
-                if (lastCounseling.career_decision) {
-                    if (lastCounseling.career_decision === '1. 학업') careerCounts.study++;
-                    else if (lastCounseling.career_decision === '2. 취업') careerCounts.employed++;
-                    else if (lastCounseling.career_decision === '3. 창업') careerCounts.startup++;
-                    else if (lastCounseling.career_decision === '4. 미정') careerCounts.undecided++;
-                    else if (lastCounseling.career_decision === '5. 기타') careerCounts.other++;
-                } else {
-                    // career_decision이 없으면 미정으로 처리
-                    careerCounts.undecided++;
-                }
-            } else {
-                // 상담 기록이 없으면 미정으로 처리
-                careerCounts.undecided++;
-            }
-        });
-        
-        const careerStudy = careerCounts.study;
-        const careerEmployed = careerCounts.employed;
-        const careerStartup = careerCounts.startup;
-        const careerUndecided = careerCounts.undecided;
-        const careerOther = careerCounts.other;
+        // 진로 결정 현황 계산 (새로운 career_path 필드 기반)
+        const careerStudy = studentsData.filter(s => s.career_path === '1. 학업').length;
+        const careerEmployed = studentsData.filter(s => s.career_path === '2. 취업').length;
+        const careerStartup = studentsData.filter(s => s.career_path === '3. 창업').length;
+        const careerUndecided = studentsData.filter(s => !s.career_path || s.career_path === '4. 미정').length;
+        const careerOther = studentsData.filter(s => s.career_path === '5. 기타').length;
         
         // 강사 유형별 통계
         const instructorsByType = {};
@@ -535,21 +507,13 @@ async function loadDashboard() {
                         <p class="text-xs text-orange-100">오늘 상담 (총 ${counselingsData.length})</p>
                     </div>
                     
-                    <!-- 팀 구성원 수 -->
+                    <!-- 팀 -->
                     <div class="bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('projects')">
                         <div class="flex items-center justify-between mb-1">
                             <i class="fas fa-users text-xl"></i>
-                            <p class="text-2xl font-bold">${projectsData.reduce((total, p) => {
-                                let count = 0;
-                                if (p.member1_code) count++;
-                                if (p.member2_code) count++;
-                                if (p.member3_code) count++;
-                                if (p.member4_code) count++;
-                                if (p.member5_code) count++;
-                                return total + count;
-                            }, 0)}</p>
+                            <p class="text-2xl font-bold">${projectsData.length}</p>
                         </div>
-                        <p class="text-xs text-pink-100">팀 구성원 수</p>
+                        <p class="text-xs text-pink-100">팀 프로젝트</p>
                     </div>
                 </div>
                 
@@ -928,9 +892,7 @@ async function loadDashboard() {
                     data: {
                         labels: last7Days.map(d => {
                             const date = new Date(d.date);
-                            const days = ['일', '월', '화', '수', '목', '금', '토'];
-                            const dayName = days[date.getDay()];
-                            return (date.getMonth() + 1) + '/' + date.getDate() + ' (' + dayName + ')';
+                            return (date.getMonth() + 1) + '/' + date.getDate();
                         }),
                         datasets: [{
                             label: '상담 건수',
@@ -1143,33 +1105,6 @@ function renderStudents() {
                 </div>
             </div>
             
-            <!-- 필터 영역 -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div>
-                    <label class="block text-gray-700 mb-2">정렬</label>
-                    <select id="student-sort" class="w-full border rounded px-3 py-2" onchange="window.renderStudents()">
-                        <option value="name">이름순</option>
-                        <option value="course">과정순</option>
-                        <option value="campus">캠퍼스순</option>
-                        <option value="final_school">최종학교순</option>
-                        <option value="birth_date">생년월일순</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-gray-700 mb-2">과정 필터</label>
-                    <select id="student-course-filter" class="w-full border rounded px-3 py-2" onchange="window.renderStudents()">
-                        <option value="">-- 전체 과정 --</option>
-                        ${courses.sort((a, b) => (a.name || a.code).localeCompare(b.name || b.code, 'ko')).map(c => `
-                            <option value="${c.code}">${c.name || c.code}</option>
-                        `).join('')}
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-gray-700 mb-2">검색 (이름, 학생코드)</label>
-                    <input type="text" id="student-search" placeholder="검색어 입력..." class="w-full border rounded px-3 py-2" onkeyup="window.renderStudents()">
-                </div>
-            </div>
-            
             <div id="student-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg"></div>
             <div id="excel-upload" class="hidden mb-6 p-4 bg-purple-50 rounded-lg"></div>
             
@@ -1177,7 +1112,6 @@ function renderStudents() {
                 <table class="min-w-full bg-white">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="px-2 py-2 text-center w-12">사진</th>
                             <th class="px-4 py-2 text-left">학생코드</th>
                             <th class="px-4 py-2 text-left">이름</th>
                             <th class="px-4 py-2 text-left">생년월일</th>
@@ -1190,53 +1124,13 @@ function renderStudents() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${(() => {
-                            // 필터와 정렬 적용
-                            let filteredStudents = [...students];
+                        ${students.map(student => {
+                            // 과정 정보 찾기
+                            const course = courses.find(c => c.code === student.course_code);
+                            const courseDisplay = course ? `${course.code} - ${course.name || course.code}` : (student.course_code || '-');
                             
-                            // 과정 필터
-                            const courseFilter = document.getElementById('student-course-filter')?.value;
-                            if (courseFilter) {
-                                filteredStudents = filteredStudents.filter(s => s.course_code === courseFilter);
-                            }
-                            
-                            // 검색 필터
-                            const searchText = document.getElementById('student-search')?.value.toLowerCase();
-                            if (searchText) {
-                                filteredStudents = filteredStudents.filter(s => 
-                                    (s.name && s.name.toLowerCase().includes(searchText)) ||
-                                    (s.code && s.code.toLowerCase().includes(searchText))
-                                );
-                            }
-                            
-                            // 정렬
-                            const sortBy = document.getElementById('student-sort')?.value || 'name';
-                            if (sortBy === 'name') {
-                                filteredStudents.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
-                            } else if (sortBy === 'course') {
-                                filteredStudents.sort((a, b) => (a.course_code || '').localeCompare(b.course_code || ''));
-                            } else if (sortBy === 'campus') {
-                                filteredStudents.sort((a, b) => (a.campus || '').localeCompare(b.campus || '', 'ko'));
-                            } else if (sortBy === 'final_school') {
-                                filteredStudents.sort((a, b) => (a.final_school || '').localeCompare(b.final_school || '', 'ko'));
-                            } else if (sortBy === 'birth_date') {
-                                filteredStudents.sort((a, b) => (a.birth_date || '').localeCompare(b.birth_date || ''));
-                            }
-                            
-                            return filteredStudents.map(student => {
-                                // 과정 정보 찾기
-                                const course = courses.find(c => c.code === student.course_code);
-                                const courseDisplay = course ? `${course.code} - ${course.name || course.code}` : (student.course_code || '-');
-                                
-                                return `
+                            return `
                             <tr class="border-b hover:bg-gray-50">
-                                <td class="px-2 py-2 text-center">
-                                    ${student.photo_urls && JSON.parse(student.photo_urls || '[]').length > 0 ? `
-                                        <i class="fas fa-camera text-green-600" title="${JSON.parse(student.photo_urls).length}개 사진"></i>
-                                    ` : `
-                                        <i class="fas fa-camera text-gray-300" title="사진 없음"></i>
-                                    `}
-                                </td>
                                 <td class="px-4 py-2 font-mono">${student.code}</td>
                                 <td class="px-4 py-2 font-semibold">${student.name}</td>
                                 <td class="px-4 py-2">${student.birth_date ? formatDateWithDay(student.birth_date) : '-'}</td>
@@ -1246,6 +1140,9 @@ function renderStudents() {
                                 <td class="px-4 py-2 text-sm text-blue-600">${courseDisplay}</td>
                                 <td class="px-4 py-2">${student.campus || '-'}</td>
                                 <td class="px-4 py-2">
+                                    ${student.photo_urls && JSON.parse(student.photo_urls || '[]').length > 0 ? `
+                                        <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(student.photo_urls).length}개 사진"></i>
+                                    ` : ''}
                                     <button onclick="window.viewStudent(${student.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="상세보기">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -1258,8 +1155,7 @@ function renderStudents() {
                                 </td>
                             </tr>
                         `;
-                            }).join('');
-                        })()}
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1853,8 +1749,7 @@ window.showSubjectForm = function(subjectCode = null) {
                         ${instructors.filter(inst => {
                             const typeInfo = instructorTypes.find(t => t.code === inst.instructor_type);
                             return typeInfo && typeInfo.type === '1. 주강사';
-                        }).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'))
-                        .map(inst => {
+                        }).map(inst => {
                             const typeInfo = instructorTypes.find(t => t.code === inst.instructor_type);
                             const typeName = typeInfo ? typeInfo.name : '';
                             const typeType = typeInfo ? typeInfo.type : '';
@@ -2117,7 +2012,6 @@ function renderCounselings() {
                     <table class="min-w-full bg-white border">
                         <thead class="bg-gray-100">
                             <tr>
-                                <th class="px-2 py-2 text-center text-xs w-12">사진</th>
                                 <th class="px-3 py-2 text-left text-xs">날짜</th>
                                 <th class="px-3 py-2 text-left text-xs">학생 (상담횟수)</th>
                                 <th class="px-3 py-2 text-left text-xs">상담선생님</th>
@@ -2132,13 +2026,6 @@ function renderCounselings() {
                                 const studentCounselingCount = counselings.filter(item => item.student_id === c.student_id).length;
                                 return `
                                 <tr class="border-t hover:bg-gray-50">
-                                    <td class="px-2 py-2 text-center text-xs">
-                                        ${c.photo_urls && JSON.parse(c.photo_urls || '[]').length > 0 ? `
-                                            <i class="fas fa-camera text-green-600" title="${JSON.parse(c.photo_urls).length}개 사진"></i>
-                                        ` : `
-                                            <i class="fas fa-camera text-gray-300" title="사진 없음"></i>
-                                        `}
-                                    </td>
                                     <td class="px-3 py-2 text-xs">${formatDateWithDay(c.consultation_date)}</td>
                                     <td class="px-3 py-2 text-xs">
                                         <button onclick="window.showStudentDetail(${c.student_id})" 
@@ -2171,6 +2058,9 @@ function renderCounselings() {
                                         </span>
                                     </td>
                                     <td class="px-3 py-2 text-xs">
+                                        ${c.photo_urls && JSON.parse(c.photo_urls || '[]').length > 0 ? `
+                                            <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(c.photo_urls).length}개 사진"></i>
+                                        ` : ''}
                                         <button onclick="window.editCounseling(${c.id})" class="text-blue-600 hover:text-blue-800 mr-2">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -2547,9 +2437,9 @@ window.showCounselingForm = function(counselingId = null) {
                     <label class="block text-gray-700 mb-2">학생 선택 *</label>
                     <select name="student_id" required class="w-full px-3 py-2 border rounded-lg">
                         <option value="">선택하세요</option>
-                        ${students.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko')).map(s => `
+                        ${students.map(s => `
                             <option value="${s.id}" ${existingCounseling?.student_id === s.id ? 'selected' : ''}>
-                                ${s.name}(${s.code}) - ${s.birth_date ? s.birth_date.split('T')[0] : '-'} - ${s.final_school || '-'}
+                                ${s.name} (${s.code})
                             </option>
                         `).join('')}
                     </select>
@@ -2568,8 +2458,7 @@ window.showCounselingForm = function(counselingId = null) {
                 <div>
                     <label class="block text-gray-700 mb-2">상담 날짜 *</label>
                     <input type="date" name="consultation_date" 
-                           value="${existingCounseling?.consultation_date?.substring(0, 10) || new Date().toISOString().split('T')[0]}" 
-                           placeholder="${new Date().toISOString().split('T')[0]}"
+                           value="${existingCounseling?.consultation_date?.substring(0, 10) || ''}" 
                            required class="w-full px-3 py-2 border rounded-lg">
                 </div>
                 <div>
@@ -2588,17 +2477,6 @@ window.showCounselingForm = function(counselingId = null) {
                         <option value="예정" ${existingCounseling?.status === '예정' ? 'selected' : ''}>예정</option>
                         <option value="완료" ${existingCounseling?.status === '완료' ? 'selected' : ''}>완료</option>
                         <option value="취소" ${existingCounseling?.status === '취소' ? 'selected' : ''}>취소</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-gray-700 mb-2">진로결정</label>
-                    <select name="career_decision" class="w-full px-3 py-2 border rounded-lg">
-                        <option value="">-- 선택 안 함 --</option>
-                        <option value="1. 학업" ${existingCounseling?.career_decision === '1. 학업' ? 'selected' : ''}>1. 학업</option>
-                        <option value="2. 취업" ${existingCounseling?.career_decision === '2. 취업' ? 'selected' : ''}>2. 취업</option>
-                        <option value="3. 창업" ${existingCounseling?.career_decision === '3. 창업' ? 'selected' : ''}>3. 창업</option>
-                        <option value="4. 미정" ${existingCounseling?.career_decision === '4. 미정' ? 'selected' : ''}>4. 미정</option>
-                        <option value="5. 기타" ${existingCounseling?.career_decision === '5. 기타' ? 'selected' : ''}>5. 기타</option>
                     </select>
                 </div>
                 <div class="col-span-2">
@@ -2701,8 +2579,7 @@ window.saveCounseling = async function(counselingId, autoSave = false) {
         main_topic: '', // 주제는 더 이상 사용하지 않음
         content: formData.get('content'),
         status: formData.get('status'),
-        photo_urls: photoUrls,  // 사진 URL 추가
-        career_decision: formData.get('career_decision') || null  // 진로결정 추가
+        photo_urls: photoUrls  // 사진 URL 추가
     };
     
     try {
@@ -3341,7 +3218,7 @@ function renderInstructors() {
             </div>
             
             <!-- 필터 영역 -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                     <label class="block text-gray-700 mb-2">강사구분 필터</label>
                     <select id="instructor-type-filter" class="w-full border rounded px-3 py-2" onchange="window.filterInstructors()">
@@ -3351,13 +3228,6 @@ function renderInstructors() {
                             .map(type => `
                             <option value="${type.code}">${type.name}</option>
                         `).join('')}
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-gray-700 mb-2">정렬</label>
-                    <select id="instructor-sort" class="w-full border rounded px-3 py-2" onchange="window.filterInstructors()">
-                        <option value="name">이름순</option>
-                        <option value="code">강사코드순</option>
                     </select>
                 </div>
                 <div>
@@ -3437,7 +3307,6 @@ function renderInstructors() {
                 <table class="min-w-full bg-white">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="px-2 py-2 text-center w-12">사진</th>
                             <th class="px-4 py-2 text-left">강사코드</th>
                             <th class="px-4 py-2 text-left">이름</th>
                             <th class="px-4 py-2 text-left">전공</th>
@@ -3451,13 +3320,6 @@ function renderInstructors() {
                     <tbody id="instructor-list">
                         ${instructors.map(inst => `
                             <tr class="border-t hover:bg-gray-50">
-                                <td class="px-2 py-2 text-center">
-                                    ${inst.photo_urls && JSON.parse(inst.photo_urls || '[]').length > 0 ? `
-                                        <i class="fas fa-camera text-green-600" title="${JSON.parse(inst.photo_urls).length}개 사진"></i>
-                                    ` : `
-                                        <i class="fas fa-camera text-gray-300" title="사진 없음"></i>
-                                    `}
-                                </td>
                                 <td class="px-4 py-2">${inst.code}</td>
                                 <td class="px-4 py-2">${inst.name}</td>
                                 <td class="px-4 py-2">${inst.major || ''}</td>
@@ -3472,6 +3334,9 @@ function renderInstructors() {
                                 <td class="px-4 py-2">${inst.phone || ''}</td>
                                 <td class="px-4 py-2">${inst.email || ''}</td>
                                 <td class="px-4 py-2">
+                                    ${inst.photo_urls && JSON.parse(inst.photo_urls || '[]').length > 0 ? `
+                                        <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(inst.photo_urls).length}개 사진"></i>
+                                    ` : ''}
                                     <button onclick="window.editInstructor('${inst.code}')" class="text-blue-600 hover:text-blue-800 mr-2" title="수정">
                                         <i class="fas fa-edit"></i>
                                     </button>
@@ -3517,19 +3382,11 @@ window.filterInstructors = async function() {
             );
         }
         
-        // 정렬 적용
-        const sortBy = document.getElementById('instructor-sort').value;
-        if (sortBy === 'name') {
-            filteredInstructors.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
-        } else if (sortBy === 'code') {
-            filteredInstructors.sort((a, b) => (a.code || '').localeCompare(b.code || ''));
-        }
-        
         const tbody = document.getElementById('instructor-list');
         if (filteredInstructors.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="9" class="px-4 py-8 text-center text-gray-500">
+                    <td colspan="8" class="px-4 py-8 text-center text-gray-500">
                         <i class="fas fa-search mr-2"></i>
                         조건에 맞는 강사가 없습니다
                     </td>
@@ -3540,13 +3397,6 @@ window.filterInstructors = async function() {
         
         tbody.innerHTML = filteredInstructors.map(inst => `
             <tr class="border-t hover:bg-gray-50">
-                <td class="px-2 py-2 text-center">
-                    ${inst.photo_urls && JSON.parse(inst.photo_urls || '[]').length > 0 ? `
-                        <i class="fas fa-camera text-green-600" title="${JSON.parse(inst.photo_urls).length}개 사진"></i>
-                    ` : `
-                        <i class="fas fa-camera text-gray-300" title="사진 없음"></i>
-                    `}
-                </td>
                 <td class="px-4 py-2">${inst.code}</td>
                 <td class="px-4 py-2">${inst.name}</td>
                 <td class="px-4 py-2">${inst.major || ''}</td>
@@ -3555,6 +3405,9 @@ window.filterInstructors = async function() {
                 <td class="px-4 py-2">${inst.phone || ''}</td>
                 <td class="px-4 py-2">${inst.email || ''}</td>
                 <td class="px-4 py-2">
+                    ${inst.photo_urls && JSON.parse(inst.photo_urls || '[]').length > 0 ? `
+                        <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(inst.photo_urls).length}개 사진"></i>
+                    ` : ''}
                     <button onclick="window.editInstructor('${inst.code}')" class="text-blue-600 hover:text-blue-800 mr-2" title="수정">
                         <i class="fas fa-edit"></i>
                     </button>
@@ -6226,7 +6079,6 @@ function renderTrainingLogsTable(timetables) {
             <table class="min-w-full bg-white border">
                 <thead class="bg-gray-100">
                     <tr>
-                        <th class="px-2 py-2 text-center text-xs w-12">사진</th>
                         <th class="px-3 py-2 text-left text-xs">날짜</th>
                         <th class="px-3 py-2 text-left text-xs">주차</th>
                         <th class="px-3 py-2 text-left text-xs">일차</th>
@@ -6270,13 +6122,6 @@ function renderTrainingLogsTable(timetables) {
                         
                         return `
                             <tr class="border-b hover:bg-gray-50">
-                                <td class="px-2 py-2 text-center text-xs">
-                                    ${hasLog && tt.training_log_photo_urls && JSON.parse(tt.training_log_photo_urls || '[]').length > 0 ? `
-                                        <i class="fas fa-camera text-green-600" title="${JSON.parse(tt.training_log_photo_urls).length}개 사진"></i>
-                                    ` : `
-                                        <i class="fas fa-camera text-gray-300" title="사진 없음"></i>
-                                    `}
-                                </td>
                                 <td class="px-3 py-2 text-xs">${tt.class_date} (${dayOfWeek})</td>
                                 <td class="px-3 py-2 text-xs">${weekNumber}주차</td>
                                 <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
@@ -6306,6 +6151,9 @@ function renderTrainingLogsTable(timetables) {
                                     `}
                                 </td>
                                 <td class="px-3 py-2 text-xs">
+                                    ${hasLog && tt.training_log_photo_urls && JSON.parse(tt.training_log_photo_urls || '[]').length > 0 ? `
+                                        <i class="fas fa-camera text-green-600 mr-2" title="${JSON.parse(tt.training_log_photo_urls).length}개 사진"></i>
+                                    ` : ''}
                                     ${hasLog ? `
                                         <button onclick="window.editTrainingLog(${tt.training_log_id}, ${tt.id})" class="text-blue-600 hover:text-blue-800 mr-2">
                                             <i class="fas fa-edit"></i> 수정

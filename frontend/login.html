@@ -125,7 +125,7 @@
     
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     <script>
-        const API_BASE_URL = 'https://8000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai';
+        const API_BASE_URL = ''; // 프록시 사용으로 상대 경로
         
         // 로그인 폼
         const loginForm = document.getElementById('loginForm');
@@ -241,15 +241,14 @@
             alertMessage.classList.remove('hidden');
         }
         
-        // PWA Service Worker 등록
+        // PWA Service Worker 비활성화
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js')
-                .then((registration) => {
-                    console.log('✅ Service Worker registered');
-                })
-                .catch((error) => {
-                    console.error('❌ Service Worker registration failed:', error);
-                });
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                    console.log('✅ Service Worker unregistered');
+                }
+            });
         }
     </script>
 </body>
