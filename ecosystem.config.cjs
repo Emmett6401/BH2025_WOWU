@@ -1,12 +1,26 @@
 module.exports = {
   apps: [
     {
-      name: 'webapp',
-      script: 'npx',
-      args: 'wrangler pages dev dist --d1=webapp-production --local --ip 0.0.0.0 --port 3000',
+      name: 'frontend-server',
+      script: 'node',
+      args: 'frontend/proxy-server.cjs',
+      cwd: '/home/user/webapp',
       env: {
         NODE_ENV: 'development',
         PORT: 3000
+      },
+      watch: false,
+      instances: 1,
+      exec_mode: 'fork'
+    },
+    {
+      name: 'bhhs-backend',
+      script: 'python3',
+      args: 'backend/main.py',
+      cwd: '/home/user/webapp',
+      interpreter: 'none',
+      env: {
+        PYTHONUNBUFFERED: '1'
       },
       watch: false,
       instances: 1,

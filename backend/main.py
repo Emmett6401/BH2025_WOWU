@@ -21,7 +21,10 @@ load_dotenv()
 app = FastAPI(title="학급 관리 시스템 API")
 
 # 정적 파일 서빙 (프론트엔드)
-app.mount("/static", StaticFiles(directory="../frontend"), name="static")
+import os
+frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+if os.path.exists(frontend_dir):
+    app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
 
 # CORS 설정
 app.add_middleware(
