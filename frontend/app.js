@@ -5649,17 +5649,17 @@ window.saveProject = async function(existingCode, autoSave = false) {
         if (existingCode) {
             await axios.put(`${API_BASE_URL}/api/projects/${existingCode}`, data);
             if (!autoSave) {
+                window.hideProjectForm();
+                await loadProjects();
                 window.showAlert('팀이 수정되었습니다.');
             }
         } else {
             await axios.post(`${API_BASE_URL}/api/projects`, data);
             if (!autoSave) {
+                window.hideProjectForm();
+                await loadProjects();
                 window.showAlert('팀이 추가되었습니다.');
             }
-        }
-        if (!autoSave) {
-            window.hideProjectForm();
-            loadProjects();
         }
     } catch (error) {
         window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
