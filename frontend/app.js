@@ -789,30 +789,6 @@ async function loadDashboard() {
                     </div>
                 </div>
                 
-                <!-- 과정별 학생 현황 (컴팩트) -->
-                <div class="bg-white rounded-lg shadow p-3 mb-3">
-                    <h3 class="text-sm font-bold text-gray-800 mb-2">
-                        <i class="fas fa-school mr-2 text-purple-600"></i>과정별 학생 현황
-                    </h3>
-                    <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
-                        ${coursesData.slice(0, 8).map(c => `
-                            <div class="border rounded p-2 hover:bg-gray-50 cursor-pointer transition" onclick="showTab('courses')">
-                                <p class="text-xs text-gray-500 truncate mb-1" title="${c.name || c.code}">${c.name || c.code}</p>
-                                <p class="text-xl font-bold text-blue-600">${studentsByCourse[c.code] || 0}</p>
-                                <p class="text-xs text-gray-600">명</p>
-                            </div>
-                        `).join('')}
-                        ${coursesData.length > 8 ? `
-                            <div class="border rounded p-2 hover:bg-gray-50 cursor-pointer transition flex items-center justify-center" onclick="showTab('courses')">
-                                <div class="text-center">
-                                    <i class="fas fa-plus-circle text-xl text-gray-400"></i>
-                                    <p class="text-xs text-gray-500 mt-1">+${coursesData.length - 8}</p>
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-                </div>
-                
                 <!-- 2열 그리드 (컴팩트) -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
                     <!-- 오늘의 시간표 -->
