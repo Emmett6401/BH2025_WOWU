@@ -280,12 +280,13 @@ window.showPhotoViewer = function(photos, startIndex = 0) {
                 </button>
             ` : ''}
             
-            <div class="flex flex-col items-center justify-center max-w-[90vw] max-h-[90vh]">
+            <div class="flex flex-col items-center justify-center w-full h-full px-16 py-8">
                 <img id="viewer-image" src="${photoUrls[currentIndex]}" 
-                     class="max-w-full max-h-[85vh] object-contain rounded" 
+                     class="w-auto h-auto max-w-full max-h-full object-contain" 
+                     style="max-width: 90vw; max-height: 85vh;"
                      alt="사진">
                 ${photoUrls.length > 1 ? `
-                    <div class="text-white mt-4 text-lg">
+                    <div class="text-white mt-4 text-xl font-bold">
                         <span id="photo-counter">${currentIndex + 1}</span> / ${photoUrls.length}
                     </div>
                 ` : ''}
@@ -5936,12 +5937,14 @@ let selectedProjectForLogs = null;
 async function loadTeamActivityLogs() {
     try {
         window.showLoading('팀 활동일지 데이터를 불러오는 중...');
-        const [projectsRes, logsRes] = await Promise.all([
+        const [projectsRes, logsRes, instructorsRes] = await Promise.all([
             axios.get(`${API_BASE_URL}/api/projects`),
-            axios.get(`${API_BASE_URL}/api/team-activity-logs`)
+            axios.get(`${API_BASE_URL}/api/team-activity-logs`),
+            axios.get(`${API_BASE_URL}/api/instructors`)
         ]);
         projects = projectsRes.data;
         teamActivityLogs = logsRes.data;
+        instructors = instructorsRes.data;
         renderTeamActivityLogs();
         window.hideLoading();
     } catch (error) {
