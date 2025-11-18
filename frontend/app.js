@@ -245,6 +245,97 @@ function createPaginationHTML(page, itemsPerPage, totalItems, onPageChange, onIt
     return paginationHTML;
 }
 
+// ==================== 사진 뷰어 ====================
+window.showPhotoViewer = function(photos, startIndex = 0) {
+    // photos는 URL 배열 또는 문자열 (JSON 배열)
+    let photoUrls = [];
+    if (typeof photos === 'string') {
+        try {
+            photoUrls = JSON.parse(photos);
+        } catch (e) {
+            photoUrls = [photos];
+        }
+    } else if (Array.isArray(photos)) {
+        photoUrls = photos;
+    } else {
+        photoUrls = [photos];
+    }
+    
+    if (photoUrls.length === 0) return;
+    
+    let currentIndex = startIndex;
+    
+    const viewerHtml = `
+        <div id="photo-viewer" class="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[100]">
+            <button onclick="window.closePhotoViewer()" class="absolute top-4 right-4 text-white text-3xl hover:text-gray-300 z-10">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            ${photoUrls.length > 1 ? `
+                <button onclick="window.prevPhoto()" class="absolute left-4 top-1/2 -translate-y-1/2 text-white text-5xl hover:text-gray-300 z-10">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button onclick="window.nextPhoto()" class="absolute right-4 top-1/2 -translate-y-1/2 text-white text-5xl hover:text-gray-300 z-10">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            ` : ''}
+            
+            <div class="flex flex-col items-center justify-center max-w-[90vw] max-h-[90vh]">
+                <img id="viewer-image" src="${photoUrls[currentIndex]}" 
+                     class="max-w-full max-h-[85vh] object-contain rounded" 
+                     alt="사진">
+                ${photoUrls.length > 1 ? `
+                    <div class="text-white mt-4 text-lg">
+                        <span id="photo-counter">${currentIndex + 1}</span> / ${photoUrls.length}
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', viewerHtml);
+    
+    // 전역 변수로 현재 사진 정보 저장
+    window.currentPhotoIndex = currentIndex;
+    window.photoUrlsList = photoUrls;
+    
+    // ESC 키로 닫기
+    window.photoViewerKeyHandler = function(e) {
+        if (e.key === 'Escape') {
+            window.closePhotoViewer();
+        } else if (e.key === 'ArrowLeft') {
+            window.prevPhoto();
+        } else if (e.key === 'ArrowRight') {
+            window.nextPhoto();
+        }
+    };
+    document.addEventListener('keydown', window.photoViewerKeyHandler);
+};
+
+window.closePhotoViewer = function() {
+    const viewer = document.getElementById('photo-viewer');
+    if (viewer) viewer.remove();
+    if (window.photoViewerKeyHandler) {
+        document.removeEventListener('keydown', window.photoViewerKeyHandler);
+    }
+};
+
+window.prevPhoto = function() {
+    if (!window.photoUrlsList || window.photoUrlsList.length <= 1) return;
+    window.currentPhotoIndex = (window.currentPhotoIndex - 1 + window.photoUrlsList.length) % window.photoUrlsList.length;
+    document.getElementById('viewer-image').src = window.photoUrlsList[window.currentPhotoIndex];
+    const counter = document.getElementById('photo-counter');
+    if (counter) counter.textContent = window.currentPhotoIndex + 1;
+};
+
+window.nextPhoto = function() {
+    if (!window.photoUrlsList || window.photoUrlsList.length <= 1) return;
+    window.currentPhotoIndex = (window.currentPhotoIndex + 1) % window.photoUrlsList.length;
+    document.getElementById('viewer-image').src = window.photoUrlsList[window.currentPhotoIndex];
+    const counter = document.getElementById('photo-counter');
+    if (counter) counter.textContent = window.currentPhotoIndex + 1;
+};
+
 function generatePageButtons(currentPage, totalPages, onPageChange) {
     let buttons = '';
     const maxButtons = 5;
@@ -1401,7 +1492,11 @@ function renderStudents() {
                             <tr class="border-b hover:bg-gray-50">
                                 <td class="px-2 py-2 text-center">
                                     ${student.photo_urls && JSON.parse(student.photo_urls || '[]').length > 0 ? `
-                                        <i class="fas fa-camera text-green-600" title="${JSON.parse(student.photo_urls).length}개 사진"></i>
+                                        <button onclick='window.showPhotoViewer(${JSON.stringify(student.photo_urls)}, 0)' 
+                                                class="text-green-600 hover:text-green-700" 
+                                                title="${JSON.parse(student.photo_urls).length}개 사진">
+                                            <i class="fas fa-camera"></i>
+                                        </button>
                                     ` : `
                                         <i class="fas fa-camera text-gray-300" title="사진 없음"></i>
                                     `}
@@ -2302,7 +2397,11 @@ function renderCounselings() {
                                 <tr class="border-t hover:bg-gray-50">
                                     <td class="px-2 py-2 text-center text-xs">
                                         ${c.photo_urls && JSON.parse(c.photo_urls || '[]').length > 0 ? `
-                                            <i class="fas fa-camera text-green-600" title="${JSON.parse(c.photo_urls).length}개 사진"></i>
+                                            <button onclick='window.showPhotoViewer(${JSON.stringify(c.photo_urls)}, 0)' 
+                                                    class="text-green-600 hover:text-green-700" 
+                                                    title="${JSON.parse(c.photo_urls).length}개 사진">
+                                                <i class="fas fa-camera"></i>
+                                            </button>
                                         ` : `
                                             <i class="fas fa-camera text-gray-300" title="사진 없음"></i>
                                         `}
@@ -3652,7 +3751,11 @@ function renderInstructors() {
                             <tr class="border-t hover:bg-gray-50">
                                 <td class="px-2 py-2 text-center">
                                     ${inst.photo_urls && JSON.parse(inst.photo_urls || '[]').length > 0 ? `
-                                        <i class="fas fa-camera text-green-600" title="${JSON.parse(inst.photo_urls).length}개 사진"></i>
+                                        <button onclick='window.showPhotoViewer(${JSON.stringify(inst.photo_urls)}, 0)' 
+                                                class="text-green-600 hover:text-green-700" 
+                                                title="${JSON.parse(inst.photo_urls).length}개 사진">
+                                            <i class="fas fa-camera"></i>
+                                        </button>
                                     ` : `
                                         <i class="fas fa-camera text-gray-300" title="사진 없음"></i>
                                     `}
@@ -5881,6 +5984,9 @@ function renderTeamActivityLogs() {
             </div>
         </div>
     `;
+    
+    // 초기 로딩 시 전체 팀 활동일지 표시
+    window.filterTeamActivityLogs();
 }
 
 window.filterTeamActivityLogs = function() {
@@ -5924,6 +6030,13 @@ window.filterTeamActivityLogs = function() {
                                 <span class="text-sm font-semibold text-gray-700">${log.activity_date}</span>
                                 <span class="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">${log.activity_type || '팀 활동'}</span>
                                 ${log.instructor_code ? `<span class="ml-2 text-xs text-gray-600"><i class="fas fa-user mr-1"></i>${instructors.find(i => i.code === log.instructor_code)?.name || log.instructor_code}</span>` : ''}
+                                ${log.photo_urls && JSON.parse(log.photo_urls || '[]').length > 0 ? `
+                                    <button onclick='window.showPhotoViewer(${JSON.stringify(log.photo_urls)}, 0)' 
+                                            class="ml-2 text-green-600 hover:text-green-700 text-sm" 
+                                            title="${JSON.parse(log.photo_urls).length}개 사진">
+                                        <i class="fas fa-camera"></i>
+                                    </button>
+                                ` : ''}
                             </div>
                             <div class="space-x-2">
                                 <button onclick="window.editTeamActivityLog(${log.id})" class="text-blue-600 hover:text-blue-800 text-sm">
@@ -6292,14 +6405,18 @@ function renderTimetableList() {
         return;
     }
     
+    // 오늘 날짜 계산 (한국 시간 기준)
+    const today = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+    
     tbody.innerHTML = paginatedData.map(tt => {
         const duration = calculateDuration(tt.start_time, tt.end_time);
         const subject = subjects.find(s => s.code === tt.subject_code);
         const totalHours = subject ? subject.hours : 0;
+        const isToday = tt.class_date === today;
         
         return `
-        <tr class="border-t hover:bg-gray-50">
-            <td class="px-3 py-2 text-xs">${tt.class_date}</td>
+        <tr class="border-t hover:bg-gray-50 ${isToday ? 'bg-yellow-100 border-l-4 border-yellow-500' : ''}" ${isToday ? 'id="today-timetable-row"' : ''}>
+            <td class="px-3 py-2 text-xs ${isToday ? 'font-bold text-yellow-900' : ''}">${tt.class_date}${isToday ? ' <span class="text-yellow-600">(오늘)</span>' : ''}</td>
             <td class="px-3 py-2 text-xs">${tt.week_number || '-'}주차</td>
             <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
             <td class="px-3 py-2 text-xs">${tt.subject_name || tt.subject_code || '-'}</td>
@@ -6340,6 +6457,14 @@ function renderTimetableList() {
         'window.changeTimetableItemsPerPage(event)'
     );
     document.getElementById('timetable-pagination').innerHTML = paginationHTML;
+    
+    // 오늘 날짜 행으로 자동 스크롤
+    setTimeout(() => {
+        const todayRow = document.getElementById('today-timetable-row');
+        if (todayRow) {
+            todayRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 100);
 }
 
 async function loadTimetables() {
@@ -6950,7 +7075,11 @@ function renderTrainingLogsTable(timetables) {
                             <tr class="border-b hover:bg-gray-50">
                                 <td class="px-2 py-2 text-center text-xs">
                                     ${hasLog && tt.training_log_photo_urls && JSON.parse(tt.training_log_photo_urls || '[]').length > 0 ? `
-                                        <i class="fas fa-camera text-green-600" title="${JSON.parse(tt.training_log_photo_urls).length}개 사진"></i>
+                                        <button onclick='window.showPhotoViewer(${JSON.stringify(tt.training_log_photo_urls)}, 0)' 
+                                                class="text-green-600 hover:text-green-700" 
+                                                title="${JSON.parse(tt.training_log_photo_urls).length}개 사진">
+                                            <i class="fas fa-camera"></i>
+                                        </button>
                                     ` : `
                                         <i class="fas fa-camera text-gray-300" title="사진 없음"></i>
                                     `}
