@@ -887,7 +887,6 @@ async function loadDashboard() {
                                     ` : ''}
                                 </div>
                             `}).join('') : `
-                            `).join('') : `
                                 <div class="text-center py-4 text-gray-400">
                                     <p class="text-xs">프로젝트 없음</p>
                                 </div>
