@@ -652,16 +652,7 @@ async function loadDashboard() {
                     <div class="bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('projects')">
                         <div class="flex items-center justify-between mb-1">
                             <i class="fas fa-users text-xl"></i>
-                            <p class="text-2xl font-bold">${projectsData.reduce((total, p) => {
-                                let count = 0;
-                                if (p.member1_code) count++;
-                                if (p.member2_code) count++;
-                                if (p.member3_code) count++;
-                                if (p.member4_code) count++;
-                                if (p.member5_code) count++;
-                                if (p.member6_code) count++;
-                                return total + count;
-                            }, 0)}</p>
+                            <p class="text-2xl font-bold">${projectsData.length}</p>
                         </div>
                         <p class="text-xs text-pink-100">활동팀</p>
                     </div>
@@ -1221,6 +1212,15 @@ window.showTab = function(tab) {
     // 해당 탭 콘텐츠 로드
     switch(tab) {
         case 'dashboard':
+            // 대시보드는 항상 최신 데이터 로드 (캐시 무효화)
+            localStorage.removeItem('cache_students');
+            localStorage.removeItem('cache_instructors');
+            localStorage.removeItem('cache_courses');
+            localStorage.removeItem('cache_counselings');
+            localStorage.removeItem('cache_timetables');
+            localStorage.removeItem('cache_projects');
+            localStorage.removeItem('cache_training-logs');
+            localStorage.removeItem('cache_team-activity-logs');
             loadDashboard();
             break;
         case 'instructor-codes':
@@ -6418,9 +6418,13 @@ function renderTimetables() {
                                     과정을 선택하여 시간표를 조회하세요
                                 </td>
                             </tr>
-                        ` : timetables.slice(0, 100).map(tt => `
-                            <tr class="border-t hover:bg-gray-50">
-                                <td class="px-3 py-2 text-xs">${tt.class_date}</td>
+                        ` : timetables.slice(0, 100).map(tt => {
+                            // 오늘 날짜 계산 (한국 시간 기준)
+                            const today = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+                            const isToday = tt.class_date === today;
+                            return `
+                            <tr class="border-t hover:bg-gray-50 ${isToday ? 'bg-yellow-100 border-l-4 border-yellow-500' : ''}" ${isToday ? 'id="today-timetable-row"' : ''}>
+                                <td class="px-3 py-2 text-xs ${isToday ? 'font-bold text-yellow-900' : ''}">${tt.class_date}${isToday ? ' <span class="text-yellow-600">(오늘)</span>' : ''}</td>
                                 <td class="px-3 py-2 text-xs">${tt.week_number || '-'}주차</td>
                                 <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
                                 <td class="px-3 py-2 text-xs">${tt.subject_name || tt.subject_code || '-'}</td>
@@ -6451,7 +6455,8 @@ function renderTimetables() {
                                     </button>
                                 </td>
                             </tr>
-                        `).join('')}
+                        `;
+                        }).join('')}
                         ${timetables.length > 100 ? `<tr><td colspan="9" class="px-4 py-2 text-center text-gray-500">처음 100개만 표시됩니다 (전체: ${timetables.length})</td></tr>` : ''}
                     </tbody>
                 </table>
@@ -6467,6 +6472,14 @@ function renderTimetables() {
     pagination.timetables.totalItems = timetables.length;
     pagination.timetables.currentPage = 1;
     renderTimetableList();
+    
+    // 오늘 날짜 행으로 자동 스크롤
+    setTimeout(() => {
+        const todayRow = document.getElementById('today-timetable-row');
+        if (todayRow) {
+            todayRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 100);
 }
 
 function formatTime(timeValue) {
