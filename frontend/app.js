@@ -6027,52 +6027,62 @@ window.filterTeamActivityLogs = function() {
     document.getElementById('team-activity-logs-list').innerHTML = `
         <h3 class="text-lg font-semibold mb-4">${title} (${filteredLogs.length}건)</h3>
         ${filteredLogs.length > 0 ? `
-            <div class="space-y-4">
-                ${filteredLogs.map(log => `
-                    <div class="border rounded-lg p-4 hover:bg-gray-50">
-                        <div class="flex items-start justify-between mb-2">
-                            <div>
-                                ${!selectedProjectForLogs ? `<span class="text-sm font-semibold text-pink-600 mr-2">[${log.project_name}]</span>` : ''}
-                                <span class="text-sm font-semibold text-gray-700">${log.activity_date}</span>
-                                <span class="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">${log.activity_type || '팀 활동'}</span>
-                                ${log.instructor_code ? `<span class="ml-2 text-xs text-gray-600"><i class="fas fa-user mr-1"></i>${instructors.find(i => i.code === log.instructor_code)?.name || log.instructor_code}</span>` : ''}
-                                ${log.photo_urls && JSON.parse(log.photo_urls || '[]').length > 0 ? `
-                                    <button onclick='window.showPhotoViewer(${JSON.stringify(log.photo_urls)}, 0)' 
-                                            class="ml-2 text-green-600 hover:text-green-700 text-sm" 
-                                            title="${JSON.parse(log.photo_urls).length}개 사진">
-                                        <i class="fas fa-camera"></i>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs border">사진</th>
+                            ${!selectedProjectForLogs ? '<th class="px-3 py-2 text-left text-xs border">팀명</th>' : ''}
+                            <th class="px-3 py-2 text-left text-xs border">날짜</th>
+                            <th class="px-3 py-2 text-left text-xs border">유형</th>
+                            <th class="px-3 py-2 text-left text-xs border">작성자</th>
+                            <th class="px-3 py-2 text-left text-xs border">활동내용</th>
+                            <th class="px-3 py-2 text-left text-xs border">성과</th>
+                            <th class="px-3 py-2 text-left text-xs border">다음계획</th>
+                            <th class="px-3 py-2 text-left text-xs border">작업</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filteredLogs.map(log => `
+                            <tr class="border-t hover:bg-gray-50">
+                                <td class="px-2 py-2 text-center text-xs border">
+                                    ${log.photo_urls && JSON.parse(log.photo_urls || '[]').length > 0 ? `
+                                        <button onclick='window.showPhotoViewer(${JSON.stringify(log.photo_urls)}, 0)' 
+                                                class="text-green-600 hover:text-green-700" 
+                                                title="${JSON.parse(log.photo_urls).length}개 사진">
+                                            <i class="fas fa-camera"></i>
+                                        </button>
+                                    ` : `
+                                        <i class="fas fa-camera text-gray-300"></i>
+                                    `}
+                                </td>
+                                ${!selectedProjectForLogs ? `<td class="px-3 py-2 text-xs border"><span class="font-semibold text-pink-600">${log.project_name}</span></td>` : ''}
+                                <td class="px-3 py-2 text-xs border">${log.activity_date}</td>
+                                <td class="px-3 py-2 text-xs border">
+                                    <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">${log.activity_type || '팀 활동'}</span>
+                                </td>
+                                <td class="px-3 py-2 text-xs border">${log.instructor_code ? (instructors.find(i => i.code === log.instructor_code)?.name || log.instructor_code) : '-'}</td>
+                                <td class="px-3 py-2 text-xs border max-w-xs">
+                                    <div class="truncate" title="${(log.content || '-').replace(/"/g, '&quot;')}">${log.content || '-'}</div>
+                                </td>
+                                <td class="px-3 py-2 text-xs border max-w-xs">
+                                    <div class="truncate" title="${(log.achievements || '-').replace(/"/g, '&quot;')}">${log.achievements || '-'}</div>
+                                </td>
+                                <td class="px-3 py-2 text-xs border max-w-xs">
+                                    <div class="truncate" title="${(log.next_plan || '-').replace(/"/g, '&quot;')}">${log.next_plan || '-'}</div>
+                                </td>
+                                <td class="px-3 py-2 text-xs border">
+                                    <button onclick="window.editTeamActivityLog(${log.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="수정">
+                                        <i class="fas fa-edit"></i>
                                     </button>
-                                ` : ''}
-                            </div>
-                            <div class="space-x-2">
-                                <button onclick="window.editTeamActivityLog(${log.id})" class="text-blue-600 hover:text-blue-800 text-sm">
-                                    <i class="fas fa-edit mr-1"></i>수정
-                                </button>
-                                <button onclick="window.deleteTeamActivityLog(${log.id})" class="text-red-600 hover:text-red-800 text-sm">
-                                    <i class="fas fa-trash mr-1"></i>삭제
-                                </button>
-                            </div>
-                        </div>
-                        <div class="text-sm text-gray-800 mb-2">
-                            <strong>활동내용:</strong> ${log.content || '-'}
-                        </div>
-                        ${log.achievements ? `
-                            <div class="text-sm text-gray-600 mb-2">
-                                <strong>성과:</strong> ${log.achievements}
-                            </div>
-                        ` : ''}
-                        ${log.next_plan ? `
-                            <div class="text-sm text-gray-600 mb-2">
-                                <strong>다음계획:</strong> ${log.next_plan}
-                            </div>
-                        ` : ''}
-                        ${log.notes ? `
-                            <div class="text-sm text-gray-500">
-                                <strong>비고:</strong> ${log.notes}
-                            </div>
-                        ` : ''}
-                    </div>
-                `).join('')}
+                                    <button onclick="window.deleteTeamActivityLog(${log.id})" class="text-red-600 hover:text-red-800" title="삭제">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
             </div>
         ` : `
             <p class="text-gray-500 text-center py-8">작성된 활동일지가 없습니다</p>
