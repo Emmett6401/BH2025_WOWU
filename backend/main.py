@@ -1120,6 +1120,7 @@ async def create_project(data: dict):
                                  member3_name, member3_phone, member3_code,
                                  member4_name, member4_phone, member4_code,
                                  member5_name, member5_phone, member5_code,
+                                 member6_name, member6_phone, member6_code,
                                  account1_name, account1_id, account1_pw,
                                  account2_name, account2_id, account2_pw,
                                  account3_name, account3_id, account3_pw,
@@ -1127,7 +1128,7 @@ async def create_project(data: dict):
                                  account5_name, account5_id, account5_pw,
                                  photo_urls)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
             data['code'], data['name'], data.get('group_type'), data.get('course_code'),
@@ -1137,6 +1138,7 @@ async def create_project(data: dict):
             data.get('member3_name'), data.get('member3_phone'), data.get('member3_code'),
             data.get('member4_name'), data.get('member4_phone'), data.get('member4_code'),
             data.get('member5_name'), data.get('member5_phone'), data.get('member5_code'),
+            data.get('member6_name'), data.get('member6_phone'), data.get('member6_code'),
             data.get('account1_name'), data.get('account1_id'), data.get('account1_pw'),
             data.get('account2_name'), data.get('account2_id'), data.get('account2_pw'),
             data.get('account3_name'), data.get('account3_id'), data.get('account3_pw'),
@@ -1167,6 +1169,7 @@ async def update_project(code: str, data: dict):
                 member3_name = %s, member3_phone = %s, member3_code = %s,
                 member4_name = %s, member4_phone = %s, member4_code = %s,
                 member5_name = %s, member5_phone = %s, member5_code = %s,
+                member6_name = %s, member6_phone = %s, member6_code = %s,
                 account1_name = %s, account1_id = %s, account1_pw = %s,
                 account2_name = %s, account2_id = %s, account2_pw = %s,
                 account3_name = %s, account3_id = %s, account3_pw = %s,
@@ -1183,6 +1186,7 @@ async def update_project(code: str, data: dict):
             data.get('member3_name'), data.get('member3_phone'), data.get('member3_code'),
             data.get('member4_name'), data.get('member4_phone'), data.get('member4_code'),
             data.get('member5_name'), data.get('member5_phone'), data.get('member5_code'),
+            data.get('member6_name'), data.get('member6_phone'), data.get('member6_code'),
             data.get('account1_name'), data.get('account1_id'), data.get('account1_pw'),
             data.get('account2_name'), data.get('account2_id'), data.get('account2_pw'),
             data.get('account3_name'), data.get('account3_id'), data.get('account3_pw'),
