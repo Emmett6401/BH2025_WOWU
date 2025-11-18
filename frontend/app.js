@@ -6017,6 +6017,56 @@ window.showTeamActivityLogForm = function(logId = null) {
                         <textarea id="log-notes" rows="2" class="w-full border rounded px-3 py-2">${log?.notes || ''}</textarea>
                     </div>
                     
+                    <!-- 사진 업로드 -->
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">
+                            <i class="fas fa-camera mr-2"></i>사진 첨부
+                        </label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <button type="button" onclick="document.getElementById('team-log-file-input').click()" 
+                                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                                    <i class="fas fa-folder-open mr-2"></i>파일 선택
+                                </button>
+                                <button type="button" onclick="document.getElementById('team-log-camera-input').click()" 
+                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                                    <i class="fas fa-camera mr-2"></i>사진 촬영
+                                </button>
+                            </div>
+                            <div id="team-log-upload-progress" class="hidden mb-3">
+                                <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                    <p class="text-sm text-blue-800 mb-2">
+                                        <i class="fas fa-cloud-upload-alt mr-2"></i>
+                                        서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                                    </p>
+                                    <div class="w-full bg-blue-200 rounded-full h-2">
+                                        <div id="team-log-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="file" id="team-log-file-input" accept="image/*" multiple 
+                                   onchange="window.handleTeamLogImageUpload(event)" class="hidden">
+                            <input type="file" id="team-log-camera-input" accept="image/*" capture="environment" 
+                                   onchange="window.handleTeamLogImageUpload(event)" class="hidden">
+                            <div id="team-log-photos-preview" class="flex flex-col gap-2 mt-2">
+                                ${log?.photo_urls ? JSON.parse(log.photo_urls).map((url, idx) => `
+                                    <div class="relative group">
+                                        <img src="${url}" class="w-full h-24 object-cover rounded border">
+                                        <button type="button" onclick="window.removeTeamLogPhoto(${idx})" 
+                                                class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                            <i class="fas fa-times text-xs"></i>
+                                        </button>
+                                    </div>
+                                `).join('') : ''}
+                            </div>
+                            <input type="hidden" id="team-log-photo-urls" value='${log?.photo_urls || "[]"}'>
+                            <p class="text-sm text-gray-500 mt-2">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                최대 10MB, JPG/PNG/GIF 형식
+                            </p>
+                        </div>
+                    </div>
+                    
                     <div class="flex justify-end space-x-2">
                         <button type="button" onclick="window.closeTeamActivityLogForm()" class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-2 rounded-lg">
                             취소
@@ -6045,15 +6095,23 @@ window.closeTeamActivityLogForm = function() {
 
 window.saveTeamActivityLog = async function() {
     const logId = document.getElementById('log-id').value;
+    const projectId = document.getElementById('log-project-id').value;
+    
+    // 팀 선택 필수 검증
+    if (!projectId) {
+        window.showAlert('팀을 선택해주세요');
+        return;
+    }
+    
     const data = {
-        project_id: parseInt(document.getElementById('log-project-id').value),
+        project_id: parseInt(projectId),
         activity_date: document.getElementById('log-date').value,
         activity_type: document.getElementById('log-type').value,
         content: document.getElementById('log-content').value,
         achievements: document.getElementById('log-achievements').value,
         next_plan: document.getElementById('log-next-plan').value,
         notes: document.getElementById('log-notes').value,
-        photo_urls: '[]'
+        photo_urls: document.getElementById('team-log-photo-urls').value
     };
     
     try {
@@ -6098,6 +6156,81 @@ window.deleteTeamActivityLog = async function(logId) {
         console.error('삭제 실패:', error);
         window.showAlert('삭제 실패: ' + (error.response?.data?.detail || error.message));
     }
+}
+
+// 팀 활동일지 사진 업로드 처리
+window.handleTeamLogImageUpload = async function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    const progressDiv = document.getElementById('team-log-upload-progress');
+    const progressBar = document.getElementById('team-log-progress-bar');
+    progressDiv.classList.remove('hidden');
+    
+    try {
+        const currentPhotos = JSON.parse(document.getElementById('team-log-photo-urls').value || '[]');
+        let uploadedCount = 0;
+        
+        for (let file of files) {
+            // 파일 크기 체크 (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                window.showAlert(`${file.name}은(는) 10MB를 초과합니다`);
+                continue;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await axios.post(`${API_BASE_URL}/api/upload-photo`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                onUploadProgress: (e) => {
+                    const percent = Math.round((e.loaded * 100) / e.total);
+                    progressBar.style.width = percent + '%';
+                }
+            });
+            
+            currentPhotos.push(response.data.url);
+            uploadedCount++;
+        }
+        
+        document.getElementById('team-log-photo-urls').value = JSON.stringify(currentPhotos);
+        renderTeamLogPhotos();
+        
+        progressDiv.classList.add('hidden');
+        progressBar.style.width = '0%';
+        
+        if (uploadedCount > 0) {
+            window.showAlert(`${uploadedCount}개 사진이 업로드되었습니다`);
+        }
+    } catch (error) {
+        progressDiv.classList.add('hidden');
+        console.error('사진 업로드 실패:', error);
+        window.showAlert('사진 업로드 실패: ' + (error.response?.data?.detail || error.message));
+    }
+    
+    event.target.value = '';
+}
+
+window.removeTeamLogPhoto = function(index) {
+    const photos = JSON.parse(document.getElementById('team-log-photo-urls').value || '[]');
+    photos.splice(index, 1);
+    document.getElementById('team-log-photo-urls').value = JSON.stringify(photos);
+    renderTeamLogPhotos();
+}
+
+function renderTeamLogPhotos() {
+    const photos = JSON.parse(document.getElementById('team-log-photo-urls').value || '[]');
+    const previewDiv = document.getElementById('team-log-photos-preview');
+    
+    previewDiv.innerHTML = photos.map((url, idx) => `
+        <div class="relative group">
+            <img src="${url}" class="w-full h-24 object-cover rounded border">
+            <button type="button" onclick="window.removeTeamLogPhoto(${idx})" 
+                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                <i class="fas fa-times text-xs"></i>
+            </button>
+        </div>
+    `).join('');
 }
 
 // ==================== 시간표 관리 ====================
