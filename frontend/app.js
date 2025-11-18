@@ -6115,11 +6115,14 @@ window.showTeamActivityLogForm = function(logId = null) {
                         <label class="block text-gray-700 mb-2">작성자 *</label>
                         <select id="log-instructor-code" required class="w-full border rounded px-3 py-2">
                             <option value="">작성자를 선택하세요</option>
-                            ${[...instructors].sort((a, b) => a.name.localeCompare(b.name, 'ko')).map(inst => {
-                                const isCurrentUser = inst.code === currentUser?.code;
-                                const isSelected = log?.instructor_code === inst.code || (!log && isCurrentUser);
-                                return `<option value="${inst.code}" ${isSelected ? 'selected' : ''}>${inst.name} - ${inst.role || '강사'}${isCurrentUser ? ' (나)' : ''}</option>`;
-                            }).join('')}
+                            ${(() => {
+                                const loggedInInstructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+                                return [...instructors].sort((a, b) => a.name.localeCompare(b.name, 'ko')).map(inst => {
+                                    const isCurrentUser = inst.code === loggedInInstructor.code;
+                                    const isSelected = log?.instructor_code === inst.code || (!log && isCurrentUser);
+                                    return `<option value="${inst.code}" ${isSelected ? 'selected' : ''}>${inst.name}-${inst.role || '강사'}${isCurrentUser ? ' (나)' : ''}</option>`;
+                                }).join('');
+                            })()}
                         </select>
                     </div>
                     
@@ -6957,7 +6960,7 @@ function renderTrainingLogsSelection(courses) {
                             return sortedInstructors.map(i => {
                                 const isSelected = i.code === loggedInInstructor.code;
                                 const displayMark = isSelected ? ' (나)' : '';
-                                return `<option value="${i.code}" ${isSelected ? 'selected' : ''}>${i.name} - ${i.role || '강사'}${displayMark}</option>`;
+                                return `<option value="${i.code}" ${isSelected ? 'selected' : ''}>${i.name}-${i.role || '강사'}${displayMark}</option>`;
                             }).join('');
                         })()}
                     </select>
