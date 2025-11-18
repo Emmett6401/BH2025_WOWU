@@ -663,7 +663,7 @@ async function loadDashboard() {
                                 return total + count;
                             }, 0)}</p>
                         </div>
-                        <p class="text-xs text-pink-100">팀 구성원 수</p>
+                        <p class="text-xs text-pink-100">활동팀</p>
                     </div>
                 </div>
                 
