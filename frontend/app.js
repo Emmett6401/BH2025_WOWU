@@ -5964,13 +5964,6 @@ function renderTeamActivityLogs() {
                 </button>
             </div>
             
-            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
-                <p class="text-blue-700">
-                    <i class="fas fa-info-circle mr-2"></i>
-                    팀을 선택하여 활동일지를 조회하거나, 추가 버튼을 누르면 폼에서 팀을 선택할 수 있습니다
-                </p>
-            </div>
-            
             <div class="mb-6">
                 <label class="block text-gray-700 mb-2">팀 선택 (필터링)</label>
                 <select id="team-select" class="w-full border rounded px-3 py-2" onchange="window.filterTeamActivityLogs()">
