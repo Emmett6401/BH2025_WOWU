@@ -1350,9 +1350,8 @@ function renderStudents() {
                             <th class="px-4 py-2 text-left">생년월일</th>
                             <th class="px-4 py-2 text-left">성별</th>
                             <th class="px-4 py-2 text-left">연락처</th>
-                            <th class="px-4 py-2 text-left">이메일</th>
-                            <th class="px-4 py-2 text-left">과정</th>
-                            <th class="px-4 py-2 text-left">캠퍼스</th>
+                            <th class="px-4 py-2 text-left">최종학교</th>
+                            <th class="px-4 py-2 text-left">자기소개</th>
                             <th class="px-4 py-2 text-left">작업</th>
                         </tr>
                     </thead>
@@ -1391,9 +1390,12 @@ function renderStudents() {
                             }
                             
                             return filteredStudents.map(student => {
-                                // 과정 정보 찾기
-                                const course = courses.find(c => c.code === student.course_code);
-                                const courseDisplay = course ? `${course.code} - ${course.name || course.code}` : (student.course_code || '-');
+                                // 자기소개 짧게 (30자까지만)
+                                const shortIntro = student.introduction 
+                                    ? (student.introduction.length > 30 
+                                        ? student.introduction.substring(0, 30) + '...' 
+                                        : student.introduction)
+                                    : '-';
                                 
                                 return `
                             <tr class="border-b hover:bg-gray-50">
@@ -1409,9 +1411,8 @@ function renderStudents() {
                                 <td class="px-4 py-2">${student.birth_date ? formatDateWithDay(student.birth_date) : '-'}</td>
                                 <td class="px-4 py-2">${student.gender || '-'}</td>
                                 <td class="px-4 py-2">${student.phone || '-'}</td>
-                                <td class="px-4 py-2">${student.email || '-'}</td>
-                                <td class="px-4 py-2 text-sm text-blue-600">${courseDisplay}</td>
-                                <td class="px-4 py-2">${student.campus || '-'}</td>
+                                <td class="px-4 py-2">${student.final_school || '-'}</td>
+                                <td class="px-4 py-2 text-sm text-gray-600">${shortIntro}</td>
                                 <td class="px-4 py-2">
                                     <button onclick="window.viewStudent(${student.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="상세보기">
                                         <i class="fas fa-eye"></i>
@@ -2749,13 +2750,13 @@ window.showCounselingForm = function(counselingId = null) {
                     <label class="block text-gray-700 mb-2">상담 선생님 *</label>
                     <select name="instructor_code" required class="w-full px-3 py-2 border rounded-lg">
                         <option value="">선택하세요</option>
-                        ${instructors.map(i => {
+                        ${[...instructors].sort((a, b) => a.name.localeCompare(b.name, 'ko')).map(i => {
                             const loggedInInstructor = JSON.parse(localStorage.getItem('instructor') || '{}');
                             const isLoggedInInstructor = i.code === loggedInInstructor.code;
                             const isSelected = existingCounseling?.instructor_code === i.code || (!existingCounseling && isLoggedInInstructor);
                             return `
                             <option value="${i.code}" ${isSelected ? 'selected' : ''}>
-                                ${i.name}${isLoggedInInstructor ? ' (나)' : ''}
+                                ${i.name} - ${i.role || '강사'}${isLoggedInInstructor ? ' (나)' : ''}
                             </option>
                         `}).join('')}
                     </select>
@@ -5985,10 +5986,10 @@ window.showTeamActivityLogForm = function(logId = null) {
                         <label class="block text-gray-700 mb-2">작성자 *</label>
                         <select id="log-instructor-code" required class="w-full border rounded px-3 py-2">
                             <option value="">작성자를 선택하세요</option>
-                            ${instructors.map(inst => {
+                            ${[...instructors].sort((a, b) => a.name.localeCompare(b.name, 'ko')).map(inst => {
                                 const isCurrentUser = inst.code === currentUser?.code;
                                 const isSelected = log?.instructor_code === inst.code || (!log && isCurrentUser);
-                                return `<option value="${inst.code}" ${isSelected ? 'selected' : ''}>${inst.name} (${inst.code})${isCurrentUser ? ' (나)' : ''}</option>`;
+                                return `<option value="${inst.code}" ${isSelected ? 'selected' : ''}>${inst.name} - ${inst.role || '강사'}${isCurrentUser ? ' (나)' : ''}</option>`;
                             }).join('')}
                         </select>
                     </div>
@@ -6775,10 +6776,11 @@ function renderTrainingLogsSelection(courses) {
                         <option value="">전체 강사</option>
                         ${(() => {
                             const loggedInInstructor = JSON.parse(localStorage.getItem('instructor') || '{}');
-                            return instructors.map(i => {
+                            const sortedInstructors = [...instructors].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+                            return sortedInstructors.map(i => {
                                 const isSelected = i.code === loggedInInstructor.code;
                                 const displayMark = isSelected ? ' (나)' : '';
-                                return `<option value="${i.code}" ${isSelected ? 'selected' : ''}>${i.name}${displayMark} (${i.code})</option>`;
+                                return `<option value="${i.code}" ${isSelected ? 'selected' : ''}>${i.name} - ${i.role || '강사'}${displayMark}</option>`;
                             }).join('');
                         })()}
                     </select>
