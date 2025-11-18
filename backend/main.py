@@ -3076,6 +3076,54 @@ async def serve_login():
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Login page not found")
 
+# ==================== FTP 이미지 프록시 ====================
+from fastapi.responses import StreamingResponse
+from urllib.parse import urlparse, unquote
+
+@app.get("/api/proxy-image")
+async def proxy_ftp_image(url: str):
+    """FTP 이미지를 HTTP로 프록시"""
+    try:
+        # URL 파싱
+        parsed = urlparse(url)
+        
+        if parsed.scheme != 'ftp':
+            raise HTTPException(status_code=400, detail="FTP URL만 지원됩니다")
+        
+        # FTP 연결
+        ftp = FTP()
+        ftp.connect(parsed.hostname or FTP_CONFIG['host'], parsed.port or FTP_CONFIG['port'])
+        ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
+        
+        # 파일 경로 추출 (URL 디코딩)
+        file_path = unquote(parsed.path)
+        
+        # 파일을 메모리로 읽기
+        file_data = io.BytesIO()
+        ftp.retrbinary(f'RETR {file_path}', file_data.write)
+        ftp.quit()
+        
+        # 파일 포인터를 처음으로 이동
+        file_data.seek(0)
+        
+        # 파일 확장자로 MIME 타입 결정
+        ext = file_path.lower().split('.')[-1]
+        mime_types = {
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'png': 'image/png',
+            'gif': 'image/gif',
+            'webp': 'image/webp',
+            'bmp': 'image/bmp'
+        }
+        media_type = mime_types.get(ext, 'image/jpeg')
+        
+        return StreamingResponse(file_data, media_type=media_type)
+        
+    except Exception as e:
+        print(f"FTP 이미지 프록시 에러: {e}")
+        raise HTTPException(status_code=500, detail=f"이미지를 불러올 수 없습니다: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

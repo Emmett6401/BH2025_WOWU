@@ -281,7 +281,7 @@ window.showPhotoViewer = function(photos, startIndex = 0) {
             ` : ''}
             
             <div class="flex flex-col items-center justify-center w-full h-full px-16 py-8">
-                <img id="viewer-image" src="${photoUrls[currentIndex].replace('ftp://', 'http://')}" 
+                <img id="viewer-image" src="${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(photoUrls[currentIndex])}" 
                      class="w-auto h-auto max-w-full max-h-full object-contain" 
                      style="max-width: 90vw; max-height: 85vh;"
                      onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%23ddd%22 width=%22400%22 height=%22300%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 font-size=%2220%22%3E이미지를 불러올 수 없습니다%3C/text%3E%3C/svg%3E'"
@@ -292,7 +292,7 @@ window.showPhotoViewer = function(photos, startIndex = 0) {
                     </div>
                 ` : ''}
                 <div class="text-white mt-2 text-sm opacity-75" id="photo-url-info">
-                    ${photoUrls[currentIndex]}
+                    원본: ${photoUrls[currentIndex]}
                 </div>
             </div>
         </div>
@@ -329,22 +329,22 @@ window.prevPhoto = function() {
     if (!window.photoUrlsList || window.photoUrlsList.length <= 1) return;
     window.currentPhotoIndex = (window.currentPhotoIndex - 1 + window.photoUrlsList.length) % window.photoUrlsList.length;
     const url = window.photoUrlsList[window.currentPhotoIndex];
-    document.getElementById('viewer-image').src = url.replace('ftp://', 'http://');
+    document.getElementById('viewer-image').src = `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
     const counter = document.getElementById('photo-counter');
     if (counter) counter.textContent = window.currentPhotoIndex + 1;
     const urlInfo = document.getElementById('photo-url-info');
-    if (urlInfo) urlInfo.textContent = url;
+    if (urlInfo) urlInfo.textContent = '원본: ' + url;
 };
 
 window.nextPhoto = function() {
     if (!window.photoUrlsList || window.photoUrlsList.length <= 1) return;
     window.currentPhotoIndex = (window.currentPhotoIndex + 1) % window.photoUrlsList.length;
     const url = window.photoUrlsList[window.currentPhotoIndex];
-    document.getElementById('viewer-image').src = url.replace('ftp://', 'http://');
+    document.getElementById('viewer-image').src = `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
     const counter = document.getElementById('photo-counter');
     if (counter) counter.textContent = window.currentPhotoIndex + 1;
     const urlInfo = document.getElementById('photo-url-info');
-    if (urlInfo) urlInfo.textContent = url;
+    if (urlInfo) urlInfo.textContent = '원본: ' + url;
 };
 
 function generatePageButtons(currentPage, totalPages, onPageChange) {
@@ -1453,7 +1453,7 @@ function renderStudents() {
                             <th class="px-4 py-2 text-left">성별</th>
                             <th class="px-4 py-2 text-left">연락처</th>
                             <th class="px-4 py-2 text-left">학력사항</th>
-                            <th class="px-4 py-2 text-left">자기소개</th>
+                            <th class="px-4 py-2 text-left">관심분야</th>
                             <th class="px-4 py-2 text-left">작업</th>
                         </tr>
                     </thead>
@@ -1492,11 +1492,11 @@ function renderStudents() {
                             }
                             
                             return filteredStudents.map(student => {
-                                // 자기소개 짧게 (30자까지만)
-                                const shortIntro = student.introduction 
-                                    ? (student.introduction.length > 30 
-                                        ? student.introduction.substring(0, 30) + '...' 
-                                        : student.introduction)
+                                // 관심분야 짧게 (30자까지만)
+                                const shortInterest = student.interest_area || student.interests
+                                    ? ((student.interest_area || student.interests).length > 30 
+                                        ? (student.interest_area || student.interests).substring(0, 30) + '...' 
+                                        : (student.interest_area || student.interests))
                                     : '-';
                                 
                                 return `
@@ -1518,7 +1518,7 @@ function renderStudents() {
                                 <td class="px-4 py-2">${student.gender || '-'}</td>
                                 <td class="px-4 py-2">${student.phone || '-'}</td>
                                 <td class="px-4 py-2">${student.education || student.final_school || '-'}</td>
-                                <td class="px-4 py-2 text-sm text-gray-600">${shortIntro}</td>
+                                <td class="px-4 py-2 text-sm text-gray-600">${shortInterest}</td>
                                 <td class="px-4 py-2">
                                     <button onclick="window.viewStudent(${student.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="상세보기">
                                         <i class="fas fa-eye"></i>
