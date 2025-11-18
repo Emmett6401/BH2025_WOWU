@@ -6214,50 +6214,62 @@ window.closeTeamActivityLogForm = function() {
 }
 
 window.saveTeamActivityLog = async function() {
-    const logId = document.getElementById('log-id').value;
-    const projectId = document.getElementById('log-project-id').value;
-    
-    // 팀 선택 필수 검증
-    if (!projectId) {
-        window.showAlert('팀을 선택해주세요');
-        return;
-    }
-    
-    const instructorCode = document.getElementById('log-instructor-code').value;
-    
-    // 작성자 선택 필수 검증
-    if (!instructorCode) {
-        window.showAlert('작성자를 선택해주세요');
-        return;
-    }
-    
-    const data = {
-        project_id: parseInt(projectId),
-        instructor_code: instructorCode,
-        activity_date: document.getElementById('log-date').value,
-        activity_type: document.getElementById('log-type').value,
-        content: document.getElementById('log-content').value,
-        achievements: document.getElementById('log-achievements').value,
-        next_plan: document.getElementById('log-next-plan').value,
-        notes: document.getElementById('log-notes').value,
-        photo_urls: document.getElementById('team-log-photo-urls').value
-    };
-    
     try {
+        const logId = document.getElementById('log-id').value;
+        const projectId = document.getElementById('log-project-id').value;
+        
+        console.log('팀 활동일지 저장 시작:', { logId, projectId });
+        
+        // 팀 선택 필수 검증
+        if (!projectId) {
+            window.showAlert('팀을 선택해주세요');
+            return;
+        }
+        
+        const instructorCode = document.getElementById('log-instructor-code').value;
+        
+        console.log('작성자 코드:', instructorCode);
+        
+        // 작성자 선택 필수 검증
+        if (!instructorCode) {
+            window.showAlert('작성자를 선택해주세요');
+            return;
+        }
+        
+        const data = {
+            project_id: parseInt(projectId),
+            instructor_code: instructorCode,
+            activity_date: document.getElementById('log-date').value,
+            activity_type: document.getElementById('log-type').value,
+            content: document.getElementById('log-content').value,
+            achievements: document.getElementById('log-achievements').value,
+            next_plan: document.getElementById('log-next-plan').value,
+            notes: document.getElementById('log-notes').value,
+            photo_urls: document.getElementById('team-log-photo-urls').value
+        };
+        
+        console.log('저장 데이터:', data);
+        
         if (logId) {
+            console.log('수정 요청 시작...');
             await axios.put(`${API_BASE_URL}/api/team-activity-logs/${logId}`, data);
             window.showAlert('활동일지가 수정되었습니다');
         } else {
-            await axios.post(`${API_BASE_URL}/api/team-activity-logs`, data);
+            console.log('추가 요청 시작...');
+            const response = await axios.post(`${API_BASE_URL}/api/team-activity-logs`, data);
+            console.log('추가 응답:', response.data);
             window.showAlert('활동일지가 추가되었습니다');
         }
+        
         window.closeTeamActivityLogForm();
         await loadTeamActivityLogs();
         // 팀 선택 유지
         document.getElementById('team-select').value = data.project_id;
         window.filterTeamActivityLogs();
     } catch (error) {
-        console.error('저장 실패:', error);
+        console.error('저장 실패 - 전체 에러:', error);
+        console.error('저장 실패 - 응답:', error.response);
+        console.error('저장 실패 - 응답 데이터:', error.response?.data);
         window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
