@@ -494,6 +494,36 @@ async function loadDashboard() {
             instructorsByType[typeName] = (instructorsByType[typeName] || 0) + 1;
         });
         
+        // 진도율 계산 (2025-우송1반 기준)
+        const mainCourse = coursesData.find(c => c.name === '2025-우송1반') || coursesData[0];
+        let progressPercentage = 0;
+        let completedHours = 0;
+        let totalHours = 0;
+        
+        if (mainCourse) {
+            totalHours = (mainCourse.lecture_hours || 0) + (mainCourse.project_hours || 0) + (mainCourse.internship_hours || 0);
+            
+            // 오늘까지의 누적 시수 계산 (과거 및 오늘 수업)
+            const completedTimetables = timetablesData.filter(tt => 
+                tt.course_code === mainCourse.code && 
+                tt.class_date <= todayDate
+            );
+            
+            completedTimetables.forEach(tt => {
+                if (tt.start_time && tt.end_time) {
+                    const startHour = parseInt(tt.start_time.split(':')[0]);
+                    const startMinute = parseInt(tt.start_time.split(':')[1] || 0);
+                    const endHour = parseInt(tt.end_time.split(':')[0]);
+                    const endMinute = parseInt(tt.end_time.split(':')[1] || 0);
+                    
+                    const hours = (endHour * 60 + endMinute - startHour * 60 - startMinute) / 60;
+                    completedHours += hours;
+                }
+            });
+            
+            progressPercentage = totalHours > 0 ? Math.round((completedHours / totalHours) * 100) : 0;
+        }
+        
         // 대시보드 렌더링
         const app = document.getElementById('app');
         app.innerHTML = `
@@ -647,6 +677,36 @@ async function loadDashboard() {
                     </div>
                 </div>
                 
+                <!-- 진도율 게이지 차트 -->
+                <div class="bg-white rounded-lg shadow p-3 mb-3">
+                    <h3 class="text-sm font-bold text-gray-800 mb-2">
+                        <i class="fas fa-tachometer-alt mr-2 text-blue-600"></i>${mainCourse ? mainCourse.name : '과정'} 진도율
+                    </h3>
+                    <div class="flex items-center justify-center py-4">
+                        <div class="relative" style="width: 200px; height: 200px;">
+                            <canvas id="progressGaugeChart"></canvas>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <p class="text-4xl font-bold text-blue-600">${progressPercentage}%</p>
+                                <p class="text-xs text-gray-600 mt-1">${Math.round(completedHours)}h / ${totalHours}h</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs mt-2">
+                        <div class="bg-blue-50 rounded p-2">
+                            <p class="text-gray-600">강의</p>
+                            <p class="font-bold text-blue-600">${mainCourse?.lecture_hours || 0}h</p>
+                        </div>
+                        <div class="bg-green-50 rounded p-2">
+                            <p class="text-gray-600">프로젝트</p>
+                            <p class="font-bold text-green-600">${mainCourse?.project_hours || 0}h</p>
+                        </div>
+                        <div class="bg-purple-50 rounded p-2">
+                            <p class="text-gray-600">인턴십</p>
+                            <p class="font-bold text-purple-600">${mainCourse?.internship_hours || 0}h</p>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- 과정별 학생 현황 (컴팩트) -->
                 <div class="bg-white rounded-lg shadow p-3 mb-3">
                     <h3 class="text-sm font-bold text-gray-800 mb-2">
@@ -732,7 +792,7 @@ async function loadDashboard() {
                             </button>
                         </div>
                         <div class="space-y-1.5">
-                            ${recentCounselings.length > 0 ? recentCounselings.slice(0, 5).map(c => `
+                            ${recentCounselings.length > 0 ? recentCounselings.slice(0, 2).map(c => `
                                 <div class="flex items-start justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition">
                                     <div class="flex-1 min-w-0">
                                         <p class="font-semibold text-xs text-gray-800 truncate">${c.student_name} (${c.student_code})</p>
@@ -798,27 +858,35 @@ async function loadDashboard() {
                         </div>
                     </div>
                     
-                    <!-- 최근 프로젝트 -->
+                    <!-- 최근 팀 활동 -->
                     <div class="bg-white rounded-lg shadow p-3">
                         <div class="flex items-center justify-between mb-2">
                             <h3 class="text-sm font-bold text-gray-800">
-                                <i class="fas fa-users mr-2 text-pink-600"></i>최근 프로젝트
+                                <i class="fas fa-users mr-2 text-pink-600"></i>최근 팀 활동
                             </h3>
                             <button onclick="showTab('projects')" class="text-pink-600 hover:text-pink-700 text-xs font-semibold">
                                 전체 <i class="fas fa-arrow-right ml-1"></i>
                             </button>
                         </div>
                         <div class="space-y-1.5">
-                            ${projectsData.length > 0 ? projectsData.slice(0, 4).map(p => `
+                            ${projectsData.length > 0 ? projectsData.slice(0, 4).map(p => {
+                                const members = [p.member1_name, p.member2_name, p.member3_name, p.member4_name, p.member5_name].filter(m => m);
+                                return `
                                 <div class="p-2 bg-gray-50 rounded hover:bg-gray-100 transition">
                                     <p class="text-xs font-semibold text-gray-800 truncate mb-0.5">${p.name || '프로젝트명 없음'}</p>
-                                    <div class="flex items-center justify-between text-xs">
+                                    <div class="flex items-center justify-between text-xs mb-1">
                                         <span class="text-gray-600 truncate flex-1">
-                                            <i class="fas fa-user-friends mr-1"></i>팀원 ${[p.member1_name, p.member2_name, p.member3_name, p.member4_name, p.member5_name, p.member6_name].filter(m => m).length}명
+                                            <i class="fas fa-user-friends mr-1"></i>팀원 ${members.length}명
                                         </span>
                                         <span class="text-gray-500 ml-2">${p.course_name || p.course_code || ''}</span>
                                     </div>
+                                    ${members.length > 0 ? `
+                                    <div class="text-xs text-gray-500 truncate">
+                                        ${members.join(', ')}
+                                    </div>
+                                    ` : ''}
                                 </div>
+                            `}).join('') : `
                             `).join('') : `
                                 <div class="text-center py-4 text-gray-400">
                                     <p class="text-xs">프로젝트 없음</p>
@@ -1001,6 +1069,47 @@ async function loadDashboard() {
                                 },
                                 grid: {
                                     display: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // 진도율 게이지 차트
+            const progressGaugeCtx = document.getElementById('progressGaugeChart');
+            if (progressGaugeCtx) {
+                console.log('✅ progressGaugeChart 렌더링 시작');
+                new Chart(progressGaugeCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['완료', '남은 시수'],
+                        datasets: [{
+                            data: [progressPercentage, 100 - progressPercentage],
+                            backgroundColor: [
+                                progressPercentage >= 75 ? '#10B981' : progressPercentage >= 50 ? '#3B82F6' : '#F59E0B',
+                                '#E5E7EB'
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        cutout: '75%',
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.dataIndex === 0) {
+                                            return '진도율: ' + progressPercentage + '%';
+                                        } else {
+                                            return '남은 진도: ' + (100 - progressPercentage) + '%';
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -2601,11 +2710,14 @@ window.showCounselingForm = function(counselingId = null) {
                     <label class="block text-gray-700 mb-2">상담 선생님 *</label>
                     <select name="instructor_code" required class="w-full px-3 py-2 border rounded-lg">
                         <option value="">선택하세요</option>
-                        ${instructors.map(i => `
-                            <option value="${i.code}" ${existingCounseling?.instructor_code === i.code ? 'selected' : ''}>
-                                ${i.name}
+                        ${instructors.map(i => {
+                            const isLoggedInInstructor = i.code === (JSON.parse(localStorage.getItem('instructor') || '{}').code);
+                            const isSelected = existingCounseling?.instructor_code === i.code;
+                            return `
+                            <option value="${i.code}" ${isSelected ? 'selected' : ''}>
+                                ${i.name}${isLoggedInInstructor && !existingCounseling ? ' (나)' : ''}
                             </option>
-                        `).join('')}
+                        `}).join('')}
                     </select>
                 </div>
                 <div>
@@ -5938,7 +6050,8 @@ function calculateDuration(startSeconds, endSeconds) {
 // 날짜에 요일 추가하는 헬퍼 함수
 function formatDateWithDay(dateStr) {
     if (!dateStr) return '-';
-    const date = new Date(dateStr);
+    // 한국 시간대로 변환 (UTC+9)
+    const date = new Date(dateStr + 'T00:00:00+09:00');
     const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
     const dayOfWeek = dayNames[date.getDay()];
     return `${dateStr.substring(0, 10)} (${dayOfWeek})`;
