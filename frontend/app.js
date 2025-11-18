@@ -2344,7 +2344,7 @@ function renderCounselings() {
                         <label class="block text-sm text-gray-700 mb-1">상담 선생님</label>
                         <select id="filter-instructor" class="w-full border rounded px-3 py-2" onchange="window.filterCounselings()">
                             <option value="">전체</option>
-                            ${instructors.sort((a, b) => a.name.localeCompare(b.name, 'ko')).map(i => `<option value="${i.code}">${i.name}</option>`).join('')}
+                            ${instructors.sort((a, b) => a.name.localeCompare(b.name, 'ko')).map(i => `<option value="${i.code}">${i.name}-${i.instructor_type_name || '강사'}</option>`).join('')}
                         </select>
                     </div>
                     <div>
@@ -2866,7 +2866,7 @@ window.showCounselingForm = function(counselingId = null) {
                             const isSelected = existingCounseling?.instructor_code === i.code || (!existingCounseling && isLoggedInInstructor);
                             return `
                             <option value="${i.code}" ${isSelected ? 'selected' : ''}>
-                                ${i.name} - ${i.role || '강사'}${isLoggedInInstructor ? ' (나)' : ''}
+                                ${i.name}-${i.instructor_type_name || '강사'}${isLoggedInInstructor ? ' (나)' : ''}
                             </option>
                         `}).join('')}
                     </select>
@@ -6121,7 +6121,7 @@ window.showTeamActivityLogForm = function(logId = null) {
                                     const isCurrentUser = inst.code === loggedInInstructor.code;
                                     // 항상 접속자를 기본 선택 (추가 모드와 수정 모드 모두)
                                     const isSelected = isCurrentUser;
-                                    return `<option value="${inst.code}" ${isSelected ? 'selected' : ''}>${inst.name}-${inst.role || '강사'}${isCurrentUser ? ' (나)' : ''}</option>`;
+                                    return `<option value="${inst.code}" ${isSelected ? 'selected' : ''}>${inst.name}-${inst.instructor_type_name || '강사'}${isCurrentUser ? ' (나)' : ''}</option>`;
                                 }).join('');
                             })()}
                         </select>
@@ -6966,7 +6966,7 @@ function renderTrainingLogsSelection(courses) {
                             return sortedInstructors.map(i => {
                                 const isSelected = i.code === loggedInInstructor.code;
                                 const displayMark = isSelected ? ' (나)' : '';
-                                return `<option value="${i.code}" ${isSelected ? 'selected' : ''}>${i.name}-${i.role || '강사'}${displayMark}</option>`;
+                                return `<option value="${i.code}" ${isSelected ? 'selected' : ''}>${i.name}-${i.instructor_type_name || '강사'}${displayMark}</option>`;
                             }).join('');
                         })()}
                     </select>
