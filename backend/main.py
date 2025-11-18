@@ -2944,6 +2944,123 @@ async def serve_index():
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Frontend not found")
 
+# ==================== 팀 활동일지 API ====================
+
+@app.get("/api/team-activity-logs")
+async def get_team_activity_logs(project_id: Optional[int] = None):
+    """팀 활동일지 조회"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        if project_id:
+            cursor.execute("""
+                SELECT * FROM team_activity_logs
+                WHERE project_id = %s
+                ORDER BY activity_date DESC, created_at DESC
+            """, (project_id,))
+        else:
+            cursor.execute("""
+                SELECT * FROM team_activity_logs
+                ORDER BY activity_date DESC, created_at DESC
+            """)
+        
+        logs = cursor.fetchall()
+        return logs
+    finally:
+        conn.close()
+
+@app.post("/api/team-activity-logs")
+async def create_team_activity_log(log: dict):
+    """팀 활동일지 생성"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO team_activity_logs 
+            (project_id, activity_date, activity_type, content, achievements, next_plan, notes, photo_urls)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            log.get('project_id'),
+            log.get('activity_date'),
+            log.get('activity_type', '팀 활동'),
+            log.get('content'),
+            log.get('achievements'),
+            log.get('next_plan'),
+            log.get('notes'),
+            log.get('photo_urls', '[]')
+        ))
+        
+        conn.commit()
+        log_id = cursor.lastrowid
+        
+        return {"success": True, "id": log_id, "message": "팀 활동일지가 생성되었습니다"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+@app.put("/api/team-activity-logs/{log_id}")
+async def update_team_activity_log(log_id: int, log: dict):
+    """팀 활동일지 수정"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE team_activity_logs
+            SET activity_date = %s, activity_type = %s, content = %s,
+                achievements = %s, next_plan = %s, notes = %s, photo_urls = %s
+            WHERE id = %s
+        """, (
+            log.get('activity_date'),
+            log.get('activity_type'),
+            log.get('content'),
+            log.get('achievements'),
+            log.get('next_plan'),
+            log.get('notes'),
+            log.get('photo_urls', '[]'),
+            log_id
+        ))
+        
+        conn.commit()
+        
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="팀 활동일지를 찾을 수 없습니다")
+        
+        return {"success": True, "message": "팀 활동일지가 수정되었습니다"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+@app.delete("/api/team-activity-logs/{log_id}")
+async def delete_team_activity_log(log_id: int):
+    """팀 활동일지 삭제"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        cursor.execute("DELETE FROM team_activity_logs WHERE id = %s", (log_id,))
+        conn.commit()
+        
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="팀 활동일지를 찾을 수 없습니다")
+        
+        return {"success": True, "message": "팀 활동일지가 삭제되었습니다"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
 @app.get("/login", response_class=HTMLResponse)
 async def serve_login():
     """로그인 페이지 서빙"""
