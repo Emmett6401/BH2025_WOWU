@@ -6119,7 +6119,8 @@ window.showTeamActivityLogForm = function(logId = null) {
                                 const loggedInInstructor = JSON.parse(localStorage.getItem('instructor') || '{}');
                                 return [...instructors].sort((a, b) => a.name.localeCompare(b.name, 'ko')).map(inst => {
                                     const isCurrentUser = inst.code === loggedInInstructor.code;
-                                    const isSelected = log?.instructor_code === inst.code || (!log && isCurrentUser);
+                                    // 항상 접속자를 기본 선택 (추가 모드와 수정 모드 모두)
+                                    const isSelected = isCurrentUser;
                                     return `<option value="${inst.code}" ${isSelected ? 'selected' : ''}>${inst.name}-${inst.role || '강사'}${isCurrentUser ? ' (나)' : ''}</option>`;
                                 }).join('');
                             })()}
