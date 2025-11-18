@@ -751,7 +751,7 @@ async function loadDashboard() {
                     <!-- 강의 진도율 -->
                     <div class="mb-3">
                         <div class="flex justify-between items-center mb-1">
-                            <span class="text-xs font-semibold text-gray-700">강의</span>
+                            <span class="text-xs font-semibold text-gray-700">강의 (${mainCourse?.start_date?.substring(0, 10) || '-'} ~ ${mainCourse?.lecture_end_date?.substring(0, 10) || '-'})</span>
                             <span class="text-xs text-gray-600">${progress.lectureCompleted}h / ${progress.lectureTotal}h (${progress.lecture}%)</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-6 relative overflow-hidden">
@@ -765,7 +765,7 @@ async function loadDashboard() {
                     <!-- 프로젝트 진도율 -->
                     <div class="mb-3">
                         <div class="flex justify-between items-center mb-1">
-                            <span class="text-xs font-semibold text-gray-700">프로젝트</span>
+                            <span class="text-xs font-semibold text-gray-700">프로젝트 (${mainCourse?.lecture_end_date?.substring(0, 10) || '-'} ~ ${mainCourse?.project_end_date?.substring(0, 10) || '-'})</span>
                             <span class="text-xs text-gray-600">${progress.projectCompleted}h / ${progress.projectTotal}h (${progress.project}%)</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-6 relative overflow-hidden">
@@ -776,10 +776,10 @@ async function loadDashboard() {
                         </div>
                     </div>
                     
-                    <!-- 인턴십 진도율 -->
+                    <!-- 현장실습 진도율 -->
                     <div class="mb-3">
                         <div class="flex justify-between items-center mb-1">
-                            <span class="text-xs font-semibold text-gray-700">인턴십</span>
+                            <span class="text-xs font-semibold text-gray-700">현장실습 (${mainCourse?.project_end_date?.substring(0, 10) || '-'} ~ ${mainCourse?.internship_end_date?.substring(0, 10) || '-'})</span>
                             <span class="text-xs text-gray-600">${progress.internshipCompleted}h / ${progress.internshipTotal}h (${progress.internship}%)</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-6 relative overflow-hidden">
@@ -5851,30 +5851,28 @@ function renderTeamActivityLogs() {
     const app = document.getElementById('app');
     app.innerHTML = `
         <div class="bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">
-                <i class="fas fa-clipboard-list mr-2"></i>팀 활동일지 관리
-            </h2>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-clipboard-list mr-2"></i>팀 활동일지 관리
+                </h2>
+                <button onclick="window.showTeamActivityLogForm()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
+                    <i class="fas fa-plus mr-2"></i>활동일지 추가
+                </button>
+            </div>
             
             <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
                 <p class="text-blue-700">
                     <i class="fas fa-info-circle mr-2"></i>
-                    팀을 선택하여 활동일지를 조회하고 작성하세요
+                    팀을 선택하여 활동일지를 조회하거나, 추가 버튼을 누르면 폼에서 팀을 선택할 수 있습니다
                 </p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div>
-                    <label class="block text-gray-700 mb-2">팀 선택</label>
-                    <select id="team-select" class="w-full border rounded px-3 py-2" onchange="window.filterTeamActivityLogs()">
-                        <option value="">-- 팀 선택 --</option>
-                        ${projects.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('')}
-                    </select>
-                </div>
-                <div class="flex items-end">
-                    <button onclick="window.showTeamActivityLogForm()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg" disabled id="add-log-btn">
-                        <i class="fas fa-plus mr-2"></i>활동일지 추가
-                    </button>
-                </div>
+            <div class="mb-6">
+                <label class="block text-gray-700 mb-2">팀 선택 (필터링)</label>
+                <select id="team-select" class="w-full border rounded px-3 py-2" onchange="window.filterTeamActivityLogs()">
+                    <option value="">전체 팀</option>
+                    ${projects.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('')}
+                </select>
             </div>
             
             <div id="team-activity-logs-list">
@@ -5886,34 +5884,42 @@ function renderTeamActivityLogs() {
 
 window.filterTeamActivityLogs = function() {
     const projectId = document.getElementById('team-select').value;
-    const addBtn = document.getElementById('add-log-btn');
     
+    let filteredLogs;
     if (!projectId) {
-        document.getElementById('team-activity-logs-list').innerHTML = `
-            <p class="text-gray-500 text-center py-8">팀을 먼저 선택해주세요</p>
-        `;
-        addBtn.disabled = true;
+        // 전체 팀의 활동일지 표시
+        filteredLogs = teamActivityLogs
+            .sort((a, b) => new Date(b.activity_date) - new Date(a.activity_date))
+            .map(log => {
+                const project = projects.find(p => p.id === log.project_id);
+                return { ...log, project_name: project?.name || '팀명 없음' };
+            });
         selectedProjectForLogs = null;
-        return;
+    } else {
+        // 특정 팀의 활동일지 표시
+        selectedProjectForLogs = parseInt(projectId);
+        filteredLogs = teamActivityLogs.filter(log => log.project_id === selectedProjectForLogs)
+            .sort((a, b) => new Date(b.activity_date) - new Date(a.activity_date));
+        const project = projects.find(p => p.id === selectedProjectForLogs);
+        filteredLogs = filteredLogs.map(log => ({
+            ...log,
+            project_name: project?.name || '팀명 없음'
+        }));
     }
     
-    selectedProjectForLogs = parseInt(projectId);
-    addBtn.disabled = false;
-    
-    const filteredLogs = teamActivityLogs.filter(log => log.project_id === selectedProjectForLogs)
-        .sort((a, b) => new Date(b.activity_date) - new Date(a.activity_date));
-    
-    const project = projects.find(p => p.id === selectedProjectForLogs);
-    const projectName = project ? project.name : '프로젝트';
+    const title = selectedProjectForLogs 
+        ? `${filteredLogs[0]?.project_name || '팀'} 활동일지` 
+        : '전체 팀 활동일지';
     
     document.getElementById('team-activity-logs-list').innerHTML = `
-        <h3 class="text-lg font-semibold mb-4">${projectName} 활동일지 (${filteredLogs.length}건)</h3>
+        <h3 class="text-lg font-semibold mb-4">${title} (${filteredLogs.length}건)</h3>
         ${filteredLogs.length > 0 ? `
             <div class="space-y-4">
                 ${filteredLogs.map(log => `
                     <div class="border rounded-lg p-4 hover:bg-gray-50">
                         <div class="flex items-start justify-between mb-2">
                             <div>
+                                ${!selectedProjectForLogs ? `<span class="text-sm font-semibold text-pink-600 mr-2">[${log.project_name}]</span>` : ''}
                                 <span class="text-sm font-semibold text-gray-700">${log.activity_date}</span>
                                 <span class="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">${log.activity_type || '팀 활동'}</span>
                             </div>
@@ -5954,23 +5960,25 @@ window.filterTeamActivityLogs = function() {
 }
 
 window.showTeamActivityLogForm = function(logId = null) {
-    if (!selectedProjectForLogs && !logId) {
-        window.showAlert('팀을 먼저 선택해주세요');
-        return;
-    }
-    
     const log = logId ? teamActivityLogs.find(l => l.id === logId) : null;
-    const project = projects.find(p => p.id === (log?.project_id || selectedProjectForLogs));
+    const preselectedProjectId = log?.project_id || selectedProjectForLogs || '';
     
     const formHtml = `
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="team-log-modal">
             <div class="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 <h3 class="text-xl font-bold mb-4">
-                    ${logId ? '활동일지 수정' : '활동일지 추가'} - ${project?.name || ''}
+                    ${logId ? '활동일지 수정' : '활동일지 추가'}
                 </h3>
                 <form id="team-log-form">
                     <input type="hidden" id="log-id" value="${logId || ''}">
-                    <input type="hidden" id="log-project-id" value="${log?.project_id || selectedProjectForLogs}">
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">팀 선택 *</label>
+                        <select id="log-project-id" required class="w-full border rounded px-3 py-2">
+                            <option value="">팀을 선택하세요</option>
+                            ${projects.map(p => `<option value="${p.id}" ${p.id == preselectedProjectId ? 'selected' : ''}>${p.name} (${p.code})</option>`).join('')}
+                        </select>
+                    </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
