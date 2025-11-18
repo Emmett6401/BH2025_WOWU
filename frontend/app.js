@@ -6227,11 +6227,19 @@ window.closeTeamActivityLogForm = function() {
 }
 
 window.saveTeamActivityLog = async function() {
+    console.log('💾 saveTeamActivityLog 함수 호출됨');
+    
     try {
-        const logId = document.getElementById('log-id').value;
-        const projectId = document.getElementById('log-project-id').value;
+        const logId = document.getElementById('log-id')?.value;
+        const projectId = document.getElementById('log-project-id')?.value;
         
-        console.log('팀 활동일지 저장 시작:', { logId, projectId });
+        console.log('📝 팀 활동일지 저장 시작:', { logId, projectId });
+        
+        if (!document.getElementById('log-project-id')) {
+            console.error('❌ log-project-id 요소를 찾을 수 없습니다!');
+            window.showAlert('폼 요소를 찾을 수 없습니다. 페이지를 새로고침해주세요.');
+            return;
+        }
         
         // 팀 선택 필수 검증
         if (!projectId) {
@@ -6246,6 +6254,14 @@ window.saveTeamActivityLog = async function() {
         // 작성자 선택 필수 검증
         if (!instructorCode) {
             window.showAlert('작성자를 선택해주세요');
+            return;
+        }
+        
+        const content = document.getElementById('log-content').value;
+        
+        // 활동내용 필수 검증
+        if (!content || content.trim() === '') {
+            window.showAlert('활동내용을 입력해주세요');
             return;
         }
         
