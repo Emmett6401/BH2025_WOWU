@@ -494,35 +494,75 @@ async function loadDashboard() {
             instructorsByType[typeName] = (instructorsByType[typeName] || 0) + 1;
         });
         
-        // 진도율 계산 (2025-우송1반 기준)
-        const mainCourse = coursesData.find(c => c.name === '2025-우송1반') || coursesData[0];
-        let progressPercentage = 0;
-        let completedHours = 0;
-        let totalHours = 0;
-        
-        if (mainCourse) {
-            totalHours = (mainCourse.lecture_hours || 0) + (mainCourse.project_hours || 0) + (mainCourse.internship_hours || 0);
+        // 진도율 계산 함수 (과정별)
+        window.calculateProgress = function(courseCode) {
+            const course = coursesData.find(c => c.code === courseCode);
+            if (!course) return { lecture: 0, project: 0, internship: 0, total: 0, trainingLogRate: 0 };
             
-            // 오늘까지의 누적 시수 계산 (과거 및 오늘 수업)
+            const lectureTotal = course.lecture_hours || 0;
+            const projectTotal = course.project_hours || 0;
+            const internshipTotal = course.internship_hours || 0;
+            const totalHours = lectureTotal + projectTotal + internshipTotal;
+            
+            let lectureCompleted = 0;
+            let projectCompleted = 0;
+            let internshipCompleted = 0;
+            
+            // 오늘까지의 시간표 필터링
             const completedTimetables = timetablesData.filter(tt => 
-                tt.course_code === mainCourse.code && 
+                tt.course_code === courseCode && 
                 tt.class_date <= todayDate
             );
             
+            // 시간 계산 함수
+            const calcHours = (tt) => {
+                if (!tt.start_time || !tt.end_time) return 0;
+                const startHour = parseInt(tt.start_time.split(':')[0]);
+                const startMinute = parseInt(tt.start_time.split(':')[1] || 0);
+                const endHour = parseInt(tt.end_time.split(':')[0]);
+                const endMinute = parseInt(tt.end_time.split(':')[1] || 0);
+                return (endHour * 60 + endMinute - startHour * 60 - startMinute) / 60;
+            };
+            
+            // 유형별 시수 계산
             completedTimetables.forEach(tt => {
-                if (tt.start_time && tt.end_time) {
-                    const startHour = parseInt(tt.start_time.split(':')[0]);
-                    const startMinute = parseInt(tt.start_time.split(':')[1] || 0);
-                    const endHour = parseInt(tt.end_time.split(':')[0]);
-                    const endMinute = parseInt(tt.end_time.split(':')[1] || 0);
-                    
-                    const hours = (endHour * 60 + endMinute - startHour * 60 - startMinute) / 60;
-                    completedHours += hours;
-                }
+                const hours = calcHours(tt);
+                if (tt.type === 'lecture') lectureCompleted += hours;
+                else if (tt.type === 'project') projectCompleted += hours;
+                else if (tt.type === 'internship') internshipCompleted += hours;
             });
             
-            progressPercentage = totalHours > 0 ? Math.round((completedHours / totalHours) * 100) : 0;
-        }
+            // 훈련일지 작성률 계산 (오늘 이전까지)
+            const pastTimetables = timetablesData.filter(tt => 
+                tt.course_code === courseCode && 
+                tt.class_date < todayDate
+            );
+            const trainingLogCount = trainingLogsData.filter(log => {
+                const logTimetable = timetablesData.find(tt => tt.id === log.timetable_id);
+                return logTimetable && logTimetable.course_code === courseCode && logTimetable.class_date < todayDate;
+            }).length;
+            const trainingLogRate = pastTimetables.length > 0 ? Math.round((trainingLogCount / pastTimetables.length) * 100) : 0;
+            
+            return {
+                lecture: lectureTotal > 0 ? Math.round((lectureCompleted / lectureTotal) * 100) : 0,
+                project: projectTotal > 0 ? Math.round((projectCompleted / projectTotal) * 100) : 0,
+                internship: internshipTotal > 0 ? Math.round((internshipCompleted / internshipTotal) * 100) : 0,
+                total: totalHours > 0 ? Math.round(((lectureCompleted + projectCompleted + internshipCompleted) / totalHours) * 100) : 0,
+                lectureCompleted: Math.round(lectureCompleted),
+                projectCompleted: Math.round(projectCompleted),
+                internshipCompleted: Math.round(internshipCompleted),
+                lectureTotal,
+                projectTotal,
+                internshipTotal,
+                trainingLogRate,
+                trainingLogCount,
+                pastTimetablesCount: pastTimetables.length
+            };
+        };
+        
+        // 기본 과정 (2025-우송1반)
+        const mainCourse = coursesData.find(c => c.name === '2025-우송1반') || coursesData[0];
+        const progress = window.calculateProgress(mainCourse.code);
         
         // 대시보드 렌더링
         const app = document.getElementById('app');
@@ -532,8 +572,17 @@ async function loadDashboard() {
                     <h2 class="text-2xl font-bold text-gray-800">
                         <i class="fas fa-tachometer-alt mr-2"></i>대시보드
                     </h2>
-                    <div class="text-sm text-gray-600">
-                        <i class="fas fa-calendar-day mr-1"></i>${formatDateWithDay(todayDate)}
+                    <div class="flex items-center gap-3">
+                        <select id="dashboard-course-filter" class="px-3 py-1 border rounded text-sm" onchange="window.filterDashboard(this.value)">
+                            ${coursesData.map(c => `
+                                <option value="${c.code}" ${c.code === mainCourse.code ? 'selected' : ''}>
+                                    ${c.name || c.code}
+                                </option>
+                            `).join('')}
+                        </select>
+                        <div class="text-sm text-gray-600">
+                            <i class="fas fa-calendar-day mr-1"></i>${formatDateWithDay(todayDate)}
+                        </div>
                     </div>
                 </div>
                 
@@ -677,32 +726,65 @@ async function loadDashboard() {
                     </div>
                 </div>
                 
-                <!-- 진도율 게이지 차트 -->
+                <!-- 진도율 가로 막대 그래프 -->
                 <div class="bg-white rounded-lg shadow p-3 mb-3">
-                    <h3 class="text-sm font-bold text-gray-800 mb-2">
-                        <i class="fas fa-tachometer-alt mr-2 text-blue-600"></i>${mainCourse ? mainCourse.name : '과정'} 진도율
+                    <h3 class="text-sm font-bold text-gray-800 mb-3">
+                        <i class="fas fa-chart-bar mr-2 text-blue-600"></i>${mainCourse ? mainCourse.name : '과정'} 진도율
                     </h3>
-                    <div class="flex items-center justify-center py-4">
-                        <div class="relative" style="width: 200px; height: 200px;">
-                            <canvas id="progressGaugeChart"></canvas>
-                            <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <p class="text-4xl font-bold text-blue-600">${progressPercentage}%</p>
-                                <p class="text-xs text-gray-600 mt-1">${Math.round(completedHours)}h / ${totalHours}h</p>
+                    
+                    <!-- 강의 진도율 -->
+                    <div class="mb-3">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-semibold text-gray-700">강의</span>
+                            <span class="text-xs text-gray-600">${progress.lectureCompleted}h / ${progress.lectureTotal}h (${progress.lecture}%)</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-6 relative overflow-hidden">
+                            <div class="bg-gradient-to-r from-blue-500 to-blue-600 h-6 rounded-full flex items-center justify-end pr-2 transition-all duration-500" 
+                                 style="width: ${progress.lecture}%">
+                                <span class="text-xs font-bold text-white">${progress.lecture}%</span>
                             </div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 text-center text-xs mt-2">
-                        <div class="bg-blue-50 rounded p-2">
-                            <p class="text-gray-600">강의</p>
-                            <p class="font-bold text-blue-600">${mainCourse?.lecture_hours || 0}h</p>
+                    
+                    <!-- 프로젝트 진도율 -->
+                    <div class="mb-3">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-semibold text-gray-700">프로젝트</span>
+                            <span class="text-xs text-gray-600">${progress.projectCompleted}h / ${progress.projectTotal}h (${progress.project}%)</span>
                         </div>
-                        <div class="bg-green-50 rounded p-2">
-                            <p class="text-gray-600">프로젝트</p>
-                            <p class="font-bold text-green-600">${mainCourse?.project_hours || 0}h</p>
+                        <div class="w-full bg-gray-200 rounded-full h-6 relative overflow-hidden">
+                            <div class="bg-gradient-to-r from-green-500 to-green-600 h-6 rounded-full flex items-center justify-end pr-2 transition-all duration-500" 
+                                 style="width: ${progress.project}%">
+                                <span class="text-xs font-bold text-white">${progress.project}%</span>
+                            </div>
                         </div>
-                        <div class="bg-purple-50 rounded p-2">
-                            <p class="text-gray-600">인턴십</p>
-                            <p class="font-bold text-purple-600">${mainCourse?.internship_hours || 0}h</p>
+                    </div>
+                    
+                    <!-- 인턴십 진도율 -->
+                    <div class="mb-3">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-semibold text-gray-700">인턴십</span>
+                            <span class="text-xs text-gray-600">${progress.internshipCompleted}h / ${progress.internshipTotal}h (${progress.internship}%)</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-6 relative overflow-hidden">
+                            <div class="bg-gradient-to-r from-purple-500 to-purple-600 h-6 rounded-full flex items-center justify-end pr-2 transition-all duration-500" 
+                                 style="width: ${progress.internship}%">
+                                <span class="text-xs font-bold text-white">${progress.internship}%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 훈련일지 작성률 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-semibold text-gray-700">훈련일지 작성률</span>
+                            <span class="text-xs text-gray-600">${progress.trainingLogCount}개 / ${progress.pastTimetablesCount}개 (${progress.trainingLogRate}%)</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-6 relative overflow-hidden">
+                            <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 h-6 rounded-full flex items-center justify-end pr-2 transition-all duration-500" 
+                                 style="width: ${progress.trainingLogRate}%">
+                                <span class="text-xs font-bold text-white">${progress.trainingLogRate}%</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1074,48 +1156,15 @@ async function loadDashboard() {
                     }
                 });
             }
-            
-            // 진도율 게이지 차트
-            const progressGaugeCtx = document.getElementById('progressGaugeChart');
-            if (progressGaugeCtx) {
-                console.log('✅ progressGaugeChart 렌더링 시작');
-                new Chart(progressGaugeCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['완료', '남은 시수'],
-                        datasets: [{
-                            data: [progressPercentage, 100 - progressPercentage],
-                            backgroundColor: [
-                                progressPercentage >= 75 ? '#10B981' : progressPercentage >= 50 ? '#3B82F6' : '#F59E0B',
-                                '#E5E7EB'
-                            ],
-                            borderWidth: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        cutout: '75%',
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        if (context.dataIndex === 0) {
-                                            return '진도율: ' + progressPercentage + '%';
-                                        } else {
-                                            return '남은 진도: ' + (100 - progressPercentage) + '%';
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            }
         }, 100);
+        
+        // 과정 필터 함수
+        window.filterDashboard = function(courseCode) {
+            window.showLoading();
+            setTimeout(() => {
+                window.showDashboard();
+            }, 100);
+        };
         
         window.hideLoading();
         console.log('✅ 대시보드 렌더링 완료');
