@@ -6986,6 +6986,11 @@ function renderTrainingLogsSelection(courses) {
             </div>
         </div>
     `;
+    
+    // 최초 로드 시 자동으로 목록 조회
+    setTimeout(() => {
+        window.filterTrainingLogs();
+    }, 100);
 }
 
 window.filterTrainingLogs = async function() {
