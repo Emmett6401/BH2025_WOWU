@@ -6279,6 +6279,10 @@ window.saveTeamActivityLog = async function() {
             return;
         }
         
+        // 저장 전 현재 선택된 팀 필터 값을 저장
+        const currentTeamFilter = document.getElementById('team-select')?.value || '';
+        console.log('💡 현재 팀 필터:', currentTeamFilter);
+        
         const data = {
             project_id: parseInt(projectId),
             instructor_code: instructorCode,
@@ -6309,12 +6313,13 @@ window.saveTeamActivityLog = async function() {
         window.closeTeamActivityLogForm();
         await loadTeamActivityLogs();
         
-        // 팀 선택 유지 (DOM이 다시 렌더링된 후)
+        // 이전에 선택했던 팀 필터 값으로 복원 (DOM이 다시 렌더링된 후)
         setTimeout(() => {
             const teamSelect = document.getElementById('team-select');
             if (teamSelect) {
-                teamSelect.value = data.project_id;
+                teamSelect.value = currentTeamFilter;
                 window.filterTeamActivityLogs();
+                console.log('✅ 팀 필터 복원됨:', currentTeamFilter);
             }
         }, 100);
     } catch (error) {
