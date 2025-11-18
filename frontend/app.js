@@ -767,7 +767,7 @@ async function loadDashboard() {
                         <h3 class="text-sm font-bold text-gray-800 mb-2 flex items-center">
                             <i class="fas fa-chart-pie mr-2 text-blue-600"></i>진로 결정 현황
                         </h3>
-                        <canvas id="careerChart" class="w-full" style="max-height: 180px;"></canvas>
+                        <canvas id="careerChart" class="w-full" style="max-height: 120px;"></canvas>
                         <div class="mt-2 grid grid-cols-5 gap-1 text-xs">
                             <div class="text-center">
                                 <div class="w-3 h-3 bg-blue-500 rounded-full mx-auto mb-1"></div>
@@ -802,7 +802,7 @@ async function loadDashboard() {
                         <h3 class="text-sm font-bold text-gray-800 mb-2 flex items-center">
                             <i class="fas fa-user-tie mr-2 text-green-600"></i>강사 유형별 분포
                         </h3>
-                        <canvas id="instructorChart" class="w-full" style="max-height: 180px;"></canvas>
+                        <canvas id="instructorChart" class="w-full" style="max-height: 120px;"></canvas>
                         <div class="mt-2 text-xs text-gray-600">
                             ${Object.entries(instructorsByType).slice(0, 4).map(([type, count], idx) => `
                                 <div class="flex items-center justify-between py-0.5">
@@ -821,7 +821,7 @@ async function loadDashboard() {
                         <h3 class="text-sm font-bold text-gray-800 mb-2 flex items-center">
                             <i class="fas fa-chart-line mr-2 text-orange-600"></i>최근 7일 상담 추이
                         </h3>
-                        <canvas id="counselingTrendChart" class="w-full" style="max-height: 180px;"></canvas>
+                        <canvas id="counselingTrendChart" class="w-full" style="max-height: 120px;"></canvas>
                         <div class="mt-2 flex justify-between text-xs text-gray-600">
                             <div>
                                 <span class="text-gray-500">오늘:</span>
