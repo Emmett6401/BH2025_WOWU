@@ -1,5 +1,32 @@
 # Cafe24 서버 업데이트 가이드 v3.2
 
+## ⚙️ 최초 설정 (환경 변수) - 한 번만 수행
+
+**v3.2부터 DB/FTP 접속 정보가 환경 변수로 분리되었습니다.**
+
+```bash
+# 1. Cafe24 서버 SSH 접속
+ssh root@114.202.247.97
+
+# 2. 프로젝트 디렉토리로 이동
+cd /root/BH2025_WOWU/backend
+
+# 3. .env 파일 생성 (최초 1회만)
+cp .env.example .env
+
+# 4. .env 파일 편집 (실제 값으로 변경)
+nano .env
+# 또는
+vi .env
+
+# 5. 저장 후 Backend 재시작
+pm2 restart bhhs-backend
+```
+
+**⚠️ 중요: .env 파일이 없으면 백엔드가 기본값으로 작동합니다.**
+
+---
+
 ## 🚀 간단한 업데이트 방법 (권장)
 
 ### 방법 1: 자동 업데이트 스크립트 사용 ⭐
@@ -108,16 +135,22 @@ grep "v3.2" index.html
 ## 📱 v3.2 주요 변경사항
 
 ### ✨ 새로운 기능
-1. **우송대학교 공식 로고**
+1. **환경 변수로 보안 강화 🔐** (중요!)
+   - DB/FTP 접속 정보를 `.env` 파일로 분리
+   - 코드에서 민감 정보 제거
+   - `.env.example` 템플릿 제공
+   - **최초 설정 필요**: `backend/.env` 파일 생성 필수
+
+2. **우송대학교 공식 로고**
    - 파일: `woosong-logo.png` (616x295, 15KB)
    - 위치: 헤더 좌측 상단
 
-2. **강사관리 필터 개선**
+3. **강사관리 필터 개선**
    - 정렬: 이름순 (기본) / 강사코드순
    - 검색 필드 자동완성 차단
    - 초기 로딩 시 이름순 정렬
 
-3. **학생관리 필터 강화**
+4. **학생관리 필터 강화**
    - 5가지 정렬: 이름순/과정순/캠퍼스순/최종학교순/생년월일순
    - 과정 필터 드롭다운
 
@@ -189,7 +222,30 @@ tail -f /var/log/nginx/error.log
 tail -f /var/log/nginx/access.log
 ```
 
-### 문제 5: 로고 이미지가 안 보임
+### 문제 5: Backend DB 연결 실패 (v3.2 환경 변수 이슈)
+```bash
+# .env 파일 존재 확인
+ls -la /root/BH2025_WOWU/backend/.env
+
+# .env 파일이 없으면 생성
+cd /root/BH2025_WOWU/backend
+cp .env.example .env
+nano .env  # 실제 값으로 편집
+
+# .env 파일 내용 확인 (비밀번호 제외)
+cat .env | grep -v PASSWORD
+
+# Backend 재시작
+pm2 restart bhhs-backend
+
+# Backend 로그 확인
+pm2 logs bhhs-backend --nostream
+
+# DB 연결 테스트
+curl http://localhost:8000/health
+```
+
+### 문제 6: 로고 이미지가 안 보임
 ```bash
 # 파일 존재 확인
 ls -lh /root/BH2025_WOWU/frontend/woosong-logo.png
