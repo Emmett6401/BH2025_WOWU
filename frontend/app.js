@@ -281,15 +281,19 @@ window.showPhotoViewer = function(photos, startIndex = 0) {
             ` : ''}
             
             <div class="flex flex-col items-center justify-center w-full h-full px-16 py-8">
-                <img id="viewer-image" src="${photoUrls[currentIndex]}" 
+                <img id="viewer-image" src="${photoUrls[currentIndex].replace('ftp://', 'http://')}" 
                      class="w-auto h-auto max-w-full max-h-full object-contain" 
                      style="max-width: 90vw; max-height: 85vh;"
+                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%23ddd%22 width=%22400%22 height=%22300%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 font-size=%2220%22%3E이미지를 불러올 수 없습니다%3C/text%3E%3C/svg%3E'"
                      alt="사진">
                 ${photoUrls.length > 1 ? `
                     <div class="text-white mt-4 text-xl font-bold">
                         <span id="photo-counter">${currentIndex + 1}</span> / ${photoUrls.length}
                     </div>
                 ` : ''}
+                <div class="text-white mt-2 text-sm opacity-75" id="photo-url-info">
+                    ${photoUrls[currentIndex]}
+                </div>
             </div>
         </div>
     `;
@@ -324,17 +328,23 @@ window.closePhotoViewer = function() {
 window.prevPhoto = function() {
     if (!window.photoUrlsList || window.photoUrlsList.length <= 1) return;
     window.currentPhotoIndex = (window.currentPhotoIndex - 1 + window.photoUrlsList.length) % window.photoUrlsList.length;
-    document.getElementById('viewer-image').src = window.photoUrlsList[window.currentPhotoIndex];
+    const url = window.photoUrlsList[window.currentPhotoIndex];
+    document.getElementById('viewer-image').src = url.replace('ftp://', 'http://');
     const counter = document.getElementById('photo-counter');
     if (counter) counter.textContent = window.currentPhotoIndex + 1;
+    const urlInfo = document.getElementById('photo-url-info');
+    if (urlInfo) urlInfo.textContent = url;
 };
 
 window.nextPhoto = function() {
     if (!window.photoUrlsList || window.photoUrlsList.length <= 1) return;
     window.currentPhotoIndex = (window.currentPhotoIndex + 1) % window.photoUrlsList.length;
-    document.getElementById('viewer-image').src = window.photoUrlsList[window.currentPhotoIndex];
+    const url = window.photoUrlsList[window.currentPhotoIndex];
+    document.getElementById('viewer-image').src = url.replace('ftp://', 'http://');
     const counter = document.getElementById('photo-counter');
     if (counter) counter.textContent = window.currentPhotoIndex + 1;
+    const urlInfo = document.getElementById('photo-url-info');
+    if (urlInfo) urlInfo.textContent = url;
 };
 
 function generatePageButtons(currentPage, totalPages, onPageChange) {
@@ -1410,7 +1420,7 @@ function renderStudents() {
                         <option value="name">이름순</option>
                         <option value="course">과정순</option>
                         <option value="campus">캠퍼스순</option>
-                        <option value="final_school">최종학교순</option>
+                        <option value="final_school">학력순</option>
                         <option value="birth_date">생년월일순</option>
                     </select>
                 </div>
@@ -1442,7 +1452,7 @@ function renderStudents() {
                             <th class="px-4 py-2 text-left">생년월일</th>
                             <th class="px-4 py-2 text-left">성별</th>
                             <th class="px-4 py-2 text-left">연락처</th>
-                            <th class="px-4 py-2 text-left">최종학교</th>
+                            <th class="px-4 py-2 text-left">학력사항</th>
                             <th class="px-4 py-2 text-left">자기소개</th>
                             <th class="px-4 py-2 text-left">작업</th>
                         </tr>
@@ -1507,7 +1517,7 @@ function renderStudents() {
                                 <td class="px-4 py-2">${student.birth_date ? formatDateWithDay(student.birth_date) : '-'}</td>
                                 <td class="px-4 py-2">${student.gender || '-'}</td>
                                 <td class="px-4 py-2">${student.phone || '-'}</td>
-                                <td class="px-4 py-2">${student.final_school || '-'}</td>
+                                <td class="px-4 py-2">${student.education || student.final_school || '-'}</td>
                                 <td class="px-4 py-2 text-sm text-gray-600">${shortIntro}</td>
                                 <td class="px-4 py-2">
                                     <button onclick="window.viewStudent(${student.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="상세보기">
@@ -6256,19 +6266,27 @@ window.saveTeamActivityLog = async function() {
         if (logId) {
             console.log('수정 요청 시작...');
             await axios.put(`${API_BASE_URL}/api/team-activity-logs/${logId}`, data);
-            window.showAlert('활동일지가 수정되었습니다');
         } else {
             console.log('추가 요청 시작...');
             const response = await axios.post(`${API_BASE_URL}/api/team-activity-logs`, data);
             console.log('추가 응답:', response.data);
-            window.showAlert('활동일지가 추가되었습니다');
         }
         
+        // 성공 메시지를 먼저 표시
+        window.showAlert(logId ? '활동일지가 수정되었습니다' : '활동일지가 추가되었습니다');
+        
+        // 모달 닫고 데이터 새로고침
         window.closeTeamActivityLogForm();
         await loadTeamActivityLogs();
-        // 팀 선택 유지
-        document.getElementById('team-select').value = data.project_id;
-        window.filterTeamActivityLogs();
+        
+        // 팀 선택 유지 (DOM이 다시 렌더링된 후)
+        setTimeout(() => {
+            const teamSelect = document.getElementById('team-select');
+            if (teamSelect) {
+                teamSelect.value = data.project_id;
+                window.filterTeamActivityLogs();
+            }
+        }, 100);
     } catch (error) {
         console.error('저장 실패 - 전체 에러:', error);
         console.error('저장 실패 - 응답:', error.response);
