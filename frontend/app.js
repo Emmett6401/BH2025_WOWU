@@ -348,7 +348,8 @@ async function loadDashboard() {
             counselingsData,
             timetablesData,
             projectsData,
-            trainingLogsData
+            trainingLogsData,
+            teamActivityLogsData
         ] = await Promise.all([
             window.getCachedData('students', () => axios.get(`${API_BASE_URL}/api/students`).then(r => r.data)),
             window.getCachedData('instructors', () => axios.get(`${API_BASE_URL}/api/instructors`).then(r => r.data)),
@@ -356,7 +357,8 @@ async function loadDashboard() {
             window.getCachedData('counselings', () => axios.get(`${API_BASE_URL}/api/counselings`).then(r => r.data)),
             window.getCachedData('timetables', () => axios.get(`${API_BASE_URL}/api/timetables`).then(r => r.data)),
             window.getCachedData('projects', () => axios.get(`${API_BASE_URL}/api/projects`).then(r => r.data)),
-            window.getCachedData('training-logs', () => axios.get(`${API_BASE_URL}/api/training-logs`).then(r => r.data))
+            window.getCachedData('training-logs', () => axios.get(`${API_BASE_URL}/api/training-logs`).then(r => r.data)),
+            window.getCachedData('team-activity-logs', () => axios.get(`${API_BASE_URL}/api/team-activity-logs`).then(r => r.data))
         ]);
         
         console.log('✅ 데이터 로딩 완료:', {
@@ -371,8 +373,8 @@ async function loadDashboard() {
             .sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date))
             .slice(0, 5);
         
-        // 오늘 시간표 (추가 정보와 함께)
-        const today = new Date().toISOString().split('T')[0];
+        // 오늘 시간표 (추가 정보와 함께) - 한국 시간 기준
+        const today = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
         const todayTimetables = timetablesData
             .filter(t => t.class_date === today)
             .map(t => {
@@ -420,8 +422,21 @@ async function loadDashboard() {
             })
             .slice(0, 5);
         
-        // 추가 통계 계산
-        const todayDate = new Date().toISOString().split('T')[0];
+        // 최근 팀 활동일지 (최근 5건)
+        const recentTeamActivityLogs = teamActivityLogsData
+            .sort((a, b) => new Date(b.activity_date) - new Date(a.activity_date))
+            .slice(0, 5)
+            .map(log => {
+                const project = projectsData.find(p => p.id === log.project_id);
+                return {
+                    ...log,
+                    project_name: project?.name || '프로젝트명 없음',
+                    project_code: project?.code || ''
+                };
+            });
+        
+        // 추가 통계 계산 - 한국 시간 기준
+        const todayDate = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
         const thisWeekStart = new Date();
         thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
         const thisWeekStartStr = thisWeekStart.toISOString().split('T')[0];
@@ -916,7 +931,7 @@ async function loadDashboard() {
                         </div>
                     </div>
                     
-                    <!-- 최근 팀 활동 -->
+                    <!-- 최근 팀 활동일지 -->
                     <div class="bg-white rounded-lg shadow p-3">
                         <div class="flex items-center justify-between mb-2">
                             <h3 class="text-sm font-bold text-gray-800">
@@ -927,26 +942,22 @@ async function loadDashboard() {
                             </button>
                         </div>
                         <div class="space-y-1.5">
-                            ${projectsData.length > 0 ? projectsData.slice(0, 4).map(p => {
-                                const members = [p.member1_name, p.member2_name, p.member3_name, p.member4_name, p.member5_name].filter(m => m);
-                                return `
+                            ${recentTeamActivityLogs.length > 0 ? recentTeamActivityLogs.slice(0, 4).map(log => `
                                 <div class="p-2 bg-gray-50 rounded hover:bg-gray-100 transition">
-                                    <p class="text-xs font-semibold text-gray-800 truncate mb-0.5">${p.name || '프로젝트명 없음'}</p>
-                                    <div class="flex items-center justify-between text-xs mb-1">
-                                        <span class="text-gray-600 truncate flex-1">
-                                            <i class="fas fa-user-friends mr-1"></i>팀원 ${members.length}명
-                                        </span>
-                                        <span class="text-gray-500 ml-2">${p.course_name || p.course_code || ''}</span>
+                                    <div class="flex items-start justify-between mb-0.5">
+                                        <p class="text-xs font-semibold text-gray-800 truncate flex-1">${log.project_name}</p>
+                                        <p class="text-xs font-semibold text-gray-700 ml-2">${new Date(log.activity_date).getMonth()+1}/${new Date(log.activity_date).getDate()}</p>
                                     </div>
-                                    ${members.length > 0 ? `
-                                    <div class="text-xs text-gray-500 truncate">
-                                        ${members.join(', ')}
-                                    </div>
-                                    ` : ''}
+                                    <p class="text-xs text-pink-600 truncate">
+                                        <i class="fas fa-tag mr-1"></i>${log.activity_type || '팀 활동'}
+                                    </p>
+                                    <p class="text-xs text-gray-600 truncate mt-0.5">
+                                        ${log.content ? (log.content.length > 35 ? log.content.substring(0, 35) + '...' : log.content) : '내용 없음'}
+                                    </p>
                                 </div>
-                            `}).join('') : `
+                            `).join('') : `
                                 <div class="text-center py-4 text-gray-400">
-                                    <p class="text-xs">프로젝트 없음</p>
+                                    <p class="text-xs">팀 활동일지 없음</p>
                                 </div>
                             `}
                         </div>
@@ -2735,11 +2746,12 @@ window.showCounselingForm = function(counselingId = null) {
                     <select name="instructor_code" required class="w-full px-3 py-2 border rounded-lg">
                         <option value="">선택하세요</option>
                         ${instructors.map(i => {
-                            const isLoggedInInstructor = i.code === (JSON.parse(localStorage.getItem('instructor') || '{}').code);
-                            const isSelected = existingCounseling?.instructor_code === i.code;
+                            const loggedInInstructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+                            const isLoggedInInstructor = i.code === loggedInInstructor.code;
+                            const isSelected = existingCounseling?.instructor_code === i.code || (!existingCounseling && isLoggedInInstructor);
                             return `
                             <option value="${i.code}" ${isSelected ? 'selected' : ''}>
-                                ${i.name}${isLoggedInInstructor && !existingCounseling ? ' (나)' : ''}
+                                ${i.name}${isLoggedInInstructor ? ' (나)' : ''}
                             </option>
                         `}).join('')}
                     </select>
@@ -7070,7 +7082,7 @@ function renderAITrainingLog() {
                         <label class="block text-gray-700 mb-2">과정 선택</label>
                         <select id="ai-course" class="w-full border rounded px-3 py-2">
                             <option value="">-- 전체 과정 --</option>
-                            ${courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('')}
+                            ${courses.map(c => `<option value="${c.code}" ${c.code === 'C-001' ? 'selected' : ''}>${c.name} (${c.code})</option>`).join('')}
                         </select>
                     </div>
                     <div>
@@ -7084,12 +7096,17 @@ function renderAITrainingLog() {
                         <label class="block text-gray-700 mb-2">강사 선택</label>
                         <select id="ai-instructor" class="w-full border rounded px-3 py-2">
                             <option value="">-- 전체 강사 --</option>
-                            ${instructors.map(i => {
-                                const typeInfo = instructorTypes.find(t => t.code === i.instructor_type);
-                                const typeName = typeInfo ? typeInfo.name : '';
-                                const typeType = typeInfo ? typeInfo.type : '';
-                                return `<option value="${i.code}">${i.name} - ${i.code} - ${typeName} - ${typeType}</option>`;
-                            }).join('')}
+                            ${(() => {
+                                const loggedInInstructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+                                return instructors.map(i => {
+                                    const typeInfo = instructorTypes.find(t => t.code === i.instructor_type);
+                                    const typeName = typeInfo ? typeInfo.name : '';
+                                    const typeType = typeInfo ? typeInfo.type : '';
+                                    const isSelected = i.code === loggedInInstructor.code;
+                                    const displayMark = isSelected ? ' (나)' : '';
+                                    return `<option value="${i.code}" ${isSelected ? 'selected' : ''}>${i.name}${displayMark} - ${i.code} - ${typeName} - ${typeType}</option>`;
+                                }).join('');
+                            })()}
                         </select>
                     </div>
                 </div>
