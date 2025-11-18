@@ -402,9 +402,37 @@ npm install
 
 ### 환경 변수 설정
 ```bash
-# .env 파일 생성
-OPENAI_API_KEY=your_api_key_here
+# backend/.env 파일 생성 (예시는 .env.example 참조)
+cd backend
+cp .env.example .env
+
+# .env 파일 편집 (실제 값으로 변경)
+nano .env
 ```
+
+**backend/.env 파일 내용:**
+```bash
+# 데이터베이스 설정
+DB_HOST=your_database_host
+DB_PORT=3307
+DB_USER=your_database_user
+DB_PASSWORD=your_database_password
+DB_NAME=your_database_name
+
+# FTP 서버 설정
+FTP_HOST=your_ftp_host
+FTP_PORT=2121
+FTP_USER=your_ftp_user
+FTP_PASSWORD=your_ftp_password
+
+# OpenAI API 설정
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+**⚠️ 보안 주의사항:**
+- `.env` 파일은 절대 Git에 커밋하지 마세요 (`.gitignore`에 포함됨)
+- 실제 프로덕션 환경에서는 환경 변수를 서버에 직접 설정하세요
+- API 키와 비밀번호는 안전하게 보관하세요
 
 ### PM2로 서비스 시작
 ```bash
@@ -434,15 +462,17 @@ webapp/
 ├── backend/
 │   ├── main.py                    # FastAPI 통합 API
 │   ├── thumbnails/                # 썸네일 캐시 디렉토리
-│   └── .env                       # 환경 변수
+│   ├── .env                       # 환경 변수 (Git 제외)
+│   └── .env.example               # 환경 변수 예시 템플릿
 ├── frontend/
 │   ├── index.html                 # HTML (7개 탭)
 │   ├── app.js                     # Vanilla JS (메인 로직)
 │   ├── proxy-server.cjs           # Node.js 프록시 서버
-│   ├── woosong-logo.png           # 우송대학교 로고
+│   ├── woosong-logo.png           # 우송대학교 로고 (v3.2 추가)
 │   └── pwa-styles.css             # PWA 스타일
 ├── ecosystem.config.cjs            # PM2 설정
 ├── student_template.xlsx           # Excel 템플릿
+├── .gitignore                      # Git 제외 파일 (.env 포함)
 └── README.md                       # 이 파일
 ```
 

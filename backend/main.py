@@ -35,14 +35,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 데이터베이스 연결 설정
+# 데이터베이스 연결 설정 (환경 변수에서 로드)
 DB_CONFIG = {
-    'host': 'bitnmeta2.synology.me',
-    'user': 'iyrc',
-    'passwd': 'Dodan1004!',
-    'db': 'bh2025',
+    'host': os.getenv('DB_HOST', 'bitnmeta2.synology.me'),
+    'user': os.getenv('DB_USER', 'iyrc'),
+    'passwd': os.getenv('DB_PASSWORD', 'Dodan1004!'),
+    'db': os.getenv('DB_NAME', 'bh2025'),
     'charset': 'utf8',
-    'port': 3307
+    'port': int(os.getenv('DB_PORT', '3307'))
 }
 
 def get_db_connection():
@@ -83,12 +83,12 @@ def ensure_career_decision_column(cursor):
         print(f"⚠️ career_decision 컬럼 추가 실패: {e}")
         pass
 
-# FTP 설정
+# FTP 설정 (환경 변수에서 로드)
 FTP_CONFIG = {
-    'host': 'bitnmeta2.synology.me',
-    'port': 2121,
-    'user': 'ha',
-    'passwd': 'dodan1004~'
+    'host': os.getenv('FTP_HOST', 'bitnmeta2.synology.me'),
+    'port': int(os.getenv('FTP_PORT', '2121')),
+    'user': os.getenv('FTP_USER', 'ha'),
+    'passwd': os.getenv('FTP_PASSWORD', 'dodan1004~')
 }
 
 # FTP 경로 설정
