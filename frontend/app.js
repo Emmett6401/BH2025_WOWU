@@ -659,6 +659,7 @@ async function loadDashboard() {
                                 if (p.member3_code) count++;
                                 if (p.member4_code) count++;
                                 if (p.member5_code) count++;
+                                if (p.member6_code) count++;
                                 return total + count;
                             }, 0)}</p>
                         </div>
@@ -1245,6 +1246,9 @@ window.showTab = function(tab) {
             break;
         case 'projects':
             loadProjects();
+            break;
+        case 'team-activity-logs':
+            loadTeamActivityLogs();
             break;
         case 'timetables':
             loadTimetables();
@@ -5821,6 +5825,273 @@ function updateProjectPhotoPreview(photoUrls) {
     `).join('');
 }
 
+// ==================== 팀 활동일지 관리 ====================
+let teamActivityLogs = [];
+let selectedProjectForLogs = null;
+
+async function loadTeamActivityLogs() {
+    try {
+        window.showLoading('팀 활동일지 데이터를 불러오는 중...');
+        const [projectsRes, logsRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/api/projects`),
+            axios.get(`${API_BASE_URL}/api/team-activity-logs`)
+        ]);
+        projects = projectsRes.data;
+        teamActivityLogs = logsRes.data;
+        renderTeamActivityLogs();
+        window.hideLoading();
+    } catch (error) {
+        window.hideLoading();
+        console.error('팀 활동일지 로드 실패:', error);
+        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">팀 활동일지를 불러오는데 실패했습니다.</div>';
+    }
+}
+
+function renderTeamActivityLogs() {
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                <i class="fas fa-clipboard-list mr-2"></i>팀 활동일지 관리
+            </h2>
+            
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <p class="text-blue-700">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    팀을 선택하여 활동일지를 조회하고 작성하세요
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-gray-700 mb-2">팀 선택</label>
+                    <select id="team-select" class="w-full border rounded px-3 py-2" onchange="window.filterTeamActivityLogs()">
+                        <option value="">-- 팀 선택 --</option>
+                        ${projects.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('')}
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="window.showTeamActivityLogForm()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg" disabled id="add-log-btn">
+                        <i class="fas fa-plus mr-2"></i>활동일지 추가
+                    </button>
+                </div>
+            </div>
+            
+            <div id="team-activity-logs-list">
+                <p class="text-gray-500 text-center py-8">팀을 선택하여 활동일지를 조회하세요</p>
+            </div>
+        </div>
+    `;
+}
+
+window.filterTeamActivityLogs = function() {
+    const projectId = document.getElementById('team-select').value;
+    const addBtn = document.getElementById('add-log-btn');
+    
+    if (!projectId) {
+        document.getElementById('team-activity-logs-list').innerHTML = `
+            <p class="text-gray-500 text-center py-8">팀을 먼저 선택해주세요</p>
+        `;
+        addBtn.disabled = true;
+        selectedProjectForLogs = null;
+        return;
+    }
+    
+    selectedProjectForLogs = parseInt(projectId);
+    addBtn.disabled = false;
+    
+    const filteredLogs = teamActivityLogs.filter(log => log.project_id === selectedProjectForLogs)
+        .sort((a, b) => new Date(b.activity_date) - new Date(a.activity_date));
+    
+    const project = projects.find(p => p.id === selectedProjectForLogs);
+    const projectName = project ? project.name : '프로젝트';
+    
+    document.getElementById('team-activity-logs-list').innerHTML = `
+        <h3 class="text-lg font-semibold mb-4">${projectName} 활동일지 (${filteredLogs.length}건)</h3>
+        ${filteredLogs.length > 0 ? `
+            <div class="space-y-4">
+                ${filteredLogs.map(log => `
+                    <div class="border rounded-lg p-4 hover:bg-gray-50">
+                        <div class="flex items-start justify-between mb-2">
+                            <div>
+                                <span class="text-sm font-semibold text-gray-700">${log.activity_date}</span>
+                                <span class="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">${log.activity_type || '팀 활동'}</span>
+                            </div>
+                            <div class="space-x-2">
+                                <button onclick="window.editTeamActivityLog(${log.id})" class="text-blue-600 hover:text-blue-800 text-sm">
+                                    <i class="fas fa-edit mr-1"></i>수정
+                                </button>
+                                <button onclick="window.deleteTeamActivityLog(${log.id})" class="text-red-600 hover:text-red-800 text-sm">
+                                    <i class="fas fa-trash mr-1"></i>삭제
+                                </button>
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-800 mb-2">
+                            <strong>활동내용:</strong> ${log.content || '-'}
+                        </div>
+                        ${log.achievements ? `
+                            <div class="text-sm text-gray-600 mb-2">
+                                <strong>성과:</strong> ${log.achievements}
+                            </div>
+                        ` : ''}
+                        ${log.next_plan ? `
+                            <div class="text-sm text-gray-600 mb-2">
+                                <strong>다음계획:</strong> ${log.next_plan}
+                            </div>
+                        ` : ''}
+                        ${log.notes ? `
+                            <div class="text-sm text-gray-500">
+                                <strong>비고:</strong> ${log.notes}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        ` : `
+            <p class="text-gray-500 text-center py-8">작성된 활동일지가 없습니다</p>
+        `}
+    `;
+}
+
+window.showTeamActivityLogForm = function(logId = null) {
+    if (!selectedProjectForLogs && !logId) {
+        window.showAlert('팀을 먼저 선택해주세요');
+        return;
+    }
+    
+    const log = logId ? teamActivityLogs.find(l => l.id === logId) : null;
+    const project = projects.find(p => p.id === (log?.project_id || selectedProjectForLogs));
+    
+    const formHtml = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="team-log-modal">
+            <div class="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <h3 class="text-xl font-bold mb-4">
+                    ${logId ? '활동일지 수정' : '활동일지 추가'} - ${project?.name || ''}
+                </h3>
+                <form id="team-log-form">
+                    <input type="hidden" id="log-id" value="${logId || ''}">
+                    <input type="hidden" id="log-project-id" value="${log?.project_id || selectedProjectForLogs}">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">활동일자 *</label>
+                            <input type="date" id="log-date" value="${log?.activity_date || new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0]}" required class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">활동유형</label>
+                            <select id="log-type" class="w-full border rounded px-3 py-2">
+                                <option value="팀 활동" ${log?.activity_type === '팀 활동' ? 'selected' : ''}>팀 활동</option>
+                                <option value="회의" ${log?.activity_type === '회의' ? 'selected' : ''}>회의</option>
+                                <option value="프로젝트" ${log?.activity_type === '프로젝트' ? 'selected' : ''}>프로젝트</option>
+                                <option value="발표" ${log?.activity_type === '발표' ? 'selected' : ''}>발표</option>
+                                <option value="기타" ${log?.activity_type === '기타' ? 'selected' : ''}>기타</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">활동내용 *</label>
+                        <textarea id="log-content" rows="4" required class="w-full border rounded px-3 py-2">${log?.content || ''}</textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">성과</label>
+                        <textarea id="log-achievements" rows="3" class="w-full border rounded px-3 py-2">${log?.achievements || ''}</textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">다음계획</label>
+                        <textarea id="log-next-plan" rows="3" class="w-full border rounded px-3 py-2">${log?.next_plan || ''}</textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">비고</label>
+                        <textarea id="log-notes" rows="2" class="w-full border rounded px-3 py-2">${log?.notes || ''}</textarea>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="window.closeTeamActivityLogForm()" class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-2 rounded-lg">
+                            취소
+                        </button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                            <i class="fas fa-save mr-2"></i>저장
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', formHtml);
+    
+    document.getElementById('team-log-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await window.saveTeamActivityLog();
+    });
+}
+
+window.closeTeamActivityLogForm = function() {
+    const modal = document.getElementById('team-log-modal');
+    if (modal) modal.remove();
+}
+
+window.saveTeamActivityLog = async function() {
+    const logId = document.getElementById('log-id').value;
+    const data = {
+        project_id: parseInt(document.getElementById('log-project-id').value),
+        activity_date: document.getElementById('log-date').value,
+        activity_type: document.getElementById('log-type').value,
+        content: document.getElementById('log-content').value,
+        achievements: document.getElementById('log-achievements').value,
+        next_plan: document.getElementById('log-next-plan').value,
+        notes: document.getElementById('log-notes').value,
+        photo_urls: '[]'
+    };
+    
+    try {
+        if (logId) {
+            await axios.put(`${API_BASE_URL}/api/team-activity-logs/${logId}`, data);
+            window.showAlert('활동일지가 수정되었습니다');
+        } else {
+            await axios.post(`${API_BASE_URL}/api/team-activity-logs`, data);
+            window.showAlert('활동일지가 추가되었습니다');
+        }
+        window.closeTeamActivityLogForm();
+        await loadTeamActivityLogs();
+        // 팀 선택 유지
+        document.getElementById('team-select').value = data.project_id;
+        window.filterTeamActivityLogs();
+    } catch (error) {
+        console.error('저장 실패:', error);
+        window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+window.editTeamActivityLog = function(logId) {
+    const log = teamActivityLogs.find(l => l.id === logId);
+    if (log) {
+        selectedProjectForLogs = log.project_id;
+        window.showTeamActivityLogForm(logId);
+    }
+}
+
+window.deleteTeamActivityLog = async function(logId) {
+    if (!confirm('정말 삭제하시겠습니까?')) return;
+    
+    try {
+        await axios.delete(`${API_BASE_URL}/api/team-activity-logs/${logId}`);
+        window.showAlert('활동일지가 삭제되었습니다');
+        await loadTeamActivityLogs();
+        if (selectedProjectForLogs) {
+            document.getElementById('team-select').value = selectedProjectForLogs;
+            window.filterTeamActivityLogs();
+        }
+    } catch (error) {
+        console.error('삭제 실패:', error);
+        window.showAlert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
 // ==================== 시간표 관리 ====================
 let timetables = [];
 let filteredTimetables = []; // 필터링된 시간표 저장
@@ -6319,30 +6590,37 @@ function renderTrainingLogsSelection(courses) {
                     <label class="block text-gray-700 mb-2">과정 선택</label>
                     <select id="log-course" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
                         <option value="">-- 과정 선택 --</option>
-                        ${courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('')}
+                        ${courses.map(c => `<option value="${c.code}" ${c.code === 'C-001' ? 'selected' : ''}>${c.name} (${c.code})</option>`).join('')}
                     </select>
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-2">강사 선택</label>
                     <select id="log-instructor" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
                         <option value="">전체 강사</option>
-                        ${instructors.map(i => `<option value="${i.code}">${i.name} (${i.code})</option>`).join('')}
+                        ${(() => {
+                            const loggedInInstructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+                            return instructors.map(i => {
+                                const isSelected = i.code === loggedInInstructor.code;
+                                const displayMark = isSelected ? ' (나)' : '';
+                                return `<option value="${i.code}" ${isSelected ? 'selected' : ''}>${i.name}${displayMark} (${i.code})</option>`;
+                            }).join('');
+                        })()}
                     </select>
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-2">년도</label>
                     <select id="log-year" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
-                        <option value="">전체</option>
-                        <option value="${currentYear}" selected>${currentYear}</option>
+                        <option value="" selected>전체</option>
+                        <option value="${currentYear}">${currentYear}</option>
                         <option value="${currentYear - 1}">${currentYear - 1}</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-2">월</label>
                     <select id="log-month" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
-                        <option value="">전체</option>
+                        <option value="" selected>전체</option>
                         ${Array.from({length: 12}, (_, i) => i + 1).map(m => 
-                            `<option value="${m}" ${m === currentMonth ? 'selected' : ''}>${m}월</option>`
+                            `<option value="${m}">${m}월</option>`
                         ).join('')}
                     </select>
                 </div>

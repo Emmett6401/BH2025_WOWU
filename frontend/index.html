@@ -155,10 +155,21 @@
                         </div>
                     </div>
                     
-                    <!-- 팀은 단독 메뉴로 유지 -->
-                    <button onclick="showTab('projects')" class="tab-btn px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-t" data-tab="projects">
-                        <i class="fas fa-users mr-1"></i>팀
-                    </button>
+                    <!-- 팀 메뉴 (드롭다운) -->
+                    <div class="relative group">
+                        <button class="px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-t">
+                            <i class="fas fa-users mr-1"></i>팀
+                            <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                        </button>
+                        <div class="hidden group-hover:block absolute left-0 top-full bg-white shadow-lg rounded-b z-10 min-w-[150px]">
+                            <button onclick="showTab('projects')" class="tab-btn block w-full text-left px-4 py-2 text-sm hover:bg-blue-50" data-tab="projects">
+                                <i class="fas fa-users mr-2"></i>팀 관리
+                            </button>
+                            <button onclick="showTab('team-activity-logs')" class="tab-btn block w-full text-left px-4 py-2 text-sm hover:bg-blue-50" data-tab="team-activity-logs">
+                                <i class="fas fa-clipboard-list mr-2"></i>팀 활동일지
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </nav>
