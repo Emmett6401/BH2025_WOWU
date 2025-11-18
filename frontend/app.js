@@ -5922,6 +5922,7 @@ window.filterTeamActivityLogs = function() {
                                 ${!selectedProjectForLogs ? `<span class="text-sm font-semibold text-pink-600 mr-2">[${log.project_name}]</span>` : ''}
                                 <span class="text-sm font-semibold text-gray-700">${log.activity_date}</span>
                                 <span class="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">${log.activity_type || '팀 활동'}</span>
+                                ${log.instructor_code ? `<span class="ml-2 text-xs text-gray-600"><i class="fas fa-user mr-1"></i>${instructors.find(i => i.code === log.instructor_code)?.name || log.instructor_code}</span>` : ''}
                             </div>
                             <div class="space-x-2">
                                 <button onclick="window.editTeamActivityLog(${log.id})" class="text-blue-600 hover:text-blue-800 text-sm">
@@ -5977,6 +5978,18 @@ window.showTeamActivityLogForm = function(logId = null) {
                         <select id="log-project-id" required class="w-full border rounded px-3 py-2">
                             <option value="">팀을 선택하세요</option>
                             ${projects.map(p => `<option value="${p.id}" ${p.id == preselectedProjectId ? 'selected' : ''}>${p.name} (${p.code})</option>`).join('')}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">작성자 *</label>
+                        <select id="log-instructor-code" required class="w-full border rounded px-3 py-2">
+                            <option value="">작성자를 선택하세요</option>
+                            ${instructors.map(inst => {
+                                const isCurrentUser = inst.code === currentUser?.code;
+                                const isSelected = log?.instructor_code === inst.code || (!log && isCurrentUser);
+                                return `<option value="${inst.code}" ${isSelected ? 'selected' : ''}>${inst.name} (${inst.code})${isCurrentUser ? ' (나)' : ''}</option>`;
+                            }).join('')}
                         </select>
                     </div>
                     
@@ -6103,8 +6116,17 @@ window.saveTeamActivityLog = async function() {
         return;
     }
     
+    const instructorCode = document.getElementById('log-instructor-code').value;
+    
+    // 작성자 선택 필수 검증
+    if (!instructorCode) {
+        window.showAlert('작성자를 선택해주세요');
+        return;
+    }
+    
     const data = {
         project_id: parseInt(projectId),
+        instructor_code: instructorCode,
         activity_date: document.getElementById('log-date').value,
         activity_type: document.getElementById('log-type').value,
         content: document.getElementById('log-content').value,

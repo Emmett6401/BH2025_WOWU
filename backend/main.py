@@ -2983,10 +2983,11 @@ async def create_team_activity_log(log: dict):
         
         cursor.execute("""
             INSERT INTO team_activity_logs 
-            (project_id, activity_date, activity_type, content, achievements, next_plan, notes, photo_urls)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (project_id, instructor_code, activity_date, activity_type, content, achievements, next_plan, notes, photo_urls)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             log.get('project_id'),
+            log.get('instructor_code'),
             log.get('activity_date'),
             log.get('activity_type', '팀 활동'),
             log.get('content'),
@@ -3015,10 +3016,11 @@ async def update_team_activity_log(log_id: int, log: dict):
         
         cursor.execute("""
             UPDATE team_activity_logs
-            SET activity_date = %s, activity_type = %s, content = %s,
+            SET instructor_code = %s, activity_date = %s, activity_type = %s, content = %s,
                 achievements = %s, next_plan = %s, notes = %s, photo_urls = %s
             WHERE id = %s
         """, (
+            log.get('instructor_code'),
             log.get('activity_date'),
             log.get('activity_type'),
             log.get('content'),
