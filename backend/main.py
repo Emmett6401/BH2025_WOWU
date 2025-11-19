@@ -1720,6 +1720,113 @@ async def delete_training_log(log_id: int):
     finally:
         conn.close()
 
+@app.post("/api/training-logs/generate-content")
+async def generate_training_content(data: dict):
+    """AI를 이용한 훈련일지 수업 내용 자동 생성"""
+    subject_name = data.get('subject_name', '')
+    sub_subjects = data.get('sub_subjects', [])  # 세부 교과목 리스트
+    class_date = data.get('class_date', '')
+    instructor_name = data.get('instructor_name', '')
+    
+    if not subject_name:
+        raise HTTPException(status_code=400, detail="과목명이 필요합니다")
+    
+    # Groq API 키 확인
+    groq_api_key = os.getenv('GROQ_API_KEY', '')
+    
+    # 세부 교과목 텍스트 포맷팅
+    sub_subjects_text = ""
+    if sub_subjects:
+        for sub in sub_subjects:
+            sub_subjects_text += f"- {sub.get('name', '')} ({sub.get('hours', 0)}시간)\n"
+    
+    system_prompt = """당신은 IT 훈련 과정의 전문 강사입니다.
+주어진 과목과 세부 교과목을 기반으로 실제 수업에서 진행할 수 있는 구체적인 수업 내용을 작성해주세요.
+수업 내용은 교육적이고 실용적이어야 하며, 실제 강의 현장에서 사용할 수 있는 내용이어야 합니다."""
+
+    user_prompt = f"""
+다음 정보를 바탕으로 오늘 수업에서 진행할 수업 내용을 작성해주세요:
+
+수업 정보:
+- 날짜: {class_date}
+- 과목: {subject_name}
+- 강사: {instructor_name}
+
+세부 교과목:
+{sub_subjects_text if sub_subjects_text else '세부 교과목 정보 없음'}
+
+다음 형식으로 수업 내용을 작성해주세요:
+1. 오늘의 학습 목표 (2-3개)
+2. 주요 학습 내용 (구체적으로 4-5개 항목)
+3. 실습 또는 프로젝트 (있다면)
+4. 학생들이 배운 핵심 개념 (3-4개)
+
+총 300-500자 정도로 작성해주시고, 실제 수업에서 다룰 수 있는 구체적이고 실용적인 내용으로 작성해주세요.
+"""
+    
+    try:
+        if groq_api_key:
+            headers = {
+                "Authorization": f"Bearer {groq_api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": "llama-3.1-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 1000
+            }
+            
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=30
+            )
+            
+            if response.status_code != 200:
+                raise Exception(f"Groq API 오류: {response.text}")
+            
+            content = response.json()['choices'][0]['message']['content']
+        else:
+            # API 키가 없으면 템플릿 기반 생성
+            content = f"""[{subject_name} 수업 내용]
+
+오늘의 학습 목표:
+- {subject_name}의 핵심 개념 이해
+- 실무 활용 능력 향상
+
+주요 학습 내용:
+"""
+            if sub_subjects:
+                for sub in sub_subjects:
+                    content += f"- {sub.get('name', '')} 이론 및 실습\n"
+            else:
+                content += f"- {subject_name} 기본 개념 학습\n- 실습 예제 진행\n"
+            
+            content += f"""
+실습 내용:
+- 학습한 내용을 바탕으로 실제 프로젝트 적용
+
+핵심 개념:
+- {subject_name}의 주요 이론
+- 실무 적용 방법
+- 문제 해결 능력 향상
+
+오늘 수업을 통해 학생들은 {subject_name}에 대한 이해도를 높이고 실무 능력을 향상시켰습니다."""
+        
+        return {
+            "content": content.strip(),
+            "subject_name": subject_name,
+            "class_date": class_date
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI 생성 실패: {str(e)}")
+
 # ==================== AI 생기부 작성 API ====================
 
 def generate_report_template(student, counselings, counseling_text, style='formal'):

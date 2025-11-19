@@ -7245,6 +7245,17 @@ window.showTrainingLogForm = async function(timetableId) {
         const response = await axios.get(`${API_BASE_URL}/api/timetables/${timetableId}`);
         const tt = response.data;
         
+        // 미래 날짜 체크
+        const classDate = new Date(tt.class_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);  // 시간을 00:00:00으로 설정하여 날짜만 비교
+        classDate.setHours(0, 0, 0, 0);
+        
+        if (classDate > today) {
+            alert('⚠️ 미래 날짜의 훈련일지는 작성할 수 없습니다.\n\n수업이 진행된 후에 작성해주세요.');
+            return;
+        }
+        
         // 과목의 세부 교과목 정보 조회
         let subSubjectsHTML = '';
         if (tt.subject_code) {
@@ -7288,9 +7299,17 @@ window.showTrainingLogForm = async function(timetableId) {
                 <input type="hidden" id="training-class-date" value="${tt.class_date}">
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-gray-700 mb-2">수업 내용 *</label>
-                        <textarea name="content" rows="6" required class="w-full px-3 py-2 border rounded-lg" 
-                                  placeholder="오늘 수업에서 다룬 내용을 자세히 작성해주세요..."></textarea>
+                        <label class="block text-gray-700 mb-2 flex items-center justify-between">
+                            <span>수업 내용 *</span>
+                            <button type="button" 
+                                    onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}')"
+                                    class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all">
+                                <i class="fas fa-magic"></i>
+                                <span>AI 자동채우기</span>
+                            </button>
+                        </label>
+                        <textarea id="training-content-textarea" name="content" rows="6" required class="w-full px-3 py-2 border rounded-lg" 
+                                  placeholder="오늘 수업에서 다룬 내용을 자세히 작성해주세요... (또는 'AI 자동채우기' 버튼을 눌러보세요!)"></textarea>
                     </div>
                     <div>
                         <label class="block text-gray-700 mb-2">과제</label>
@@ -7647,6 +7666,59 @@ function updateTrainingPhotoPreview(photoUrls) {
         </div>
     `).join('');
 }
+
+window.generateAIContent = async function(timetableId, subjectName, subjectCode, classDate, instructorName) {
+    // 로딩 표시
+    const contentTextarea = document.getElementById('training-content-textarea');
+    const originalPlaceholder = contentTextarea.placeholder;
+    contentTextarea.placeholder = '🤖 AI가 수업 내용을 생성하고 있습니다... 잠시만 기다려주세요...';
+    contentTextarea.disabled = true;
+    
+    try {
+        // 세부 교과목 정보 조회
+        let subSubjects = [];
+        if (subjectCode) {
+            try {
+                const subjectRes = await axios.get(`${API_BASE_URL}/api/subjects/${subjectCode}`);
+                const subject = subjectRes.data;
+                subSubjects = [1, 2, 3, 4, 5]
+                    .filter(i => subject[`sub_subject_${i}`] && subject[`sub_subject_${i}`].trim())
+                    .map(i => ({
+                        name: subject[`sub_subject_${i}`],
+                        hours: subject[`sub_hours_${i}`] || 0
+                    }));
+            } catch (error) {
+                console.error('과목 정보 조회 실패:', error);
+            }
+        }
+        
+        // AI 수업 내용 생성 API 호출
+        const response = await axios.post(`${API_BASE_URL}/api/training-logs/generate-content`, {
+            subject_name: subjectName,
+            sub_subjects: subSubjects,
+            class_date: classDate,
+            instructor_name: instructorName
+        });
+        
+        // 생성된 내용을 textarea에 채우기
+        contentTextarea.value = response.data.content;
+        contentTextarea.disabled = false;
+        contentTextarea.placeholder = originalPlaceholder;
+        
+        // 성공 메시지
+        window.showAlert('✨ AI가 수업 내용을 생성했습니다! 필요하면 수정해주세요.');
+        
+        // textarea에 포커스
+        contentTextarea.focus();
+    } catch (error) {
+        console.error('AI 생성 실패:', error);
+        contentTextarea.disabled = false;
+        contentTextarea.placeholder = originalPlaceholder;
+        
+        const errorMsg = error.response?.data?.detail || error.message || 'AI 생성에 실패했습니다';
+        window.showAlert('❌ ' + errorMsg + '\n\n직접 입력해주세요.');
+    }
+};
 
 window.saveTrainingLog = async function(timetableId, courseCode, instructorCode, classDate, autoSave = false) {
     const form = document.getElementById('training-log-save-form');
