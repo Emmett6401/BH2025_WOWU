@@ -2695,15 +2695,18 @@ window.showStudentDetail = async function(studentId) {
         }
         
         // detailDiv는 함수 시작 부분에서 이미 선언됨
+        detailDiv.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
         detailDiv.innerHTML = `
-            <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 rounded-t-lg flex justify-between items-center">
-                <h3 class="text-2xl font-bold flex items-center">
-                    <i class="fas fa-user-circle mr-3"></i>학생 상세 정보
-                </h3>
-                <button onclick="window.hideStudentDetail()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition">
-                    <i class="fas fa-times text-2xl"></i>
-                </button>
-            </div>
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+                <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 rounded-t-2xl flex justify-between items-center sticky top-0 z-10">
+                    <h3 class="text-2xl font-bold flex items-center">
+                        <i class="fas fa-id-card mr-3"></i>상세보기
+                    </h3>
+                    <button onclick="window.hideStudentDetail()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                <div class="modal-content-inner">
             
             <div class="p-6">
                 <!-- 프로필 영역 -->
@@ -2835,10 +2838,8 @@ window.showStudentDetail = async function(studentId) {
                     </div>
                 ` : ''}
             </div>
+            </div>
         `;
-        
-        // detailDiv는 이미 함수 시작 부분에서 표시됨
-        detailDiv.scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
         console.error('학생 정보 조회 실패:', error);
         const detailDiv = document.getElementById('student-detail');
@@ -7220,15 +7221,28 @@ function renderTrainingLogsTable(timetables) {
                                     `}
                                 </td>
                                 <td class="px-3 py-2 text-xs">
-                                    ${hasLog ? `
-                                        <button onclick="window.editTrainingLog(${tt.training_log_id}, ${tt.id})" class="text-blue-600 hover:text-blue-800 mr-2">
-                                            <i class="fas fa-edit"></i> 수정
-                                        </button>
-                                    ` : `
-                                        <button onclick="window.showTrainingLogForm(${tt.id})" class="text-green-600 hover:text-green-800">
-                                            <i class="fas fa-plus"></i> 작성
-                                        </button>
-                                    `}
+                                    ${(() => {
+                                        const isFuture = new Date(tt.class_date).setHours(0,0,0,0) > new Date().setHours(0,0,0,0);
+                                        if (hasLog) {
+                                            return `
+                                                <button onclick="window.editTrainingLog(${tt.training_log_id}, ${tt.id})" class="text-blue-600 hover:text-blue-800 mr-2">
+                                                    <i class="fas fa-edit"></i> 수정
+                                                </button>
+                                            `;
+                                        } else if (isFuture) {
+                                            return `
+                                                <button disabled class="text-gray-300 cursor-not-allowed" title="미래 날짜는 작성할 수 없습니다">
+                                                    <i class="fas fa-lock"></i> 작성불가
+                                                </button>
+                                            `;
+                                        } else {
+                                            return `
+                                                <button onclick="window.showTrainingLogForm(${tt.id})" class="text-green-600 hover:text-green-800">
+                                                    <i class="fas fa-plus"></i> 작성
+                                                </button>
+                                            `;
+                                        }
+                                    })()}
                                 </td>
                             </tr>
                         `;
@@ -7301,15 +7315,54 @@ window.showTrainingLogForm = async function(timetableId) {
                     <div>
                         <label class="block text-gray-700 mb-2 flex items-center justify-between">
                             <span>수업 내용 *</span>
-                            <button type="button" 
-                                    onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}')"
-                                    class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all">
-                                <i class="fas fa-magic"></i>
-                                <span>AI 자동채우기</span>
-                            </button>
+                            <div class="relative inline-block">
+                                <button type="button" 
+                                        id="ai-generate-btn"
+                                        class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
+                                        onclick="document.getElementById('ai-dropdown').classList.toggle('hidden')">
+                                    <i class="fas fa-magic"></i>
+                                    <span>AI 확장하기</span>
+                                    <i class="fas fa-chevron-down ml-1"></i>
+                                </button>
+                                <div id="ai-dropdown" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
+                                    <div class="p-3 border-b bg-gray-50 rounded-t-lg">
+                                        <p class="text-xs text-gray-600">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            수업 내용을 몇 단어라도 입력한 후<br/>원하는 상세도를 선택하세요
+                                        </p>
+                                    </div>
+                                    <button type="button" 
+                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'summary')"
+                                            class="w-full text-left px-4 py-3 hover:bg-blue-50 transition flex items-center gap-3 border-b">
+                                        <i class="fas fa-compress-alt text-blue-500"></i>
+                                        <div>
+                                            <div class="font-semibold text-sm">요약</div>
+                                            <div class="text-xs text-gray-500">간결한 핵심 내용 (200-300자)</div>
+                                        </div>
+                                    </button>
+                                    <button type="button" 
+                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'normal')"
+                                            class="w-full text-left px-4 py-3 hover:bg-green-50 transition flex items-center gap-3 border-b">
+                                        <i class="fas fa-align-left text-green-500"></i>
+                                        <div>
+                                            <div class="font-semibold text-sm">보통</div>
+                                            <div class="text-xs text-gray-500">적절한 상세도 (400-600자)</div>
+                                        </div>
+                                    </button>
+                                    <button type="button" 
+                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'detailed')"
+                                            class="w-full text-left px-4 py-3 hover:bg-purple-50 transition flex items-center gap-3 rounded-b-lg">
+                                        <i class="fas fa-align-justify text-purple-500"></i>
+                                        <div>
+                                            <div class="font-semibold text-sm">상세</div>
+                                            <div class="text-xs text-gray-500">매우 구체적인 내용 (800-1200자)</div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
                         </label>
                         <textarea id="training-content-textarea" name="content" rows="6" required class="w-full px-3 py-2 border rounded-lg" 
-                                  placeholder="오늘 수업에서 다룬 내용을 자세히 작성해주세요... (또는 'AI 자동채우기' 버튼을 눌러보세요!)"></textarea>
+                                  placeholder="수업에서 다룬 내용을 간단히 입력하세요 (예: HTML, CSS 기초, 레이아웃 실습)&#10;&#10;입력 후 'AI 확장하기' 버튼을 눌러 요약/보통/상세 중 선택하면&#10;AI가 입력한 내용을 바탕으로 전문적인 훈련일지로 확장해드립니다!"></textarea>
                     </div>
                     <div>
                         <label class="block text-gray-700 mb-2">과제</label>
@@ -7436,8 +7489,55 @@ window.editTrainingLog = async function(logId, timetableId) {
                 <input type="hidden" id="training-class-date" value="${tt.class_date}">
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-gray-700 mb-2">수업 내용 *</label>
-                        <textarea name="content" rows="6" required class="w-full px-3 py-2 border rounded-lg">${log.content || ''}</textarea>
+                        <label class="block text-gray-700 mb-2 flex items-center justify-between">
+                            <span>수업 내용 *</span>
+                            <div class="relative inline-block">
+                                <button type="button" 
+                                        id="ai-generate-btn-edit"
+                                        class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
+                                        onclick="document.getElementById('ai-dropdown-edit').classList.toggle('hidden')">
+                                    <i class="fas fa-magic"></i>
+                                    <span>AI 확장하기</span>
+                                    <i class="fas fa-chevron-down ml-1"></i>
+                                </button>
+                                <div id="ai-dropdown-edit" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
+                                    <div class="p-3 border-b bg-gray-50 rounded-t-lg">
+                                        <p class="text-xs text-gray-600">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            수업 내용을 수정한 후<br/>원하는 상세도를 선택하세요
+                                        </p>
+                                    </div>
+                                    <button type="button" 
+                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'summary')"
+                                            class="w-full text-left px-4 py-3 hover:bg-blue-50 transition flex items-center gap-3 border-b">
+                                        <i class="fas fa-compress-alt text-blue-500"></i>
+                                        <div>
+                                            <div class="font-semibold text-sm">요약</div>
+                                            <div class="text-xs text-gray-500">간결한 핵심 내용 (200-300자)</div>
+                                        </div>
+                                    </button>
+                                    <button type="button" 
+                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'normal')"
+                                            class="w-full text-left px-4 py-3 hover:bg-green-50 transition flex items-center gap-3 border-b">
+                                        <i class="fas fa-align-left text-green-500"></i>
+                                        <div>
+                                            <div class="font-semibold text-sm">보통</div>
+                                            <div class="text-xs text-gray-500">적절한 상세도 (400-600자)</div>
+                                        </div>
+                                    </button>
+                                    <button type="button" 
+                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'detailed')"
+                                            class="w-full text-left px-4 py-3 hover:bg-purple-50 transition flex items-center gap-3 rounded-b-lg">
+                                        <i class="fas fa-align-justify text-purple-500"></i>
+                                        <div>
+                                            <div class="font-semibold text-sm">상세</div>
+                                            <div class="text-xs text-gray-500">매우 구체적인 내용 (800-1200자)</div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </label>
+                        <textarea id="training-content-textarea" name="content" rows="6" required class="w-full px-3 py-2 border rounded-lg">${log.content || ''}</textarea>
                     </div>
                     <div>
                         <label class="block text-gray-700 mb-2">과제</label>
@@ -7667,12 +7767,33 @@ function updateTrainingPhotoPreview(photoUrls) {
     `).join('');
 }
 
-window.generateAIContent = async function(timetableId, subjectName, subjectCode, classDate, instructorName) {
-    // 로딩 표시
+window.generateAIContent = async function(timetableId, subjectName, subjectCode, classDate, instructorName, detailLevel = 'normal') {
     const contentTextarea = document.getElementById('training-content-textarea');
+    const userInput = contentTextarea.value.trim();
+    
+    // 드롭다운 닫기
+    const dropdown = document.getElementById('ai-dropdown') || document.getElementById('ai-dropdown-edit');
+    if (dropdown) dropdown.classList.add('hidden');
+    
+    // 사용자 입력 체크
+    if (!userInput) {
+        window.showAlert('⚠️ 수업 내용을 먼저 입력해주세요!\n\n예시: "HTML, CSS 기초, 레이아웃 실습"');
+        contentTextarea.focus();
+        return;
+    }
+    
+    // 로딩 표시
+    const originalValue = contentTextarea.value;
     const originalPlaceholder = contentTextarea.placeholder;
-    contentTextarea.placeholder = '🤖 AI가 수업 내용을 생성하고 있습니다... 잠시만 기다려주세요...';
+    contentTextarea.placeholder = '🤖 AI가 입력하신 내용을 바탕으로 훈련일지를 작성하고 있습니다... 잠시만 기다려주세요...';
     contentTextarea.disabled = true;
+    
+    // 상세도 레벨 한글 표시
+    const levelText = {
+        'summary': '요약',
+        'normal': '보통',
+        'detailed': '상세'
+    };
     
     try {
         // 세부 교과목 정보 조회
@@ -7697,7 +7818,9 @@ window.generateAIContent = async function(timetableId, subjectName, subjectCode,
             subject_name: subjectName,
             sub_subjects: subSubjects,
             class_date: classDate,
-            instructor_name: instructorName
+            instructor_name: instructorName,
+            user_input: userInput,
+            detail_level: detailLevel
         });
         
         // 생성된 내용을 textarea에 채우기
@@ -7706,17 +7829,18 @@ window.generateAIContent = async function(timetableId, subjectName, subjectCode,
         contentTextarea.placeholder = originalPlaceholder;
         
         // 성공 메시지
-        window.showAlert('✨ AI가 수업 내용을 생성했습니다! 필요하면 수정해주세요.');
+        window.showAlert(`✨ AI가 ${levelText[detailLevel]} 스타일로 훈련일지를 작성했습니다!\n필요하면 수정해주세요.`);
         
         // textarea에 포커스
         contentTextarea.focus();
     } catch (error) {
         console.error('AI 생성 실패:', error);
+        contentTextarea.value = originalValue;  // 원래 내용 복원
         contentTextarea.disabled = false;
         contentTextarea.placeholder = originalPlaceholder;
         
         const errorMsg = error.response?.data?.detail || error.message || 'AI 생성에 실패했습니다';
-        window.showAlert('❌ ' + errorMsg + '\n\n직접 입력해주세요.');
+        window.showAlert('❌ ' + errorMsg + '\n\n원래 입력하신 내용은 그대로 유지됩니다.');
     }
 };
 

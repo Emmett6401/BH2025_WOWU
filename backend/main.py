@@ -1722,14 +1722,16 @@ async def delete_training_log(log_id: int):
 
 @app.post("/api/training-logs/generate-content")
 async def generate_training_content(data: dict):
-    """AI를 이용한 훈련일지 수업 내용 자동 생성"""
+    """AI를 이용한 훈련일지 수업 내용 자동 생성 (사용자 입력 기반 확장)"""
     subject_name = data.get('subject_name', '')
     sub_subjects = data.get('sub_subjects', [])  # 세부 교과목 리스트
     class_date = data.get('class_date', '')
     instructor_name = data.get('instructor_name', '')
+    user_input = data.get('user_input', '').strip()  # 사용자가 입력한 내용
+    detail_level = data.get('detail_level', 'normal')  # 'summary', 'normal', 'detailed'
     
-    if not subject_name:
-        raise HTTPException(status_code=400, detail="과목명이 필요합니다")
+    if not user_input:
+        raise HTTPException(status_code=400, detail="수업 내용을 먼저 입력해주세요 (최소 몇 단어라도)")
     
     # Groq API 키 확인
     groq_api_key = os.getenv('GROQ_API_KEY', '')
@@ -1740,28 +1742,41 @@ async def generate_training_content(data: dict):
         for sub in sub_subjects:
             sub_subjects_text += f"- {sub.get('name', '')} ({sub.get('hours', 0)}시간)\n"
     
+    # 상세도에 따른 지시사항
+    detail_instructions = {
+        'summary': '간결하고 핵심적인 내용으로 200-300자 정도로 작성해주세요.',
+        'normal': '적절한 상세도로 400-600자 정도로 작성해주세요.',
+        'detailed': '매우 상세하고 구체적으로 800-1200자 정도로 작성해주세요. 예제, 실습 내용, 학생 반응 등을 포함하세요.'
+    }
+    
     system_prompt = """당신은 IT 훈련 과정의 전문 강사입니다.
-주어진 과목과 세부 교과목을 기반으로 실제 수업에서 진행할 수 있는 구체적인 수업 내용을 작성해주세요.
-수업 내용은 교육적이고 실용적이어야 하며, 실제 강의 현장에서 사용할 수 있는 내용이어야 합니다."""
+강사가 입력한 간단한 메모나 키워드를 바탕으로, 실제 수업에서 진행한 내용을 전문적인 훈련일지 형식으로 확장하여 작성해주세요.
+수업 내용은 교육적이고 실용적이어야 하며, 실제 강의 현장의 분위기를 반영해야 합니다."""
 
     user_prompt = f"""
-다음 정보를 바탕으로 오늘 수업에서 진행할 수업 내용을 작성해주세요:
+다음은 강사가 입력한 오늘 수업의 간단한 메모입니다:
 
-수업 정보:
+【강사 메모】
+{user_input}
+
+【수업 정보】
 - 날짜: {class_date}
 - 과목: {subject_name}
 - 강사: {instructor_name}
-
-세부 교과목:
+- 세부 교과목: 
 {sub_subjects_text if sub_subjects_text else '세부 교과목 정보 없음'}
 
-다음 형식으로 수업 내용을 작성해주세요:
-1. 오늘의 학습 목표 (2-3개)
-2. 주요 학습 내용 (구체적으로 4-5개 항목)
-3. 실습 또는 프로젝트 (있다면)
-4. 학생들이 배운 핵심 개념 (3-4개)
+위의 강사 메모를 바탕으로 훈련일지의 수업 내용을 전문적으로 작성해주세요:
 
-총 300-500자 정도로 작성해주시고, 실제 수업에서 다룰 수 있는 구체적이고 실용적인 내용으로 작성해주세요.
+1. 강사가 입력한 핵심 내용을 반드시 포함하세요
+2. 오늘의 학습 목표를 명확히 제시하세요
+3. 실제 진행한 주요 학습 내용을 구체적으로 작성하세요
+4. 실습이나 프로젝트 내용이 있다면 상세히 기술하세요
+5. 학생들이 배운 핵심 개념을 정리하세요
+
+{detail_instructions.get(detail_level, detail_instructions['normal'])}
+
+실제 강의 현장에서 사용할 수 있는 전문적이고 구체적인 내용으로 작성해주세요.
 """
     
     try:
