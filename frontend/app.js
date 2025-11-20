@@ -5393,7 +5393,9 @@ window.handleInstructorProfileUpload = async function(event) {
         
         if (response.data.success) {
             const profilePhotoUrl = response.data.url;
-            document.getElementById('instructor-profile-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(profilePhotoUrl);
+            // 캐시 버스팅
+            const timestamp = new Date().getTime();
+            document.getElementById('instructor-profile-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(profilePhotoUrl) + '&t=' + timestamp;
             document.getElementById('instructor-profile-photo-url').value = profilePhotoUrl;
             
             // 자동 저장
@@ -5415,7 +5417,18 @@ window.handleInstructorProfileUpload = async function(event) {
         }
     } catch (error) {
         console.error('프로필 사진 업로드 실패:', error);
-        window.showAlert('❌ 프로필 사진 업로드에 실패했습니다: ' + error.message, 'error');
+        
+        // 에러 메시지 개선
+        let errorMsg = '❌ 프로필 사진 업로드에 실패했습니다';
+        if (error.response?.status === 413) {
+            errorMsg = '❌ 파일이 너무 큽니다!\n\n파일 크기를 5MB 이하로 줄여주세요.';
+        } else if (error.response?.data?.detail) {
+            errorMsg = '❌ ' + error.response.data.detail;
+        } else if (error.message) {
+            errorMsg += ': ' + error.message;
+        }
+        
+        window.showAlert(errorMsg, 'error');
         
         // 프로그레스바 숨기기
         if (progressDiv) {
@@ -11046,6 +11059,13 @@ window.uploadMyPagePhoto = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    // 파일 크기 체크 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        window.showAlert('⚠️ 파일 크기는 5MB를 초과할 수 없습니다.\n\n현재 크기: ' + (file.size / 1024 / 1024).toFixed(2) + 'MB', 'warning');
+        event.target.value = '';
+        return;
+    }
+    
     const instructor = JSON.parse(localStorage.getItem('instructor'));
     const formData = new FormData();
     formData.append('file', file);
@@ -11070,8 +11090,9 @@ window.uploadMyPagePhoto = async function(event) {
         
         const photoUrl = response.data.url;
         
-        // 프로필 사진 업데이트
-        document.getElementById('mypage-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(photoUrl);
+        // 프로필 사진 업데이트 (캐시 버스팅)
+        const timestamp = new Date().getTime();
+        document.getElementById('mypage-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(photoUrl) + '&t=' + timestamp;
         
         // 기존 첨부 파일 가져오기
         let attachments = [];
@@ -11124,7 +11145,17 @@ window.uploadMyPagePhoto = async function(event) {
             progressBar.classList.add('bg-blue-600');
         }, 2000);
         
-        window.showAlert('❌ 사진 업로드에 실패했습니다: ' + error.message, 'error');
+        // 에러 메시지 개선
+        let errorMsg = '❌ 사진 업로드에 실패했습니다';
+        if (error.response?.status === 413) {
+            errorMsg = '❌ 파일이 너무 큽니다!\n\n파일 크기를 5MB 이하로 줄여주세요.';
+        } else if (error.response?.data?.detail) {
+            errorMsg = '❌ ' + error.response.data.detail;
+        } else if (error.message) {
+            errorMsg += ': ' + error.message;
+        }
+        
+        window.showAlert(errorMsg, 'error');
     }
 };
 
