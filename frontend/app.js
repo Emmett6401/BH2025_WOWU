@@ -10018,3 +10018,12 @@ window.resetSystemSettings = async function() {
         window.showAlert('시스템 설정 초기화에 실패했습니다: ' + error.message);
     }
 }
+
+// ==================== 페이지 로드 시 헤더 업데이트 ====================
+// 페이지가 완전히 로드된 후 헤더 업데이트 실행
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', updateHeader);
+} else {
+    // 이미 로드된 경우 즉시 실행
+    updateHeader();
+}
