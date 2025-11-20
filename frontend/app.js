@@ -2427,6 +2427,17 @@ window.showStudentForm = async function(studentId = null) {
                             <input type="file" id="student-profile-input" accept="image/*" 
                                    onchange="window.handleStudentProfileUpload(event)" class="hidden">
                             <p class="text-xs text-gray-500 mt-2">프로필 전용 사진 (1개)</p>
+                            <!-- 프로필 사진 업로드 프로그레스바 -->
+                            <div id="student-profile-upload-progress" class="hidden mt-2">
+                                <div class="bg-green-50 border border-green-200 rounded p-2">
+                                    <p class="text-xs text-green-800 mb-1">
+                                        <i class="fas fa-cloud-upload-alt mr-1"></i>업로드 중...
+                                    </p>
+                                    <div class="w-full bg-green-200 rounded-full h-1.5">
+                                        <div id="student-profile-progress-bar" class="bg-green-600 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2561,14 +2572,32 @@ window.handleStudentProfileUpload = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    // 프로그레스바 요소
+    const progressDiv = document.getElementById('student-profile-upload-progress');
+    const progressBar = document.getElementById('student-profile-progress-bar');
+    
     try {
+        // 프로그레스바 표시
+        if (progressDiv) {
+            progressDiv.classList.remove('hidden');
+            progressBar.style.width = '0%';
+        }
+        
         const formData = new FormData();
         formData.append('file', file);
         
         const response = await axios.post(
             `${API_BASE_URL}/api/upload-image?category=student`,
             formData,
-            { headers: { 'Content-Type': 'multipart/form-data' } }
+            {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    if (progressBar) {
+                        progressBar.style.width = percentCompleted + '%';
+                    }
+                }
+            }
         );
         
         if (response.data.success) {
@@ -2586,9 +2615,21 @@ window.handleStudentProfileUpload = async function(event) {
                 window.showAlert('✅ 프로필 사진이 업로드되었습니다!', 'success');
             }
         }
+        
+        // 프로그레스바 숨기기
+        if (progressDiv) {
+            setTimeout(() => {
+                progressDiv.classList.add('hidden');
+            }, 1000);
+        }
     } catch (error) {
         console.error('프로필 사진 업로드 실패:', error);
         window.showAlert('❌ 프로필 사진 업로드에 실패했습니다: ' + error.message, 'error');
+        
+        // 프로그레스바 숨기기
+        if (progressDiv) {
+            progressDiv.classList.add('hidden');
+        }
     }
     
     event.target.value = '';
@@ -5094,6 +5135,17 @@ window.showInstructorForm = function(code = null) {
                     <input type="file" id="instructor-profile-input" accept="image/*" 
                            onchange="window.handleInstructorProfileUpload(event)" class="hidden">
                     <p class="text-xs text-gray-500 mt-2">프로필 전용 사진 (1개)</p>
+                    <!-- 프로필 사진 업로드 프로그레스바 -->
+                    <div id="instructor-profile-upload-progress" class="hidden mt-2">
+                        <div class="bg-green-50 border border-green-200 rounded p-2">
+                            <p class="text-xs text-green-800 mb-1">
+                                <i class="fas fa-cloud-upload-alt mr-1"></i>업로드 중...
+                            </p>
+                            <div class="w-full bg-green-200 rounded-full h-1.5">
+                                <div id="instructor-profile-progress-bar" class="bg-green-600 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -5309,14 +5361,32 @@ window.handleInstructorProfileUpload = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    // 프로그레스바 요소
+    const progressDiv = document.getElementById('instructor-profile-upload-progress');
+    const progressBar = document.getElementById('instructor-profile-progress-bar');
+    
     try {
+        // 프로그레스바 표시
+        if (progressDiv) {
+            progressDiv.classList.remove('hidden');
+            progressBar.style.width = '0%';
+        }
+        
         const formData = new FormData();
         formData.append('file', file);
         
         const response = await axios.post(
             `${API_BASE_URL}/api/upload-image?category=teacher`,
             formData,
-            { headers: { 'Content-Type': 'multipart/form-data' } }
+            {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    if (progressBar) {
+                        progressBar.style.width = percentCompleted + '%';
+                    }
+                }
+            }
         );
         
         if (response.data.success) {
@@ -5334,9 +5404,21 @@ window.handleInstructorProfileUpload = async function(event) {
                 window.showAlert('✅ 프로필 사진이 업로드되었습니다!', 'success');
             }
         }
+        
+        // 프로그레스바 숨기기
+        if (progressDiv) {
+            setTimeout(() => {
+                progressDiv.classList.add('hidden');
+            }, 1000);
+        }
     } catch (error) {
         console.error('프로필 사진 업로드 실패:', error);
         window.showAlert('❌ 프로필 사진 업로드에 실패했습니다: ' + error.message, 'error');
+        
+        // 프로그레스바 숨기기
+        if (progressDiv) {
+            progressDiv.classList.add('hidden');
+        }
     }
     
     // 파일 input 초기화
