@@ -4660,7 +4660,7 @@ window.showInstructorCodeForm = function(code = null) {
         </div>
         
         <div class="mt-6 space-x-2">
-            <button onclick="window.saveInstructorCode('${code || ''}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+            <button onclick="window.saveInstructorCode(${code ? `'${code}'` : 'null'})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
                 <i class="fas fa-save mr-2"></i>저장
             </button>
             <button onclick="window.hideInstructorCodeForm()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
@@ -4722,18 +4722,20 @@ window.saveInstructorCode = async function(existingCode) {
     };
     
     try {
-        if (existingCode) {
+        if (existingCode && existingCode !== '' && existingCode !== '0') {
+            // 기존 코드 수정
             await axios.put(`${API_BASE_URL}/api/instructor-codes/${existingCode}`, data);
-            window.showAlert('강사코드 및 권한이 수정되었습니다.');
+            window.showAlert('✅ 강사코드 및 권한이 수정되었습니다!', 'success');
         } else {
+            // 새 코드 추가
             await axios.post(`${API_BASE_URL}/api/instructor-codes`, data);
-            window.showAlert('강사코드 및 권한이 추가되었습니다.');
+            window.showAlert('✅ 강사코드 및 권한이 추가되었습니다!', 'success');
         }
         window.hideInstructorCodeForm();
         loadInstructorCodes();
         window.clearCache(); // 권한 변경 시 캐시 클리어
     } catch (error) {
-        window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('❌ 저장 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
