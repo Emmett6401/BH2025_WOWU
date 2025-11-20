@@ -9978,7 +9978,13 @@ window.handleLogoUpload = async function(event) {
         
         const logoUrl = response.data.url;
         document.getElementById('logo-url').value = logoUrl;
-        document.getElementById('current-logo').src = API_BASE_URL + '/api/download-image?file_path=' + encodeURIComponent(logoUrl);
+        
+        // FTP URL인 경우 download-image API 사용
+        if (logoUrl.startsWith('ftp://')) {
+            document.getElementById('current-logo').src = API_BASE_URL + '/api/download-image?url=' + encodeURIComponent(logoUrl);
+        } else {
+            document.getElementById('current-logo').src = logoUrl;
+        }
         document.getElementById('current-logo').style.display = 'block';
         
         // 프로그레스바 제거
@@ -10092,11 +10098,12 @@ async function updateHeader() {
         const logoElement = document.querySelector('header img[alt*="로고"]');
         if (logoElement && settings.logo_url) {
             if (settings.logo_url.startsWith('ftp://')) {
-                logoElement.src = API_BASE_URL + '/api/download-image?file_path=' + encodeURIComponent(settings.logo_url);
+                logoElement.src = API_BASE_URL + '/api/download-image?url=' + encodeURIComponent(settings.logo_url);
+                console.log('로고 업데이트 완료 (FTP):', settings.logo_url);
             } else {
                 logoElement.src = settings.logo_url;
+                console.log('로고 업데이트 완료 (로컬):', settings.logo_url);
             }
-            console.log('로고 업데이트 완료');
         }
         
         console.log('✅ 헤더 업데이트 완료');
