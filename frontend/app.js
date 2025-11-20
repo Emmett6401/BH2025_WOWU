@@ -10679,7 +10679,7 @@ window.showMyPage = async function() {
                         <p class="text-sm text-blue-100 mt-1">${instructor.name} (${instructor.code})</p>
                     </div>
                 </div>
-                <button onclick="document.getElementById('mypage-modal').remove()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all">
+                <button onclick="window.closeMyPage()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all">
                     <i class="fas fa-times text-2xl"></i>
                 </button>
             </div>
@@ -10848,7 +10848,7 @@ window.showMyPage = async function() {
                                 class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
                             <i class="fas fa-save mr-2"></i>저장
                         </button>
-                        <button type="button" onclick="document.getElementById('mypage-modal').remove()" 
+                        <button type="button" onclick="window.closeMyPage()" 
                                 class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-lg font-semibold">
                             <i class="fas fa-times mr-2"></i>취소
                         </button>
@@ -10880,6 +10880,18 @@ window.showMyPage = async function() {
 };
 
 // MyPage 프로필 사진 업로드
+// MyPage 모달 닫기 (캐시 삭제)
+window.closeMyPage = function() {
+    // 강사 캐시 삭제 (마이페이지에서 수정한 내용 반영)
+    localStorage.removeItem('cache_instructors');
+    
+    // 모달 제거
+    const modal = document.getElementById('mypage-modal');
+    if (modal) {
+        modal.remove();
+    }
+};
+
 window.uploadMyPagePhoto = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -11314,7 +11326,7 @@ window.saveMyPage = async function() {
         // 헤더 업데이트
         document.getElementById('instructorName').textContent = name;
         
-        document.getElementById('mypage-modal').remove();
+        window.closeMyPage();
     } catch (error) {
         console.error('저장 실패:', error);
         window.showAlert('저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
