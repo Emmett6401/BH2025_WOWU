@@ -1294,12 +1294,31 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 로그인 되어 있으면 대시보드 표시
     showTab('dashboard');
+    
+    // 브라우저 뒤로가기/앞으로가기 처리
+    window.addEventListener('popstate', (event) => {
+        if (event.state && event.state.tab) {
+            // 히스토리에 저장된 탭으로 이동 (히스토리 추가 안 함)
+            showTab(event.state.tab, false);
+        } else {
+            // 히스토리가 없으면 대시보드로
+            showTab('dashboard', false);
+        }
+    });
+    
+    // 초기 히스토리 상태 설정
+    history.replaceState({ tab: 'dashboard' }, '', '');
 });
 
 // 탭 전환
-window.showTab = function(tab) {
+window.showTab = function(tab, addToHistory = true) {
     console.log('Switching to tab:', tab);
     currentTab = tab;
+    
+    // 히스토리에 추가 (뒤로가기 지원)
+    if (addToHistory && history.state?.tab !== tab) {
+        history.pushState({ tab: tab }, '', '');
+    }
     
     // 탭 버튼 활성화 상태 변경
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1959,27 +1978,8 @@ window.editStudent = function(id) {
 }
 
 window.viewStudent = async function(id) {
-    try {
-        const response = await axios.get(`${API_BASE_URL}/api/students/${id}`);
-        const student = response.data;
-        
-        const info = '학생 정보\n\n' +
-            '이름: ' + student.name + '\n' +
-            '생년월일: ' + student.birth_date + '\n' +
-            '성별: ' + student.gender + '\n' +
-            '연락처: ' + student.phone + '\n' +
-            '이메일: ' + student.email + '\n' +
-            '주소: ' + (student.address || '-') + '\n' +
-            '관심분야: ' + (student.interests || '-') + '\n' +
-            '학력: ' + (student.education || '-') + '\n' +
-            '자기소개: ' + (student.introduction || '-') + '\n' +
-            '캠퍼스: ' + (student.campus || '-') + '\n' +
-            '비고: ' + (student.notes || '-');
-        
-        alert(info);
-    } catch (error) {
-        alert('학생 정보를 불러오는데 실패했습니다');
-    }
+    // 새로운 상세보기 모달 호출
+    window.showStudentDetail(id);
 }
 
 window.deleteStudent = async function(id) {
