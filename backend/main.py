@@ -83,6 +83,24 @@ def ensure_career_decision_column(cursor):
         print(f"⚠️ career_decision 컬럼 추가 실패: {e}")
         pass
 
+def ensure_profile_photo_columns(cursor, table_name: str):
+    """profile_photo와 attachments 컬럼이 없으면 추가"""
+    try:
+        # profile_photo 컬럼 확인 및 추가 (단일 프로필 사진)
+        cursor.execute(f"SHOW COLUMNS FROM {table_name} LIKE 'profile_photo'")
+        if not cursor.fetchone():
+            cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN profile_photo VARCHAR(500) DEFAULT NULL")
+            print(f"✅ {table_name} 테이블에 profile_photo 컬럼 추가 완료")
+        
+        # attachments 컬럼 확인 및 추가 (첨부 파일 배열, 최대 20개)
+        cursor.execute(f"SHOW COLUMNS FROM {table_name} LIKE 'attachments'")
+        if not cursor.fetchone():
+            cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN attachments TEXT DEFAULT NULL")
+            print(f"✅ {table_name} 테이블에 attachments 컬럼 추가 완료")
+    except Exception as e:
+        print(f"⚠️ {table_name} 컬럼 추가 실패: {e}")
+        pass  # 이미 존재하거나 권한 문제
+
 # FTP 설정 (환경 변수에서 로드)
 FTP_CONFIG = {
     'host': os.getenv('FTP_HOST', 'bitnmeta2.synology.me'),
@@ -221,6 +239,9 @@ async def get_students(
         # career_path 컬럼 확인 및 추가
         ensure_career_path_column(cursor)
         
+        # profile_photo, attachments 컬럼 확인 및 추가
+        ensure_profile_photo_columns(cursor, 'students')
+        
         query = "SELECT * FROM students WHERE 1=1"
         params = []
         
@@ -256,6 +277,10 @@ async def get_student(student_id: int):
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # profile_photo, attachments 컬럼 확인 및 추가
+        ensure_profile_photo_columns(cursor, 'students')
+        
         cursor.execute("SELECT * FROM students WHERE id = %s", (student_id,))
         student = cursor.fetchone()
         
@@ -275,48 +300,63 @@ async def get_student(student_id: int):
 
 @app.post("/api/students")
 async def create_student(data: dict):
-    """학생 생성"""
+    """학생 생성 (프로필/첨부 파일 분리)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         
-        # photo_urls 컬럼이 없으면 자동 생성
-        ensure_photo_urls_column(cursor, 'students')
+        # profile_photo와 attachments 컬럼이 없으면 자동 생성
+        ensure_profile_photo_columns(cursor, 'students')
         
         # 자동으로 학생 코드 생성
         cursor.execute("SELECT MAX(CAST(SUBSTRING(code, 2) AS UNSIGNED)) as max_code FROM students WHERE code LIKE 'S%'")
         result = cursor.fetchone()
         next_num = (result[0] or 0) + 1
-        code = f"S{next_num:03d}"
+        code = data.get('code', f"S{next_num:03d}")
+        
+        # 필수 필드 검증
+        name = data.get('name')
+        if not name:
+            raise HTTPException(status_code=400, detail="이름은 필수입니다")
+        
+        # phone 필드 기본값 처리 (NULL 방지)
+        phone = data.get('phone', '')
+        if not phone:
+            phone = ''
         
         # course_code 유효성 검증
         course_code = data.get('course_code')
-        if course_code:
-            cursor.execute("SELECT COUNT(*) FROM courses WHERE code = %s", (course_code,))
+        if course_code and course_code.strip():
+            cursor.execute("SELECT COUNT(*) FROM courses WHERE code = %s", (course_code.strip(),))
             if cursor.fetchone()[0] == 0:
                 course_code = None  # 유효하지 않은 과정 코드는 NULL로
+        else:
+            course_code = None  # 빈 문자열도 NULL로 처리
         
         query = """
             INSERT INTO students 
-            (code, name, birth_date, gender, phone, email, address, interests, education, introduction, campus, course_code, notes, photo_urls)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (code, name, birth_date, gender, phone, email, address, interests, education, 
+             introduction, campus, course_code, notes, profile_photo, attachments, career_path)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         cursor.execute(query, (
             code,
-            data.get('name'),
+            name,
             data.get('birth_date'),
             data.get('gender'),
-            data.get('phone'),
+            phone,
             data.get('email'),
             data.get('address'),
             data.get('interests'),
             data.get('education'),
             data.get('introduction'),
             data.get('campus'),
-            course_code,  # 검증된 course_code 사용
+            course_code,
             data.get('notes'),
-            data.get('photo_urls')
+            data.get('profile_photo'),
+            data.get('attachments'),
+            data.get('career_path', '4. 미정')
         ))
         
         conn.commit()
@@ -325,58 +365,88 @@ async def create_student(data: dict):
         conn.close()
 
 @app.put("/api/students/{student_id}")
-async def update_student(
-    student_id: int,
-    name: str = Form(...),
-    birth_date: Optional[str] = Form(None),
-    gender: Optional[str] = Form(None),
-    phone: Optional[str] = Form(None),
-    email: Optional[str] = Form(None),
-    address: Optional[str] = Form(None),
-    interests: Optional[str] = Form(None),
-    education: Optional[str] = Form(None),
-    introduction: Optional[str] = Form(None),
-    campus: Optional[str] = Form(None),
-    course_code: Optional[str] = Form(None),
-    notes: Optional[str] = Form(None),
-    photo_urls: Optional[str] = Form(None),
-    career_path: Optional[str] = Form('4. 미정'),
-    files: List[UploadFile] = File(None)
-):
-    """학생 수정 (파일 업로드 지원)"""
+async def update_student(student_id: int, data: dict):
+    """학생 수정 (JSON 데이터 지원 - 프로필/첨부 파일 분리)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         
-        # photo_urls 컬럼이 없으면 자동 생성
-        ensure_photo_urls_column(cursor, 'students')
+        # 새로운 컬럼 자동 생성 (profile_photo, attachments)
+        ensure_profile_photo_columns(cursor, 'students')
         
-        # 파일 업로드 처리
-        if files and len(files) > 0 and files[0].filename:
-            uploaded_urls = []
-            for file in files:
-                if file and file.filename:
-                    file_url = await upload_to_ftp(file, "student")
-                    uploaded_urls.append(file_url)
-            
-            if uploaded_urls:
-                import json
-                photo_urls = json.dumps(uploaded_urls)
+        # 데이터 추출
+        name = data.get('name')
+        if not name:
+            raise HTTPException(status_code=400, detail="이름은 필수입니다")
         
-        query = """
-            UPDATE students 
-            SET name = %s, birth_date = %s, gender = %s, phone = %s, email = %s,
-                address = %s, interests = %s, education = %s, introduction = %s,
-                campus = %s, course_code = %s, notes = %s, photo_urls = %s, career_path = %s, updated_at = NOW()
-            WHERE id = %s
-        """
+        birth_date = data.get('birth_date')
+        gender = data.get('gender')
+        phone = data.get('phone')
+        email = data.get('email')
+        address = data.get('address')
+        interests = data.get('interests')
+        education = data.get('education')
+        introduction = data.get('introduction')
+        campus = data.get('campus')
+        course_code = data.get('course_code')
+        notes = data.get('notes')
+        career_path = data.get('career_path', '4. 미정')
         
-        cursor.execute(query, (
-            name, birth_date, gender, phone, email,
-            address, interests, education, introduction,
-            campus, course_code, notes, photo_urls, career_path,
-            student_id
-        ))
+        # 프로필 사진 (단일 URL)
+        profile_photo = data.get('profile_photo')
+        
+        # 첨부 파일 (JSON 배열, 최대 20개)
+        attachments = data.get('attachments')
+        if attachments:
+            import json
+            try:
+                attachment_list = json.loads(attachments) if isinstance(attachments, str) else attachments
+                if len(attachment_list) > 20:
+                    raise HTTPException(status_code=400, detail="첨부 파일은 최대 20개까지 가능합니다")
+                attachments = json.dumps(attachment_list)
+            except json.JSONDecodeError:
+                attachments = None
+        
+        # type 컬럼 확인 및 기본값 처리
+        cursor.execute("SHOW COLUMNS FROM students LIKE 'type'")
+        has_type_column = cursor.fetchone() is not None
+        
+        if has_type_column:
+            # type 컬럼이 있으면 포함
+            query = """
+                UPDATE students 
+                SET name = %s, birth_date = %s, gender = %s, phone = %s, email = %s,
+                    address = %s, interests = %s, education = %s, introduction = %s,
+                    campus = %s, course_code = %s, notes = %s, career_path = %s, 
+                    profile_photo = %s, attachments = %s,
+                    type = %s, updated_at = NOW()
+                WHERE id = %s
+            """
+            cursor.execute(query, (
+                name, birth_date, gender, phone, email,
+                address, interests, education, introduction,
+                campus, course_code, notes, career_path,
+                profile_photo, attachments,
+                '1',  # 기본값: 일반 학생
+                student_id
+            ))
+        else:
+            # type 컬럼이 없으면 제외
+            query = """
+                UPDATE students 
+                SET name = %s, birth_date = %s, gender = %s, phone = %s, email = %s,
+                    address = %s, interests = %s, education = %s, introduction = %s,
+                    campus = %s, course_code = %s, notes = %s, career_path = %s,
+                    profile_photo = %s, attachments = %s, updated_at = NOW()
+                WHERE id = %s
+            """
+            cursor.execute(query, (
+                name, birth_date, gender, phone, email,
+                address, interests, education, introduction,
+                campus, course_code, notes, career_path,
+                profile_photo, attachments,
+                student_id
+            ))
         
         conn.commit()
         return {"id": student_id}
@@ -691,14 +761,22 @@ async def create_instructor_code(data: dict):
     try:
         cursor = conn.cursor()
         
+        # default_screen 컬럼이 없으면 추가
+        cursor.execute("SHOW COLUMNS FROM instructor_codes LIKE 'default_screen'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE instructor_codes ADD COLUMN default_screen VARCHAR(50) DEFAULT NULL")
+            conn.commit()
+            print("✅ instructor_codes 테이블에 default_screen 컬럼 추가")
+        
         import json
         permissions_json = json.dumps(data.get('permissions', {})) if data.get('permissions') else None
+        default_screen = data.get('default_screen')
         
         query = """
-            INSERT INTO instructor_codes (code, name, type, permissions)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO instructor_codes (code, name, type, permissions, default_screen)
+            VALUES (%s, %s, %s, %s, %s)
         """
-        cursor.execute(query, (data['code'], data['name'], data['type'], permissions_json))
+        cursor.execute(query, (data['code'], data['name'], data['type'], permissions_json, default_screen))
         conn.commit()
         return {"code": data['code']}
     finally:
@@ -711,15 +789,23 @@ async def update_instructor_code(code: str, data: dict):
     try:
         cursor = conn.cursor()
         
+        # default_screen 컬럼이 없으면 추가
+        cursor.execute("SHOW COLUMNS FROM instructor_codes LIKE 'default_screen'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE instructor_codes ADD COLUMN default_screen VARCHAR(50) DEFAULT NULL")
+            conn.commit()
+            print("✅ instructor_codes 테이블에 default_screen 컬럼 추가")
+        
         import json
         permissions_json = json.dumps(data.get('permissions', {})) if data.get('permissions') else None
+        default_screen = data.get('default_screen')
         
         query = """
             UPDATE instructor_codes
-            SET name = %s, type = %s, permissions = %s
+            SET name = %s, type = %s, permissions = %s, default_screen = %s
             WHERE code = %s
         """
-        cursor.execute(query, (data['name'], data['type'], permissions_json, code))
+        cursor.execute(query, (data['name'], data['type'], permissions_json, default_screen, code))
         conn.commit()
         return {"code": code}
     finally:
@@ -765,10 +851,13 @@ async def get_instructors(search: Optional[str] = None):
         cursor.execute("SHOW COLUMNS FROM instructors LIKE 'password'")
         has_password = cursor.fetchone() is not None
         
+        # profile_photo와 attachments 컬럼 자동 생성
+        ensure_profile_photo_columns(cursor, 'instructors')
+        
         if has_password:
             query = """
                 SELECT i.code, TRIM(i.name) as name, i.phone, i.major, i.instructor_type, 
-                       i.email, i.created_at, i.updated_at, i.photo_urls, i.password,
+                       i.email, i.created_at, i.updated_at, i.profile_photo, i.attachments, i.password,
                        ic.name as instructor_type_name, ic.type as instructor_type_type
                 FROM instructors i
                 LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
@@ -777,7 +866,7 @@ async def get_instructors(search: Optional[str] = None):
         else:
             query = """
                 SELECT i.code, TRIM(i.name) as name, i.phone, i.major, i.instructor_type, 
-                       i.email, i.created_at, i.updated_at, i.photo_urls,
+                       i.email, i.created_at, i.updated_at, i.profile_photo, i.attachments,
                        ic.name as instructor_type_name, ic.type as instructor_type_type
                 FROM instructors i
                 LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
@@ -819,22 +908,22 @@ async def get_instructor(code: str):
 
 @app.post("/api/instructors")
 async def create_instructor(data: dict):
-    """강사 생성"""
+    """강사 생성 (프로필/첨부 파일 분리)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         
-        # photo_urls 컬럼이 없으면 자동 생성
-        ensure_photo_urls_column(cursor, 'instructors')
+        # profile_photo와 attachments 컬럼이 없으면 자동 생성
+        ensure_profile_photo_columns(cursor, 'instructors')
         
         query = """
-            INSERT INTO instructors (code, name, phone, major, instructor_type, email, photo_urls)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO instructors (code, name, phone, major, instructor_type, email, profile_photo, attachments)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
             data['code'], data['name'], data.get('phone'),
             data.get('major'), data.get('instructor_type'), data.get('email'),
-            data.get('photo_urls')
+            data.get('profile_photo'), data.get('attachments')
         ))
         conn.commit()
         return {"code": data['code']}
@@ -842,43 +931,48 @@ async def create_instructor(data: dict):
         conn.close()
 
 @app.put("/api/instructors/{code}")
-async def update_instructor(
-    code: str, 
-    name: str = Form(...),
-    phone: Optional[str] = Form(None),
-    major: Optional[str] = Form(None),
-    instructor_type: Optional[str] = Form(None),
-    email: Optional[str] = Form(None),
-    photo_urls: Optional[str] = Form(None),
-    files: List[UploadFile] = File(None)
-):
-    """강사 수정 (파일 업로드 지원)"""
+async def update_instructor(code: str, data: dict):
+    """강사 수정 (JSON 데이터 지원 - 프로필/첨부 파일 분리)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         
-        # photo_urls 컬럼이 없으면 자동 생성
-        ensure_photo_urls_column(cursor, 'instructors')
+        # 새로운 컬럼 자동 생성 (profile_photo, attachments)
+        ensure_profile_photo_columns(cursor, 'instructors')
         
-        # 파일 업로드 처리
-        if files and len(files) > 0 and files[0].filename:
-            uploaded_urls = []
-            for file in files:
-                if file and file.filename:
-                    file_url = await upload_to_ftp(file, "teacher")
-                    uploaded_urls.append(file_url)
-            
-            if uploaded_urls:
-                import json
-                photo_urls = json.dumps(uploaded_urls)
+        # 데이터 추출
+        name = data.get('name')
+        if not name:
+            raise HTTPException(status_code=400, detail="이름은 필수입니다")
         
+        phone = data.get('phone')
+        major = data.get('major')
+        email = data.get('email')
+        
+        # 프로필 사진 (단일 URL)
+        profile_photo = data.get('profile_photo')
+        
+        # 첨부 파일 (JSON 배열, 최대 20개)
+        attachments = data.get('attachments')
+        if attachments:
+            import json
+            try:
+                attachment_list = json.loads(attachments) if isinstance(attachments, str) else attachments
+                if len(attachment_list) > 20:
+                    raise HTTPException(status_code=400, detail="첨부 파일은 최대 20개까지 가능합니다")
+                attachments = json.dumps(attachment_list)
+            except json.JSONDecodeError:
+                attachments = None
+        
+        # instructor_type은 MyPage에서 변경하지 않음 (외래 키 제약 조건)
         query = """
             UPDATE instructors
-            SET name = %s, phone = %s, major = %s, instructor_type = %s, email = %s, photo_urls = %s
+            SET name = %s, phone = %s, major = %s, email = %s, 
+                profile_photo = %s, attachments = %s
             WHERE code = %s
         """
         cursor.execute(query, (
-            name, phone, major, instructor_type, email, photo_urls, code
+            name, phone, major, email, profile_photo, attachments, code
         ))
         conn.commit()
         return {"code": code}
@@ -3153,6 +3247,25 @@ async def login(credentials: dict):
     # 🔐 관리자 계정 하드코딩 (DB 없이 무조건 접속 가능)
     if instructor_name.strip() == "root" and password == "xhRl1004!@#":
         print("✅ 관리자(root) 로그인 성공")
+        # 모든 메뉴에 대한 권한 부여
+        all_permissions = {
+            "dashboard": True,
+            "instructor-codes": True,
+            "instructors": True,
+            "system-settings": True,
+            "subjects": True,
+            "holidays": True,
+            "courses": True,
+            "students": True,
+            "counselings": True,
+            "timetables": True,
+            "training-logs": True,
+            "ai-report": True,
+            "ai-training-log": True,
+            "ai-counseling": True,
+            "projects": True,
+            "team-activity-logs": True
+        }
         return {
             "success": True,
             "message": "관리자님, 환영합니다!",
@@ -3166,7 +3279,9 @@ async def login(credentials: dict):
                 "photo_urls": None,
                 "password": "xhRl1004!@#",
                 "instructor_type_name": "관리자",
-                "instructor_type_type": "0"
+                "instructor_type_type": "0",
+                "permissions": all_permissions,
+                "default_screen": "dashboard"
             }
         }
     
@@ -3178,12 +3293,16 @@ async def login(credentials: dict):
         cursor.execute("SHOW COLUMNS FROM instructors LIKE 'password'")
         has_password = cursor.fetchone() is not None
         
-        # 강사 테이블에서 이름으로 검색 (공백 제거하여 비교 및 반환)
+        # profile_photo와 attachments 컬럼 자동 생성
+        ensure_profile_photo_columns(cursor, 'instructors')
+        
+        # 강사 테이블에서 이름으로 검색 (공백 제거하여 비교 및 반환, permissions 및 default_screen 포함)
         if has_password:
             cursor.execute("""
                 SELECT i.code, TRIM(i.name) as name, i.phone, i.major, i.instructor_type, 
-                       i.email, i.created_at, i.updated_at, i.photo_urls, i.password,
-                       ic.name as instructor_type_name, ic.type as instructor_type_type
+                       i.email, i.created_at, i.updated_at, i.profile_photo, i.attachments, i.password,
+                       ic.name as instructor_type_name, ic.type as instructor_type_type, 
+                       ic.permissions, ic.default_screen
                 FROM instructors i
                 LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
                 WHERE TRIM(i.name) = %s
@@ -3191,8 +3310,9 @@ async def login(credentials: dict):
         else:
             cursor.execute("""
                 SELECT i.code, TRIM(i.name) as name, i.phone, i.major, i.instructor_type, 
-                       i.email, i.created_at, i.updated_at, i.photo_urls,
-                       ic.name as instructor_type_name, ic.type as instructor_type_type
+                       i.email, i.created_at, i.updated_at, i.profile_photo, i.attachments,
+                       ic.name as instructor_type_name, ic.type as instructor_type_type, 
+                       ic.permissions, ic.default_screen
                 FROM instructors i
                 LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
                 WHERE TRIM(i.name) = %s
@@ -3221,6 +3341,16 @@ async def login(credentials: dict):
             elif isinstance(value, bytes):
                 instructor[key] = None
         
+        # permissions JSON 파싱
+        if instructor.get('permissions'):
+            try:
+                import json
+                instructor['permissions'] = json.loads(instructor['permissions'])
+            except:
+                instructor['permissions'] = {}
+        else:
+            instructor['permissions'] = {}
+        
         return {
             "success": True,
             "message": f"{instructor['name']}님, 환영합니다!",
@@ -3238,37 +3368,67 @@ async def login(credentials: dict):
 async def student_login(credentials: dict):
     """
     학생 로그인 API
-    - 학생 이름으로 로그인
-    - 비밀번호 없이 로그인 가능
+    - 학생 이름과 비밀번호로 로그인
+    - 기본 비밀번호: kdt2025
     """
     student_name = credentials.get('name')
+    password = credentials.get('password')
+    
+    print(f"🔍 학생 로그인 시도: 이름='{student_name}', 비밀번호='{password}'")
     
     if not student_name:
         raise HTTPException(status_code=400, detail="이름을 입력하세요")
+    
+    if not password:
+        raise HTTPException(status_code=400, detail="비밀번호를 입력하세요")
     
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
-        # photo_urls 컬럼이 없으면 자동 생성
-        ensure_photo_urls_column(cursor, 'students')
+        # profile_photo와 attachments 컬럼이 없으면 자동 생성
+        ensure_profile_photo_columns(cursor, 'students')
+        
+        # password 컬럼이 없으면 추가
+        cursor.execute("SHOW COLUMNS FROM students LIKE 'password'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE students ADD COLUMN password VARCHAR(100) DEFAULT 'kdt2025'")
+            conn.commit()
+            print("✅ students 테이블에 password 컬럼 추가")
         
         # 학생 조회 (이름으로)
         cursor.execute("""
             SELECT s.*, 
-                   c.course_name,
+                   c.name as course_name,
                    c.start_date,
-                   c.end_date
+                   c.final_end_date as end_date
             FROM students s
-            LEFT JOIN courses c ON s.course_code = c.course_code
+            LEFT JOIN courses c ON s.course_code = c.code
             WHERE s.name = %s
             LIMIT 1
         """, (student_name.strip(),))
         
         student = cursor.fetchone()
         
+        print(f"🔍 조회 결과: {student}")
+        
         if not student:
+            print(f"❌ 학생을 찾을 수 없음: '{student_name}' (길이: {len(student_name)}, bytes: {student_name.encode('utf-8')})")
+            # 모든 학생 이름 목록 출력
+            cursor.execute("SELECT id, name FROM students ORDER BY id")
+            all_students = cursor.fetchall()
+            print(f"📋 등록된 학생 목록: {[s['name'] for s in all_students]}")
             raise HTTPException(status_code=401, detail="등록되지 않은 학생입니다")
+        
+        # 비밀번호 확인 (기본값: kdt2025)
+        default_password = "kdt2025"
+        stored_password = student.get('password', default_password)
+        
+        if stored_password is None:
+            stored_password = default_password
+        
+        if password != stored_password:
+            raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다")
         
         # datetime 변환
         for key, value in student.items():

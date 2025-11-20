@@ -717,10 +717,48 @@ let pagination = {
 // 알림 타이머 저장
 let alertTimer = null;
 
-window.showAlert = function(message) {
+window.showAlert = function(message, type = 'success') {
     const alertModal = document.getElementById('custom-alert');
     const alertMessage = document.getElementById('alert-message');
+    const alertIcon = alertModal.querySelector('.alert-icon');
+    
+    // 메시지 설정
     alertMessage.textContent = message;
+    
+    // 타입에 따라 스타일과 아이콘 변경
+    const alertBox = alertModal.querySelector('.alert-box');
+    alertBox.className = 'alert-box rounded-lg p-4 shadow-lg max-w-md';
+    
+    if (type === 'success') {
+        alertBox.classList.add('bg-green-50', 'border', 'border-green-200');
+        alertMessage.classList.remove('text-red-800', 'text-yellow-800', 'text-blue-800');
+        alertMessage.classList.add('text-green-800');
+        if (alertIcon) {
+            alertIcon.innerHTML = '<i class="fas fa-check-circle text-green-600 text-2xl"></i>';
+        }
+    } else if (type === 'error') {
+        alertBox.classList.add('bg-red-50', 'border', 'border-red-200');
+        alertMessage.classList.remove('text-green-800', 'text-yellow-800', 'text-blue-800');
+        alertMessage.classList.add('text-red-800');
+        if (alertIcon) {
+            alertIcon.innerHTML = '<i class="fas fa-exclamation-circle text-red-600 text-2xl"></i>';
+        }
+    } else if (type === 'warning') {
+        alertBox.classList.add('bg-yellow-50', 'border', 'border-yellow-200');
+        alertMessage.classList.remove('text-green-800', 'text-red-800', 'text-blue-800');
+        alertMessage.classList.add('text-yellow-800');
+        if (alertIcon) {
+            alertIcon.innerHTML = '<i class="fas fa-exclamation-triangle text-yellow-600 text-2xl"></i>';
+        }
+    } else {
+        alertBox.classList.add('bg-blue-50', 'border', 'border-blue-200');
+        alertMessage.classList.remove('text-green-800', 'text-red-800', 'text-yellow-800');
+        alertMessage.classList.add('text-blue-800');
+        if (alertIcon) {
+            alertIcon.innerHTML = '<i class="fas fa-info-circle text-blue-600 text-2xl"></i>';
+        }
+    }
+    
     alertModal.classList.remove('hidden');
     
     // 기존 타이머가 있으면 취소
@@ -1873,8 +1911,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return; // 로그인 안 되어 있으면 여기서 중단
     }
     
-    // 로그인 되어 있으면 대시보드 표시
-    showTab('dashboard');
+    // URL 파라미터에서 tab 값 읽기 (초기 화면 설정)
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialTab = urlParams.get('tab') || 'dashboard';
+    
+    // 로그인 되어 있으면 초기 탭 표시
+    showTab(initialTab);
     
     // 브라우저 뒤로가기/앞으로가기 처리
     window.addEventListener('popstate', (event) => {
@@ -1888,7 +1930,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // 초기 히스토리 상태 설정
-    history.replaceState({ tab: 'dashboard' }, '', '');
+    history.replaceState({ tab: initialTab }, '', '');
 });
 
 // 탭 전환
@@ -2131,14 +2173,13 @@ function renderStudents() {
                                 return `
                             <tr class="border-b hover:bg-gray-50">
                                 <td class="px-2 py-2 text-center">
-                                    ${student.photo_urls && JSON.parse(student.photo_urls || '[]').length > 0 ? `
-                                        <button onclick='window.showPhotoViewer(${JSON.stringify(student.photo_urls)}, 0)' 
-                                                class="text-green-600 hover:text-green-700" 
-                                                title="${JSON.parse(student.photo_urls).length}개 사진">
-                                            <i class="fas fa-camera"></i>
-                                        </button>
+                                    ${student.profile_photo ? `
+                                        <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(student.profile_photo)}" 
+                                             alt="${student.name}" 
+                                             class="w-10 h-10 rounded-full object-cover mx-auto border border-gray-300"
+                                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23e5e7eb%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%239ca3af%27 font-family=%27Arial%27 font-size=%2714%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dominant-baseline=%27middle%27%3ENo Photo%3C/text%3E%3C/svg%3E'">
                                     ` : `
-                                        <i class="fas fa-camera text-gray-300" title="사진 없음"></i>
+                                        <i class="fas fa-user-circle text-gray-300 text-2xl" title="프로필 사진 없음"></i>
                                     `}
                                 </td>
                                 <td class="px-4 py-2 font-mono">${student.code}</td>
@@ -2358,10 +2399,33 @@ window.showStudentForm = async function(studentId = null) {
                     <textarea name="notes" rows="2" class="w-full px-3 py-2 border rounded-lg">${student?.notes || ''}</textarea>
                 </div>
                 
-                <!-- 사진 업로드 -->
-                <div class="col-span-2">
+                <!-- 프로필 사진 -->
+                <div class="col-span-2 mt-4">
                     <label class="block text-gray-700 mb-2">
-                        <i class="fas fa-paperclip mr-2"></i>사진 및 파일 첨부 (그림파일, PDF, HWP, PPT, Excel, Word, TXT 등)
+                        <i class="fas fa-user-circle mr-2"></i>프로필 사진
+                    </label>
+                    <div class="flex items-center gap-4">
+                        <img id="student-profile-photo" 
+                             src="${student && student.profile_photo ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(student.profile_photo) : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23e5e7eb%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%239ca3af%27 font-family=%27Arial%27 font-size=%2714%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dominant-baseline=%27middle%27%3ENo Photo%3C/text%3E%3C/svg%3E'}" 
+                             alt="프로필 사진" 
+                             class="w-24 h-24 rounded-full object-cover border-2 border-gray-300">
+                        <input type="hidden" id="student-profile-photo-url" value="${student && student.profile_photo ? student.profile_photo : ''}">
+                        <div>
+                            <button type="button" onclick="document.getElementById('student-profile-input').click()" 
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm">
+                                <i class="fas fa-camera mr-2"></i>프로필 사진 변경
+                            </button>
+                            <input type="file" id="student-profile-input" accept="image/*" 
+                                   onchange="window.handleStudentProfileUpload(event)" class="hidden">
+                            <p class="text-xs text-gray-500 mt-2">프로필 전용 사진 (1개)</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 첨부 파일 -->
+                <div class="col-span-2 mt-4">
+                    <label class="block text-gray-700 mb-2">
+                        <i class="fas fa-paperclip mr-2"></i>첨부 파일 (이력서, 증명서, 포트폴리오 등 - 최대 20개)
                     </label>
                     <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
                         <div class="flex flex-wrap gap-2 mb-3">
@@ -2369,14 +2433,8 @@ window.showStudentForm = async function(studentId = null) {
                                     class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
                                 <i class="fas fa-folder-open mr-2"></i>파일 선택
                             </button>
-                            <button type="button" onclick="document.getElementById('student-camera-input').click()" 
-                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
-                                <i class="fas fa-camera mr-2"></i>사진 촬영
-                            </button>
                         </div>
                         <input type="file" id="student-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
-                               onchange="window.handleStudentImageUpload(event)" class="hidden">
-                        <input type="file" id="student-camera-input" accept="image/*"  
                                onchange="window.handleStudentImageUpload(event)" class="hidden">
                         <div id="student-upload-progress" class="hidden mb-3">
                             <div class="bg-blue-50 border border-blue-200 rounded p-3">
@@ -2390,7 +2448,11 @@ window.showStudentForm = async function(studentId = null) {
                             </div>
                         </div>
                         <div id="student-photos-preview" class="flex flex-col gap-2 mt-2"></div>
-                        <input type="hidden" id="student-photo-urls" value='${student && student.photo_urls ? student.photo_urls : "[]"}'>
+                        <input type="hidden" id="student-photo-urls" value='${student && student.attachments ? student.attachments : "[]"}'>
+                        <p class="text-xs text-gray-500 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            현재 파일: <span id="student-file-count">${student && student.attachments ? JSON.parse(student.attachments).length : 0}</span>/20
+                        </p>
                     </div>
                 </div>
             </div>
@@ -2410,15 +2472,15 @@ window.showStudentForm = async function(studentId = null) {
     // 폼으로 스크롤
     formDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
-    // 기존 사진 미리보기 표시
-    if (student?.photo_urls) {
+    // 기존 첨부 파일 미리보기 표시
+    if (student?.attachments) {
         try {
-            const photoUrls = typeof student.photo_urls === 'string' 
-                ? JSON.parse(student.photo_urls) 
-                : student.photo_urls;
-            updateStudentPhotoPreview(photoUrls);
+            const attachments = typeof student.attachments === 'string' 
+                ? JSON.parse(student.attachments) 
+                : student.attachments;
+            updateStudentPhotoPreview(attachments);
         } catch (e) {
-            console.error('사진 URL 파싱 오류:', e);
+            console.error('첨부 파일 URL 파싱 오류:', e);
         }
     }
 }
@@ -2431,9 +2493,13 @@ window.saveStudent = async function(studentId, autoSave = false) {
     const form = document.getElementById('student-save-form');
     const formData = new FormData(form);
     
-    // 사진 URL 가져오기
+    // Get profile photo URL
+    const profilePhotoInput = document.getElementById('student-profile-photo-url');
+    const profilePhoto = profilePhotoInput ? profilePhotoInput.value : '';
+    
+    // Get attachments
     const photoUrlsInput = document.getElementById('student-photo-urls');
-    const photoUrls = photoUrlsInput ? JSON.parse(photoUrlsInput.value || '[]') : [];
+    const attachments = photoUrlsInput ? JSON.parse(photoUrlsInput.value || '[]') : [];
     
     const data = {
         name: formData.get('name'),
@@ -2448,15 +2514,23 @@ window.saveStudent = async function(studentId, autoSave = false) {
         campus: formData.get('campus'),
         course_code: formData.get('course_code'),
         notes: formData.get('notes'),
-        photo_urls: JSON.stringify(photoUrls),
+        profile_photo: profilePhoto,
+        attachments: JSON.stringify(attachments),
         career_path: formData.get('career_path') || '4. 미정'
     };
     
     try {
         if (studentId) {
             await axios.put(`${API_BASE_URL}/api/students/${studentId}`, data);
+            if (!autoSave) {
+                window.showAlert('✅ 학생 정보가 수정되었습니다!', 'success');
+            }
         } else {
+            data.code = formData.get('code');
             await axios.post(`${API_BASE_URL}/api/students`, data);
+            if (!autoSave) {
+                window.showAlert('✅ 학생이 추가되었습니다!', 'success');
+            }
         }
         
         // 캐시 삭제 (학생 데이터가 변경되었으므로)
@@ -2468,11 +2542,41 @@ window.saveStudent = async function(studentId, autoSave = false) {
         }
     } catch (error) {
         console.error('학생 저장 실패:', error);
-        alert('학생 저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+        const errorMsg = error.response?.data?.detail || error.message;
+        window.showAlert('❌ 학생 저장에 실패했습니다: ' + errorMsg, 'error');
     }
 }
 
-// 학생 사진 업로드 핸들러
+// 학생 프로필 사진 업로드 핸들러
+window.handleStudentProfileUpload = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await axios.post(
+            `${API_BASE_URL}/api/upload-image?category=student`,
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
+        
+        if (response.data.success) {
+            const profilePhotoUrl = response.data.url;
+            document.getElementById('student-profile-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(profilePhotoUrl);
+            document.getElementById('student-profile-photo-url').value = profilePhotoUrl;
+            window.showAlert('✅ 프로필 사진이 업로드되었습니다!', 'success');
+        }
+    } catch (error) {
+        console.error('프로필 사진 업로드 실패:', error);
+        window.showAlert('❌ 프로필 사진 업로드에 실패했습니다: ' + error.message, 'error');
+    }
+    
+    event.target.value = '';
+};
+
+// 학생 사진 업로드 핸들러 (첨부 파일)
 window.handleStudentImageUpload = async function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -2481,23 +2585,38 @@ window.handleStudentImageUpload = async function(event) {
     for (let file of files) {
         const validation = window.validateFile(file);
         if (!validation.valid) {
-            window.showAlert(validation.message);
+            window.showAlert(validation.message, 'warning');
             event.target.value = '';
             return;
         }
     }
     
-    // 프로그레스 바 표시
-    const progressDiv = document.getElementById('student-upload-progress');
-    const progressBar = document.getElementById('student-progress-bar');
-    if (progressDiv) {
-        progressDiv.classList.remove('hidden');
-        progressBar.style.width = '0%';
-    }
-    
     try {
         const photoUrlsInput = document.getElementById('student-photo-urls');
         const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+        
+        // 20-file limit check
+        const remainingSlots = 20 - photoUrls.length;
+        if (remainingSlots <= 0) {
+            window.showAlert('⚠️ 첨부 파일은 최대 20개까지만 업로드할 수 있습니다.', 'warning');
+            event.target.value = '';
+            return;
+        }
+        
+        if (files.length > remainingSlots) {
+            window.showAlert(`⚠️ ${remainingSlots}개의 파일만 업로드할 수 있습니다. (현재: ${photoUrls.length}/20)`, 'warning');
+            event.target.value = '';
+            return;
+        }
+        
+        // 프로그레스 바 표시
+        const progressDiv = document.getElementById('student-upload-progress');
+        const progressBar = document.getElementById('student-progress-bar');
+        if (progressDiv) {
+            progressDiv.classList.remove('hidden');
+            progressBar.style.width = '0%';
+        }
+        
         const totalFiles = files.length;
         
         for (let i = 0; i < files.length; i++) {
@@ -2544,6 +2663,12 @@ window.handleStudentImageUpload = async function(event) {
         photoUrlsInput.value = JSON.stringify(photoUrls);
         updateStudentPhotoPreview(photoUrls);
         
+        // Update file count
+        const fileCountSpan = document.getElementById('student-file-count');
+        if (fileCountSpan) {
+            fileCountSpan.textContent = photoUrls.length;
+        }
+        
         // 자동 저장 (화면 유지)
         const studentIdInput = document.getElementById('student-id');
         const studentId = studentIdInput ? studentIdInput.value : null;
@@ -2561,15 +2686,16 @@ window.handleStudentImageUpload = async function(event) {
         // 학생 이름 가져오기
         const studentNameInput = document.querySelector('input[name="name"]');
         const studentName = studentNameInput ? studentNameInput.value : '';
-        const contextMsg = studentName ? `${studentName} 학생에게 ` : '학생에게 ';
-        window.showAlert(`${contextMsg}${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        const contextMsg = studentName ? `${studentName} 학생에게 ` : '';
+        window.showAlert(`✅ ${contextMsg}${files.length}개 파일이 업로드되었습니다! (${photoUrls.length}/20)`, 'success');
         
     } catch (error) {
         // 프로그레스 바 숨기기
+        const progressDiv = document.getElementById('student-upload-progress');
         if (progressDiv) progressDiv.classList.add('hidden');
         
         console.error('사진 업로드 실패:', error);
-        window.showAlert('사진 업로드 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('❌ 사진 업로드 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
     
     // 파일 입력 초기화
@@ -2585,6 +2711,12 @@ window.removeStudentPhoto = async function(index) {
     photoUrlsInput.value = JSON.stringify(photoUrls);
     updateStudentPhotoPreview(photoUrls);
     
+    // Update file count
+    const fileCountSpan = document.getElementById('student-file-count');
+    if (fileCountSpan) {
+        fileCountSpan.textContent = photoUrls.length;
+    }
+    
     // 자동 저장
     const studentIdInput = document.getElementById('student-id');
     const studentId = studentIdInput ? studentIdInput.value : null;
@@ -2594,8 +2726,8 @@ window.removeStudentPhoto = async function(index) {
         // 학생 이름 가져오기
         const studentNameInput = document.querySelector('input[name="name"]');
         const studentName = studentNameInput ? studentNameInput.value : '';
-        const contextMsg = studentName ? `${studentName} 학생에게서 ` : '학생에게서 ';
-        window.showAlert(`${contextMsg}사진이 삭제되고 자동 저장되었습니다.`);
+        const contextMsg = studentName ? `${studentName} 학생에게서 ` : '';
+        window.showAlert(`✅ ${contextMsg}파일이 삭제되고 자동 저장되었습니다. (${photoUrls.length}/20)`, 'success');
     }
 }
 
@@ -3411,21 +3543,8 @@ window.showStudentDetail = async function(studentId) {
                                 <div class="relative">
                                     ${(() => {
                                         let photoUrl = getDefaultProfileImage(student.gender);
-                                        if (student.photo_urls) {
-                                            try {
-                                                const urls = typeof student.photo_urls === 'string' ? JSON.parse(student.photo_urls) : student.photo_urls;
-                                                if (urls && urls.length > 0) {
-                                                    const firstUrl = urls[0];
-                                                    const cleanUrl = firstUrl.split('#')[0];
-                                                    // 이미지 파일인지 확인
-                                                    const ext = cleanUrl.split('.').pop().toLowerCase().split('?')[0];
-                                                    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
-                                                        photoUrl = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(cleanUrl);
-                                                    }
-                                                }
-                                            } catch (e) {
-                                                console.error('Photo URL parsing error:', e);
-                                            }
+                                        if (student.profile_photo) {
+                                            photoUrl = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(student.profile_photo);
                                         }
                                         return `<img src="${photoUrl}" 
                                                      alt="${student.name}" 
@@ -3585,6 +3704,75 @@ window.showStudentDetail = async function(studentId) {
                             </div>
                         ` : ''}
                     </div>
+                    
+                    <!-- 첨부 파일 섹션 -->
+                    ${(() => {
+                        try {
+                            const attachments = student.attachments ? (typeof student.attachments === 'string' ? JSON.parse(student.attachments) : student.attachments) : [];
+                            if (attachments && attachments.length > 0) {
+                                return `
+                                    <div class="bg-white rounded-xl shadow-md p-6 mt-6 border border-gray-200">
+                                        <h4 class="text-xl font-bold text-gray-800 mb-5 flex items-center border-b pb-3">
+                                            <div class="bg-indigo-500 rounded-lg p-2 mr-3">
+                                                <i class="fas fa-paperclip text-white"></i>
+                                            </div>
+                                            첨부 파일 (${attachments.length}/20)
+                                        </h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            ${attachments.map((fileUrl, index) => {
+                                                const urlParts = fileUrl.split('#');
+                                                const cleanUrl = urlParts[0];
+                                                const originalFilename = urlParts[1] ? decodeURIComponent(urlParts[1]) : cleanUrl.split('/').pop();
+                                                const ext = cleanUrl.split('.').pop().toLowerCase().split('?')[0];
+                                                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext);
+                                                const isPDF = ext === 'pdf';
+                                                
+                                                return `
+                                                    <div class="bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-4 border border-gray-200 hover:shadow-lg transition-all">
+                                                        <div class="flex items-center gap-3 mb-3">
+                                                            <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br ${isImage ? 'from-blue-500 to-indigo-600' : isPDF ? 'from-red-500 to-pink-600' : 'from-gray-500 to-gray-600'} flex items-center justify-center shadow-md">
+                                                                <i class="fas ${isImage ? 'fa-image' : isPDF ? 'fa-file-pdf' : 'fa-file'} text-white text-xl"></i>
+                                                            </div>
+                                                            <div class="flex-1 min-w-0">
+                                                                <p class="text-sm font-semibold text-gray-800 truncate" title="${originalFilename}">
+                                                                    ${originalFilename}
+                                                                </p>
+                                                                <p class="text-xs text-gray-500 mt-1">
+                                                                    ${isImage ? '이미지' : isPDF ? 'PDF 문서' : '문서'} 파일
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        ${isImage ? `
+                                                            <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(cleanUrl)}" 
+                                                                 alt="${originalFilename}"
+                                                                 class="w-full h-32 object-cover rounded-lg mb-3 border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                                                                 onclick="window.openFileModal('${cleanUrl}', '${originalFilename}')">
+                                                        ` : ''}
+                                                        <div class="flex gap-2">
+                                                            ${isImage || isPDF ? `
+                                                                <button onclick="window.openFileModal('${cleanUrl}', '${originalFilename}')" 
+                                                                        class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm transition-colors">
+                                                                    <i class="fas fa-eye mr-1"></i>미리보기
+                                                                </button>
+                                                            ` : ''}
+                                                            <button onclick="window.downloadFile('${cleanUrl}', '${originalFilename}')" 
+                                                                    class="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm transition-colors">
+                                                                <i class="fas fa-download mr-1"></i>다운로드
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                            return '';
+                        } catch (e) {
+                            console.error('첨부 파일 파싱 오류:', e);
+                            return '';
+                        }
+                    })()}
                 </div>
             </div>
         `;
@@ -4326,7 +4514,9 @@ window.showInstructorCodeForm = function(code = null) {
         { id: 'training-logs', name: '훈련일지 관리', icon: 'fa-clipboard-list' },
         { id: 'ai-report', name: 'AI 생기부', icon: 'fa-file-alt' },
         { id: 'ai-training-log', name: 'AI 훈련일지', icon: 'fa-brain' },
-        { id: 'ai-counseling', name: 'AI 상담일지', icon: 'fa-comments' }
+        { id: 'ai-counseling', name: 'AI 상담일지', icon: 'fa-comments' },
+        { id: 'projects', name: '팀 관리', icon: 'fa-users' },
+        { id: 'team-activity-logs', name: '팀 활동일지', icon: 'fa-clipboard-list' }
     ];
     
     formDiv.innerHTML = `
@@ -4346,6 +4536,7 @@ window.showInstructorCodeForm = function(code = null) {
                 <label class="block text-sm font-medium text-gray-700 mb-1">타입 *</label>
                 <select id="type" class="w-full border rounded px-3 py-2">
                     <option value="">타입 선택</option>
+                    <option value="0. 관리자" ${existingCode && existingCode.type === '0. 관리자' ? 'selected' : ''}>0. 관리자</option>
                     <option value="1. 주강사" ${existingCode && existingCode.type === '1. 주강사' ? 'selected' : ''}>1. 주강사</option>
                     <option value="2. 보조강사" ${existingCode && existingCode.type === '2. 보조강사' ? 'selected' : ''}>2. 보조강사</option>
                     <option value="3. 멘토" ${existingCode && existingCode.type === '3. 멘토' ? 'selected' : ''}>3. 멘토</option>
@@ -4359,7 +4550,7 @@ window.showInstructorCodeForm = function(code = null) {
         <div class="border-t pt-6">
             <div class="flex items-center justify-between mb-4">
                 <h4 class="text-md font-semibold text-gray-800">
-                    <i class="fas fa-shield-alt mr-2 text-blue-600"></i>메뉴 접근 권한
+                    <i class="fas fa-shield-alt mr-2 text-blue-600"></i>메뉴 접근 권한 및 초기 화면 설정
                 </h4>
                 <div class="flex gap-2">
                     <button type="button" onclick="window.selectAllPermissions(true)" class="text-sm bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded">
@@ -4375,18 +4566,29 @@ window.showInstructorCodeForm = function(code = null) {
                     <i class="fas fa-info-circle mr-2 text-blue-500"></i>
                     이 강사코드(타입)에 해당하는 강사들이 접근할 수 있는 메뉴를 선택하세요.
                     <strong class="text-blue-600">관리자(타입 0)</strong>는 모든 메뉴에 자동 접근 가능합니다.
+                    <br>
+                    <i class="fas fa-home mr-2 text-green-500"></i>
+                    <strong class="text-green-600">초기 화면</strong>을 선택하면 로그인 시 해당 메뉴로 자동 이동합니다.
                 </p>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     ${menuList.map(menu => `
-                        <label class="flex items-center space-x-2 bg-white p-3 rounded border hover:bg-blue-50 cursor-pointer transition-all">
-                            <input type="checkbox" 
-                                   class="permission-checkbox w-4 h-4 text-blue-600 rounded focus:ring-blue-500" 
+                        <label class="flex items-center justify-between bg-white p-3 rounded border hover:bg-blue-50 transition-all">
+                            <div class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" 
+                                       class="permission-checkbox w-4 h-4 text-blue-600 rounded focus:ring-blue-500" 
+                                       data-menu-id="${menu.id}"
+                                       ${existingPermissions[menu.id] ? 'checked' : ''}>
+                                <span class="text-sm">
+                                    <i class="fas ${menu.icon} mr-1 text-gray-500"></i>
+                                    ${menu.name}
+                                </span>
+                            </div>
+                            <input type="radio" 
+                                   name="default-screen" 
+                                   class="default-screen-radio w-4 h-4 text-green-600 focus:ring-green-500 cursor-pointer" 
                                    data-menu-id="${menu.id}"
-                                   ${existingPermissions[menu.id] ? 'checked' : ''}>
-                            <span class="text-sm">
-                                <i class="fas ${menu.icon} mr-1 text-gray-500"></i>
-                                ${menu.name}
-                            </span>
+                                   title="초기 화면으로 설정"
+                                   ${existingCode?.default_screen === menu.id ? 'checked' : ''}>
                         </label>
                     `).join('')}
                 </div>
@@ -4443,11 +4645,16 @@ window.saveInstructorCode = async function(existingCode) {
         permissions[menuId] = checkbox.checked;
     });
     
+    // 초기 화면 설정 수집
+    const defaultScreenRadio = document.querySelector('.default-screen-radio:checked');
+    const defaultScreen = defaultScreenRadio ? defaultScreenRadio.getAttribute('data-menu-id') : null;
+    
     const data = {
         code: code,
         name: name,
         type: type,
-        permissions: permissions
+        permissions: permissions,
+        default_screen: defaultScreen
     };
     
     try {
@@ -4645,14 +4852,13 @@ function renderInstructors() {
                         ${sortedInstructors.map(inst => `
                             <tr class="border-t hover:bg-gray-50">
                                 <td class="px-2 py-2 text-center">
-                                    ${inst.photo_urls && JSON.parse(inst.photo_urls || '[]').length > 0 ? `
-                                        <button onclick='window.showPhotoViewer(${JSON.stringify(inst.photo_urls)}, 0)' 
-                                                class="text-green-600 hover:text-green-700" 
-                                                title="${JSON.parse(inst.photo_urls).length}개 사진">
-                                            <i class="fas fa-camera"></i>
-                                        </button>
+                                    ${inst.profile_photo ? `
+                                        <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(inst.profile_photo)}" 
+                                             alt="${inst.name}" 
+                                             class="w-10 h-10 rounded-full object-cover mx-auto border border-gray-300"
+                                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23e5e7eb%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%239ca3af%27 font-family=%27Arial%27 font-size=%2714%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dominant-baseline=%27middle%27%3ENo Photo%3C/text%3E%3C/svg%3E'">
                                     ` : `
-                                        <i class="fas fa-camera text-gray-300" title="사진 없음"></i>
+                                        <i class="fas fa-user-circle text-gray-300 text-2xl" title="프로필 사진 없음"></i>
                                     `}
                                 </td>
                                 <td class="px-4 py-2">${inst.code}</td>
@@ -4846,10 +5052,33 @@ window.showInstructorForm = function(code = null) {
             </div>
         </div>
         
-        <!-- 사진 업로드 -->
+        <!-- 프로필 사진 -->
         <div class="mt-4">
             <label class="block text-gray-700 mb-2">
-                <i class="fas fa-paperclip mr-2"></i>사진 및 파일 첨부 (그림파일, PDF, HWP, PPT, Excel, Word, TXT 등)
+                <i class="fas fa-user-circle mr-2"></i>프로필 사진
+            </label>
+            <div class="flex items-center gap-4">
+                <img id="instructor-profile-photo" 
+                     src="${existingInst && existingInst.profile_photo ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(existingInst.profile_photo) : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23e5e7eb%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%239ca3af%27 font-family=%27Arial%27 font-size=%2714%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dominant-baseline=%27middle%27%3ENo Photo%3C/text%3E%3C/svg%3E'}" 
+                     alt="프로필 사진" 
+                     class="w-24 h-24 rounded-full object-cover border-2 border-gray-300">
+                <input type="hidden" id="instructor-profile-photo-url" value="${existingInst && existingInst.profile_photo ? existingInst.profile_photo : ''}">
+                <div>
+                    <button type="button" onclick="document.getElementById('instructor-profile-input').click()" 
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm">
+                        <i class="fas fa-camera mr-2"></i>프로필 사진 변경
+                    </button>
+                    <input type="file" id="instructor-profile-input" accept="image/*" 
+                           onchange="window.handleInstructorProfileUpload(event)" class="hidden">
+                    <p class="text-xs text-gray-500 mt-2">프로필 전용 사진 (1개)</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 첨부 파일 (MyPage와 공유) -->
+        <div class="mt-4">
+            <label class="block text-gray-700 mb-2">
+                <i class="fas fa-paperclip mr-2"></i>첨부 파일 (이력서, 증명서, 포트폴리오 등 - 최대 20개)
             </label>
             <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
                 <div class="flex flex-wrap gap-2 mb-3">
@@ -4878,7 +5107,11 @@ window.showInstructorForm = function(code = null) {
                     </div>
                 </div>
                 <div id="instructor-photos-preview" class="flex flex-col gap-2 mt-2"></div>
-                <input type="hidden" id="instructor-photo-urls" value='${existingInst && existingInst.photo_urls ? existingInst.photo_urls : "[]"}'>
+                <input type="hidden" id="instructor-photo-urls" value='${existingInst && existingInst.attachments ? existingInst.attachments : "[]"}'>
+                <p class="text-xs text-gray-500 mt-2">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    현재 파일: <span id="instructor-file-count">${existingInst && existingInst.attachments ? (function() { try { return JSON.parse(existingInst.attachments).length; } catch(e) { return 0; }})() : 0}</span>/20
+                </p>
             </div>
         </div>
         
@@ -4895,15 +5128,15 @@ window.showInstructorForm = function(code = null) {
     // 폼으로 스크롤
     formDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
-    // 기존 사진 미리보기 표시
-    if (existingInst?.photo_urls) {
+    // 기존 첨부 파일 미리보기 표시
+    if (existingInst?.attachments) {
         try {
-            const photoUrls = typeof existingInst.photo_urls === 'string' 
-                ? JSON.parse(existingInst.photo_urls) 
-                : existingInst.photo_urls;
-            updateInstructorPhotoPreview(photoUrls);
+            const attachments = typeof existingInst.attachments === 'string' 
+                ? JSON.parse(existingInst.attachments) 
+                : existingInst.attachments;
+            updateInstructorPhotoPreview(attachments);
         } catch (e) {
-            console.error('사진 URL 파싱 오류:', e);
+            console.error('첨부 파일 URL 파싱 오류:', e);
         }
     }
 }
@@ -4913,9 +5146,13 @@ window.hideInstructorForm = function() {
 }
 
 window.saveInstructor = async function(existingCode, autoSave = false) {
-    // 사진 URL 가져오기
+    // 프로필 사진 URL 가져오기
+    const profilePhotoInput = document.getElementById('instructor-profile-photo-url');
+    const profilePhoto = profilePhotoInput ? profilePhotoInput.value : '';
+    
+    // 첨부 파일 URL 가져오기
     const photoUrlsInput = document.getElementById('instructor-photo-urls');
-    const photoUrls = photoUrlsInput ? JSON.parse(photoUrlsInput.value || '[]') : [];
+    const attachments = photoUrlsInput ? JSON.parse(photoUrlsInput.value || '[]') : [];
     
     const data = {
         code: document.getElementById('inst-code').value,
@@ -4924,19 +5161,20 @@ window.saveInstructor = async function(existingCode, autoSave = false) {
         instructor_type: document.getElementById('inst-type').value,
         phone: document.getElementById('inst-phone').value,
         email: document.getElementById('inst-email').value,
-        photo_urls: JSON.stringify(photoUrls)
+        profile_photo: profilePhoto,
+        attachments: JSON.stringify(attachments)
     };
     
     try {
         if (existingCode) {
             await axios.put(`${API_BASE_URL}/api/instructors/${existingCode}`, data);
             if (!autoSave) {
-                alert('강사 정보가 수정되었습니다.');
+                window.showAlert('✅ 강사 정보가 수정되었습니다!', 'success');
             }
         } else {
             await axios.post(`${API_BASE_URL}/api/instructors`, data);
             if (!autoSave) {
-                alert('강사가 추가되었습니다.');
+                window.showAlert('✅ 강사가 추가되었습니다!', 'success');
             }
         }
         if (!autoSave) {
@@ -4944,7 +5182,7 @@ window.saveInstructor = async function(existingCode, autoSave = false) {
             loadInstructors();
         }
     } catch (error) {
-        alert('저장 실패: ' + error.response?.data?.detail || error.message);
+        window.showAlert('❌ 저장 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -4954,14 +5192,16 @@ window.editInstructor = function(code) {
 
 window.deleteInstructor = async function(code) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (!confirm('이 강사를 삭제하시겠습니까?')) return;
+    
+    const confirmed = await window.showConfirm('⚠️ 이 강사를 삭제하시겠습니까?\n\n삭제된 데이터는 복구할 수 없습니다.');
+    if (!confirmed) return;
     
     try {
         await axios.delete(`${API_BASE_URL}/api/instructors/${code}`);
-        alert('강사가 삭제되었습니다.');
+        window.showAlert('✅ 강사가 삭제되었습니다!', 'success');
         loadInstructors();
     } catch (error) {
-        alert('삭제 실패: ' + error.response?.data?.detail || error.message);
+        window.showAlert('❌ 삭제 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -4994,17 +5234,17 @@ window.changePasswordFromModal = async function() {
     const confirmPassword = document.getElementById('pwd-confirm-password-modal').value;
     
     if (!newPassword || !confirmPassword) {
-        alert('새 비밀번호를 입력해주세요.');
+        window.showAlert('⚠️ 새 비밀번호를 입력해주세요.', 'warning');
         return;
     }
     
     if (newPassword !== confirmPassword) {
-        alert('비밀번호가 일치하지 않습니다.');
+        window.showAlert('⚠️ 비밀번호가 일치하지 않습니다.', 'warning');
         return;
     }
     
     if (newPassword.length < 4) {
-        alert('비밀번호는 최소 4자 이상이어야 합니다.');
+        window.showAlert('⚠️ 비밀번호는 최소 4자 이상이어야 합니다.', 'warning');
         return;
     }
     
@@ -5014,10 +5254,10 @@ window.changePasswordFromModal = async function() {
             new_password: newPassword
         });
         
-        alert('비밀번호가 변경되었습니다.');
+        window.showAlert('✅ 비밀번호가 변경되었습니다!', 'success');
         window.hidePasswordChangeModal();
     } catch (error) {
-        alert('비밀번호 변경 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('❌ 비밀번호 변경 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -5025,9 +5265,8 @@ window.resetPasswordFromModal = async function() {
     const instructorCode = document.getElementById('pwd-instructor-code-modal').value;
     const targetName = document.getElementById('pwd-target-instructor').textContent;
     
-    if (!confirm(`${targetName}의 비밀번호를 기본값(kdt2025)으로 초기화하시겠습니까?`)) {
-        return;
-    }
+    const confirmed = await window.showConfirm(`⚠️ ${targetName}의 비밀번호를 기본값(kdt2025)으로 초기화하시겠습니까?`);
+    if (!confirmed) return;
     
     try {
         await axios.post(`${API_BASE_URL}/api/auth/change-password`, {
@@ -5035,14 +5274,44 @@ window.resetPasswordFromModal = async function() {
             new_password: 'kdt2025'
         });
         
-        alert('비밀번호가 초기화되었습니다. (기본값: kdt2025)');
+        window.showAlert('✅ 비밀번호가 초기화되었습니다! (기본값: kdt2025)', 'success');
         window.hidePasswordChangeModal();
     } catch (error) {
-        alert('비밀번호 초기화 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('❌ 비밀번호 초기화 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
-// 강사 사진 업로드 핸들러
+// 강사 프로필 사진 업로드 핸들러
+window.handleInstructorProfileUpload = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await axios.post(
+            `${API_BASE_URL}/api/upload-image?category=teacher`,
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
+        
+        if (response.data.success) {
+            const profilePhotoUrl = response.data.url;
+            document.getElementById('instructor-profile-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(profilePhotoUrl);
+            document.getElementById('instructor-profile-photo-url').value = profilePhotoUrl;
+            window.showAlert('✅ 프로필 사진이 업로드되었습니다!');
+        }
+    } catch (error) {
+        console.error('프로필 사진 업로드 실패:', error);
+        window.showAlert('❌ 프로필 사진 업로드에 실패했습니다: ' + error.message);
+    }
+    
+    // 파일 input 초기화
+    event.target.value = '';
+};
+
+// 강사 첨부 파일 업로드 핸들러 (최대 20개)
 window.handleInstructorImageUpload = async function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -5068,6 +5337,21 @@ window.handleInstructorImageUpload = async function(event) {
     try {
         const photoUrlsInput = document.getElementById('instructor-photo-urls');
         const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
+        
+        // 20개 제한 체크
+        const remainingSlots = 20 - photoUrls.length;
+        if (remainingSlots <= 0) {
+            window.showAlert('⚠️ 첨부 파일은 최대 20개까지만 업로드할 수 있습니다.');
+            event.target.value = '';
+            return;
+        }
+        
+        if (files.length > remainingSlots) {
+            window.showAlert(`⚠️ ${remainingSlots}개의 파일만 업로드할 수 있습니다. (현재: ${photoUrls.length}/20)`);
+            event.target.value = '';
+            return;
+        }
+        
         const totalFiles = files.length;
         
         for (let i = 0; i < files.length; i++) {
@@ -5101,6 +5385,12 @@ window.handleInstructorImageUpload = async function(event) {
         photoUrlsInput.value = JSON.stringify(photoUrls);
         updateInstructorPhotoPreview(photoUrls);
         
+        // 파일 개수 업데이트
+        const fileCountSpan = document.getElementById('instructor-file-count');
+        if (fileCountSpan) {
+            fileCountSpan.textContent = photoUrls.length;
+        }
+        
         // 자동 저장 (화면 유지)
         const instructorCodeInput = document.getElementById('instructor-code');
         const existingCode = instructorCodeInput ? instructorCodeInput.value : null;
@@ -5115,11 +5405,7 @@ window.handleInstructorImageUpload = async function(event) {
             }, 1000);
         }
         
-        // 강사 이름 가져오기
-        const instructorNameInput = document.querySelector('input[name="name"]');
-        const instructorName = instructorNameInput ? instructorNameInput.value : '';
-        const contextMsg = instructorName ? `${instructorName} 강사에게 ` : '강사에게 ';
-        window.showAlert(`${contextMsg}${files.length}개 사진이 업로드되고 자동 저장되었습니다.`);
+        window.showAlert(`✅ ${files.length}개 파일이 업로드되었습니다! (${photoUrls.length}/20)`);
         
     } catch (error) {
         // 프로그레스 바 숨기기
@@ -7842,6 +8128,8 @@ window.saveTimetable = async function(id) {
 }
 
 window.editTimetable = function(id) {
+    // 폼이 있는 위치로 스크롤
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     window.showTimetableForm(id);
 }
 
@@ -10016,7 +10304,19 @@ function renderSystemSettings(settings) {
         if (subtitle1Input) subtitle1Input.value = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
         if (subtitle2Input) subtitle2Input.value = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
         if (logoUrlInput) logoUrlInput.value = settings.logo_url || '/woosong-logo.png';
-        if (logoImg) logoImg.src = settings.logo_url || '/woosong-logo.png';
+        
+        // 로고 이미지 표시
+        if (logoImg && settings.logo_url) {
+            if (settings.logo_url.startsWith('ftp://')) {
+                logoImg.src = API_BASE_URL + '/api/download-image?url=' + encodeURIComponent(settings.logo_url);
+            } else {
+                logoImg.src = settings.logo_url;
+            }
+            logoImg.style.display = '';
+        } else if (logoImg) {
+            logoImg.src = '/woosong-logo.png';
+            logoImg.style.display = '';
+        }
         
         console.log('✅ 폼 값 설정 완료:', {
             title: titleInput?.value,
@@ -10177,27 +10477,22 @@ async function updateHeader() {
         const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
         const settings = response.data;
         
-        console.log('헤더 업데이트:', settings);
-        
         // 제목 업데이트
         const titleElement = document.getElementById('system-title-header');
         if (titleElement) {
             titleElement.innerHTML = `<i class="fas fa-school mr-3"></i>${settings.system_title || 'KDT교육관리시스템 v3.2'}`;
-            console.log('제목 업데이트 완료');
         }
         
         // 부제목 1 업데이트
         const subtitle1Element = document.getElementById('system-subtitle1-header');
         if (subtitle1Element) {
             subtitle1Element.textContent = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
-            console.log('부제목1 업데이트 완료');
         }
         
         // 부제목 2 업데이트
         const subtitle2Element = document.getElementById('system-subtitle2-header');
         if (subtitle2Element) {
             subtitle2Element.textContent = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
-            console.log('부제목2 업데이트 완료');
         }
         
         // 로고 업데이트
@@ -10205,17 +10500,79 @@ async function updateHeader() {
         if (logoElement && settings.logo_url) {
             if (settings.logo_url.startsWith('ftp://')) {
                 logoElement.src = API_BASE_URL + '/api/download-image?url=' + encodeURIComponent(settings.logo_url);
-                console.log('로고 업데이트 완료 (FTP):', settings.logo_url);
             } else {
                 logoElement.src = settings.logo_url;
-                console.log('로고 업데이트 완료 (로컬):', settings.logo_url);
             }
         }
-        
-        console.log('✅ 헤더 업데이트 완료');
     } catch (error) {
         console.error('❌ 헤더 업데이트 실패:', error);
     }
+}
+
+// 메뉴 권한 적용
+function applyMenuPermissions() {
+    const instructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+    
+    if (!instructor || !instructor.code) {
+        console.log('⚠️ 로그인 정보 없음 - 권한 체크 스킵');
+        return;
+    }
+    
+    // 관리자 (타입 0)는 모든 메뉴 접근 가능
+    if (instructor.instructor_type === '0') {
+        console.log('✅ 관리자 계정 (타입 0) - 모든 메뉴 접근 가능');
+        // 모든 메뉴 버튼 활성화
+        const menuButtons = document.querySelectorAll('[data-tab]');
+        menuButtons.forEach(button => {
+            button.disabled = false;
+            button.style.opacity = '1';
+            button.style.cursor = 'pointer';
+            button.removeAttribute('title');
+        });
+        return;
+    }
+    
+    const permissions = instructor.permissions || {};
+    const menuButtons = document.querySelectorAll('[data-tab]');
+    
+    console.log('📋 권한 정보:', permissions);
+    console.log('📋 메뉴 버튼 개수:', menuButtons.length);
+    
+    let disabledCount = 0;
+    let enabledCount = 0;
+    
+    menuButtons.forEach(button => {
+        const menuId = button.getAttribute('data-tab');
+        const hasPermission = permissions[menuId] === true;
+        
+        if (!hasPermission) {
+            // 권한 없음 - 비활성화 및 시각적 피드백
+            button.disabled = true;
+            button.style.opacity = '0.5';
+            button.style.cursor = 'not-allowed';
+            button.title = '접근 권한이 없습니다';
+            
+            // 클릭 이벤트 차단
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.showAlert('접근 권한이 없습니다.');
+            }, true);
+            
+            disabledCount++;
+            console.log(`❌ 메뉴 비활성화: ${menuId}`);
+        } else {
+            // 권한 있음 - 활성화
+            button.disabled = false;
+            button.style.opacity = '1';
+            button.style.cursor = 'pointer';
+            button.removeAttribute('title');
+            enabledCount++;
+            console.log(`✅ 메뉴 활성화: ${menuId}`);
+        }
+    });
+    
+    console.log(`✅ 메뉴 권한 적용 완료 - 활성화: ${enabledCount}개, 비활성화: ${disabledCount}개`);
 }
 
 // 기본값으로 초기화
@@ -10275,29 +10632,62 @@ window.showMyPage = async function() {
                 <div class="mb-8 text-center">
                     <div class="inline-block relative">
                         <img id="mypage-photo" 
-                             src="${instructor.photo_urls ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(JSON.parse(instructor.photo_urls)[0] || '') : 'https://via.placeholder.com/200?text=No+Photo'}" 
+                             src="${instructor.profile_photo ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(instructor.profile_photo) : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23ddd%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2716%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3ENo Photo%3C/text%3E%3C/svg%3E'}" 
                              alt="프로필 사진" 
                              class="w-40 h-40 rounded-full object-cover border-4 border-blue-500 shadow-lg"
-                             onerror="this.src='https://via.placeholder.com/200?text=No+Photo'">
+                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23ddd%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2716%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3ENo Photo%3C/text%3E%3C/svg%3E'">
                         <button onclick="document.getElementById('mypage-photo-input').click()" 
                                 class="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg">
                             <i class="fas fa-camera"></i>
                         </button>
                     </div>
                     <input type="file" id="mypage-photo-input" accept="image/*" class="hidden" onchange="uploadMyPagePhoto(event)">
-                    <input type="file" id="mypage-file-input" accept="*/*" multiple class="hidden" onchange="uploadMyPageFiles(event)">
                     <p class="text-sm text-gray-500 mt-3">클릭하여 프로필 사진 변경</p>
-                    <button type="button" onclick="document.getElementById('mypage-file-input').click()" 
-                            class="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
-                        <i class="fas fa-paperclip mr-2"></i>파일 첨부
-                    </button>
-                    <div id="mypage-file-list" class="mt-3"></div>
                     <!-- 프로그래스바 -->
                     <div id="mypage-upload-progress" class="hidden mt-4">
                         <div class="w-full bg-gray-200 rounded-full h-2.5">
                             <div id="mypage-progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
                         </div>
                         <p id="mypage-progress-text" class="text-sm text-gray-600 mt-2 text-center">업로드 중... 0%</p>
+                    </div>
+                </div>
+                
+                <!-- 파일 업로드 섹션 -->
+                <div class="border-t pt-6 mb-6">
+                    <h4 class="text-lg font-bold text-gray-800 mb-4">
+                        <i class="fas fa-paperclip mr-2 text-green-500"></i>사진 및 파일 첨부 (그림파일, PDF, HWP, PPT, Excel, Word, TXT 등)
+                    </h4>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <button type="button" onclick="document.getElementById('mypage-file-input').click()" 
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm">
+                                <i class="fas fa-folder-open mr-2"></i>파일 선택
+                            </button>
+                            <button type="button" onclick="document.getElementById('mypage-camera-input').click()" 
+                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm">
+                                <i class="fas fa-camera mr-2"></i>사진 촬영
+                            </button>
+                        </div>
+                        <input type="file" id="mypage-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
+                               onchange="window.handleMyPageFileUpload(event)" class="hidden">
+                        <input type="file" id="mypage-camera-input" accept="image/*"  
+                               onchange="window.handleMyPageFileUpload(event)" class="hidden">
+                        <div id="mypage-file-upload-progress" class="hidden mb-3">
+                            <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                <p class="text-sm text-blue-800 mb-2">
+                                    <i class="fas fa-cloud-upload-alt mr-2"></i>
+                                    서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                                </p>
+                                <div class="w-full bg-blue-200 rounded-full h-2">
+                                    <div id="mypage-file-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="mypage-files-preview" class="flex flex-col gap-2 mt-2"></div>
+                        <p class="text-xs text-gray-500 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            첨부 파일: <span id="mypage-file-count">${instructor.attachments ? JSON.parse(instructor.attachments).length : 0}</span>/20
+                        </p>
                     </div>
                 </div>
                 
@@ -10412,6 +10802,24 @@ window.showMyPage = async function() {
     `;
     
     document.body.appendChild(modal);
+    
+    // 기존 첨부 파일들 미리보기 표시
+    if (instructor.attachments) {
+        try {
+            const attachments = typeof instructor.attachments === 'string' 
+                ? JSON.parse(instructor.attachments) 
+                : instructor.attachments;
+            updateMyPageFilePreview(attachments);
+            
+            // 파일 개수 업데이트
+            const fileCountSpan = document.getElementById('mypage-file-count');
+            if (fileCountSpan) {
+                fileCountSpan.textContent = attachments.length;
+            }
+        } catch (e) {
+            console.error('첨부 파일 URL 파싱 오류:', e);
+        }
+    }
 };
 
 // MyPage 프로필 사진 업로드
@@ -10419,6 +10827,7 @@ window.uploadMyPagePhoto = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    const instructor = JSON.parse(localStorage.getItem('instructor'));
     const formData = new FormData();
     formData.append('file', file);
     
@@ -10445,6 +10854,32 @@ window.uploadMyPagePhoto = async function(event) {
         // 프로필 사진 업데이트
         document.getElementById('mypage-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(photoUrl);
         
+        // 기존 첨부 파일 가져오기
+        let attachments = [];
+        if (instructor.attachments) {
+            try {
+                attachments = JSON.parse(instructor.attachments);
+            } catch (e) {
+                attachments = [];
+            }
+        }
+        
+        // 자동 저장 (프로필 사진만 업데이트)
+        const data = {
+            name: document.getElementById('mypage-name').value,
+            major: document.getElementById('mypage-major').value || '',
+            phone: document.getElementById('mypage-phone').value || '',
+            email: document.getElementById('mypage-email').value || '',
+            profile_photo: photoUrl,
+            attachments: JSON.stringify(attachments)
+        };
+        
+        await axios.put(`${API_BASE_URL}/api/instructors/${instructor.code}`, data);
+        
+        // 로컬스토리지 업데이트
+        instructor.profile_photo = photoUrl;
+        localStorage.setItem('instructor', JSON.stringify(instructor));
+        
         // 완료 표시
         progressBar.style.width = '100%';
         progressText.textContent = '✅ 업로드 완료!';
@@ -10457,7 +10892,7 @@ window.uploadMyPagePhoto = async function(event) {
             progressBar.classList.add('bg-blue-600');
         }, 2000);
         
-        window.showAlert('✅ 프로필 사진이 업로드되었습니다. 저장 버튼을 눌러주세요.');
+        window.showAlert('✅ 프로필 사진이 저장되었습니다!');
     } catch (error) {
         console.error('사진 업로드 실패:', error);
         progressBar.classList.remove('bg-blue-600');
@@ -10474,23 +10909,240 @@ window.uploadMyPagePhoto = async function(event) {
     }
 };
 
-// MyPage 파일 업로드
-window.uploadMyPageFiles = async function(event) {
+// MyPage 파일 업로드 핸들러 (첨부 파일 - 최대 20개)
+window.handleMyPageFileUpload = async function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
-    const fileList = document.getElementById('mypage-file-list');
-    fileList.innerHTML = '';
+    const instructor = JSON.parse(localStorage.getItem('instructor'));
+    const progressDiv = document.getElementById('mypage-file-upload-progress');
+    const progressBar = document.getElementById('mypage-file-progress-bar');
     
-    for (let file of files) {
-        const fileItem = document.createElement('div');
-        fileItem.className = 'flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded';
-        fileItem.innerHTML = `
-            <i class="fas fa-file text-blue-500"></i>
-            <span>${file.name}</span>
-            <span class="text-xs text-gray-400">(${(file.size / 1024).toFixed(1)} KB)</span>
-        `;
-        fileList.appendChild(fileItem);
+    try {
+        // 기존 첨부 파일 가져오기
+        let attachments = [];
+        if (instructor.attachments) {
+            try {
+                attachments = JSON.parse(instructor.attachments);
+            } catch (e) {
+                attachments = [];
+            }
+        }
+        
+        // 파일 개수 제한 체크 (최대 20개)
+        const remainingSlots = 20 - attachments.length;
+        if (remainingSlots <= 0) {
+            window.showAlert('⚠️ 첨부 파일은 최대 20개까지만 업로드할 수 있습니다.');
+            event.target.value = '';
+            return;
+        }
+        
+        if (files.length > remainingSlots) {
+            window.showAlert(`⚠️ ${remainingSlots}개의 파일만 업로드할 수 있습니다. (현재: ${attachments.length}/20)`);
+            event.target.value = '';
+            return;
+        }
+        
+        progressDiv.classList.remove('hidden');
+        progressBar.style.width = '0%';
+        
+        // 파일 업로드
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    progressBar.style.width = percentCompleted + '%';
+                }
+            });
+            
+            attachments.push(response.data.url);
+        }
+        
+        // 프로필 사진 URL 가져오기
+        const profilePhoto = document.getElementById('mypage-photo').src.includes('/api/thumbnail')
+            ? new URLSearchParams(document.getElementById('mypage-photo').src.split('?')[1]).get('url')
+            : null;
+        
+        // 자동 저장
+        const data = {
+            name: document.getElementById('mypage-name').value,
+            major: document.getElementById('mypage-major').value || '',
+            phone: document.getElementById('mypage-phone').value || '',
+            email: document.getElementById('mypage-email').value || '',
+            profile_photo: profilePhoto,
+            attachments: JSON.stringify(attachments)
+        };
+        
+        await axios.put(`${API_BASE_URL}/api/instructors/${instructor.code}`, data);
+        
+        // 로컬스토리지 업데이트
+        instructor.profile_photo = profilePhoto;
+        instructor.attachments = JSON.stringify(attachments);
+        localStorage.setItem('instructor', JSON.stringify(instructor));
+        
+        // 미리보기 업데이트
+        updateMyPageFilePreview(attachments);
+        
+        // 파일 개수 업데이트
+        const fileCountSpan = document.getElementById('mypage-file-count');
+        if (fileCountSpan) {
+            fileCountSpan.textContent = attachments.length;
+        }
+        
+        progressBar.style.width = '100%';
+        window.showAlert(`✅ 파일이 업로드되었습니다! (${attachments.length}/20)`);
+        
+        setTimeout(() => {
+            progressDiv.classList.add('hidden');
+        }, 2000);
+        
+    } catch (error) {
+        console.error('파일 업로드 실패:', error);
+        progressDiv.classList.add('hidden');
+        window.showAlert('❌ 파일 업로드에 실패했습니다: ' + error.message);
+    }
+    
+    // 파일 input 초기화
+    event.target.value = '';
+};
+
+// MyPage 파일 미리보기 업데이트
+function updateMyPageFilePreview(photoUrls) {
+    const previewDiv = document.getElementById('mypage-files-preview');
+    if (!previewDiv) return;
+    
+    previewDiv.innerHTML = '';
+    
+    photoUrls.forEach((url, index) => {
+        const fileExt = url.split('.').pop().toLowerCase();
+        const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileExt);
+        
+        const fileDiv = document.createElement('div');
+        fileDiv.className = 'flex items-center gap-3 p-3 bg-white rounded border hover:shadow-md transition';
+        
+        if (isImage) {
+            fileDiv.innerHTML = `
+                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
+                     alt="파일 ${index + 1}" 
+                     class="w-16 h-16 object-cover rounded border"
+                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2764%27 height=%2764%27%3E%3Crect fill=%27%23f0f0f0%27 width=%2764%27 height=%2764%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2712%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3EError%3C/text%3E%3C/svg%3E'">
+                <div class="flex-1">
+                    <p class="text-sm text-gray-600">이미지 파일 ${index + 1}</p>
+                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" 
+                       target="_blank" 
+                       class="text-xs text-blue-500 hover:underline">
+                        <i class="fas fa-external-link-alt mr-1"></i>보기
+                    </a>
+                </div>
+                <button type="button" 
+                        onclick="removeMyPageFile(${index})" 
+                        class="text-red-500 hover:text-red-700">
+                    <i class="fas fa-times-circle text-xl"></i>
+                </button>
+            `;
+        } else {
+            const icon = getFileIcon(fileExt);
+            fileDiv.innerHTML = `
+                <div class="w-16 h-16 flex items-center justify-center bg-gray-100 rounded border">
+                    <i class="${icon} text-3xl text-gray-500"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm text-gray-600">${fileExt.toUpperCase()} 파일</p>
+                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" 
+                       target="_blank" 
+                       class="text-xs text-blue-500 hover:underline">
+                        <i class="fas fa-download mr-1"></i>다운로드
+                    </a>
+                </div>
+                <button type="button" 
+                        onclick="removeMyPageFile(${index})" 
+                        class="text-red-500 hover:text-red-700">
+                    <i class="fas fa-times-circle text-xl"></i>
+                </button>
+            `;
+        }
+        
+        previewDiv.appendChild(fileDiv);
+    });
+}
+
+// 파일 아이콘 반환
+function getFileIcon(extension) {
+    const iconMap = {
+        'pdf': 'fas fa-file-pdf',
+        'doc': 'fas fa-file-word',
+        'docx': 'fas fa-file-word',
+        'xls': 'fas fa-file-excel',
+        'xlsx': 'fas fa-file-excel',
+        'ppt': 'fas fa-file-powerpoint',
+        'pptx': 'fas fa-file-powerpoint',
+        'txt': 'fas fa-file-alt',
+        'hwp': 'fas fa-file-alt',
+        'zip': 'fas fa-file-archive',
+        'rar': 'fas fa-file-archive'
+    };
+    return iconMap[extension] || 'fas fa-file';
+}
+
+// MyPage 파일 삭제
+window.removeMyPageFile = async function(index) {
+    const confirmed = await window.showConfirm('이 파일을 삭제하시겠습니까?');
+    if (!confirmed) return;
+    
+    const instructor = JSON.parse(localStorage.getItem('instructor'));
+    
+    try {
+        // 기존 첨부 파일 가져오기
+        let attachments = [];
+        if (instructor.attachments) {
+            try {
+                attachments = JSON.parse(instructor.attachments);
+            } catch (e) {
+                attachments = [];
+            }
+        }
+        
+        // 파일 삭제
+        attachments.splice(index, 1);
+        
+        // 프로필 사진 URL 가져오기
+        const profilePhoto = document.getElementById('mypage-photo').src.includes('/api/thumbnail')
+            ? new URLSearchParams(document.getElementById('mypage-photo').src.split('?')[1]).get('url')
+            : instructor.profile_photo;
+        
+        // 자동 저장
+        const data = {
+            name: document.getElementById('mypage-name').value,
+            major: document.getElementById('mypage-major').value || '',
+            phone: document.getElementById('mypage-phone').value || '',
+            email: document.getElementById('mypage-email').value || '',
+            profile_photo: profilePhoto,
+            attachments: JSON.stringify(attachments)
+        };
+        
+        await axios.put(`${API_BASE_URL}/api/instructors/${instructor.code}`, data);
+        
+        // 로컬스토리지 업데이트
+        instructor.attachments = JSON.stringify(attachments);
+        localStorage.setItem('instructor', JSON.stringify(instructor));
+        
+        // 미리보기 업데이트
+        updateMyPageFilePreview(attachments);
+        
+        // 파일 개수 업데이트
+        const fileCountSpan = document.getElementById('mypage-file-count');
+        if (fileCountSpan) {
+            fileCountSpan.textContent = attachments.length;
+        }
+        
+        window.showAlert(`✅ 파일이 삭제되었습니다! (${attachments.length}/20)`);
+    } catch (error) {
+        console.error('파일 삭제 실패:', error);
+        window.showAlert('❌ 파일 삭제에 실패했습니다: ' + error.message);
     }
 };
 
@@ -10531,38 +11183,41 @@ window.saveMyPage = async function() {
         willChangePassword = true;
     }
     
-    // 프로필 사진 URL
+    // 프로필 사진 URL 가져오기
     const photoImg = document.getElementById('mypage-photo');
-    let photoUrls = instructor.photo_urls;
+    let profilePhoto = instructor.profile_photo;
     if (photoImg.src.includes('/api/thumbnail')) {
         const urlParam = new URLSearchParams(photoImg.src.split('?')[1]);
         const ftpUrl = urlParam.get('url');
         if (ftpUrl) {
-            photoUrls = JSON.stringify([ftpUrl]);
+            profilePhoto = ftpUrl;
+        }
+    }
+    
+    // 첨부 파일 가져오기
+    let attachments = [];
+    if (instructor.attachments) {
+        try {
+            attachments = JSON.parse(instructor.attachments);
+        } catch (e) {
+            attachments = [];
         }
     }
     
     try {
-        // 강사 정보 업데이트
-        const formData = new FormData();
-        formData.append('name', name);
-        formData.append('major', major || '');
-        formData.append('phone', phone || '');
-        formData.append('email', email || '');
-        formData.append('instructor_type', instructor.instructor_type || '');
-        if (photoUrls) formData.append('photo_urls', photoUrls);
+        // 강사 정보 업데이트 (JSON 데이터)
+        const data = {
+            name: name,
+            major: major || '',
+            phone: phone || '',
+            email: email || '',
+            profile_photo: profilePhoto,
+            attachments: JSON.stringify(attachments)
+        };
         
-        // 파일 첨부
-        const fileInput = document.getElementById('mypage-file-input');
-        if (fileInput.files && fileInput.files.length > 0) {
-            for (let file of fileInput.files) {
-                formData.append('files', file);
-            }
-        }
-        
-        await axios.put(`${API_BASE_URL}/api/instructors/${instructor.code}`, formData, {
+        await axios.put(`${API_BASE_URL}/api/instructors/${instructor.code}`, data, {
             headers: {
-                'Content-Type': 'multipart/form-data'
+                'Content-Type': 'application/json'
             }
         });
         
@@ -10586,7 +11241,8 @@ window.saveMyPage = async function() {
         instructor.major = major;
         instructor.phone = phone;
         instructor.email = email;
-        instructor.photo_urls = photoUrls;
+        instructor.profile_photo = profilePhoto;
+        instructor.attachments = JSON.stringify(attachments);
         localStorage.setItem('instructor', JSON.stringify(instructor));
         
         // 헤더 업데이트
@@ -10641,11 +11297,15 @@ window.togglePasswordVisibility = function(inputId) {
     }
 };
 
-// ==================== 페이지 로드 시 헤더 업데이트 ====================
-// 페이지가 완전히 로드된 후 헤더 업데이트 실행
+// ==================== 페이지 로드 시 헤더 업데이트 및 권한 체크 ====================
+// 페이지가 완전히 로드된 후 헤더 업데이트 및 메뉴 권한 체크 실행
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', updateHeader);
+    document.addEventListener('DOMContentLoaded', () => {
+        updateHeader();
+        applyMenuPermissions();
+    });
 } else {
     // 이미 로드된 경우 즉시 실행
     updateHeader();
+    applyMenuPermissions();
 }
