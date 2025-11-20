@@ -714,18 +714,18 @@
         
         // 파일 삭제
         window.removeStudentFile = async function(index) {
-            if (!confirm('이 파일을 삭제하시겠습니까?')) return;
+            const confirmed = await window.showConfirm('⚠️ 이 파일을 삭제하시겠습니까?\n\n삭제된 파일은 복구할 수 없습니다.');
+            if (!confirmed) return;
             
             const student = JSON.parse(localStorage.getItem('student'));
-            const photoUrlsInput = document.getElementById('student-photo-urls-hidden');
-            let photoUrls = JSON.parse(photoUrlsInput.value || '[]');
             
-            // 기존 photo_urls 가져오기
-            if (!photoUrls.length && student.photo_urls) {
+            // 기존 attachments 가져오기
+            let attachments = [];
+            if (student.attachments) {
                 try {
-                    photoUrls = JSON.parse(student.photo_urls);
+                    attachments = JSON.parse(student.attachments);
                 } catch (e) {
-                    photoUrls = [];
+                    attachments = [];
                 }
             }
             
@@ -781,7 +781,7 @@
                 window.showAlert(`✅ 파일이 삭제되고 자동 저장되었습니다! (${attachments.length}/20)`, 'success');
             } catch (error) {
                 console.error('파일 삭제 실패:', error);
-                alert('❌ 파일 삭제에 실패했습니다: ' + error.message);
+                window.showAlert('❌ 파일 삭제에 실패했습니다: ' + error.message, 'error');
             }
         };
         
