@@ -4295,6 +4295,7 @@ window.showInstructorCodeForm = function(code = null) {
     formDiv.classList.remove('hidden');
     
     const existingCode = code ? instructorCodes.find(c => c.code === code) : null;
+    const existingPermissions = existingCode?.permissions || {};
     
     // 강사코드 자동 생성 (IC-001, IC-002...)
     let autoCode = '';
@@ -4310,9 +4311,29 @@ window.showInstructorCodeForm = function(code = null) {
         autoCode = `IC-${String(maxCode + 1).padStart(3, '0')}`;
     }
     
+    // 메뉴 목록 정의
+    const menuList = [
+        { id: 'dashboard', name: '대시보드', icon: 'fa-tachometer-alt' },
+        { id: 'instructor-codes', name: '강사코드', icon: 'fa-code' },
+        { id: 'instructors', name: '강사관리', icon: 'fa-user-tie' },
+        { id: 'system-settings', name: '시스템 등록', icon: 'fa-cog' },
+        { id: 'subjects', name: '교과목', icon: 'fa-book' },
+        { id: 'holidays', name: '공휴일', icon: 'fa-calendar-alt' },
+        { id: 'courses', name: '과정관리', icon: 'fa-school' },
+        { id: 'students', name: '학생관리', icon: 'fa-users' },
+        { id: 'counselings', name: '상담관리', icon: 'fa-comments' },
+        { id: 'timetables', name: '시간표', icon: 'fa-clock' },
+        { id: 'training-logs', name: '훈련일지 관리', icon: 'fa-clipboard-list' },
+        { id: 'ai-report', name: 'AI 생기부', icon: 'fa-file-alt' },
+        { id: 'ai-training-log', name: 'AI 훈련일지', icon: 'fa-brain' },
+        { id: 'ai-counseling', name: 'AI 상담일지', icon: 'fa-comments' }
+    ];
+    
     formDiv.innerHTML = `
         <h3 class="text-lg font-semibold mb-4">${code ? '강사코드 수정' : '강사코드 추가'}</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        <!-- 기본 정보 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">코드 *</label>
                 <input type="text" id="code" placeholder="코드 (예: IC-001)" value="${existingCode ? existingCode.code : autoCode}" ${code ? 'readonly' : 'readonly'} class="w-full border rounded px-3 py-2 bg-gray-100">
@@ -4333,7 +4354,46 @@ window.showInstructorCodeForm = function(code = null) {
                 </select>
             </div>
         </div>
-        <div class="mt-4 space-x-2">
+        
+        <!-- 권한 설정 -->
+        <div class="border-t pt-6">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-md font-semibold text-gray-800">
+                    <i class="fas fa-shield-alt mr-2 text-blue-600"></i>메뉴 접근 권한
+                </h4>
+                <div class="flex gap-2">
+                    <button type="button" onclick="window.selectAllPermissions(true)" class="text-sm bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded">
+                        <i class="fas fa-check-square mr-1"></i>전체 선택
+                    </button>
+                    <button type="button" onclick="window.selectAllPermissions(false)" class="text-sm bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded">
+                        <i class="fas fa-square mr-1"></i>전체 해제
+                    </button>
+                </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+                <p class="text-sm text-gray-600 mb-3">
+                    <i class="fas fa-info-circle mr-2 text-blue-500"></i>
+                    이 강사코드(타입)에 해당하는 강사들이 접근할 수 있는 메뉴를 선택하세요.
+                    <strong class="text-blue-600">관리자(타입 0)</strong>는 모든 메뉴에 자동 접근 가능합니다.
+                </p>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    ${menuList.map(menu => `
+                        <label class="flex items-center space-x-2 bg-white p-3 rounded border hover:bg-blue-50 cursor-pointer transition-all">
+                            <input type="checkbox" 
+                                   class="permission-checkbox w-4 h-4 text-blue-600 rounded focus:ring-blue-500" 
+                                   data-menu-id="${menu.id}"
+                                   ${existingPermissions[menu.id] ? 'checked' : ''}>
+                            <span class="text-sm">
+                                <i class="fas ${menu.icon} mr-1 text-gray-500"></i>
+                                ${menu.name}
+                            </span>
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-6 space-x-2">
             <button onclick="window.saveInstructorCode('${code || ''}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
                 <i class="fas fa-save mr-2"></i>저장
             </button>
@@ -4343,6 +4403,14 @@ window.showInstructorCodeForm = function(code = null) {
         </div>
     `;
 }
+
+// 권한 전체 선택/해제
+window.selectAllPermissions = function(selectAll) {
+    const checkboxes = document.querySelectorAll('.permission-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = selectAll;
+    });
+};
 
 window.hideInstructorCodeForm = function() {
     document.getElementById('instructor-code-form').classList.add('hidden');
@@ -4367,22 +4435,32 @@ window.saveInstructorCode = async function(existingCode) {
         return;
     }
     
+    // 권한 데이터 수집
+    const permissions = {};
+    const checkboxes = document.querySelectorAll('.permission-checkbox');
+    checkboxes.forEach(checkbox => {
+        const menuId = checkbox.getAttribute('data-menu-id');
+        permissions[menuId] = checkbox.checked;
+    });
+    
     const data = {
         code: code,
         name: name,
-        type: type
+        type: type,
+        permissions: permissions
     };
     
     try {
         if (existingCode) {
             await axios.put(`${API_BASE_URL}/api/instructor-codes/${existingCode}`, data);
-            window.showAlert('강사코드가 수정되었습니다.');
+            window.showAlert('강사코드 및 권한이 수정되었습니다.');
         } else {
             await axios.post(`${API_BASE_URL}/api/instructor-codes`, data);
-            window.showAlert('강사코드가 추가되었습니다.');
+            window.showAlert('강사코드 및 권한이 추가되었습니다.');
         }
         window.hideInstructorCodeForm();
         loadInstructorCodes();
+        window.clearCache(); // 권한 변경 시 캐시 클리어
     } catch (error) {
         window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
     }
