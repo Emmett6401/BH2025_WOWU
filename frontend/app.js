@@ -4600,7 +4600,7 @@ window.showInstructorCodeForm = function(code = null) {
                 <label class="block text-sm font-medium text-gray-700 mb-1">타입 *</label>
                 <select id="type" class="w-full border rounded px-3 py-2">
                     <option value="">타입 선택</option>
-                    <option value="0. 관리자" ${existingCode && existingCode.type === '0. 관리자' ? 'selected' : ''}>0. 관리자</option>
+                    <option value="0. 관리자">0. 관리자</option>
                     <option value="1. 주강사" ${existingCode && existingCode.type === '1. 주강사' ? 'selected' : ''}>1. 주강사</option>
                     <option value="2. 보조강사" ${existingCode && existingCode.type === '2. 보조강사' ? 'selected' : ''}>2. 보조강사</option>
                     <option value="3. 멘토" ${existingCode && existingCode.type === '3. 멘토' ? 'selected' : ''}>3. 멘토</option>
@@ -4629,7 +4629,7 @@ window.showInstructorCodeForm = function(code = null) {
                 <p class="text-sm text-gray-600 mb-3">
                     <i class="fas fa-info-circle mr-2 text-blue-500"></i>
                     이 강사코드(타입)에 해당하는 강사들이 접근할 수 있는 메뉴를 선택하세요.
-                    <strong class="text-blue-600">관리자(타입 0)</strong>는 모든 메뉴에 자동 접근 가능합니다.
+                    <strong class="text-blue-600">관리자(타입 IC-999)</strong>는 모든 메뉴에 자동 접근 가능합니다.
                     <br>
                     <i class="fas fa-home mr-2 text-green-500"></i>
                     <strong class="text-green-600">초기 화면</strong>을 선택하면 로그인 시 해당 메뉴로 자동 이동합니다.
@@ -10666,9 +10666,9 @@ function applyMenuPermissions() {
         return;
     }
     
-    // 관리자 (타입 0)는 모든 메뉴 접근 가능
-    if (instructor.instructor_type === '0') {
-        console.log('✅ 관리자 계정 (타입 0) - 모든 메뉴 접근 가능');
+    // 관리자 (타입 IC-999)는 모든 메뉴 접근 가능
+    if (instructor.instructor_type === 'IC-999' || instructor.instructor_type === '0') {
+        console.log('✅ 관리자 계정 (타입 IC-999) - 모든 메뉴 접근 가능');
         // 모든 메뉴 버튼 활성화
         const menuButtons = document.querySelectorAll('[data-tab]');
         menuButtons.forEach(button => {

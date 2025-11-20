@@ -838,6 +838,99 @@ async def delete_instructor_code(code: str):
     finally:
         conn.close()
 
+@app.post("/api/admin/migrate-admin-code")
+async def migrate_admin_code():
+    """관리자 코드를 0에서 IC-999로 마이그레이션"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 0. type 컬럼 길이 확인 및 확장
+        cursor.execute("SHOW COLUMNS FROM instructor_codes LIKE 'type'")
+        type_column = cursor.fetchone()
+        if type_column:
+            # VARCHAR(10) 또는 더 작은 경우 VARCHAR(50)으로 확장
+            cursor.execute("ALTER TABLE instructor_codes MODIFY COLUMN type VARCHAR(50)")
+            conn.commit()
+        
+        # 1. code='0' 확인
+        cursor.execute("SELECT * FROM instructor_codes WHERE code = '0'")
+        old_admin = cursor.fetchone()
+        
+        if not old_admin:
+            # code='0'이 없으면 IC-999가 이미 존재하는지 확인
+            cursor.execute("SELECT * FROM instructor_codes WHERE code = 'IC-999'")
+            existing_ic999 = cursor.fetchone()
+            if existing_ic999:
+                return {
+                    "success": True,
+                    "message": "이미 마이그레이션되었습니다",
+                    "admin_code": existing_ic999,
+                    "instructor_count": 0
+                }
+            else:
+                raise HTTPException(status_code=404, detail="관리자 코드 '0'을 찾을 수 없습니다")
+        
+        # 2. IC-999가 이미 있는지 확인하고 삭제
+        cursor.execute("SELECT * FROM instructor_codes WHERE code = 'IC-999'")
+        existing = cursor.fetchone()
+        if existing:
+            cursor.execute("DELETE FROM instructor_codes WHERE code = 'IC-999'")
+            conn.commit()
+        
+        # 3. code='0'의 모든 데이터 가져오기
+        old_data = {
+            'name': old_admin['name'],
+            'type': '0. 관리자',
+            'permissions': old_admin.get('permissions'),
+            'default_screen': old_admin.get('default_screen'),
+            'created_at': old_admin.get('created_at'),
+            'updated_at': old_admin.get('updated_at')
+        }
+        
+        # 4. code='0' 삭제
+        cursor.execute("DELETE FROM instructor_codes WHERE code = '0'")
+        conn.commit()
+        
+        # 5. IC-999로 새로 삽입
+        import json as json_module
+        permissions_json = json_module.dumps(old_data['permissions']) if old_data['permissions'] else None
+        
+        cursor.execute("""
+            INSERT INTO instructor_codes (code, name, type, permissions, default_screen, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+        """, ('IC-999', old_data['name'], old_data['type'], permissions_json, old_data['default_screen'], old_data['created_at']))
+        
+        # 6. instructors 테이블의 instructor_type도 업데이트
+        cursor.execute("""
+            UPDATE instructors
+            SET instructor_type = 'IC-999'
+            WHERE instructor_type = '0'
+        """)
+        
+        conn.commit()
+        
+        # 7. 결과 확인
+        cursor.execute("SELECT * FROM instructor_codes WHERE code = 'IC-999'")
+        new_admin = cursor.fetchone()
+        
+        cursor.execute("SELECT COUNT(*) as cnt FROM instructors WHERE instructor_type = 'IC-999'")
+        instructor_count = cursor.fetchone()
+        
+        return {
+            "success": True,
+            "message": "관리자 코드가 성공적으로 마이그레이션되었습니다",
+            "admin_code": new_admin,
+            "instructor_count": instructor_count['cnt']
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"마이그레이션 실패: {str(e)}")
+    finally:
+        conn.close()
+
 # ==================== 강사 관리 API ====================
 
 @app.get("/api/instructors")
