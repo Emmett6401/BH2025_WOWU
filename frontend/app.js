@@ -9908,7 +9908,8 @@ window.handleLogoUpload = async function(event) {
         const formData = new FormData();
         formData.append('file', file);
         
-        const response = await axios.post(`${API_BASE_URL}/api/upload-image`, formData, {
+        // teacher 카테고리로 업로드 (로고는 teacher 폴더에 저장)
+        const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
         
@@ -9917,10 +9918,11 @@ window.handleLogoUpload = async function(event) {
         document.getElementById('current-logo').src = API_BASE_URL + '/api/download-image?file_path=' + encodeURIComponent(logoUrl);
         document.getElementById('current-logo').style.display = 'block';
         
-        window.showAlert('로고가 업로드되었습니다. 저장 버튼을 눌러 적용하세요.');
+        window.showAlert('✅ 로고가 업로드되었습니다! 저장 버튼을 눌러 적용하세요.');
     } catch (error) {
-        console.error('로고 업로드 실패:', error);
-        window.showAlert('로고 업로드에 실패했습니다: ' + error.message);
+        console.error('❌ 로고 업로드 실패:', error);
+        const errorMsg = error.response?.data?.detail || error.message;
+        window.showAlert('로고 업로드에 실패했습니다: ' + errorMsg);
     }
 }
 
