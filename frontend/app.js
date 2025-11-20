@@ -2722,6 +2722,10 @@ window.handleStudentImageUpload = async function(event) {
 
 // 학생 사진 삭제
 window.removeStudentPhoto = async function(index) {
+    // 삭제 확인
+    const confirmed = await window.showConfirm('⚠️ 이 파일을 삭제하시겠습니까?\n\n삭제된 파일은 복구할 수 없습니다.');
+    if (!confirmed) return;
+    
     const photoUrlsInput = document.getElementById('student-photo-urls');
     const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
     
@@ -5455,6 +5459,10 @@ window.handleInstructorImageUpload = async function(event) {
 
 // 강사 사진 삭제
 window.removeInstructorPhoto = async function(index) {
+    // 삭제 확인
+    const confirmed = await window.showConfirm('⚠️ 이 파일을 삭제하시겠습니까?\n\n삭제된 파일은 복구할 수 없습니다.');
+    if (!confirmed) return;
+    
     const photoUrlsInput = document.getElementById('instructor-photo-urls');
     const photoUrls = JSON.parse(photoUrlsInput.value || '[]');
     
