@@ -494,15 +494,26 @@
                 progressBar.style.width = '100%';
                 progressText.textContent = '✅ 업로드 완료!';
                 
+                // 자동 저장
+                const student = JSON.parse(localStorage.getItem('student'));
+                if (student && student.id) {
+                    await saveStudentProfileSilent(photoUrl);
+                    window.showAlert('✅ 프로필 사진이 업로드되고 자동 저장되었습니다!', 'success');
+                } else {
+                    window.showAlert('✅ 프로필 사진이 업로드되었습니다!', 'success');
+                }
+                
                 setTimeout(() => {
                     progressContainer.classList.add('hidden');
                 }, 2000);
-                
-                alert('✅ 프로필 사진이 업로드되었습니다. 저장 버튼을 눌러주세요.');
             } catch (error) {
                 console.error('사진 업로드 실패:', error);
                 progressText.textContent = '❌ 업로드 실패';
-                alert('사진 업로드에 실패했습니다: ' + error.message);
+                window.showAlert('❌ 사진 업로드에 실패했습니다: ' + error.message, 'error');
+                
+                setTimeout(() => {
+                    progressContainer.classList.add('hidden');
+                }, 2000);
             }
         };
         
