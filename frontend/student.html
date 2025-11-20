@@ -785,6 +785,58 @@
             }
         };
         
+        // 프로필 사진 자동 저장 (Silent)
+        async function saveStudentProfileSilent(profilePhotoUrl) {
+            const student = JSON.parse(localStorage.getItem('student'));
+            
+            // 첨부 파일 가져오기
+            let attachments = [];
+            if (student.attachments) {
+                try {
+                    attachments = JSON.parse(student.attachments);
+                } catch (e) {
+                    attachments = [];
+                }
+            }
+            
+            // JSON 데이터 준비
+            const updateData = {
+                name: student.name,
+                birth_date: document.getElementById('student-birth-date').value || '',
+                gender: document.getElementById('student-gender').value || '',
+                phone: document.getElementById('student-phone').value || '',
+                email: document.getElementById('student-email').value || '',
+                address: document.getElementById('student-address').value || '',
+                interests: document.getElementById('student-interests').value || '',
+                education: document.getElementById('student-education').value || '',
+                introduction: document.getElementById('student-introduction').value || '',
+                campus: student.campus || '',
+                course_code: student.course_code || '',
+                notes: student.notes || '',
+                career_path: student.career_path || '4. 미정',
+                profile_photo: profilePhotoUrl,
+                attachments: JSON.stringify(attachments)
+            };
+            
+            try {
+                await axios.put(`${API_BASE_URL}/api/students/${student.id}`, updateData, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                // 로컬 스토리지 업데이트
+                student.profile_photo = profilePhotoUrl;
+                localStorage.setItem('student', JSON.stringify(student));
+                
+                // 캐시 삭제
+                localStorage.removeItem('cache_students');
+            } catch (error) {
+                console.error('자동 저장 실패:', error);
+                throw error;
+            }
+        }
+        
         // 학생 정보 저장
         window.saveStudentProfile = async function() {
             const student = JSON.parse(localStorage.getItem('student'));
@@ -845,13 +897,15 @@
                 student.interests = document.getElementById('student-interests').value;
                 student.education = document.getElementById('student-education').value;
                 student.introduction = document.getElementById('student-introduction').value;
-                student.photo_urls = photoUrls;
                 localStorage.setItem('student', JSON.stringify(student));
                 
-                alert('✅ 정보가 저장되었습니다!');
+                // 캐시 삭제
+                localStorage.removeItem('cache_students');
+                
+                window.showAlert('✅ 정보가 저장되었습니다!', 'success');
             } catch (error) {
                 console.error('저장 실패:', error);
-                alert('저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+                window.showAlert('저장에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
             }
         };
         
