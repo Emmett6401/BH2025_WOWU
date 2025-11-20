@@ -10341,16 +10341,25 @@ window.showMyPage = async function() {
                     
                     <!-- 비밀번호 변경 -->
                     <div class="border-t pt-6">
-                        <h4 class="text-lg font-bold text-gray-800 mb-4">
-                            <i class="fas fa-key mr-2 text-purple-500"></i>비밀번호 변경
-                        </h4>
-                        <div class="space-y-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-lg font-bold text-gray-800">
+                                <i class="fas fa-key mr-2 text-purple-500"></i>비밀번호 변경
+                            </h4>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="mypage-change-password-checkbox" 
+                                       class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-2"
+                                       onchange="togglePasswordFields()">
+                                <span class="text-sm text-gray-700 font-semibold">비밀번호 변경하기</span>
+                            </label>
+                        </div>
+                        <div id="mypage-password-fields" class="space-y-4 hidden">
                             <div>
                                 <label class="block text-gray-700 mb-2">현재 비밀번호</label>
                                 <div class="relative">
                                     <input type="password" id="mypage-old-password" 
                                            class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                                           placeholder="현재 비밀번호를 입력하세요">
+                                           placeholder="현재 비밀번호를 입력하세요"
+                                           disabled>
                                     <button type="button" onclick="togglePasswordVisibility('mypage-old-password')" 
                                             class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
                                         <i class="fas fa-eye" id="mypage-old-password-icon"></i>
@@ -10362,7 +10371,8 @@ window.showMyPage = async function() {
                                 <div class="relative">
                                     <input type="password" id="mypage-new-password" 
                                            class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                                           placeholder="새 비밀번호를 입력하세요">
+                                           placeholder="새 비밀번호를 입력하세요"
+                                           disabled>
                                     <button type="button" onclick="togglePasswordVisibility('mypage-new-password')" 
                                             class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
                                         <i class="fas fa-eye" id="mypage-new-password-icon"></i>
@@ -10374,7 +10384,8 @@ window.showMyPage = async function() {
                                 <div class="relative">
                                     <input type="password" id="mypage-new-password-confirm" 
                                            class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                                           placeholder="새 비밀번호를 다시 입력하세요">
+                                           placeholder="새 비밀번호를 다시 입력하세요"
+                                           disabled>
                                     <button type="button" onclick="togglePasswordVisibility('mypage-new-password-confirm')" 
                                             class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
                                         <i class="fas fa-eye" id="mypage-new-password-confirm-icon"></i>
@@ -10495,33 +10506,29 @@ window.saveMyPage = async function() {
     const newPassword = document.getElementById('mypage-new-password').value;
     const newPasswordConfirm = document.getElementById('mypage-new-password-confirm').value;
     
-    // 비밀번호 변경 유효성 검사
+    // 비밀번호 변경 유효성 검사 (체크박스 기반)
+    const changePasswordCheckbox = document.getElementById('mypage-change-password-checkbox');
     let willChangePassword = false;
-    if (oldPassword || newPassword || newPasswordConfirm) {
-        // 현재 비밀번호만 있고 새 비밀번호가 없는 경우
-        if (oldPassword && !newPassword && !newPasswordConfirm) {
-            // 비밀번호 변경하지 않음 (정보만 저장)
-            willChangePassword = false;
-        } else {
-            // 비밀번호 변경 시도
-            if (!oldPassword) {
-                window.showAlert('현재 비밀번호를 입력하세요.');
-                return;
-            }
-            if (!newPassword) {
-                window.showAlert('새 비밀번호를 입력하세요.');
-                return;
-            }
-            if (!newPasswordConfirm) {
-                window.showAlert('새 비밀번호 확인을 입력하세요.');
-                return;
-            }
-            if (newPassword !== newPasswordConfirm) {
-                window.showAlert('새 비밀번호가 일치하지 않습니다.');
-                return;
-            }
-            willChangePassword = true;
+    
+    if (changePasswordCheckbox && changePasswordCheckbox.checked) {
+        // 비밀번호 변경 체크박스가 선택된 경우에만 검증
+        if (!oldPassword) {
+            window.showAlert('현재 비밀번호를 입력하세요.');
+            return;
         }
+        if (!newPassword) {
+            window.showAlert('새 비밀번호를 입력하세요.');
+            return;
+        }
+        if (!newPasswordConfirm) {
+            window.showAlert('새 비밀번호 확인을 입력하세요.');
+            return;
+        }
+        if (newPassword !== newPasswordConfirm) {
+            window.showAlert('새 비밀번호가 일치하지 않습니다.');
+            return;
+        }
+        willChangePassword = true;
     }
     
     // 프로필 사진 URL
@@ -10589,6 +10596,32 @@ window.saveMyPage = async function() {
     } catch (error) {
         console.error('저장 실패:', error);
         window.showAlert('저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+    }
+};
+
+// 비밀번호 필드 활성화/비활성화 토글
+window.togglePasswordFields = function() {
+    const checkbox = document.getElementById('mypage-change-password-checkbox');
+    const fieldsDiv = document.getElementById('mypage-password-fields');
+    const oldPassword = document.getElementById('mypage-old-password');
+    const newPassword = document.getElementById('mypage-new-password');
+    const confirmPassword = document.getElementById('mypage-new-password-confirm');
+    
+    if (checkbox.checked) {
+        // 체크박스 선택 시 필드 활성화
+        fieldsDiv.classList.remove('hidden');
+        oldPassword.disabled = false;
+        newPassword.disabled = false;
+        confirmPassword.disabled = false;
+    } else {
+        // 체크박스 해제 시 필드 비활성화 및 초기화
+        fieldsDiv.classList.add('hidden');
+        oldPassword.disabled = true;
+        newPassword.disabled = true;
+        confirmPassword.disabled = true;
+        oldPassword.value = '';
+        newPassword.value = '';
+        confirmPassword.value = '';
     }
 };
 
