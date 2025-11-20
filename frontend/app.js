@@ -2694,150 +2694,185 @@ window.showStudentDetail = async function(studentId) {
             }
         }
         
+        // 성별에 따른 기본 프로필 이미지
+        const getDefaultProfileImage = (gender) => {
+            if (gender === '남' || gender === '남자' || gender === 'M' || gender === 'male') {
+                return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Cdefs%3E%3ClinearGradient id="grad1" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" style="stop-color:%234A90E2;stop-opacity:1" /%3E%3Cstop offset="100%25" style="stop-color:%2367B8E3;stop-opacity:1" /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width="200" height="200" fill="url(%23grad1)"/%3E%3Ccircle cx="100" cy="70" r="35" fill="white" opacity="0.9"/%3E%3Cpath d="M 100 110 Q 70 110 60 140 L 60 200 L 140 200 L 140 140 Q 130 110 100 110 Z" fill="white" opacity="0.9"/%3E%3C/svg%3E';
+            } else if (gender === '여' || gender === '여자' || gender === 'F' || gender === 'female') {
+                return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Cdefs%3E%3ClinearGradient id="grad2" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" style="stop-color:%23EC4899;stop-opacity:1" /%3E%3Cstop offset="100%25" style="stop-color:%23F472B6;stop-opacity:1" /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width="200" height="200" fill="url(%23grad2)"/%3E%3Ccircle cx="100" cy="70" r="35" fill="white" opacity="0.9"/%3E%3Cpath d="M 100 110 Q 70 110 60 140 L 60 200 L 140 200 L 140 140 Q 130 110 100 110 Z" fill="white" opacity="0.9"/%3E%3C/svg%3E';
+            }
+            return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Cdefs%3E%3ClinearGradient id="grad3" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" style="stop-color:%236B7280;stop-opacity:1" /%3E%3Cstop offset="100%25" style="stop-color:%239CA3AF;stop-opacity:1" /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width="200" height="200" fill="url(%23grad3)"/%3E%3Ccircle cx="100" cy="70" r="35" fill="white" opacity="0.9"/%3E%3Cpath d="M 100 110 Q 70 110 60 140 L 60 200 L 140 200 L 140 140 Q 130 110 100 110 Z" fill="white" opacity="0.9"/%3E%3C/svg%3E';
+        };
+        
         // detailDiv는 함수 시작 부분에서 이미 선언됨
         detailDiv.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
         detailDiv.innerHTML = `
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
-                <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 rounded-t-2xl flex justify-between items-center sticky top-0 z-10">
-                    <h3 class="text-2xl font-bold flex items-center">
-                        <i class="fas fa-id-card mr-3"></i>상세보기
-                    </h3>
-                    <button onclick="window.hideStudentDetail()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-y-auto">
+                <!-- 헤더 -->
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-5 rounded-t-2xl flex justify-between items-center sticky top-0 z-10 shadow-lg">
+                    <div class="flex items-center gap-4">
+                        <i class="fas fa-id-card text-3xl"></i>
+                        <div>
+                            <h3 class="text-2xl font-bold">학생 상세보기</h3>
+                            <p class="text-sm text-blue-100 mt-1">${student.name} (${student.code})</p>
+                        </div>
+                    </div>
+                    <button onclick="window.hideStudentDetail()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-3 transition-all transform hover:scale-110">
                         <i class="fas fa-times text-2xl"></i>
                     </button>
                 </div>
-                <div class="modal-content-inner">
-            
-            <div class="p-6">
-                <!-- 프로필 영역 -->
-                <div class="flex gap-6 mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl shadow-sm">
-                    <!-- 사진 영역 -->
-                    <div class="flex-shrink-0">
-                        ${student.photo_path || student.thumbnail ? `
-                            <img src="${student.thumbnail || student.photo_path}" 
-                                 alt="${student.name}" 
-                                 class="w-40 h-40 object-cover rounded-2xl shadow-lg border-4 border-white"
-                                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'160\' height=\'160\'%3E%3Crect fill=\'%23ddd\' width=\'160\' height=\'160\'/%3E%3Ctext fill=\'%23999\' x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-size=\'20\'%3E사진없음%3C/text%3E%3C/svg%3E'">
-                        ` : `
-                            <div class="w-40 h-40 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl shadow-lg border-4 border-white flex items-center justify-center">
-                                <i class="fas fa-user text-6xl text-gray-400"></i>
+                
+                <div class="p-8">
+                    <!-- 최상단: 프로필 카드 -->
+                    <div class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-8 mb-6 shadow-md border border-blue-100">
+                        <div class="flex gap-8">
+                            <!-- 프로필 사진 -->
+                            <div class="flex-shrink-0">
+                                <div class="relative">
+                                    <img src="${student.photo_path || student.thumbnail || getDefaultProfileImage(student.gender)}" 
+                                         alt="${student.name}" 
+                                         class="w-48 h-48 object-cover rounded-2xl shadow-2xl border-4 border-white"
+                                         onerror="this.src='${getDefaultProfileImage(student.gender)}'">
+                                    <div class="absolute -bottom-3 -right-3 bg-white rounded-full p-3 shadow-lg">
+                                        <i class="fas ${student.gender === '남' || student.gender === '남자' ? 'fa-mars text-blue-500' : student.gender === '여' || student.gender === '여자' ? 'fa-venus text-pink-500' : 'fa-user text-gray-500'} text-2xl"></i>
+                                    </div>
+                                </div>
                             </div>
-                        `}
+                            
+                            <!-- 기본 정보 -->
+                            <div class="flex-1">
+                                <div class="mb-6">
+                                    <h4 class="text-3xl font-bold text-gray-800 mb-2">
+                                        ${student.name}
+                                        <span class="text-xl text-gray-500 font-normal ml-3">${student.code}</span>
+                                    </h4>
+                                    <div class="flex gap-3 mt-3">
+                                        <span class="px-4 py-1.5 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                                            <i class="fas fa-venus-mars mr-1"></i>${student.gender || '미등록'}
+                                        </span>
+                                        <span class="px-4 py-1.5 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
+                                            <i class="fas fa-university mr-1"></i>${student.campus || '미정'}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                                        <p class="text-xs text-gray-500 mb-1 flex items-center">
+                                            <i class="fas fa-birthday-cake mr-2 text-blue-500"></i>생년월일
+                                        </p>
+                                        <p class="font-bold text-gray-800 text-lg">${student.birth_date ? formatDateWithDay(student.birth_date) : '-'}</p>
+                                    </div>
+                                    <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                                        <p class="text-xs text-gray-500 mb-1 flex items-center">
+                                            <i class="fas fa-graduation-cap mr-2 text-green-500"></i>학력
+                                        </p>
+                                        <p class="font-bold text-gray-800 text-lg">${student.education || '-'}</p>
+                                    </div>
+                                    <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                                        <p class="text-xs text-gray-500 mb-1 flex items-center">
+                                            <i class="fas fa-calendar-check mr-2 text-orange-500"></i>등록일
+                                        </p>
+                                        <p class="font-bold text-gray-800 text-lg">${student.registered_at ? formatDateWithDay(student.registered_at.split('T')[0]) : '-'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
-                    <!-- 기본 정보 -->
-                    <div class="flex-1">
-                        <div class="bg-white rounded-xl shadow-sm p-6 mb-4">
-                            <h4 class="text-2xl font-bold text-gray-800 mb-3 flex items-center">
-                                <span class="text-blue-600 mr-2">${student.name}</span>
-                                <span class="text-lg text-gray-500 font-normal">(${student.code})</span>
+                    <!-- 2단: 과정 정보 & 연락처 -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <!-- 과정 정보 -->
+                        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                            <h4 class="text-xl font-bold text-gray-800 mb-5 flex items-center border-b pb-3">
+                                <div class="bg-blue-500 rounded-lg p-2 mr-3">
+                                    <i class="fas fa-book-reader text-white"></i>
+                                </div>
+                                과정 정보
                             </h4>
-                            <div class="grid grid-cols-3 gap-4">
-                                <div class="flex items-center">
-                                    <i class="fas fa-birthday-cake text-blue-500 mr-2"></i>
-                                    <div>
-                                        <p class="text-xs text-gray-500">생년월일</p>
-                                        <p class="font-semibold">${student.birth_date ? formatDateWithDay(student.birth_date) : '-'}</p>
-                                    </div>
+                            <div class="space-y-4">
+                                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border-l-4 border-blue-500">
+                                    <p class="text-sm text-gray-600 mb-2 font-semibold">수강 과정</p>
+                                    <p class="font-bold text-blue-700 text-xl">${courseInfo || '-'}</p>
                                 </div>
-                                <div class="flex items-center">
-                                    <i class="fas fa-venus-mars text-pink-500 mr-2"></i>
-                                    <div>
-                                        <p class="text-xs text-gray-500">성별</p>
-                                        <p class="font-semibold">${student.gender || '-'}</p>
-                                    </div>
+                                <div class="bg-gray-50 p-5 rounded-xl">
+                                    <p class="text-sm text-gray-600 mb-2 font-semibold flex items-center">
+                                        <i class="fas fa-heart text-pink-500 mr-2"></i>관심분야
+                                    </p>
+                                    <p class="font-semibold text-gray-800 text-lg">${student.interests || '-'}</p>
                                 </div>
-                                <div class="flex items-center">
-                                    <i class="fas fa-university text-indigo-500 mr-2"></i>
-                                    <div>
-                                        <p class="text-xs text-gray-500">캠퍼스</p>
-                                        <p class="font-semibold">${student.campus || '-'}</p>
-                                    </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 연락처 정보 -->
+                        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                            <h4 class="text-xl font-bold text-gray-800 mb-5 flex items-center border-b pb-3">
+                                <div class="bg-green-500 rounded-lg p-2 mr-3">
+                                    <i class="fas fa-address-book text-white"></i>
+                                </div>
+                                연락처 정보
+                            </h4>
+                            <div class="space-y-4">
+                                <div class="bg-green-50 p-5 rounded-xl border-l-4 border-green-500">
+                                    <p class="text-sm text-gray-600 mb-2 font-semibold flex items-center">
+                                        <i class="fas fa-phone text-green-600 mr-2"></i>전화번호
+                                    </p>
+                                    <p class="font-bold text-gray-800 text-xl">${student.phone || '-'}</p>
+                                </div>
+                                <div class="bg-blue-50 p-5 rounded-xl border-l-4 border-blue-500">
+                                    <p class="text-sm text-gray-600 mb-2 font-semibold flex items-center">
+                                        <i class="fas fa-envelope text-blue-600 mr-2"></i>이메일
+                                    </p>
+                                    <p class="font-semibold text-gray-800 text-lg break-all">${student.email || '-'}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- 연락처 정보 -->
-                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-                    <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-address-card text-blue-600 mr-2"></i>연락처 정보
-                    </h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="flex items-center p-3 bg-gray-50 rounded-lg">
-                            <i class="fas fa-phone text-green-500 mr-3 text-xl"></i>
-                            <div>
-                                <p class="text-xs text-gray-500">전화번호</p>
-                                <p class="font-semibold text-gray-800">${student.phone || '-'}</p>
+                    
+                    <!-- 3단: 주소 -->
+                    <div class="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-200">
+                        <h4 class="text-xl font-bold text-gray-800 mb-5 flex items-center border-b pb-3">
+                            <div class="bg-orange-500 rounded-lg p-2 mr-3">
+                                <i class="fas fa-map-marker-alt text-white"></i>
                             </div>
-                        </div>
-                        <div class="flex items-center p-3 bg-gray-50 rounded-lg">
-                            <i class="fas fa-envelope text-red-500 mr-3 text-xl"></i>
-                            <div>
-                                <p class="text-xs text-gray-500">이메일</p>
-                                <p class="font-semibold text-gray-800 text-sm">${student.email || '-'}</p>
-                            </div>
-                        </div>
-                        <div class="flex items-start p-3 bg-gray-50 rounded-lg col-span-2">
-                            <i class="fas fa-map-marker-alt text-orange-500 mr-3 text-xl mt-1"></i>
-                            <div class="flex-1">
-                                <p class="text-xs text-gray-500">주소</p>
-                                <p class="font-semibold text-gray-800">${student.address || '-'}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 학적 정보 -->
-                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-                    <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-graduation-cap text-blue-600 mr-2"></i>학적 정보
-                    </h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-500">
-                            <p class="text-xs text-gray-500 mb-1">과정</p>
-                            <p class="font-bold text-blue-600 text-lg">${courseInfo || '-'}</p>
-                        </div>
-                        <div class="p-4 bg-gray-50 rounded-lg">
-                            <p class="text-xs text-gray-500 mb-1">학력</p>
-                            <p class="font-semibold text-gray-800">${student.education || '-'}</p>
-                        </div>
-                        <div class="p-4 bg-gray-50 rounded-lg">
-                            <p class="text-xs text-gray-500 mb-1">관심분야</p>
-                            <p class="font-semibold text-gray-800">${student.interests || '-'}</p>
-                        </div>
-                        <div class="p-4 bg-gray-50 rounded-lg">
-                            <p class="text-xs text-gray-500 mb-1">등록일</p>
-                            <p class="font-semibold text-gray-800">${student.registered_at ? formatDateWithDay(student.registered_at.split('T')[0]) : '-'}</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 자기소개 -->
-                ${student.introduction || student.self_introduction ? `
-                    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-                        <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                            <i class="fas fa-file-alt text-purple-600 mr-2"></i>자기소개
+                            주소
                         </h4>
-                        <div class="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg border-l-4 border-purple-500">
-                            <p class="text-gray-700 whitespace-pre-wrap leading-relaxed">${student.introduction || student.self_introduction}</p>
+                        <div class="bg-orange-50 p-5 rounded-xl border-l-4 border-orange-500">
+                            <p class="font-semibold text-gray-800 text-lg">${student.address || '주소 정보가 없습니다'}</p>
                         </div>
                     </div>
-                ` : ''}
-                
-                <!-- 비고 -->
-                ${student.notes ? `
-                    <div class="bg-white rounded-xl shadow-sm p-6">
-                        <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                            <i class="fas fa-sticky-note text-yellow-600 mr-2"></i>비고
-                        </h4>
-                        <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-500">
-                            <p class="text-gray-700 whitespace-pre-wrap leading-relaxed">${student.notes}</p>
-                        </div>
+                    
+                    <!-- 4단: 자기소개 & 비고 -->
+                    <div class="grid grid-cols-1 ${student.introduction || student.self_introduction ? 'lg:grid-cols-2' : ''} gap-6">
+                        ${student.introduction || student.self_introduction ? `
+                            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                                <h4 class="text-xl font-bold text-gray-800 mb-5 flex items-center border-b pb-3">
+                                    <div class="bg-purple-500 rounded-lg p-2 mr-3">
+                                        <i class="fas fa-user-edit text-white"></i>
+                                    </div>
+                                    자기소개
+                                </h4>
+                                <div class="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl border-l-4 border-purple-500 min-h-[150px]">
+                                    <p class="text-gray-700 whitespace-pre-wrap leading-relaxed text-base">${student.introduction || student.self_introduction}</p>
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        ${student.notes ? `
+                            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                                <h4 class="text-xl font-bold text-gray-800 mb-5 flex items-center border-b pb-3">
+                                    <div class="bg-yellow-500 rounded-lg p-2 mr-3">
+                                        <i class="fas fa-sticky-note text-white"></i>
+                                    </div>
+                                    비고 및 특이사항
+                                </h4>
+                                <div class="bg-yellow-50 p-6 rounded-xl border-l-4 border-yellow-500 min-h-[150px]">
+                                    <p class="text-gray-700 whitespace-pre-wrap leading-relaxed text-base">${student.notes}</p>
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
-                ` : ''}
-            </div>
+                </div>
             </div>
         `;
     } catch (error) {
