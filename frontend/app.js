@@ -285,6 +285,15 @@ window.getFilenameFromUrl = function(url) {
         // 디코딩
         filename = decodeURIComponent(filename);
         
+        // 타임스탬프_UUID_ 패턴 제거 (예: 20251120_151105_d432baab_4.png → 4.png)
+        // 패턴: YYYYMMDD_HHMMSS_8자UUID_실제파일명.확장자
+        const timestampPattern = /^\d{8}_\d{6}_[a-f0-9]{8}_(.+)$/;
+        const match = filename.match(timestampPattern);
+        if (match && match[1]) {
+            // 실제 파일명 부분만 추출
+            return match[1];
+        }
+        
         return filename;
     } catch (e) {
         return 'unknown';
