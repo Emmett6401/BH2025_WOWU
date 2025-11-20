@@ -9790,7 +9790,19 @@ async function loadSystemSettings() {
 }
 
 function renderSystemSettings(settings) {
+    console.log('🎨 시스템 설정 폼 렌더링:', settings);
+    
     const app = document.getElementById('app');
+    
+    // HTML 특수문자 이스케이프 함수
+    const escapeHtml = (str) => {
+        if (!str) return '';
+        return str.replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#39;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;');
+    };
+    
     app.innerHTML = `
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex justify-between items-center mb-6">
@@ -9815,7 +9827,7 @@ function renderSystemSettings(settings) {
                     <label class="block text-gray-700 font-semibold mb-2">
                         <i class="fas fa-heading mr-2 text-blue-500"></i>큰 제목 (시스템 이름)
                     </label>
-                    <input type="text" id="system-title" value="${settings.system_title || 'KDT교육관리시스템 v3.2'}" 
+                    <input type="text" id="system-title" 
                            class="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500"
                            placeholder="예: KDT교육관리시스템 v3.2">
                     <p class="text-sm text-gray-500 mt-1">헤더 상단에 표시되는 메인 제목입니다</p>
@@ -9826,7 +9838,7 @@ function renderSystemSettings(settings) {
                     <label class="block text-gray-700 font-semibold mb-2">
                         <i class="fas fa-align-left mr-2 text-green-500"></i>작은 제목 (1줄)
                     </label>
-                    <input type="text" id="system-subtitle1" value="${settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단'}" 
+                    <input type="text" id="system-subtitle1" 
                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
                            placeholder="예: 보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단">
                     <p class="text-sm text-gray-500 mt-1">헤더 하단 첫 번째 줄에 표시됩니다</p>
@@ -9837,7 +9849,7 @@ function renderSystemSettings(settings) {
                     <label class="block text-gray-700 font-semibold mb-2">
                         <i class="fas fa-align-left mr-2 text-green-500"></i>작은 제목 (2줄)
                     </label>
-                    <input type="text" id="system-subtitle2" value="${settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터'}" 
+                    <input type="text" id="system-subtitle2" 
                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
                            placeholder="예: 바이오헬스아카데미 올인원테크 이노베이터">
                     <p class="text-sm text-gray-500 mt-1">헤더 하단 두 번째 줄에 표시됩니다</p>
@@ -9852,7 +9864,7 @@ function renderSystemSettings(settings) {
                     <!-- 현재 로고 미리보기 -->
                     <div class="mb-4 p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                         <p class="text-sm text-gray-600 mb-2">현재 로고:</p>
-                        <img id="current-logo" src="${settings.logo_url || '/woosong-logo.png'}" 
+                        <img id="current-logo" 
                              alt="현재 로고" class="h-20 object-contain bg-white p-2 rounded shadow-sm"
                              onerror="this.style.display='none'">
                     </div>
@@ -9868,7 +9880,7 @@ function renderSystemSettings(settings) {
                         </p>
                     </div>
                     
-                    <input type="hidden" id="logo-url" value="${settings.logo_url || '/woosong-logo.png'}">
+                    <input type="hidden" id="logo-url">
                 </div>
                 
                 <!-- 저장 버튼 -->
@@ -9885,6 +9897,28 @@ function renderSystemSettings(settings) {
             </form>
         </div>
     `;
+    
+    // HTML 생성 후 JavaScript로 값 설정 (이렇게 해야 사용자 수정이 반영됨)
+    setTimeout(() => {
+        const titleInput = document.getElementById('system-title');
+        const subtitle1Input = document.getElementById('system-subtitle1');
+        const subtitle2Input = document.getElementById('system-subtitle2');
+        const logoUrlInput = document.getElementById('logo-url');
+        const logoImg = document.getElementById('current-logo');
+        
+        if (titleInput) titleInput.value = settings.system_title || 'KDT교육관리시스템 v3.2';
+        if (subtitle1Input) subtitle1Input.value = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
+        if (subtitle2Input) subtitle2Input.value = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
+        if (logoUrlInput) logoUrlInput.value = settings.logo_url || '/woosong-logo.png';
+        if (logoImg) logoImg.src = settings.logo_url || '/woosong-logo.png';
+        
+        console.log('✅ 폼 값 설정 완료:', {
+            title: titleInput?.value,
+            subtitle1: subtitle1Input?.value,
+            subtitle2: subtitle2Input?.value,
+            logo: logoUrlInput?.value
+        });
+    }, 0);
 }
 
 // 로고 업로드 처리
@@ -9966,10 +10000,29 @@ window.handleLogoUpload = async function(event) {
 
 // 시스템 설정 저장
 window.saveSystemSettings = async function() {
-    const systemTitle = document.getElementById('system-title').value;
-    const systemSubtitle1 = document.getElementById('system-subtitle1').value;
-    const systemSubtitle2 = document.getElementById('system-subtitle2').value;
-    const logoUrl = document.getElementById('logo-url').value;
+    // DOM 요소 존재 확인
+    const titleElement = document.getElementById('system-title');
+    const subtitle1Element = document.getElementById('system-subtitle1');
+    const subtitle2Element = document.getElementById('system-subtitle2');
+    const logoElement = document.getElementById('logo-url');
+    
+    console.log('🔍 DOM 요소 확인:', {
+        titleElement: titleElement ? '존재' : '없음',
+        subtitle1Element: subtitle1Element ? '존재' : '없음',
+        subtitle2Element: subtitle2Element ? '존재' : '없음',
+        logoElement: logoElement ? '존재' : '없음'
+    });
+    
+    if (!titleElement || !subtitle1Element || !subtitle2Element || !logoElement) {
+        console.error('❌ 필수 input 요소를 찾을 수 없습니다!');
+        window.showAlert('오류: 폼 요소를 찾을 수 없습니다. 페이지를 새로고침하세요.');
+        return;
+    }
+    
+    const systemTitle = titleElement.value;
+    const systemSubtitle1 = subtitle1Element.value;
+    const systemSubtitle2 = subtitle2Element.value;
+    const logoUrl = logoElement.value;
     
     console.log('📝 저장할 데이터:', {
         system_title: systemTitle,
