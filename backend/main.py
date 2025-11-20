@@ -632,8 +632,36 @@ async def get_instructor_codes():
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # permissions 컬럼 존재 여부 확인 및 추가
+        cursor.execute("SHOW COLUMNS FROM instructor_codes LIKE 'permissions'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE instructor_codes ADD COLUMN permissions TEXT DEFAULT NULL")
+            conn.commit()
+            print("✅ instructor_codes 테이블에 permissions 컬럼 추가")
+        
+        # "0. 관리자" 타입이 없으면 추가
+        cursor.execute("SELECT * FROM instructor_codes WHERE code = '0'")
+        if not cursor.fetchone():
+            cursor.execute("""
+                INSERT INTO instructor_codes (code, name, type, permissions)
+                VALUES ('0', '관리자', '0', NULL)
+            """)
+            conn.commit()
+            print("✅ '0. 관리자' 타입 추가 완료")
+        
         cursor.execute("SELECT * FROM instructor_codes ORDER BY code")
         codes = cursor.fetchall()
+        
+        # permissions를 JSON으로 파싱
+        for code in codes:
+            if code.get('permissions'):
+                try:
+                    import json
+                    code['permissions'] = json.loads(code['permissions'])
+                except:
+                    code['permissions'] = None
+        
         return [convert_datetime(code) for code in codes]
     finally:
         conn.close()
@@ -644,11 +672,15 @@ async def create_instructor_code(data: dict):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        
+        import json
+        permissions_json = json.dumps(data.get('permissions', {})) if data.get('permissions') else None
+        
         query = """
-            INSERT INTO instructor_codes (code, name, type)
-            VALUES (%s, %s, %s)
+            INSERT INTO instructor_codes (code, name, type, permissions)
+            VALUES (%s, %s, %s, %s)
         """
-        cursor.execute(query, (data['code'], data['name'], data['type']))
+        cursor.execute(query, (data['code'], data['name'], data['type'], permissions_json))
         conn.commit()
         return {"code": data['code']}
     finally:
@@ -656,16 +688,20 @@ async def create_instructor_code(data: dict):
 
 @app.put("/api/instructor-codes/{code}")
 async def update_instructor_code(code: str, data: dict):
-    """강사코드 수정"""
+    """강사코드 수정 (권한 설정 포함)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        
+        import json
+        permissions_json = json.dumps(data.get('permissions', {})) if data.get('permissions') else None
+        
         query = """
             UPDATE instructor_codes
-            SET name = %s, type = %s
+            SET name = %s, type = %s, permissions = %s
             WHERE code = %s
         """
-        cursor.execute(query, (data['name'], data['type'], code))
+        cursor.execute(query, (data['name'], data['type'], permissions_json, code))
         conn.commit()
         return {"code": code}
     finally:
@@ -3068,12 +3104,33 @@ async def login(credentials: dict):
     로그인 API
     - 강사 이름으로 로그인
     - 기본 비밀번호: kdt2025
+    - 관리자 계정: root / xhRl1004!@# (DB 없이 접속 가능)
     """
     instructor_name = credentials.get('name')
     password = credentials.get('password')
     
     if not instructor_name or not password:
         raise HTTPException(status_code=400, detail="이름과 비밀번호를 입력하세요")
+    
+    # 🔐 관리자 계정 하드코딩 (DB 없이 무조건 접속 가능)
+    if instructor_name.strip() == "root" and password == "xhRl1004!@#":
+        print("✅ 관리자(root) 로그인 성공")
+        return {
+            "success": True,
+            "message": "관리자님, 환영합니다!",
+            "instructor": {
+                "code": "ROOT",
+                "name": "root",
+                "phone": None,
+                "major": "시스템 관리자",
+                "instructor_type": "0",
+                "email": "root@system.com",
+                "photo_urls": None,
+                "password": "xhRl1004!@#",
+                "instructor_type_name": "관리자",
+                "instructor_type_type": "0"
+            }
+        }
     
     conn = get_db_connection()
     try:
