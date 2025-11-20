@@ -10941,7 +10941,7 @@ window.uploadMyPagePhoto = async function(event) {
             progressBar.classList.add('bg-blue-600');
         }, 2000);
         
-        window.showAlert('✅ 프로필 사진이 저장되었습니다!');
+        window.showAlert('✅ 프로필 사진이 업로드되고 자동 저장되었습니다!', 'success');
     } catch (error) {
         console.error('사진 업로드 실패:', error);
         progressBar.classList.remove('bg-blue-600');
@@ -10954,7 +10954,7 @@ window.uploadMyPagePhoto = async function(event) {
             progressBar.classList.add('bg-blue-600');
         }, 2000);
         
-        window.showAlert('사진 업로드에 실패했습니다: ' + error.message);
+        window.showAlert('❌ 사진 업로드에 실패했습니다: ' + error.message, 'error');
     }
 };
 
@@ -10981,13 +10981,13 @@ window.handleMyPageFileUpload = async function(event) {
         // 파일 개수 제한 체크 (최대 20개)
         const remainingSlots = 20 - attachments.length;
         if (remainingSlots <= 0) {
-            window.showAlert('⚠️ 첨부 파일은 최대 20개까지만 업로드할 수 있습니다.');
+            window.showAlert('⚠️ 첨부 파일은 최대 20개까지만 업로드할 수 있습니다.', 'warning');
             event.target.value = '';
             return;
         }
         
         if (files.length > remainingSlots) {
-            window.showAlert(`⚠️ ${remainingSlots}개의 파일만 업로드할 수 있습니다. (현재: ${attachments.length}/20)`);
+            window.showAlert(`⚠️ ${remainingSlots}개의 파일만 업로드할 수 있습니다. (현재: ${attachments.length}/20)`, 'warning');
             event.target.value = '';
             return;
         }
@@ -11008,7 +11008,11 @@ window.handleMyPageFileUpload = async function(event) {
                 }
             });
             
-            attachments.push(response.data.url);
+            // URL과 원본 파일명을 함께 저장 (URL#원본파일명 형식)
+            const urlWithOriginalName = response.data.original_filename 
+                ? `${response.data.url}#${encodeURIComponent(response.data.original_filename)}`
+                : response.data.url;
+            attachments.push(urlWithOriginalName);
         }
         
         // 프로필 사진 URL 가져오기
@@ -11043,7 +11047,7 @@ window.handleMyPageFileUpload = async function(event) {
         }
         
         progressBar.style.width = '100%';
-        window.showAlert(`✅ 파일이 업로드되었습니다! (${attachments.length}/20)`);
+        window.showAlert(`✅ ${files.length}개 파일이 업로드되고 자동 저장되었습니다! (${attachments.length}/20)`, 'success');
         
         setTimeout(() => {
             progressDiv.classList.add('hidden');
@@ -11052,7 +11056,7 @@ window.handleMyPageFileUpload = async function(event) {
     } catch (error) {
         console.error('파일 업로드 실패:', error);
         progressDiv.classList.add('hidden');
-        window.showAlert('❌ 파일 업로드에 실패했습니다: ' + error.message);
+        window.showAlert('❌ 파일 업로드에 실패했습니다: ' + error.message, 'error');
     }
     
     // 파일 input 초기화
@@ -11074,17 +11078,20 @@ function updateMyPageFilePreview(photoUrls) {
         fileDiv.className = 'flex items-center gap-3 p-3 bg-white rounded border hover:shadow-md transition';
         
         if (isImage) {
+            const cleanUrl = window.getCleanUrl(url);
+            const filename = window.getFilenameFromUrl(url);
             fileDiv.innerHTML = `
-                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
-                     alt="파일 ${index + 1}" 
-                     class="w-16 h-16 object-cover rounded border"
+                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(cleanUrl)}" 
+                     alt="${filename}" 
+                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
+                     onclick="window.showFilePreview('${cleanUrl}', 'image')"
                      onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2764%27 height=%2764%27%3E%3Crect fill=%27%23f0f0f0%27 width=%2764%27 height=%2764%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2712%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3EError%3C/text%3E%3C/svg%3E'">
-                <div class="flex-1">
-                    <p class="text-sm text-gray-600">이미지 파일 ${index + 1}</p>
-                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" 
-                       target="_blank" 
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm text-gray-800 font-medium truncate" title="${filename}">${filename}</p>
+                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(cleanUrl)}" 
+                       download="${filename}"
                        class="text-xs text-blue-500 hover:underline">
-                        <i class="fas fa-external-link-alt mr-1"></i>보기
+                        <i class="fas fa-download mr-1"></i>다운로드
                     </a>
                 </div>
                 <button type="button" 
@@ -11095,14 +11102,16 @@ function updateMyPageFilePreview(photoUrls) {
             `;
         } else {
             const icon = getFileIcon(fileExt);
+            const cleanUrl = window.getCleanUrl(url);
+            const filename = window.getFilenameFromUrl(url);
             fileDiv.innerHTML = `
                 <div class="w-16 h-16 flex items-center justify-center bg-gray-100 rounded border">
                     <i class="${icon} text-3xl text-gray-500"></i>
                 </div>
-                <div class="flex-1">
-                    <p class="text-sm text-gray-600">${fileExt.toUpperCase()} 파일</p>
-                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" 
-                       target="_blank" 
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm text-gray-800 font-medium truncate" title="${filename}">${filename}</p>
+                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(cleanUrl)}" 
+                       download="${filename}"
                        class="text-xs text-blue-500 hover:underline">
                         <i class="fas fa-download mr-1"></i>다운로드
                     </a>
@@ -11139,7 +11148,7 @@ function getFileIcon(extension) {
 
 // MyPage 파일 삭제
 window.removeMyPageFile = async function(index) {
-    const confirmed = await window.showConfirm('이 파일을 삭제하시겠습니까?');
+    const confirmed = await window.showConfirm('⚠️ 이 파일을 삭제하시겠습니까?\n\n삭제된 파일은 복구할 수 없습니다.');
     if (!confirmed) return;
     
     const instructor = JSON.parse(localStorage.getItem('instructor'));
@@ -11188,10 +11197,10 @@ window.removeMyPageFile = async function(index) {
             fileCountSpan.textContent = attachments.length;
         }
         
-        window.showAlert(`✅ 파일이 삭제되었습니다! (${attachments.length}/20)`);
+        window.showAlert(`✅ 파일이 삭제되고 자동 저장되었습니다! (${attachments.length}/20)`, 'success');
     } catch (error) {
         console.error('파일 삭제 실패:', error);
-        window.showAlert('❌ 파일 삭제에 실패했습니다: ' + error.message);
+        window.showAlert('❌ 파일 삭제에 실패했습니다: ' + error.message, 'error');
     }
 };
 
