@@ -9904,13 +9904,42 @@ window.handleLogoUpload = async function(event) {
         return;
     }
     
+    // 프로그레스바 생성
+    const progressContainer = document.createElement('div');
+    progressContainer.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    progressContainer.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+            <div class="text-center">
+                <div class="mb-4">
+                    <i class="fas fa-cloud-upload-alt text-6xl text-blue-500 animate-pulse"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">로고 업로드 중...</h3>
+                <p class="text-gray-600 mb-4">${file.name}</p>
+                
+                <!-- 프로그레스바 -->
+                <div class="w-full bg-gray-200 rounded-full h-3 mb-4 overflow-hidden">
+                    <div id="upload-progress" class="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="upload-percent" class="text-sm font-semibold text-gray-700">0%</p>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(progressContainer);
+    
     try {
         const formData = new FormData();
         formData.append('file', file);
         
         // teacher 카테고리로 업로드 (로고는 teacher 폴더에 저장)
         const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+            headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: (progressEvent) => {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                const progressBar = document.getElementById('upload-progress');
+                const progressText = document.getElementById('upload-percent');
+                if (progressBar) progressBar.style.width = percentCompleted + '%';
+                if (progressText) progressText.textContent = percentCompleted + '%';
+            }
         });
         
         const logoUrl = response.data.url;
@@ -9918,9 +9947,18 @@ window.handleLogoUpload = async function(event) {
         document.getElementById('current-logo').src = API_BASE_URL + '/api/download-image?file_path=' + encodeURIComponent(logoUrl);
         document.getElementById('current-logo').style.display = 'block';
         
+        // 프로그레스바 제거
+        document.body.removeChild(progressContainer);
+        
         window.showAlert('✅ 로고가 업로드되었습니다! 저장 버튼을 눌러 적용하세요.');
     } catch (error) {
         console.error('❌ 로고 업로드 실패:', error);
+        
+        // 프로그레스바 제거
+        if (document.body.contains(progressContainer)) {
+            document.body.removeChild(progressContainer);
+        }
+        
         const errorMsg = error.response?.data?.detail || error.message;
         window.showAlert('로고 업로드에 실패했습니다: ' + errorMsg);
     }
@@ -9928,24 +9966,43 @@ window.handleLogoUpload = async function(event) {
 
 // 시스템 설정 저장
 window.saveSystemSettings = async function() {
+    const systemTitle = document.getElementById('system-title').value;
+    const systemSubtitle1 = document.getElementById('system-subtitle1').value;
+    const systemSubtitle2 = document.getElementById('system-subtitle2').value;
+    const logoUrl = document.getElementById('logo-url').value;
+    
+    console.log('📝 저장할 데이터:', {
+        system_title: systemTitle,
+        system_subtitle1: systemSubtitle1,
+        system_subtitle2: systemSubtitle2,
+        logo_url: logoUrl
+    });
+    
     const formData = new FormData();
-    formData.append('system_title', document.getElementById('system-title').value);
-    formData.append('system_subtitle1', document.getElementById('system-subtitle1').value);
-    formData.append('system_subtitle2', document.getElementById('system-subtitle2').value);
-    formData.append('logo_url', document.getElementById('logo-url').value);
+    formData.append('system_title', systemTitle);
+    formData.append('system_subtitle1', systemSubtitle1);
+    formData.append('system_subtitle2', systemSubtitle2);
+    formData.append('logo_url', logoUrl);
     
     try {
-        console.log('시스템 설정 저장 시작...');
-        await axios.post(`${API_BASE_URL}/api/system-settings`, formData);
-        console.log('✅ 시스템 설정 저장 완료');
+        console.log('📤 시스템 설정 저장 API 호출 시작...');
+        const response = await axios.post(`${API_BASE_URL}/api/system-settings`, formData);
+        console.log('✅ API 응답:', response.data);
+        
+        // 저장 직후 실제 DB에서 조회하여 확인
+        console.log('🔍 저장 확인을 위해 DB 재조회...');
+        const verifyResponse = await axios.get(`${API_BASE_URL}/api/system-settings`);
+        console.log('📊 DB에 저장된 데이터:', verifyResponse.data);
         
         // 헤더 즉시 업데이트
+        console.log('🔄 헤더 업데이트 시작...');
         await updateHeader();
         
         window.showAlert('✅ 시스템 설정이 저장되고 헤더가 업데이트되었습니다!');
     } catch (error) {
         console.error('❌ 시스템 설정 저장 실패:', error);
-        window.showAlert('시스템 설정 저장에 실패했습니다: ' + error.message);
+        console.error('❌ 에러 상세:', error.response?.data);
+        window.showAlert('시스템 설정 저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
     }
 }
 

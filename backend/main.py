@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -3445,12 +3445,18 @@ async def get_system_settings():
 
 @app.post("/api/system-settings")
 async def update_system_settings(
-    system_title: Optional[str] = None,
-    system_subtitle1: Optional[str] = None,
-    system_subtitle2: Optional[str] = None,
-    logo_url: Optional[str] = None
+    system_title: Optional[str] = Form(None),
+    system_subtitle1: Optional[str] = Form(None),
+    system_subtitle2: Optional[str] = Form(None),
+    logo_url: Optional[str] = Form(None)
 ):
     """시스템 설정 업데이트"""
+    print(f"📝 시스템 설정 업데이트 요청:")
+    print(f"  - system_title: {system_title}")
+    print(f"  - system_subtitle1: {system_subtitle1}")
+    print(f"  - system_subtitle2: {system_subtitle2}")
+    print(f"  - logo_url: {logo_url}")
+    
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -3465,18 +3471,31 @@ async def update_system_settings(
             'logo_url': logo_url
         }
         
+        update_count = 0
         for key, value in updates.items():
             if value is not None:
+                print(f"💾 DB 업데이트: {key} = {value}")
                 cursor.execute("""
                     INSERT INTO system_settings (setting_key, setting_value)
                     VALUES (%s, %s)
                     ON DUPLICATE KEY UPDATE setting_value = %s
                 """, (key, value, value))
+                update_count += 1
         
         conn.commit()
-        return {"message": "시스템 설정이 업데이트되었습니다"}
+        print(f"✅ {update_count}개 설정 업데이트 완료")
+        
+        # 저장된 데이터 확인
+        cursor.execute("SELECT setting_key, setting_value FROM system_settings")
+        saved_data = cursor.fetchall()
+        print(f"📊 현재 DB 상태:")
+        for row in saved_data:
+            print(f"  - {row[0]}: {row[1]}")
+        
+        return {"message": "시스템 설정이 업데이트되었습니다", "updated_count": update_count}
     except Exception as e:
         conn.rollback()
+        print(f"❌ 시스템 설정 업데이트 실패: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
