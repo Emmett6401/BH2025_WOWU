@@ -10658,10 +10658,35 @@ window.resetSystemSettings = async function() {
 
 // ==================== MyPage (강사 프로필 관리) ====================
 window.showMyPage = async function() {
-    const instructor = JSON.parse(localStorage.getItem('instructor'));
+    let instructor = JSON.parse(localStorage.getItem('instructor'));
     if (!instructor) {
-        window.showAlert('로그인 정보를 찾을 수 없습니다.');
+        window.showAlert('로그인 정보를 찾을 수 없습니다.', 'error');
         return;
+    }
+    
+    try {
+        // 서버에서 최신 강사 정보 가져오기
+        const response = await axios.get(`${API_BASE_URL}/api/instructors`);
+        const instructors = response.data;
+        
+        // 현재 로그인한 강사 정보 찾기
+        const updatedInstructor = instructors.find(i => i.code === instructor.code);
+        
+        if (updatedInstructor) {
+            // 최신 정보로 업데이트
+            instructor = updatedInstructor;
+            
+            // localStorage도 업데이트 (비밀번호 제외)
+            const storedInstructor = JSON.parse(localStorage.getItem('instructor'));
+            const updatedData = {
+                ...instructor,
+                password: storedInstructor.password // 기존 비밀번호 유지
+            };
+            localStorage.setItem('instructor', JSON.stringify(updatedData));
+        }
+    } catch (error) {
+        console.error('최신 강사 정보 로드 실패:', error);
+        // 에러가 나도 기존 localStorage 데이터로 진행
     }
     
     // 모달 생성
