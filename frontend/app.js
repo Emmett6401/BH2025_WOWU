@@ -652,7 +652,35 @@ window.uploadFilesWithCompression = async function(files, category, progressBar)
 
 // 로그아웃 함수
 function logout() {
-    if (confirm('로그아웃 하시겠습니까?')) {
+    // 커스텀 확인 모달
+    const instructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+    const instructorName = instructor.name || '사용자';
+    
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 text-center">
+            <div class="mb-6">
+                <i class="fas fa-sign-out-alt text-6xl text-blue-600 mb-4"></i>
+                <h3 class="text-2xl font-bold text-gray-800 mb-2">로그아웃</h3>
+                <p class="text-gray-600 mb-1">${instructorName}님,</p>
+                <p class="text-gray-600">로그아웃 하시겠습니까?</p>
+            </div>
+            <div class="flex gap-3">
+                <button id="logout-cancel" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-all">
+                    <i class="fas fa-times mr-2"></i>취소
+                </button>
+                <button id="logout-confirm" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all">
+                    <i class="fas fa-check mr-2"></i>확인
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    document.getElementById('logout-cancel').onclick = () => modal.remove();
+    document.getElementById('logout-confirm').onclick = () => {
         // 로컬 스토리지에서 로그인 정보 삭제
         localStorage.removeItem('logged_in');
         localStorage.removeItem('instructor');
@@ -662,7 +690,7 @@ function logout() {
         
         // 로그인 페이지로 이동
         window.location.href = '/login.html';
-    }
+    };
 }
 
 // 페이지 로드 시 로그인 체크 (제거 - 아래 994번째 줄과 통합)
@@ -10390,22 +10418,31 @@ window.saveMyPage = async function() {
     const newPasswordConfirm = document.getElementById('mypage-new-password-confirm').value;
     
     // 비밀번호 변경 유효성 검사
+    let willChangePassword = false;
     if (oldPassword || newPassword || newPasswordConfirm) {
-        if (!oldPassword) {
-            window.showAlert('현재 비밀번호를 입력하세요.');
-            return;
-        }
-        if (!newPassword) {
-            window.showAlert('새 비밀번호를 입력하세요.');
-            return;
-        }
-        if (!newPasswordConfirm) {
-            window.showAlert('새 비밀번호 확인을 입력하세요.');
-            return;
-        }
-        if (newPassword !== newPasswordConfirm) {
-            window.showAlert('새 비밀번호가 일치하지 않습니다.');
-            return;
+        // 현재 비밀번호만 있고 새 비밀번호가 없는 경우
+        if (oldPassword && !newPassword && !newPasswordConfirm) {
+            // 비밀번호 변경하지 않음 (정보만 저장)
+            willChangePassword = false;
+        } else {
+            // 비밀번호 변경 시도
+            if (!oldPassword) {
+                window.showAlert('현재 비밀번호를 입력하세요.');
+                return;
+            }
+            if (!newPassword) {
+                window.showAlert('새 비밀번호를 입력하세요.');
+                return;
+            }
+            if (!newPasswordConfirm) {
+                window.showAlert('새 비밀번호 확인을 입력하세요.');
+                return;
+            }
+            if (newPassword !== newPasswordConfirm) {
+                window.showAlert('새 비밀번호가 일치하지 않습니다.');
+                return;
+            }
+            willChangePassword = true;
         }
     }
     
@@ -10445,13 +10482,16 @@ window.saveMyPage = async function() {
         });
         
         // 비밀번호 변경 (입력된 경우)
-        if (oldPassword && newPassword && newPasswordConfirm) {
+        if (willChangePassword) {
             await axios.post(`${API_BASE_URL}/api/auth/change-password`, {
                 instructor_code: instructor.code,
                 old_password: oldPassword,
                 new_password: newPassword
             });
             window.showAlert('✅ 정보 및 비밀번호가 변경되었습니다!');
+        } else if (oldPassword && !newPassword) {
+            // 현재 비밀번호만 입력한 경우
+            window.showAlert('✅ 정보가 저장되었습니다!\n💡 비밀번호를 변경하려면 새 비밀번호도 입력해주세요.');
         } else {
             window.showAlert('✅ 정보가 저장되었습니다!');
         }
