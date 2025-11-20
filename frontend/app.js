@@ -10136,6 +10136,304 @@ window.resetSystemSettings = async function() {
     }
 }
 
+// ==================== MyPage (강사 프로필 관리) ====================
+window.showMyPage = async function() {
+    const instructor = JSON.parse(localStorage.getItem('instructor'));
+    if (!instructor) {
+        window.showAlert('로그인 정보를 찾을 수 없습니다.');
+        return;
+    }
+    
+    // 모달 생성
+    const modal = document.createElement('div');
+    modal.id = 'mypage-modal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <!-- 헤더 -->
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-6 rounded-t-2xl flex justify-between items-center sticky top-0 z-10">
+                <div class="flex items-center gap-4">
+                    <i class="fas fa-user-circle text-4xl"></i>
+                    <div>
+                        <h3 class="text-2xl font-bold">My Page</h3>
+                        <p class="text-sm text-blue-100 mt-1">${instructor.name} (${instructor.code})</p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('mypage-modal').remove()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-8">
+                <!-- 프로필 사진 -->
+                <div class="mb-8 text-center">
+                    <div class="inline-block relative">
+                        <img id="mypage-photo" 
+                             src="${instructor.photo_urls ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(JSON.parse(instructor.photo_urls)[0] || '') : 'https://via.placeholder.com/200?text=No+Photo'}" 
+                             alt="프로필 사진" 
+                             class="w-40 h-40 rounded-full object-cover border-4 border-blue-500 shadow-lg"
+                             onerror="this.src='https://via.placeholder.com/200?text=No+Photo'">
+                        <button onclick="document.getElementById('mypage-photo-input').click()" 
+                                class="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                    </div>
+                    <input type="file" id="mypage-photo-input" accept="image/*" class="hidden" onchange="uploadMyPagePhoto(event)">
+                    <p class="text-sm text-gray-500 mt-3">클릭하여 프로필 사진 변경</p>
+                    <!-- 프로그래스바 -->
+                    <div id="mypage-upload-progress" class="hidden mt-4">
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div id="mypage-progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <p id="mypage-progress-text" class="text-sm text-gray-600 mt-2 text-center">업로드 중... 0%</p>
+                    </div>
+                </div>
+                
+                <!-- 정보 수정 폼 -->
+                <form id="mypage-form" class="space-y-6">
+                    <!-- 이름 -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-user mr-2 text-blue-500"></i>이름
+                        </label>
+                        <input type="text" id="mypage-name" value="${instructor.name || ''}" 
+                               class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <!-- 전공 -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-book mr-2 text-green-500"></i>전공
+                        </label>
+                        <input type="text" id="mypage-major" value="${instructor.major || ''}" 
+                               class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <!-- 연락처 -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-phone mr-2 text-yellow-500"></i>연락처
+                        </label>
+                        <input type="tel" id="mypage-phone" value="${instructor.phone || ''}" 
+                               class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <!-- 이메일 -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-envelope mr-2 text-red-500"></i>이메일
+                        </label>
+                        <input type="email" id="mypage-email" value="${instructor.email || ''}" 
+                               class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <!-- 비밀번호 변경 -->
+                    <div class="border-t pt-6">
+                        <h4 class="text-lg font-bold text-gray-800 mb-4">
+                            <i class="fas fa-key mr-2 text-purple-500"></i>비밀번호 변경
+                        </h4>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 mb-2">현재 비밀번호</label>
+                                <div class="relative">
+                                    <input type="password" id="mypage-old-password" 
+                                           class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                           placeholder="현재 비밀번호를 입력하세요">
+                                    <button type="button" onclick="togglePasswordVisibility('mypage-old-password')" 
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                        <i class="fas fa-eye" id="mypage-old-password-icon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 mb-2">새 비밀번호</label>
+                                <div class="relative">
+                                    <input type="password" id="mypage-new-password" 
+                                           class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                           placeholder="새 비밀번호를 입력하세요">
+                                    <button type="button" onclick="togglePasswordVisibility('mypage-new-password')" 
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                        <i class="fas fa-eye" id="mypage-new-password-icon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 mb-2">새 비밀번호 확인</label>
+                                <div class="relative">
+                                    <input type="password" id="mypage-new-password-confirm" 
+                                           class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                           placeholder="새 비밀번호를 다시 입력하세요">
+                                    <button type="button" onclick="togglePasswordVisibility('mypage-new-password-confirm')" 
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                        <i class="fas fa-eye" id="mypage-new-password-confirm-icon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 버튼 -->
+                    <div class="flex gap-3 pt-4">
+                        <button type="button" onclick="saveMyPage()" 
+                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+                            <i class="fas fa-save mr-2"></i>저장
+                        </button>
+                        <button type="button" onclick="document.getElementById('mypage-modal').remove()" 
+                                class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-lg font-semibold">
+                            <i class="fas fa-times mr-2"></i>취소
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+};
+
+// MyPage 프로필 사진 업로드
+window.uploadMyPagePhoto = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // 프로그래스바 표시
+    const progressContainer = document.getElementById('mypage-upload-progress');
+    const progressBar = document.getElementById('mypage-progress-bar');
+    const progressText = document.getElementById('mypage-progress-text');
+    
+    progressContainer.classList.remove('hidden');
+    progressBar.style.width = '0%';
+    progressText.textContent = '업로드 중... 0%';
+    
+    try {
+        const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
+            onUploadProgress: (progressEvent) => {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                progressBar.style.width = percentCompleted + '%';
+                progressText.textContent = `업로드 중... ${percentCompleted}%`;
+            }
+        });
+        
+        const photoUrl = response.data.url;
+        
+        // 프로필 사진 업데이트
+        document.getElementById('mypage-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(photoUrl);
+        
+        // 완료 표시
+        progressBar.style.width = '100%';
+        progressText.textContent = '✅ 업로드 완료!';
+        progressBar.classList.remove('bg-blue-600');
+        progressBar.classList.add('bg-green-600');
+        
+        setTimeout(() => {
+            progressContainer.classList.add('hidden');
+            progressBar.classList.remove('bg-green-600');
+            progressBar.classList.add('bg-blue-600');
+        }, 2000);
+        
+        window.showAlert('✅ 프로필 사진이 업로드되었습니다. 저장 버튼을 눌러주세요.');
+    } catch (error) {
+        console.error('사진 업로드 실패:', error);
+        progressBar.classList.remove('bg-blue-600');
+        progressBar.classList.add('bg-red-600');
+        progressText.textContent = '❌ 업로드 실패';
+        
+        setTimeout(() => {
+            progressContainer.classList.add('hidden');
+            progressBar.classList.remove('bg-red-600');
+            progressBar.classList.add('bg-blue-600');
+        }, 2000);
+        
+        window.showAlert('사진 업로드에 실패했습니다: ' + error.message);
+    }
+};
+
+// MyPage 정보 저장
+window.saveMyPage = async function() {
+    const instructor = JSON.parse(localStorage.getItem('instructor'));
+    
+    const name = document.getElementById('mypage-name').value;
+    const major = document.getElementById('mypage-major').value;
+    const phone = document.getElementById('mypage-phone').value;
+    const email = document.getElementById('mypage-email').value;
+    const oldPassword = document.getElementById('mypage-old-password').value;
+    const newPassword = document.getElementById('mypage-new-password').value;
+    const newPasswordConfirm = document.getElementById('mypage-new-password-confirm').value;
+    
+    // 프로필 사진 URL
+    const photoImg = document.getElementById('mypage-photo');
+    let photoUrls = instructor.photo_urls;
+    if (photoImg.src.includes('/api/thumbnail')) {
+        const urlParam = new URLSearchParams(photoImg.src.split('?')[1]);
+        const ftpUrl = urlParam.get('url');
+        if (ftpUrl) {
+            photoUrls = JSON.stringify([ftpUrl]);
+        }
+    }
+    
+    try {
+        // 강사 정보 업데이트
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('major', major);
+        formData.append('phone', phone);
+        formData.append('email', email);
+        if (photoUrls) formData.append('photo_urls', photoUrls);
+        
+        await axios.put(`${API_BASE_URL}/api/instructors/${instructor.code}`, formData);
+        
+        // 비밀번호 변경 (입력된 경우)
+        if (oldPassword && newPassword) {
+            if (newPassword !== newPasswordConfirm) {
+                window.showAlert('새 비밀번호가 일치하지 않습니다.');
+                return;
+            }
+            
+            await axios.post(`${API_BASE_URL}/api/auth/change-password`, {
+                instructor_code: instructor.code,
+                old_password: oldPassword,
+                new_password: newPassword
+            });
+        }
+        
+        // 로컬 스토리지 업데이트
+        instructor.name = name;
+        instructor.major = major;
+        instructor.phone = phone;
+        instructor.email = email;
+        instructor.photo_urls = photoUrls;
+        localStorage.setItem('instructor', JSON.stringify(instructor));
+        
+        // 헤더 업데이트
+        document.getElementById('instructorName').textContent = name;
+        
+        window.showAlert('✅ 정보가 저장되었습니다!');
+        document.getElementById('mypage-modal').remove();
+    } catch (error) {
+        console.error('저장 실패:', error);
+        window.showAlert('저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+    }
+};
+
+// 비밀번호 표시/숨김 토글
+window.togglePasswordVisibility = function(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(inputId + '-icon');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+};
+
 // ==================== 페이지 로드 시 헤더 업데이트 ====================
 // 페이지가 완전히 로드된 후 헤더 업데이트 실행
 if (document.readyState === 'loading') {
