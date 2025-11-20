@@ -2244,7 +2244,7 @@ window.hideExcelUpload = function() {
 window.uploadExcel = async function() {
     const fileInput = document.getElementById('excel-file');
     if (!fileInput.files[0]) {
-        alert('파일을 선택해주세요');
+        window.showAlert('⚠️ 파일을 선택해주세요.', 'warning');
         return;
     }
     
@@ -2256,7 +2256,7 @@ window.uploadExcel = async function() {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
         
-        alert(response.data.message);
+        window.showAlert('✅ ' + response.data.message, 'success');
         if (response.data.errors.length > 0) {
             console.log('업로드 오류:', response.data.errors);
         }
@@ -2264,7 +2264,7 @@ window.uploadExcel = async function() {
         loadStudents();
     } catch (error) {
         console.error('Excel 업로드 실패:', error);
-        alert('Excel 파일 업로드에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('❌ Excel 파일 업로드에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -2566,7 +2566,16 @@ window.handleStudentProfileUpload = async function(event) {
             const profilePhotoUrl = response.data.url;
             document.getElementById('student-profile-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(profilePhotoUrl);
             document.getElementById('student-profile-photo-url').value = profilePhotoUrl;
-            window.showAlert('✅ 프로필 사진이 업로드되었습니다!', 'success');
+            
+            // 자동 저장
+            const studentIdInput = document.getElementById('student-id');
+            const studentId = studentIdInput ? studentIdInput.value : null;
+            if (studentId) {
+                await window.saveStudent(parseInt(studentId), true);
+                window.showAlert('✅ 프로필 사진이 업로드되고 자동 저장되었습니다!', 'success');
+            } else {
+                window.showAlert('✅ 프로필 사진이 업로드되었습니다!', 'success');
+            }
         }
     } catch (error) {
         console.error('프로필 사진 업로드 실패:', error);
@@ -2762,16 +2771,17 @@ window.deleteStudent = async function(id) {
     // 상단으로 스크롤하여 상세 정보 보여주기
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
-    const message = `❗ 학생 삭제 확인\n\n이름: ${student.name}\n학생코드: ${student.code}\n연락처: ${student.phone || '없음'}\n\n정말 삭제하시겠습니까?`;
-    if (!confirm(message)) return;
+    const message = `⚠️ 이 학생을 삭제하시겠습니까?\n\n이름: ${student.name}\n학생코드: ${student.code}\n연락처: ${student.phone || '없음'}\n\n삭제된 데이터는 복구할 수 없습니다.`;
+    const confirmed = await window.showConfirm(message);
+    if (!confirmed) return;
     
     try {
         await axios.delete(`${API_BASE_URL}/api/students/${id}`);
         window.clearCache('students');
-        window.showAlert('✅ 학생이 삭제되었습니다.');
+        window.showAlert('✅ 학생이 삭제되었습니다!', 'success');
         loadStudents();
     } catch (error) {
-        window.showAlert('❌ 학생 삭제에 실패했습니다: ' + error.message);
+        window.showAlert('❌ 학생 삭제에 실패했습니다: ' + error.message, 'error');
     }
 }
 
@@ -5300,11 +5310,20 @@ window.handleInstructorProfileUpload = async function(event) {
             const profilePhotoUrl = response.data.url;
             document.getElementById('instructor-profile-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(profilePhotoUrl);
             document.getElementById('instructor-profile-photo-url').value = profilePhotoUrl;
-            window.showAlert('✅ 프로필 사진이 업로드되었습니다!');
+            
+            // 자동 저장
+            const instructorCodeInput = document.getElementById('instructor-code');
+            const existingCode = instructorCodeInput ? instructorCodeInput.value : null;
+            if (existingCode) {
+                await window.saveInstructor(existingCode, true);
+                window.showAlert('✅ 프로필 사진이 업로드되고 자동 저장되었습니다!', 'success');
+            } else {
+                window.showAlert('✅ 프로필 사진이 업로드되었습니다!', 'success');
+            }
         }
     } catch (error) {
         console.error('프로필 사진 업로드 실패:', error);
-        window.showAlert('❌ 프로필 사진 업로드에 실패했습니다: ' + error.message);
+        window.showAlert('❌ 프로필 사진 업로드에 실패했습니다: ' + error.message, 'error');
     }
     
     // 파일 input 초기화
@@ -5320,7 +5339,7 @@ window.handleInstructorImageUpload = async function(event) {
     for (let file of files) {
         const validation = window.validateFile(file);
         if (!validation.valid) {
-            window.showAlert(validation.message);
+            window.showAlert(validation.message, 'warning');
             event.target.value = '';
             return;
         }
@@ -5341,13 +5360,15 @@ window.handleInstructorImageUpload = async function(event) {
         // 20개 제한 체크
         const remainingSlots = 20 - photoUrls.length;
         if (remainingSlots <= 0) {
-            window.showAlert('⚠️ 첨부 파일은 최대 20개까지만 업로드할 수 있습니다.');
+            if (progressDiv) progressDiv.classList.add('hidden');
+            window.showAlert('⚠️ 첨부 파일은 최대 20개까지만 업로드할 수 있습니다.', 'warning');
             event.target.value = '';
             return;
         }
         
         if (files.length > remainingSlots) {
-            window.showAlert(`⚠️ ${remainingSlots}개의 파일만 업로드할 수 있습니다. (현재: ${photoUrls.length}/20)`);
+            if (progressDiv) progressDiv.classList.add('hidden');
+            window.showAlert(`⚠️ ${remainingSlots}개의 파일만 업로드할 수 있습니다. (현재: ${photoUrls.length}/20)`, 'warning');
             event.target.value = '';
             return;
         }
@@ -5405,14 +5426,18 @@ window.handleInstructorImageUpload = async function(event) {
             }, 1000);
         }
         
-        window.showAlert(`✅ ${files.length}개 파일이 업로드되었습니다! (${photoUrls.length}/20)`);
+        // 강사 이름 가져오기
+        const instructorNameInput = document.querySelector('input[name="name"]');
+        const instructorName = instructorNameInput ? instructorNameInput.value : '';
+        const contextMsg = instructorName ? `${instructorName} 강사에게 ` : '';
+        window.showAlert(`✅ ${contextMsg}${files.length}개 파일이 업로드되고 자동 저장되었습니다! (${photoUrls.length}/20)`, 'success');
         
     } catch (error) {
         // 프로그레스 바 숨기기
         if (progressDiv) progressDiv.classList.add('hidden');
         
         console.error('사진 업로드 실패:', error);
-        window.showAlert('사진 업로드 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('❌ 사진 업로드 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
     
     // 파일 입력 초기화
@@ -5428,6 +5453,12 @@ window.removeInstructorPhoto = async function(index) {
     photoUrlsInput.value = JSON.stringify(photoUrls);
     updateInstructorPhotoPreview(photoUrls);
     
+    // 파일 개수 업데이트
+    const fileCountSpan = document.getElementById('instructor-file-count');
+    if (fileCountSpan) {
+        fileCountSpan.textContent = photoUrls.length;
+    }
+    
     // 자동 저장 (화면 유지)
     const instructorCodeInput = document.getElementById('instructor-code');
     const existingCode = instructorCodeInput ? instructorCodeInput.value : null;
@@ -5437,8 +5468,8 @@ window.removeInstructorPhoto = async function(index) {
         // 강사 이름 가져오기
         const instructorNameInput = document.querySelector('input[name="name"]');
         const instructorName = instructorNameInput ? instructorNameInput.value : '';
-        const contextMsg = instructorName ? `${instructorName} 강사에게서 ` : '강사에게서 ';
-        window.showAlert(`${contextMsg}사진이 삭제되고 자동 저장되었습니다.`);
+        const contextMsg = instructorName ? `${instructorName} 강사에게서 ` : '';
+        window.showAlert(`✅ ${contextMsg}파일이 삭제되고 자동 저장되었습니다. (${photoUrls.length}/20)`, 'success');
     }
 }
 
@@ -5565,15 +5596,15 @@ window.saveHoliday = async function(id) {
     try {
         if (id) {
             await axios.put(`${API_BASE_URL}/api/holidays/${id}`, data);
-            alert('공휴일이 수정되었습니다.');
+            window.showAlert('✅ 공휴일이 수정되었습니다!', 'success');
         } else {
             await axios.post(`${API_BASE_URL}/api/holidays`, data);
-            alert('공휴일이 추가되었습니다.');
+            window.showAlert('✅ 공휴일이 추가되었습니다!', 'success');
         }
         window.hideHolidayForm();
         loadHolidays();
     } catch (error) {
-        alert('저장 실패: ' + error.response?.data?.detail || error.message);
+        window.showAlert('❌ 저장 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -5583,14 +5614,16 @@ window.editHoliday = function(id) {
 
 window.deleteHoliday = async function(id) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (!confirm('이 공휴일을 삭제하시겠습니까?')) return;
+    
+    const confirmed = await window.showConfirm('⚠️ 이 공휴일을 삭제하시겠습니까?\n\n삭제된 데이터는 복구할 수 없습니다.');
+    if (!confirmed) return;
     
     try {
         await axios.delete(`${API_BASE_URL}/api/holidays/${id}`);
-        alert('공휴일이 삭제되었습니다.');
+        window.showAlert('✅ 공휴일이 삭제되었습니다!', 'success');
         loadHolidays();
     } catch (error) {
-        alert('삭제 실패: ' + error.response?.data?.detail || error.message);
+        window.showAlert('❌ 삭제 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -6374,11 +6407,13 @@ window.editCourse = function(code) {
 
 window.deleteCourse = async function(code) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (!confirm('이 과정을 삭제하시겠습니까?\n삭제하면 복구할 수 없습니다.')) return;
+    
+    const confirmed = await window.showConfirm('⚠️ 이 과정을 삭제하시겠습니까?\n\n삭제된 데이터는 복구할 수 없습니다.');
+    if (!confirmed) return;
     
     try {
         await axios.delete(`${API_BASE_URL}/api/courses/${code}`);
-        alert('과정이 삭제되었습니다.');
+        window.showAlert('✅ 과정이 삭제되었습니다!', 'success');
         
         // 선택된 과정 코드 초기화
         selectedCourseCode = null;
@@ -6386,7 +6421,7 @@ window.deleteCourse = async function(code) {
         await loadCourses();
     } catch (error) {
         console.error('삭제 실패:', error);
-        alert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('❌ 삭제 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -7068,7 +7103,8 @@ window.handleProjectImageUpload = async function(event) {
 
 // 팀 사진 삭제 핸들러
 window.removeProjectPhoto = async function(index) {
-    if (!confirm('이 사진을 삭제하시겠습니까?')) return;
+    const confirmed = await window.showConfirm('⚠️ 이 사진을 삭제하시겠습니까?\n\n삭제된 파일은 복구할 수 없습니다.');
+    if (!confirmed) return;
 
     const photoUrlsInput = document.getElementById('project-photo-urls');
     const projectCode = document.getElementById('project-code')?.value || '';
@@ -7509,11 +7545,13 @@ window.editTeamActivityLog = function(logId) {
 
 window.deleteTeamActivityLog = async function(logId) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (!confirm('정말 삭제하시겠습니까?')) return;
+    
+    const confirmed = await window.showConfirm('⚠️ 이 활동일지를 삭제하시겠습니까?\n\n삭제된 데이터는 복구할 수 없습니다.');
+    if (!confirmed) return;
     
     try {
         await axios.delete(`${API_BASE_URL}/api/team-activity-logs/${logId}`);
-        window.showAlert('활동일지가 삭제되었습니다');
+        window.showAlert('✅ 활동일지가 삭제되었습니다!', 'success');
         await loadTeamActivityLogs();
         if (selectedProjectForLogs) {
             document.getElementById('team-select').value = selectedProjectForLogs;
@@ -7521,7 +7559,7 @@ window.deleteTeamActivityLog = async function(logId) {
         }
     } catch (error) {
         console.error('삭제 실패:', error);
-        window.showAlert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('❌ 삭제 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -8135,14 +8173,16 @@ window.editTimetable = function(id) {
 
 window.deleteTimetable = async function(id) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (!confirm('이 시간표를 삭제하시겠습니까?')) return;
+    
+    const confirmed = await window.showConfirm('⚠️ 이 시간표를 삭제하시겠습니까?\n\n삭제된 데이터는 복구할 수 없습니다.');
+    if (!confirmed) return;
     
     try {
         await axios.delete(`${API_BASE_URL}/api/timetables/${id}`);
-        alert('시간표가 삭제되었습니다.');
+        window.showAlert('✅ 시간표가 삭제되었습니다!', 'success');
         loadTimetables();
     } catch (error) {
-        alert('삭제 실패: ' + error.response?.data?.detail || error.message);
+        window.showAlert('❌ 삭제 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
