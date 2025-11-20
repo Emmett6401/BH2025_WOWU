@@ -325,14 +325,43 @@ async def create_student(data: dict):
         conn.close()
 
 @app.put("/api/students/{student_id}")
-async def update_student(student_id: int, data: dict):
-    """학생 수정"""
+async def update_student(
+    student_id: int,
+    name: str = Form(...),
+    birth_date: Optional[str] = Form(None),
+    gender: Optional[str] = Form(None),
+    phone: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
+    interests: Optional[str] = Form(None),
+    education: Optional[str] = Form(None),
+    introduction: Optional[str] = Form(None),
+    campus: Optional[str] = Form(None),
+    course_code: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
+    photo_urls: Optional[str] = Form(None),
+    career_path: Optional[str] = Form('4. 미정'),
+    files: List[UploadFile] = File(None)
+):
+    """학생 수정 (파일 업로드 지원)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         
         # photo_urls 컬럼이 없으면 자동 생성
         ensure_photo_urls_column(cursor, 'students')
+        
+        # 파일 업로드 처리
+        if files and len(files) > 0 and files[0].filename:
+            uploaded_urls = []
+            for file in files:
+                if file and file.filename:
+                    file_url = await upload_to_ftp(file, "student")
+                    uploaded_urls.append(file_url)
+            
+            if uploaded_urls:
+                import json
+                photo_urls = json.dumps(uploaded_urls)
         
         query = """
             UPDATE students 
@@ -343,20 +372,9 @@ async def update_student(student_id: int, data: dict):
         """
         
         cursor.execute(query, (
-            data.get('name'),
-            data.get('birth_date'),
-            data.get('gender'),
-            data.get('phone'),
-            data.get('email'),
-            data.get('address'),
-            data.get('interests'),
-            data.get('education'),
-            data.get('introduction'),
-            data.get('campus'),
-            data.get('course_code'),
-            data.get('notes'),
-            data.get('photo_urls'),
-            data.get('career_path', '4. 미정'),
+            name, birth_date, gender, phone, email,
+            address, interests, education, introduction,
+            campus, course_code, notes, photo_urls, career_path,
             student_id
         ))
         
@@ -824,8 +842,17 @@ async def create_instructor(data: dict):
         conn.close()
 
 @app.put("/api/instructors/{code}")
-async def update_instructor(code: str, data: dict):
-    """강사 수정"""
+async def update_instructor(
+    code: str, 
+    name: str = Form(...),
+    phone: Optional[str] = Form(None),
+    major: Optional[str] = Form(None),
+    instructor_type: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    photo_urls: Optional[str] = Form(None),
+    files: List[UploadFile] = File(None)
+):
+    """강사 수정 (파일 업로드 지원)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
@@ -833,14 +860,25 @@ async def update_instructor(code: str, data: dict):
         # photo_urls 컬럼이 없으면 자동 생성
         ensure_photo_urls_column(cursor, 'instructors')
         
+        # 파일 업로드 처리
+        if files and len(files) > 0 and files[0].filename:
+            uploaded_urls = []
+            for file in files:
+                if file and file.filename:
+                    file_url = await upload_to_ftp(file, "teacher")
+                    uploaded_urls.append(file_url)
+            
+            if uploaded_urls:
+                import json
+                photo_urls = json.dumps(uploaded_urls)
+        
         query = """
             UPDATE instructors
             SET name = %s, phone = %s, major = %s, instructor_type = %s, email = %s, photo_urls = %s
             WHERE code = %s
         """
         cursor.execute(query, (
-            data['name'], data.get('phone'), data.get('major'),
-            data.get('instructor_type'), data.get('email'), data.get('photo_urls'), code
+            name, phone, major, instructor_type, email, photo_urls, code
         ))
         conn.commit()
         return {"code": code}
@@ -3187,6 +3225,62 @@ async def login(credentials: dict):
             "success": True,
             "message": f"{instructor['name']}님, 환영합니다!",
             "instructor": instructor
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"로그인 실패: {str(e)}")
+    finally:
+        conn.close()
+
+@app.post("/api/auth/student-login")
+async def student_login(credentials: dict):
+    """
+    학생 로그인 API
+    - 학생 이름으로 로그인
+    - 비밀번호 없이 로그인 가능
+    """
+    student_name = credentials.get('name')
+    
+    if not student_name:
+        raise HTTPException(status_code=400, detail="이름을 입력하세요")
+    
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # photo_urls 컬럼이 없으면 자동 생성
+        ensure_photo_urls_column(cursor, 'students')
+        
+        # 학생 조회 (이름으로)
+        cursor.execute("""
+            SELECT s.*, 
+                   c.course_name,
+                   c.start_date,
+                   c.end_date
+            FROM students s
+            LEFT JOIN courses c ON s.course_code = c.course_code
+            WHERE s.name = %s
+            LIMIT 1
+        """, (student_name.strip(),))
+        
+        student = cursor.fetchone()
+        
+        if not student:
+            raise HTTPException(status_code=401, detail="등록되지 않은 학생입니다")
+        
+        # datetime 변환
+        for key, value in student.items():
+            if isinstance(value, (datetime, date)):
+                student[key] = value.isoformat()
+            elif isinstance(value, bytes):
+                student[key] = None
+        
+        return {
+            "success": True,
+            "message": f"{student['name']}님, 환영합니다!",
+            "student": student
         }
         
     except HTTPException:

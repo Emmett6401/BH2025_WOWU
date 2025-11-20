@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학생 MyPage - KDT교육관리시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+    <!-- 헤더 -->
+    <header class="bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <i class="fas fa-user-graduate text-3xl"></i>
+                <div>
+                    <h1 class="text-2xl font-bold">학생 MyPage</h1>
+                    <p class="text-sm text-green-100">환영합니다, <span id="studentName"></span>님!</p>
+                </div>
+            </div>
+            <button onclick="logout()" class="bg-white text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg font-semibold transition-all">
+                <i class="fas fa-sign-out-alt mr-2"></i>로그아웃
+            </button>
+        </div>
+    </header>
+
+    <!-- 메인 컨텐츠 -->
+    <main class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- 프로필 카드 -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
+                <!-- 프로필 헤더 -->
+                <div class="bg-gradient-to-r from-green-600 to-teal-600 p-8 text-white text-center">
+                    <div class="inline-block relative">
+                        <img id="student-photo" 
+                             src="https://via.placeholder.com/200?text=No+Photo" 
+                             alt="프로필 사진" 
+                             class="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg mx-auto"
+                             onerror="this.src='https://via.placeholder.com/200?text=No+Photo'">
+                        <button onclick="document.getElementById('student-photo-input').click()" 
+                                class="absolute bottom-0 right-0 bg-white text-green-600 rounded-full p-2 shadow-lg hover:bg-green-50">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                    </div>
+                    <input type="file" id="student-photo-input" accept="image/*" class="hidden" onchange="uploadStudentPhoto(event)">
+                    <p class="text-sm text-green-100 mt-3">클릭하여 프로필 사진 변경</p>
+                    
+                    <!-- 프로그래스바 -->
+                    <div id="student-upload-progress" class="hidden mt-4 max-w-md mx-auto">
+                        <div class="w-full bg-green-200 rounded-full h-2.5">
+                            <div id="student-progress-bar" class="bg-white h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <p id="student-progress-text" class="text-sm text-white mt-2 text-center">업로드 중... 0%</p>
+                    </div>
+                </div>
+
+                <!-- 프로필 정보 -->
+                <div class="p-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                        <i class="fas fa-id-card mr-3 text-green-600"></i>
+                        내 정보
+                    </h2>
+                    
+                    <form id="student-form" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- 이름 -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-user mr-2 text-blue-500"></i>이름
+                                </label>
+                                <input type="text" id="student-name" 
+                                       class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 bg-gray-50" readonly>
+                            </div>
+                            
+                            <!-- 생년월일 -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-birthday-cake mr-2 text-pink-500"></i>생년월일
+                                </label>
+                                <input type="text" id="student-birth-date" 
+                                       class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500">
+                            </div>
+                            
+                            <!-- 성별 -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-venus-mars mr-2 text-purple-500"></i>성별
+                                </label>
+                                <select id="student-gender" 
+                                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500">
+                                    <option value="">선택</option>
+                                    <option value="남">남</option>
+                                    <option value="여">여</option>
+                                </select>
+                            </div>
+                            
+                            <!-- 연락처 -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-phone mr-2 text-yellow-500"></i>연락처
+                                </label>
+                                <input type="tel" id="student-phone" 
+                                       class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500">
+                            </div>
+                        </div>
+                        
+                        <!-- 이메일 -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-envelope mr-2 text-red-500"></i>이메일
+                            </label>
+                            <input type="email" id="student-email" 
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500">
+                        </div>
+                        
+                        <!-- 주소 -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-map-marker-alt mr-2 text-orange-500"></i>주소
+                            </label>
+                            <input type="text" id="student-address" 
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500">
+                        </div>
+                        
+                        <!-- 관심분야 -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-heart mr-2 text-pink-500"></i>관심분야
+                            </label>
+                            <input type="text" id="student-interests" 
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                   placeholder="관심 있는 분야를 입력하세요">
+                        </div>
+                        
+                        <!-- 학력 -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-graduation-cap mr-2 text-indigo-500"></i>학력
+                            </label>
+                            <input type="text" id="student-education" 
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                   placeholder="최종 학교/학년(졸업)">
+                        </div>
+                        
+                        <!-- 자기소개 -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-comment-dots mr-2 text-teal-500"></i>자기소개
+                            </label>
+                            <textarea id="student-introduction" rows="4"
+                                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                      placeholder="자기소개를 입력하세요 (200자 내외)"></textarea>
+                        </div>
+                        
+                        <!-- 파일 첨부 -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-paperclip mr-2 text-gray-500"></i>파일 첨부
+                            </label>
+                            <input type="file" id="student-file-input" accept="*/*" multiple class="hidden" onchange="uploadStudentFiles(event)">
+                            <button type="button" onclick="document.getElementById('student-file-input').click()" 
+                                    class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-paperclip mr-2"></i>파일 첨부
+                            </button>
+                            <div id="student-file-list" class="mt-3"></div>
+                        </div>
+                        
+                        <!-- 저장 버튼 -->
+                        <div class="flex gap-3 pt-4">
+                            <button type="button" onclick="saveStudentProfile()" 
+                                    class="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold">
+                                <i class="fas fa-save mr-2"></i>저장
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 과정 정보 카드 -->
+            <div class="bg-white rounded-2xl shadow-xl p-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    <i class="fas fa-book-open mr-3 text-green-600"></i>
+                    수강 과정 정보
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
+                        <i class="fas fa-chalkboard-teacher text-2xl text-green-600"></i>
+                        <div>
+                            <p class="text-sm text-gray-600">과정명</p>
+                            <p class="font-semibold text-gray-800" id="course-name">-</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
+                        <i class="fas fa-calendar-alt text-2xl text-blue-600"></i>
+                        <div>
+                            <p class="text-sm text-gray-600">교육기간</p>
+                            <p class="font-semibold text-gray-800" id="course-period">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script>
+        const API_BASE_URL = '';
+        
+        // 페이지 로드 시 학생 정보 표시
+        window.addEventListener('DOMContentLoaded', () => {
+            const student = JSON.parse(localStorage.getItem('student'));
+            if (!student) {
+                alert('로그인이 필요합니다.');
+                window.location.href = '/login.html';
+                return;
+            }
+            
+            // 헤더에 이름 표시
+            document.getElementById('studentName').textContent = student.name;
+            
+            // 폼에 정보 채우기
+            document.getElementById('student-name').value = student.name || '';
+            document.getElementById('student-birth-date').value = student.birth_date || '';
+            document.getElementById('student-gender').value = student.gender || '';
+            document.getElementById('student-phone').value = student.phone || '';
+            document.getElementById('student-email').value = student.email || '';
+            document.getElementById('student-address').value = student.address || '';
+            document.getElementById('student-interests').value = student.interests || '';
+            document.getElementById('student-education').value = student.education || '';
+            document.getElementById('student-introduction').value = student.introduction || '';
+            
+            // 프로필 사진
+            if (student.photo_urls) {
+                try {
+                    const photos = JSON.parse(student.photo_urls);
+                    if (photos && photos.length > 0) {
+                        document.getElementById('student-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(photos[0]);
+                    }
+                } catch (e) {
+                    console.error('프로필 사진 로드 실패:', e);
+                }
+            }
+            
+            // 과정 정보
+            document.getElementById('course-name').textContent = student.course_name || '미배정';
+            if (student.start_date && student.end_date) {
+                document.getElementById('course-period').textContent = `${student.start_date} ~ ${student.end_date}`;
+            }
+        });
+        
+        // 프로필 사진 업로드
+        window.uploadStudentPhoto = async function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const progressContainer = document.getElementById('student-upload-progress');
+            const progressBar = document.getElementById('student-progress-bar');
+            const progressText = document.getElementById('student-progress-text');
+            
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = '0%';
+            progressText.textContent = '업로드 중... 0%';
+            
+            try {
+                const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=student`, formData, {
+                    onUploadProgress: (progressEvent) => {
+                        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                        progressBar.style.width = percentCompleted + '%';
+                        progressText.textContent = `업로드 중... ${percentCompleted}%`;
+                    }
+                });
+                
+                const photoUrl = response.data.url;
+                document.getElementById('student-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(photoUrl);
+                
+                progressBar.style.width = '100%';
+                progressText.textContent = '✅ 업로드 완료!';
+                
+                setTimeout(() => {
+                    progressContainer.classList.add('hidden');
+                }, 2000);
+                
+                alert('✅ 프로필 사진이 업로드되었습니다. 저장 버튼을 눌러주세요.');
+            } catch (error) {
+                console.error('사진 업로드 실패:', error);
+                progressText.textContent = '❌ 업로드 실패';
+                alert('사진 업로드에 실패했습니다: ' + error.message);
+            }
+        };
+        
+        // 파일 업로드
+        window.uploadStudentFiles = function(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            
+            const fileList = document.getElementById('student-file-list');
+            fileList.innerHTML = '';
+            
+            for (let file of files) {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded';
+                fileItem.innerHTML = `
+                    <i class="fas fa-file text-green-500"></i>
+                    <span>${file.name}</span>
+                    <span class="text-xs text-gray-400">(${(file.size / 1024).toFixed(1)} KB)</span>
+                `;
+                fileList.appendChild(fileItem);
+            }
+        };
+        
+        // 학생 정보 저장
+        window.saveStudentProfile = async function() {
+            const student = JSON.parse(localStorage.getItem('student'));
+            
+            const formData = new FormData();
+            formData.append('name', document.getElementById('student-name').value);
+            formData.append('birth_date', document.getElementById('student-birth-date').value || '');
+            formData.append('gender', document.getElementById('student-gender').value || '');
+            formData.append('phone', document.getElementById('student-phone').value || '');
+            formData.append('email', document.getElementById('student-email').value || '');
+            formData.append('address', document.getElementById('student-address').value || '');
+            formData.append('interests', document.getElementById('student-interests').value || '');
+            formData.append('education', document.getElementById('student-education').value || '');
+            formData.append('introduction', document.getElementById('student-introduction').value || '');
+            formData.append('campus', student.campus || '');
+            formData.append('course_code', student.course_code || '');
+            formData.append('notes', student.notes || '');
+            formData.append('career_path', student.career_path || '4. 미정');
+            
+            // 프로필 사진 URL
+            const photoImg = document.getElementById('student-photo');
+            let photoUrls = student.photo_urls;
+            if (photoImg.src.includes('/api/thumbnail')) {
+                const urlParam = new URLSearchParams(photoImg.src.split('?')[1]);
+                const ftpUrl = urlParam.get('url');
+                if (ftpUrl) {
+                    photoUrls = JSON.stringify([ftpUrl]);
+                }
+            }
+            if (photoUrls) formData.append('photo_urls', photoUrls);
+            
+            // 파일 첨부
+            const fileInput = document.getElementById('student-file-input');
+            if (fileInput.files && fileInput.files.length > 0) {
+                for (let file of fileInput.files) {
+                    formData.append('files', file);
+                }
+            }
+            
+            try {
+                await axios.put(`${API_BASE_URL}/api/students/${student.id}`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+                
+                // 로컬 스토리지 업데이트
+                student.birth_date = document.getElementById('student-birth-date').value;
+                student.gender = document.getElementById('student-gender').value;
+                student.phone = document.getElementById('student-phone').value;
+                student.email = document.getElementById('student-email').value;
+                student.address = document.getElementById('student-address').value;
+                student.interests = document.getElementById('student-interests').value;
+                student.education = document.getElementById('student-education').value;
+                student.introduction = document.getElementById('student-introduction').value;
+                student.photo_urls = photoUrls;
+                localStorage.setItem('student', JSON.stringify(student));
+                
+                alert('✅ 정보가 저장되었습니다!');
+            } catch (error) {
+                console.error('저장 실패:', error);
+                alert('저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+            }
+        };
+        
+        // 로그아웃
+        window.logout = function() {
+            if (confirm('로그아웃 하시겠습니까?')) {
+                localStorage.removeItem('student');
+                localStorage.removeItem('user_type');
+                localStorage.removeItem('logged_in');
+                window.location.href = '/login.html';
+            }
+        };
+    </script>
+</body>
+</html>

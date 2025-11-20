@@ -10179,7 +10179,13 @@ window.showMyPage = async function() {
                         </button>
                     </div>
                     <input type="file" id="mypage-photo-input" accept="image/*" class="hidden" onchange="uploadMyPagePhoto(event)">
+                    <input type="file" id="mypage-file-input" accept="*/*" multiple class="hidden" onchange="uploadMyPageFiles(event)">
                     <p class="text-sm text-gray-500 mt-3">클릭하여 프로필 사진 변경</p>
+                    <button type="button" onclick="document.getElementById('mypage-file-input').click()" 
+                            class="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
+                        <i class="fas fa-paperclip mr-2"></i>파일 첨부
+                    </button>
+                    <div id="mypage-file-list" class="mt-3"></div>
                     <!-- 프로그래스바 -->
                     <div id="mypage-upload-progress" class="hidden mt-4">
                         <div class="w-full bg-gray-200 rounded-full h-2.5">
@@ -10351,6 +10357,26 @@ window.uploadMyPagePhoto = async function(event) {
     }
 };
 
+// MyPage 파일 업로드
+window.uploadMyPageFiles = async function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    const fileList = document.getElementById('mypage-file-list');
+    fileList.innerHTML = '';
+    
+    for (let file of files) {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded';
+        fileItem.innerHTML = `
+            <i class="fas fa-file text-blue-500"></i>
+            <span>${file.name}</span>
+            <span class="text-xs text-gray-400">(${(file.size / 1024).toFixed(1)} KB)</span>
+        `;
+        fileList.appendChild(fileItem);
+    }
+};
+
 // MyPage 정보 저장
 window.saveMyPage = async function() {
     const instructor = JSON.parse(localStorage.getItem('instructor'));
@@ -10362,6 +10388,26 @@ window.saveMyPage = async function() {
     const oldPassword = document.getElementById('mypage-old-password').value;
     const newPassword = document.getElementById('mypage-new-password').value;
     const newPasswordConfirm = document.getElementById('mypage-new-password-confirm').value;
+    
+    // 비밀번호 변경 유효성 검사
+    if (oldPassword || newPassword || newPasswordConfirm) {
+        if (!oldPassword) {
+            window.showAlert('현재 비밀번호를 입력하세요.');
+            return;
+        }
+        if (!newPassword) {
+            window.showAlert('새 비밀번호를 입력하세요.');
+            return;
+        }
+        if (!newPasswordConfirm) {
+            window.showAlert('새 비밀번호 확인을 입력하세요.');
+            return;
+        }
+        if (newPassword !== newPasswordConfirm) {
+            window.showAlert('새 비밀번호가 일치하지 않습니다.');
+            return;
+        }
+    }
     
     // 프로필 사진 URL
     const photoImg = document.getElementById('mypage-photo');
@@ -10378,25 +10424,36 @@ window.saveMyPage = async function() {
         // 강사 정보 업데이트
         const formData = new FormData();
         formData.append('name', name);
-        formData.append('major', major);
-        formData.append('phone', phone);
-        formData.append('email', email);
+        formData.append('major', major || '');
+        formData.append('phone', phone || '');
+        formData.append('email', email || '');
+        formData.append('instructor_type', instructor.instructor_type || '');
         if (photoUrls) formData.append('photo_urls', photoUrls);
         
-        await axios.put(`${API_BASE_URL}/api/instructors/${instructor.code}`, formData);
+        // 파일 첨부
+        const fileInput = document.getElementById('mypage-file-input');
+        if (fileInput.files && fileInput.files.length > 0) {
+            for (let file of fileInput.files) {
+                formData.append('files', file);
+            }
+        }
+        
+        await axios.put(`${API_BASE_URL}/api/instructors/${instructor.code}`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
         
         // 비밀번호 변경 (입력된 경우)
-        if (oldPassword && newPassword) {
-            if (newPassword !== newPasswordConfirm) {
-                window.showAlert('새 비밀번호가 일치하지 않습니다.');
-                return;
-            }
-            
+        if (oldPassword && newPassword && newPasswordConfirm) {
             await axios.post(`${API_BASE_URL}/api/auth/change-password`, {
                 instructor_code: instructor.code,
                 old_password: oldPassword,
                 new_password: newPassword
             });
+            window.showAlert('✅ 정보 및 비밀번호가 변경되었습니다!');
+        } else {
+            window.showAlert('✅ 정보가 저장되었습니다!');
         }
         
         // 로컬 스토리지 업데이트
@@ -10410,7 +10467,6 @@ window.saveMyPage = async function() {
         // 헤더 업데이트
         document.getElementById('instructorName').textContent = name;
         
-        window.showAlert('✅ 정보가 저장되었습니다!');
         document.getElementById('mypage-modal').remove();
     } catch (error) {
         console.error('저장 실패:', error);
