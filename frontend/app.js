@@ -10906,9 +10906,40 @@ window.showMyPage = async function() {
 
 // MyPage 프로필 사진 업로드
 // MyPage 모달 닫기 (캐시 삭제)
-window.closeMyPage = function() {
+window.closeMyPage = async function() {
     // 강사 캐시 삭제 (마이페이지에서 수정한 내용 반영)
     localStorage.removeItem('cache_instructors');
+    
+    // localStorage의 instructor 최신 데이터로 갱신
+    const currentInstructor = JSON.parse(localStorage.getItem('instructor'));
+    if (currentInstructor) {
+        try {
+            // 서버에서 최신 강사 정보 가져오기
+            const response = await axios.get(`${API_BASE_URL}/api/instructors`);
+            const instructors = response.data;
+            
+            // 현재 로그인한 강사 정보 찾기
+            const updatedInstructor = instructors.find(i => i.code === currentInstructor.code);
+            
+            if (updatedInstructor) {
+                // localStorage 업데이트 (비밀번호 유지)
+                const updatedData = {
+                    ...updatedInstructor,
+                    password: currentInstructor.password // 기존 비밀번호 유지
+                };
+                localStorage.setItem('instructor', JSON.stringify(updatedData));
+                
+                // 헤더의 강사 이름도 업데이트
+                const nameElement = document.getElementById('instructorName');
+                if (nameElement) {
+                    nameElement.textContent = updatedInstructor.name;
+                }
+            }
+        } catch (error) {
+            console.error('강사 정보 갱신 실패:', error);
+            // 에러가 나도 모달은 닫기
+        }
+    }
     
     // 모달 제거
     const modal = document.getElementById('mypage-modal');
