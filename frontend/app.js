@@ -10818,7 +10818,7 @@ window.showMyPage = async function() {
                 <div class="mb-8 text-center">
                     <div class="inline-block relative">
                         <img id="mypage-photo" 
-                             src="${instructor.profile_photo ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(instructor.profile_photo) : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23ddd%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2716%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3ENo Photo%3C/text%3E%3C/svg%3E'}" 
+                             src="${instructor.profile_photo ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(instructor.profile_photo) + '&t=' + new Date().getTime() : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23ddd%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2716%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3ENo Photo%3C/text%3E%3C/svg%3E'}" 
                              alt="프로필 사진" 
                              class="w-40 h-40 rounded-full object-cover border-4 border-blue-500 shadow-lg"
                              onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23ddd%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2716%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3ENo Photo%3C/text%3E%3C/svg%3E'">
