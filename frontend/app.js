@@ -104,6 +104,552 @@ function isMainInstructor() {
     }
 }
 
+// 공통 스크롤 함수
+window.scrollToForm = function(formId) {
+    const formDiv = document.getElementById(formId);
+    if (formDiv) {
+        formDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// 파일 검증 함수
+window.validateFile = function(file) {
+    const maxSize = 20 * 1024 * 1024; // 20MB
+    const allowedExtensions = [
+        'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp',  // 이미지
+        'pdf',  // PDF
+        'ppt', 'pptx',  // PowerPoint
+        'xls', 'xlsx',  // Excel
+        'doc', 'docx',  // Word
+        'txt',  // 텍스트
+        'hwp'  // 한글
+    ];
+    
+    // 파일 크기 검증
+    if (file.size > maxSize) {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+        return {
+            valid: false,
+            message: `"${file.name}"의 크기가 20MB를 초과합니다. (현재: ${sizeMB}MB)\n\n최대 업로드 가능 크기: 20MB`
+        };
+    }
+    
+    // 파일 확장자 검증
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!allowedExtensions.includes(ext)) {
+        return {
+            valid: false,
+            message: `"${file.name}"은(는) 지원하지 않는 파일 형식입니다.\n\n지원 형식:\n• 이미지: JPG, PNG, GIF, BMP, WebP\n• 문서: PDF, TXT\n• Office: PPT, PPTX, XLS, XLSX, DOC, DOCX\n• 한글: HWP`
+        };
+    }
+    
+    return { valid: true };
+}
+
+// 이미지 자동 압축 함수
+window.compressImage = function(file, maxWidth = 1920, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+        // PDF나 이미지가 아닌 파일은 그대로 반환
+        if (file.type === 'application/pdf' || !file.type.startsWith('image/')) {
+            resolve(file);
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                
+                // 최대 너비 제한
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Canvas를 Blob으로 변환
+                canvas.toBlob(function(blob) {
+                    if (blob) {
+                        // 압축된 파일이 원본보다 크면 원본 사용
+                        if (blob.size > file.size) {
+                            resolve(file);
+                        } else {
+                            // Blob을 File 객체로 변환
+                            const compressedFile = new File([blob], file.name, {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            });
+                            resolve(compressedFile);
+                        }
+                    } else {
+                        resolve(file);
+                    }
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = function() {
+                reject(new Error('이미지 로드 실패'));
+            };
+            img.src = e.target.result;
+        };
+        reader.onerror = function() {
+            reject(new Error('파일 읽기 실패'));
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+// 파일 타입 확인 함수
+window.getFileExtension = function(url) {
+    if (!url) return '';
+    const cleanUrl = url.split('#')[0].split('?')[0];
+    const match = cleanUrl.match(/\.([^.]+)$/);
+    return match ? match[1].toLowerCase() : '';
+}
+
+window.isPDF = function(url) {
+    const ext = window.getFileExtension(url);
+    return ext === 'pdf';
+}
+
+window.isPowerPoint = function(url) {
+    const ext = window.getFileExtension(url);
+    return ['ppt', 'pptx'].includes(ext);
+}
+
+window.isExcel = function(url) {
+    const ext = window.getFileExtension(url);
+    return ['xls', 'xlsx'].includes(ext);
+}
+
+window.isWord = function(url) {
+    const ext = window.getFileExtension(url);
+    return ['doc', 'docx'].includes(ext);
+}
+
+window.isText = function(url) {
+    const ext = window.getFileExtension(url);
+    return ext === 'txt';
+}
+
+window.isHWP = function(url) {
+    const ext = window.getFileExtension(url);
+    return ext === 'hwp';
+}
+
+window.isImage = function(url) {
+    const ext = window.getFileExtension(url);
+    return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext);
+}
+
+window.isViewableInBrowser = function(url) {
+    // 브라우저에서 직접 볼 수 있는 파일 타입
+    return window.isPDF(url) || window.isImage(url) || window.isText(url);
+}
+
+// URL에서 원본 파일명 제거 (실제 다운로드용)
+window.getCleanUrl = function(url) {
+    if (!url) return '';
+    // URL#원본파일명 형식에서 # 이후 제거
+    return url.split('#')[0];
+}
+
+// URL에서 파일명 추출 함수
+window.getFilenameFromUrl = function(url) {
+    if (!url) return 'unknown';
+    try {
+        // URL#원본파일명 형식에서 원본 파일명 추출
+        if (url.includes('#')) {
+            const parts = url.split('#');
+            if (parts.length > 1 && parts[1]) {
+                return decodeURIComponent(parts[1]);
+            }
+        }
+        
+        // FTP URL에서 파일명 추출
+        const parts = url.split('/');
+        let filename = parts[parts.length - 1];
+        
+        // 쿼리 파라미터 제거
+        if (filename.includes('?')) {
+            filename = filename.split('?')[0];
+        }
+        
+        // 디코딩
+        filename = decodeURIComponent(filename);
+        
+        return filename;
+    } catch (e) {
+        return 'unknown';
+    }
+}
+
+// 공통 파일 미리보기 아이템 생성 함수
+window.createFilePreviewItem = function(url, index, removeCallback) {
+    const cleanUrl = window.getCleanUrl(url);  // # 제거한 실제 URL
+    const filename = window.getFilenameFromUrl(url);
+    
+    // 파일 타입에 따른 아이콘 및 색상 결정
+    let icon = 'fa-file';
+    let bgColor = 'bg-gray-50';
+    let borderColor = 'border-gray-200';
+    let iconColor = 'text-gray-600';
+    let previewAction = null;
+    
+    if (window.isPDF(url)) {
+        icon = 'fa-file-pdf';
+        bgColor = 'bg-red-50';
+        borderColor = 'border-red-200';
+        iconColor = 'text-red-600';
+        previewAction = `window.showFilePreview('${cleanUrl}', 'pdf')`;
+    } else if (window.isImage(url)) {
+        // 이미지는 별도 처리
+        return `
+            <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
+                <div class="flex-shrink-0 cursor-pointer" onclick="window.showFilePreview('${cleanUrl}', 'image')">
+                    <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(cleanUrl)}" 
+                         alt="파일 ${index + 1}"
+                         class="w-16 h-16 object-cover rounded border hover:opacity-80"
+                         onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
+                </div>
+                <div class="flex-1 min-w-0">
+                    <button onclick="window.showFilePreview('${cleanUrl}', 'image')" 
+                            class="text-blue-600 hover:underline text-sm block text-left truncate w-full" title="${filename}">
+                        <i class="fas fa-eye mr-1"></i>${filename}
+                    </button>
+                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(cleanUrl)}" download="${filename}"
+                       class="text-gray-600 hover:underline text-xs block mt-1">
+                        <i class="fas fa-download mr-1"></i>다운로드
+                    </a>
+                </div>
+                <button type="button" onclick="${removeCallback}(${index})" 
+                        class="text-red-500 hover:text-red-700 px-2 flex-shrink-0">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+    } else if (window.isPowerPoint(url)) {
+        icon = 'fa-file-powerpoint';
+        bgColor = 'bg-orange-50';
+        borderColor = 'border-orange-200';
+        iconColor = 'text-orange-600';
+        previewAction = `window.showFilePreview('${cleanUrl}', 'office')`;
+    } else if (window.isExcel(url)) {
+        icon = 'fa-file-excel';
+        bgColor = 'bg-green-50';
+        borderColor = 'border-green-200';
+        iconColor = 'text-green-600';
+        previewAction = `window.showFilePreview('${cleanUrl}', 'office')`;
+    } else if (window.isWord(url)) {
+        icon = 'fa-file-word';
+        bgColor = 'bg-blue-50';
+        borderColor = 'border-blue-200';
+        iconColor = 'text-blue-600';
+        previewAction = `window.showFilePreview('${cleanUrl}', 'office')`;
+    } else if (window.isText(url)) {
+        icon = 'fa-file-alt';
+        bgColor = 'bg-gray-50';
+        borderColor = 'border-gray-200';
+        iconColor = 'text-gray-600';
+        previewAction = `window.showFilePreview('${cleanUrl}', 'text')`;
+    } else if (window.isHWP(url)) {
+        icon = 'fa-file-alt';
+        bgColor = 'bg-indigo-50';
+        borderColor = 'border-indigo-200';
+        iconColor = 'text-indigo-600';
+        previewAction = `window.showFilePreview('${cleanUrl}', 'hwp')`;
+    }
+    
+    // 공통 파일 미리보기 HTML
+    return `
+        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
+            <div class="flex-shrink-0 w-16 h-16 ${bgColor} border ${borderColor} rounded flex items-center justify-center cursor-pointer hover:opacity-80"
+                 ${previewAction ? `onclick="${previewAction}"` : ''}>
+                <i class="fas ${icon} text-3xl ${iconColor}"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                ${previewAction ? `
+                    <button onclick="${previewAction}" 
+                            class="text-blue-600 hover:underline text-sm block text-left truncate w-full" title="${filename}">
+                        <i class="fas fa-eye mr-1"></i>${filename}
+                    </button>
+                ` : `
+                    <p class="text-sm truncate w-full" title="${filename}">${filename}</p>
+                `}
+                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(cleanUrl)}" download="${filename}"
+                   class="text-gray-600 hover:underline text-xs block mt-1">
+                    <i class="fas fa-download mr-1"></i>다운로드
+                </a>
+            </div>
+            <button type="button" onclick="${removeCallback}(${index})" 
+                    class="text-red-500 hover:text-red-700 px-2 flex-shrink-0">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+}
+
+// PDF 미리보기 모달
+// 통합 파일 미리보기 함수
+window.showFilePreview = function(url, type) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+    
+    let title = '파일 미리보기';
+    let icon = 'fa-file';
+    let iconColor = 'text-gray-600';
+    let content = '';
+    
+    if (type === 'pdf') {
+        title = 'PDF 미리보기';
+        icon = 'fa-file-pdf';
+        iconColor = 'text-red-600';
+        content = `
+            <div class="bg-white rounded-lg shadow-xl w-11/12 h-5/6 flex flex-col">
+                <div class="flex justify-between items-center p-4 border-b">
+                    <h3 class="text-lg font-bold">
+                        <i class="fas ${icon} mr-2 ${iconColor}"></i>${title}
+                    </h3>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                <div class="flex-1 p-4 overflow-hidden">
+                    <iframe src="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" 
+                            class="w-full h-full border rounded"
+                            frameborder="0">
+                    </iframe>
+                </div>
+                <div class="p-4 border-t flex justify-end space-x-2">
+                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" 
+                       download 
+                       class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                        <i class="fas fa-download mr-2"></i>다운로드
+                    </a>
+                    <button onclick="this.closest('.fixed').remove()" 
+                            class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        `;
+    } else if (type === 'image') {
+        title = '이미지 미리보기';
+        icon = 'fa-image';
+        iconColor = 'text-blue-600';
+        content = `
+            <div class="relative max-w-7xl max-h-screen w-full h-full flex flex-col p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-white">
+                        <i class="fas ${icon} mr-2"></i>${title}
+                    </h3>
+                    <button onclick="this.closest('.fixed').remove()" class="text-white hover:text-gray-300">
+                        <i class="fas fa-times text-3xl"></i>
+                    </button>
+                </div>
+                <div class="flex-1 flex items-center justify-center overflow-auto">
+                    <img src="${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(url)}" 
+                         class="max-w-full max-h-full object-contain rounded shadow-2xl"
+                         alt="미리보기"
+                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22200%22 height=%22200%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E이미지 로드 실패%3C/text%3E%3C/svg%3E';">
+                </div>
+                <div class="mt-4 flex justify-end space-x-2">
+                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" 
+                       download 
+                       class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                        <i class="fas fa-download mr-2"></i>다운로드
+                    </a>
+                    <button onclick="this.closest('.fixed').remove()" 
+                            class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        `;
+    } else if (type === 'text') {
+        title = '텍스트 파일 미리보기';
+        icon = 'fa-file-alt';
+        iconColor = 'text-gray-600';
+        content = `
+            <div class="bg-white rounded-lg shadow-xl w-11/12 h-5/6 flex flex-col">
+                <div class="flex justify-between items-center p-4 border-b">
+                    <h3 class="text-lg font-bold">
+                        <i class="fas ${icon} mr-2 ${iconColor}"></i>${title}
+                    </h3>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                <div class="flex-1 p-4 overflow-hidden">
+                    <iframe src="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" 
+                            class="w-full h-full border rounded bg-white"
+                            frameborder="0">
+                    </iframe>
+                </div>
+                <div class="p-4 border-t flex justify-end space-x-2">
+                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" 
+                       download 
+                       class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                        <i class="fas fa-download mr-2"></i>다운로드
+                    </a>
+                    <button onclick="this.closest('.fixed').remove()" 
+                            class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        `;
+    } else if (type === 'office') {
+        // Office 파일은 Microsoft Office Online 뷰어 사용
+        const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(API_BASE_URL + '/api/download-image?url=' + encodeURIComponent(url))}`;
+        title = 'Office 문서 미리보기';
+        icon = 'fa-file-alt';
+        iconColor = 'text-blue-600';
+        content = `
+            <div class="bg-white rounded-lg shadow-xl w-11/12 h-5/6 flex flex-col">
+                <div class="flex justify-between items-center p-4 border-b">
+                    <h3 class="text-lg font-bold">
+                        <i class="fas ${icon} mr-2 ${iconColor}"></i>${title}
+                    </h3>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                <div class="flex-1 p-4 overflow-hidden">
+                    <iframe src="${viewerUrl}" 
+                            class="w-full h-full border rounded"
+                            frameborder="0">
+                    </iframe>
+                </div>
+                <div class="p-4 border-t flex justify-end space-x-2">
+                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" 
+                       download 
+                       class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                        <i class="fas fa-download mr-2"></i>다운로드
+                    </a>
+                    <button onclick="this.closest('.fixed').remove()" 
+                            class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        `;
+    } else if (type === 'hwp') {
+        title = '한글 문서';
+        icon = 'fa-file-alt';
+        iconColor = 'text-indigo-600';
+        content = `
+            <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-2xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold">
+                        <i class="fas ${icon} mr-2 ${iconColor}"></i>${title}
+                    </h3>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                <div class="text-center py-8">
+                    <i class="fas fa-file-alt text-6xl text-indigo-600 mb-4"></i>
+                    <p class="text-gray-700 mb-4">한글(HWP) 파일은 브라우저에서 직접 미리보기를 지원하지 않습니다.</p>
+                    <p class="text-gray-600 mb-6">파일을 다운로드하여 한글 프로그램에서 열어주세요.</p>
+                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" 
+                       download 
+                       class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded inline-block">
+                        <i class="fas fa-download mr-2"></i>다운로드
+                    </a>
+                </div>
+            </div>
+        `;
+    }
+    
+    modal.innerHTML = content;
+    
+    // 모달 외부 클릭 시 닫기 (이미지 타입만)
+    if (type === 'image') {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
+    
+    document.body.appendChild(modal);
+}
+
+// 하위 호환성을 위한 래퍼 함수들
+window.showPDFPreview = function(url) {
+    window.showFilePreview(url, 'pdf');
+}
+
+window.showImagePreview = function(url) {
+    window.showFilePreview(url, 'image');
+}
+
+// 공통 파일 업로드 함수 (이미지 자동 압축 + PDF 지원)
+window.uploadFilesWithCompression = async function(files, category, progressBar) {
+    const maxSize = 20 * 1024 * 1024; // 20MB
+    const uploadedUrls = [];
+    
+    // 파일 크기 체크
+    for (let file of files) {
+        if (file.size > maxSize) {
+            throw new Error(`파일 "${file.name}"의 크기가 20MB를 초과합니다.`);
+        }
+    }
+    
+    const totalFiles = files.length;
+    
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // 이미지 자동 압축 (PDF는 그대로)
+        let processedFile = file;
+        if (file.type.startsWith('image/')) {
+            try {
+                processedFile = await window.compressImage(file);
+                console.log(`이미지 압축: ${(file.size / 1024).toFixed(1)}KB → ${(processedFile.size / 1024).toFixed(1)}KB`);
+            } catch (error) {
+                console.error('이미지 압축 실패, 원본 사용:', error);
+                processedFile = file;
+            }
+        }
+        
+        const formData = new FormData();
+        formData.append('file', processedFile);
+        
+        // 프로그레스 업데이트
+        if (progressBar) {
+            const progress = ((i + 0.5) / totalFiles) * 100;
+            progressBar.style.width = `${progress}%`;
+        }
+        
+        const response = await axios.post(
+            `${API_BASE_URL}/api/upload-image?category=${category}`,
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
+        
+        if (response.data.success) {
+            uploadedUrls.push(response.data.url);
+        }
+        
+        // 완료 프로그레스
+        if (progressBar) {
+            const completeProgress = ((i + 1) / totalFiles) * 100;
+            progressBar.style.width = `${completeProgress}%`;
+        }
+    }
+    
+    return uploadedUrls;
+}
+
 // 로그아웃 함수
 function logout() {
     if (confirm('로그아웃 하시겠습니까?')) {
@@ -262,6 +808,13 @@ window.showPhotoViewer = function(photos, startIndex = 0) {
     }
     
     if (photoUrls.length === 0) return;
+    
+    // 이미지가 아닌 파일이 포함되어 있는지 확인
+    const hasNonImageFiles = photoUrls.some(url => !window.isImage(url));
+    if (hasNonImageFiles) {
+        window.showAlert('이 항목에는 이미지 외의 파일(PDF, Office 문서 등)이 포함되어 있습니다.\n\n수정 버튼을 눌러서 상세보기에서 조회가 가능합니다.');
+        return;
+    }
     
     let currentIndex = startIndex;
     
@@ -1411,6 +1964,11 @@ async function loadStudents() {
 }
 
 function renderStudents() {
+    // 현재 필터 상태 저장
+    const previousCourseFilter = document.getElementById('student-course-filter')?.value || '';
+    const previousSort = document.getElementById('student-sort')?.value || 'name';
+    const previousSearch = document.getElementById('student-search')?.value || '';
+    
     const app = document.getElementById('app');
     app.innerHTML = `
         <div class="bg-white rounded-lg shadow-md p-6">
@@ -1436,11 +1994,11 @@ function renderStudents() {
                 <div>
                     <label class="block text-gray-700 mb-2">정렬</label>
                     <select id="student-sort" class="w-full border rounded px-3 py-2" onchange="window.renderStudents()">
-                        <option value="name">이름순</option>
-                        <option value="course">과정순</option>
-                        <option value="campus">캠퍼스순</option>
-                        <option value="final_school">학력순</option>
-                        <option value="birth_date">생년월일순</option>
+                        <option value="name" ${previousSort === 'name' ? 'selected' : ''}>이름순</option>
+                        <option value="course" ${previousSort === 'course' ? 'selected' : ''}>과정순</option>
+                        <option value="campus" ${previousSort === 'campus' ? 'selected' : ''}>캠퍼스순</option>
+                        <option value="final_school" ${previousSort === 'final_school' ? 'selected' : ''}>학력순</option>
+                        <option value="birth_date" ${previousSort === 'birth_date' ? 'selected' : ''}>생년월일순</option>
                     </select>
                 </div>
                 <div>
@@ -1448,13 +2006,13 @@ function renderStudents() {
                     <select id="student-course-filter" class="w-full border rounded px-3 py-2" onchange="window.renderStudents()">
                         <option value="">-- 전체 과정 --</option>
                         ${courses.sort((a, b) => (a.name || a.code).localeCompare(b.name || b.code, 'ko')).map(c => `
-                            <option value="${c.code}">${c.name || c.code}</option>
+                            <option value="${c.code}" ${previousCourseFilter === c.code ? 'selected' : ''}>${c.name || c.code}</option>
                         `).join('')}
                     </select>
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-2">검색 (이름, 학생코드)</label>
-                    <input type="text" id="student-search" placeholder="검색어 입력..." class="w-full border rounded px-3 py-2" onkeyup="window.renderStudents()">
+                    <input type="text" id="student-search" placeholder="검색어 입력..." value="${previousSearch}" class="w-full border rounded px-3 py-2" onkeyup="window.renderStudents()">
                 </div>
             </div>
             
@@ -1518,6 +2076,27 @@ function renderStudents() {
                                         : (student.interest_area || student.interests))
                                     : '-';
                                 
+                                // 학력사항 요약 (15자까지만)
+                                const educationText = student.education || student.final_school || '-';
+                                const shortEducation = educationText.length > 15 
+                                    ? educationText.substring(0, 15) + '...' 
+                                    : educationText;
+                                
+                                // 성별 짧게 (남/여)
+                                let shortGender = '-';
+                                if (student.gender) {
+                                    if (student.gender.includes('남') || student.gender === 'M' || student.gender === 'male') {
+                                        shortGender = '남';
+                                    } else if (student.gender.includes('여') || student.gender === 'F' || student.gender === 'female') {
+                                        shortGender = '여';
+                                    } else {
+                                        shortGender = student.gender;
+                                    }
+                                }
+                                
+                                // 전화번호 포맷팅 (010-0000-0000)
+                                const formattedPhone = normalizePhone(student.phone) || '-';
+                                
                                 return `
                             <tr class="border-b hover:bg-gray-50">
                                 <td class="px-2 py-2 text-center">
@@ -1533,16 +2112,16 @@ function renderStudents() {
                                 </td>
                                 <td class="px-4 py-2 font-mono">${student.code}</td>
                                 <td class="px-4 py-2 font-semibold">${student.name}</td>
-                                <td class="px-4 py-2">${student.birth_date ? formatDateWithDay(student.birth_date) : '-'}</td>
-                                <td class="px-4 py-2">${student.gender || '-'}</td>
-                                <td class="px-4 py-2">${student.phone || '-'}</td>
-                                <td class="px-4 py-2">${student.education || student.final_school || '-'}</td>
+                                <td class="px-3 py-2">${student.birth_date ? formatDateWithDay(student.birth_date) : '-'}</td>
+                                <td class="px-2 py-2 text-center">${shortGender}</td>
+                                <td class="px-3 py-2 text-sm">${formattedPhone}</td>
+                                <td class="px-2 py-2 text-sm" title="${educationText}">${shortEducation}</td>
                                 <td class="px-4 py-2 text-sm text-gray-600">${shortInterest}</td>
-                                <td class="px-4 py-2">
-                                    <button onclick="window.viewStudent(${student.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="상세보기">
+                                <td class="px-2 py-2 whitespace-nowrap">
+                                    <button onclick="window.viewStudent(${student.id})" class="text-blue-600 hover:text-blue-800 mr-1" title="상세보기">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <button onclick="window.editStudent(${student.id})" class="text-green-600 hover:text-green-800 mr-2" title="수정">
+                                    <button onclick="window.editStudent(${student.id})" class="text-green-600 hover:text-green-800 mr-1" title="수정">
                                         <i class="fas fa-edit"></i>
                                     </button>
                                     <button onclick="window.deleteStudent(${student.id})" class="text-red-600 hover:text-red-800" title="삭제">
@@ -1617,8 +2196,27 @@ window.uploadExcel = async function() {
     }
 }
 
-window.showStudentForm = function(studentId = null) {
+window.showStudentForm = async function(studentId = null) {
+    // courses 배열이 없으면 먼저 로드
+    if (!courses || courses.length === 0) {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/api/courses`);
+            courses = response.data;
+        } catch (error) {
+            console.error('과정 로드 실패:', error);
+            courses = [];
+        }
+    }
+    
     const student = studentId ? students.find(s => s.id === studentId) : null;
+    
+    // 새 학생 추가 시: 필터에서 선택된 과정을 기본값으로 사용
+    let defaultCourseCode = '';
+    if (!studentId) {
+        const courseFilter = document.getElementById('student-course-filter');
+        defaultCourseCode = courseFilter ? courseFilter.value : '';
+    }
+    
     const formDiv = document.getElementById('student-form');
     
     // 학생 코드 자동 생성 (S001, S002...)
@@ -1697,8 +2295,8 @@ window.showStudentForm = function(studentId = null) {
                     <label class="block text-gray-700 mb-2">과정 선택</label>
                     <select name="course_code" class="w-full px-3 py-2 border rounded-lg">
                         <option value="">선택</option>
-                        ${courses.map(c => `
-                            <option value="${c.code}" ${student?.course_code === c.code ? 'selected' : ''}>
+                        ${courses.sort((a, b) => (a.name || a.code).localeCompare(b.name || b.code, 'ko')).map(c => `
+                            <option value="${c.code}" ${(student?.course_code === c.code || (!student && defaultCourseCode === c.code)) ? 'selected' : ''}>
                                 ${c.code} - ${c.name || c.code}
                             </option>
                         `).join('')}
@@ -1732,7 +2330,7 @@ window.showStudentForm = function(studentId = null) {
                 <!-- 사진 업로드 -->
                 <div class="col-span-2">
                     <label class="block text-gray-700 mb-2">
-                        <i class="fas fa-camera mr-2"></i>사진 첨부
+                        <i class="fas fa-paperclip mr-2"></i>사진 및 파일 첨부 (그림파일, PDF, HWP, PPT, Excel, Word, TXT 등)
                     </label>
                     <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
                         <div class="flex flex-wrap gap-2 mb-3">
@@ -1745,7 +2343,7 @@ window.showStudentForm = function(studentId = null) {
                                 <i class="fas fa-camera mr-2"></i>사진 촬영
                             </button>
                         </div>
-                        <input type="file" id="student-file-input" accept="image/*" multiple 
+                        <input type="file" id="student-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
                                onchange="window.handleStudentImageUpload(event)" class="hidden">
                         <input type="file" id="student-camera-input" accept="image/*"  
                                onchange="window.handleStudentImageUpload(event)" class="hidden">
@@ -1778,6 +2376,9 @@ window.showStudentForm = function(studentId = null) {
     
     formDiv.classList.remove('hidden');
     
+    // 폼으로 스크롤
+    formDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
     // 기존 사진 미리보기 표시
     if (student?.photo_urls) {
         try {
@@ -1805,9 +2406,9 @@ window.saveStudent = async function(studentId, autoSave = false) {
     
     const data = {
         name: formData.get('name'),
-        birth_date: formData.get('birth_date'),
+        birth_date: normalizeBirthDate(formData.get('birth_date')),
         gender: formData.get('gender'),
-        phone: formData.get('phone'),
+        phone: normalizePhone(formData.get('phone')),
         email: formData.get('email'),
         address: formData.get('address'),
         interests: formData.get('interests'),
@@ -1845,6 +2446,16 @@ window.handleStudentImageUpload = async function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
+    // 파일 검증
+    for (let file of files) {
+        const validation = window.validateFile(file);
+        if (!validation.valid) {
+            window.showAlert(validation.message);
+            event.target.value = '';
+            return;
+        }
+    }
+    
     // 프로그레스 바 표시
     const progressDiv = document.getElementById('student-upload-progress');
     const progressBar = document.getElementById('student-progress-bar');
@@ -1860,8 +2471,21 @@ window.handleStudentImageUpload = async function(event) {
         
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            
+            // 이미지 자동 압축 (PDF는 그대로)
+            let processedFile = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                    processedFile = await window.compressImage(file);
+                    console.log(`이미지 압축: ${(file.size / 1024).toFixed(1)}KB → ${(processedFile.size / 1024).toFixed(1)}KB`);
+                } catch (error) {
+                    console.error('이미지 압축 실패, 원본 사용:', error);
+                    processedFile = file;
+                }
+            }
+            
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', processedFile);
             
             // 프로그레스 업데이트
             const progress = ((i + 0.5) / totalFiles) * 100;
@@ -1874,7 +2498,11 @@ window.handleStudentImageUpload = async function(event) {
             );
             
             if (response.data.success) {
-                photoUrls.push(response.data.url);
+                // URL과 원본 파일명을 함께 저장 (URL#원본파일명 형식)
+                const urlWithOriginalName = response.data.original_filename 
+                    ? `${response.data.url}#${encodeURIComponent(response.data.original_filename)}`
+                    : response.data.url;
+                photoUrls.push(urlWithOriginalName);
             }
             
             // 완료 프로그레스
@@ -1950,27 +2578,9 @@ function updateStudentPhotoPreview(photoUrls) {
         return;
     }
     
-    previewDiv.innerHTML = photoUrls.map((url, index) => `
-        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
-            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="flex-shrink-0">
-                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
-                     alt="사진 ${index + 1}"
-                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
-                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
-            </a>
-            <div class="flex-1">
-                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download 
-                   class="text-blue-600 hover:underline text-sm block">
-                    사진 ${index + 1} 다운로드
-                </a>
-                <p class="text-xs text-gray-500 mt-1">클릭하여 다운로드</p>
-            </div>
-            <button type="button" onclick="window.removeStudentPhoto(${index})" 
-                    class="text-red-500 hover:text-red-700 px-2">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
-    `).join('');
+    previewDiv.innerHTML = photoUrls.map((url, index) => 
+        window.createFilePreviewItem(url, index, 'window.removeStudentPhoto')
+    ).join('');
 }
 
 window.editStudent = function(id) {
@@ -1983,17 +2593,22 @@ window.viewStudent = async function(id) {
 }
 
 window.deleteStudent = async function(id) {
-    if (!confirm('정말 이 학생을 삭제하시겠습니까?')) return;
+    const student = students.find(s => s.id === id);
+    if (!student) return;
+    
+    // 상단으로 스크롤하여 상세 정보 보여주기
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    const message = `❗ 학생 삭제 확인\n\n이름: ${student.name}\n학생코드: ${student.code}\n연락처: ${student.phone || '없음'}\n\n정말 삭제하시겠습니까?`;
+    if (!confirm(message)) return;
     
     try {
         await axios.delete(`${API_BASE_URL}/api/students/${id}`);
-        
-        // 캐시 삭제
         window.clearCache('students');
-        
+        window.showAlert('✅ 학생이 삭제되었습니다.');
         loadStudents();
     } catch (error) {
-        alert('학생 삭제에 실패했습니다');
+        window.showAlert('❌ 학생 삭제에 실패했습니다: ' + error.message);
     }
 }
 
@@ -2276,16 +2891,23 @@ window.editSubject = function(subjectCode) {
 }
 
 window.deleteSubject = async function(subjectCode) {
-    const confirmed = await window.showConfirm('이 과목을 삭제하시겠습니까?');
+    const subject = subjects.find(s => s.code === subjectCode);
+    if (!subject) return;
+    
+    // 상단으로 스크롤
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    const message = `❗ 과목 삭제 확인\n\n과목명: ${subject.name}\n과목코드: ${subject.code}\n담당강사: ${subject.instructor_name || '미정'}\n\n정말 삭제하시겠습니까?`;
+    const confirmed = await window.showConfirm(message);
     if (!confirmed) return;
     
     try {
         await axios.delete(`${API_BASE_URL}/api/subjects/${subjectCode}`);
-        window.showAlert('과목이 삭제되었습니다.');
+        window.showAlert('✅ 과목이 삭제되었습니다.');
         loadSubjects();
     } catch (error) {
         console.error('과목 삭제 실패:', error);
-        window.showAlert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('❌ 삭제 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
@@ -2327,14 +2949,14 @@ function renderCounselings() {
                         <label class="block text-sm text-gray-700 mb-1">과정 선택</label>
                         <select id="filter-course" class="w-full border rounded px-3 py-2" onchange="window.updateStudentsByCourse(); window.filterCounselings();">
                             <option value="">전체 과정</option>
-                            ${courses.map(c => `<option value="${c.code}">${c.name || c.code}</option>`).join('')}
+                            ${courses.sort((a, b) => (a.name || a.code).localeCompare(b.name || b.code, 'ko')).map(c => `<option value="${c.code}">${c.name || c.code}</option>`).join('')}
                         </select>
                     </div>
                     <div>
                         <label class="block text-sm text-gray-700 mb-1">학생 선택</label>
                         <select id="filter-student" class="w-full border rounded px-3 py-2" onchange="window.filterCounselings()">
                             <option value="">전체 학생</option>
-                            ${students.map(s => {
+                            ${students.sort((a, b) => a.name.localeCompare(b.name, 'ko')).map(s => {
                                 const counselingCount = counselings.filter(c => c.student_id === s.id).length;
                                 return `<option value="${s.id}">${s.name} (${s.code}) - ${counselingCount}회</option>`;
                             }).join('')}
@@ -2729,10 +3351,29 @@ window.showStudentDetail = async function(studentId) {
                             <!-- 프로필 사진 -->
                             <div class="flex-shrink-0">
                                 <div class="relative">
-                                    <img src="${student.photo_path || student.thumbnail || getDefaultProfileImage(student.gender)}" 
-                                         alt="${student.name}" 
-                                         class="w-48 h-48 object-cover rounded-2xl shadow-2xl border-4 border-white"
-                                         onerror="this.src='${getDefaultProfileImage(student.gender)}'">
+                                    ${(() => {
+                                        let photoUrl = getDefaultProfileImage(student.gender);
+                                        if (student.photo_urls) {
+                                            try {
+                                                const urls = typeof student.photo_urls === 'string' ? JSON.parse(student.photo_urls) : student.photo_urls;
+                                                if (urls && urls.length > 0) {
+                                                    const firstUrl = urls[0];
+                                                    const cleanUrl = firstUrl.split('#')[0];
+                                                    // 이미지 파일인지 확인
+                                                    const ext = cleanUrl.split('.').pop().toLowerCase().split('?')[0];
+                                                    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
+                                                        photoUrl = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(cleanUrl);
+                                                    }
+                                                }
+                                            } catch (e) {
+                                                console.error('Photo URL parsing error:', e);
+                                            }
+                                        }
+                                        return `<img src="${photoUrl}" 
+                                                     alt="${student.name}" 
+                                                     class="w-48 h-48 object-cover rounded-2xl shadow-2xl border-4 border-white"
+                                                     onerror="this.src='${getDefaultProfileImage(student.gender)}'">`;
+                                    })()}
                                     <div class="absolute -bottom-3 -right-3 bg-white rounded-full p-3 shadow-lg">
                                         <i class="fas ${student.gender === '남' || student.gender === '남자' ? 'fa-mars text-blue-500' : student.gender === '여' || student.gender === '여자' ? 'fa-venus text-pink-500' : 'fa-user text-gray-500'} text-2xl"></i>
                                     </div>
@@ -2993,7 +3634,7 @@ window.showCounselingForm = function(counselingId = null) {
                 <!-- 사진 업로드 -->
                 <div class="col-span-2">
                     <label class="block text-gray-700 mb-2">
-                        <i class="fas fa-camera mr-2"></i>사진 첨부
+                        <i class="fas fa-paperclip mr-2"></i>사진 및 파일 첨부 (그림파일, PDF, HWP, PPT, Excel, Word, TXT 등)
                     </label>
                     <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
                         <div class="flex flex-wrap gap-2 mb-3">
@@ -3017,7 +3658,7 @@ window.showCounselingForm = function(counselingId = null) {
                                 </div>
                             </div>
                         </div>
-                        <input type="file" id="counseling-file-input" accept="image/*" multiple 
+                        <input type="file" id="counseling-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
                                onchange="window.handleCounselingImageUpload(event)" class="hidden">
                         <input type="file" id="counseling-camera-input" accept="image/*"  
                                onchange="window.handleCounselingImageUpload(event)" class="hidden">
@@ -3035,7 +3676,7 @@ window.showCounselingForm = function(counselingId = null) {
                         <input type="hidden" id="counseling-photo-urls" value='${existingCounseling?.photo_urls || "[]"}'>
                         <p class="text-sm text-gray-500 mt-2">
                             <i class="fas fa-info-circle mr-1"></i>
-                            최대 10MB, JPG/PNG/GIF 형식
+                            최대 20MB, 이미지/PDF 형식 (이미지는 자동 압축)
                         </p>
                     </div>
                 </div>
@@ -3068,7 +3709,10 @@ window.showCounselingForm = function(counselingId = null) {
 }
 
 window.hideCounselingForm = function() {
-    document.getElementById('counseling-form').classList.add('hidden');
+    const formDiv = document.getElementById('counseling-form');
+    if (formDiv) {
+        formDiv.classList.add('hidden');
+    }
 }
 
 window.saveCounseling = async function(counselingId, autoSave = false) {
@@ -3119,6 +3763,16 @@ window.handleCounselingImageUpload = async function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
+    // 파일 검증
+    for (let file of files) {
+        const validation = window.validateFile(file);
+        if (!validation.valid) {
+            window.showAlert(validation.message);
+            event.target.value = '';
+            return;
+        }
+    }
+    
     // 프로그레스 바 표시
     const progressDiv = document.getElementById('counseling-upload-progress');
     const progressBar = document.getElementById('counseling-progress-bar');
@@ -3133,8 +3787,21 @@ window.handleCounselingImageUpload = async function(event) {
         
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            
+            // 이미지 자동 압축 (PDF는 그대로)
+            let processedFile = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                    processedFile = await window.compressImage(file);
+                    console.log(`이미지 압축: ${(file.size / 1024).toFixed(1)}KB → ${(processedFile.size / 1024).toFixed(1)}KB`);
+                } catch (error) {
+                    console.error('이미지 압축 실패, 원본 사용:', error);
+                    processedFile = file;
+                }
+            }
+            
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', processedFile);
             
             // 프로그레스 업데이트
             const progress = ((i + 0.5) / totalFiles) * 100;
@@ -3149,7 +3816,11 @@ window.handleCounselingImageUpload = async function(event) {
             );
             
             if (response.data.success) {
-                photoUrls.push(response.data.url);
+                // URL과 원본 파일명을 함께 저장 (URL#원본파일명 형식)
+                const urlWithOriginalName = response.data.original_filename 
+                    ? `${response.data.url}#${encodeURIComponent(response.data.original_filename)}`
+                    : response.data.url;
+                photoUrls.push(urlWithOriginalName);
             }
             
             // 완료 프로그레스
@@ -3223,27 +3894,9 @@ function updateCounselingPhotoPreview(photoUrls) {
         return;
     }
     
-    previewDiv.innerHTML = photoUrls.map((url, idx) => `
-        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
-            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="flex-shrink-0">
-                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
-                     alt="사진 ${idx + 1}"
-                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
-                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
-            </a>
-            <div class="flex-1">
-                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download 
-                   class="text-blue-600 hover:underline text-sm block">
-                    사진 ${idx + 1} 다운로드
-                </a>
-                <p class="text-xs text-gray-500 mt-1">클릭하여 다운로드</p>
-            </div>
-            <button type="button" onclick="window.removeCounselingPhoto(${idx})" 
-                    class="text-red-500 hover:text-red-700 px-2">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
-    `).join('');
+    previewDiv.innerHTML = photoUrls.map((url, idx) => 
+        window.createFilePreviewItem(url, idx, 'window.removeCounselingPhoto')
+    ).join('');
 }
 
 window.editCounseling = function(counselingId) {
@@ -3251,20 +3904,23 @@ window.editCounseling = function(counselingId) {
 }
 
 window.deleteCounseling = async function(counselingId) {
-    const confirmed = await window.showConfirm('이 상담 기록을 삭제하시겠습니까?');
+    const counseling = counselings.find(c => c.id === counselingId);
+    if (!counseling) return;
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    const message = `❗ 상담 기록 삭제 확인\n\n학생: ${counseling.student_name}\n상담일: ${counseling.counseling_date}\n상담선생님: ${counseling.instructor_name || '미정'}\n\n정말 삭제하시겠습니까?`;
+    const confirmed = await window.showConfirm(message);
     if (!confirmed) return;
     
     try {
         await axios.delete(`${API_BASE_URL}/api/counselings/${counselingId}`);
-        
-        // 캐시 삭제
         window.clearCache('counselings');
-        
-        window.showAlert('상담이 삭제되었습니다.');
+        window.showAlert('✅ 상담이 삭제되었습니다.');
         loadCounselings();
     } catch (error) {
         console.error('상담 삭제 실패:', error);
-        window.showAlert('삭제 실패: ' + (error.response?.data?.detail || error.message));
+        window.showAlert('❌ 삭제 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
 
@@ -3665,6 +4321,7 @@ window.editInstructorCode = function(code) {
 }
 
 window.deleteInstructorCode = async function(code) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     const confirmed = await window.showConfirm('이 강사코드를 삭제하시겠습니까?\\n\\n삭제하면 복구할 수 없습니다.');
     if (!confirmed) return;
     
@@ -4042,7 +4699,7 @@ window.showInstructorForm = function(code = null) {
         <!-- 사진 업로드 -->
         <div class="mt-4">
             <label class="block text-gray-700 mb-2">
-                <i class="fas fa-camera mr-2"></i>사진 첨부
+                <i class="fas fa-paperclip mr-2"></i>사진 및 파일 첨부 (그림파일, PDF, HWP, PPT, Excel, Word, TXT 등)
             </label>
             <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
                 <div class="flex flex-wrap gap-2 mb-3">
@@ -4055,7 +4712,7 @@ window.showInstructorForm = function(code = null) {
                         <i class="fas fa-camera mr-2"></i>사진 촬영
                     </button>
                 </div>
-                <input type="file" id="instructor-file-input" accept="image/*" multiple 
+                <input type="file" id="instructor-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
                        onchange="window.handleInstructorImageUpload(event)" class="hidden">
                 <input type="file" id="instructor-camera-input" accept="image/*"  
                        onchange="window.handleInstructorImageUpload(event)" class="hidden">
@@ -4084,6 +4741,9 @@ window.showInstructorForm = function(code = null) {
             </button>
         </div>
     `;
+    
+    // 폼으로 스크롤
+    formDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
     // 기존 사진 미리보기 표시
     if (existingInst?.photo_urls) {
@@ -4143,6 +4803,7 @@ window.editInstructor = function(code) {
 }
 
 window.deleteInstructor = async function(code) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     if (!confirm('이 강사를 삭제하시겠습니까?')) return;
     
     try {
@@ -4236,6 +4897,16 @@ window.handleInstructorImageUpload = async function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
+    // 파일 검증
+    for (let file of files) {
+        const validation = window.validateFile(file);
+        if (!validation.valid) {
+            window.showAlert(validation.message);
+            event.target.value = '';
+            return;
+        }
+    }
+    
     // 프로그레스 바 표시
     const progressDiv = document.getElementById('instructor-upload-progress');
     const progressBar = document.getElementById('instructor-progress-bar');
@@ -4265,7 +4936,11 @@ window.handleInstructorImageUpload = async function(event) {
             );
             
             if (response.data.success) {
-                photoUrls.push(response.data.url);
+                // URL과 원본 파일명을 함께 저장 (URL#원본파일명 형식)
+                const urlWithOriginalName = response.data.original_filename 
+                    ? `${response.data.url}#${encodeURIComponent(response.data.original_filename)}`
+                    : response.data.url;
+                photoUrls.push(urlWithOriginalName);
             }
             
             // 완료 프로그레스
@@ -4341,27 +5016,9 @@ function updateInstructorPhotoPreview(photoUrls) {
         return;
     }
     
-    previewDiv.innerHTML = photoUrls.map((url, index) => `
-        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
-            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="flex-shrink-0">
-                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
-                     alt="사진 ${index + 1}"
-                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
-                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
-            </a>
-            <div class="flex-1">
-                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download 
-                   class="text-blue-600 hover:underline text-sm block">
-                    사진 ${index + 1} 다운로드
-                </a>
-                <p class="text-xs text-gray-500 mt-1">클릭하여 다운로드</p>
-            </div>
-            <button type="button" onclick="window.removeInstructorPhoto(${index})" 
-                    class="text-red-500 hover:text-red-700 px-2">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
-    `).join('');
+    previewDiv.innerHTML = photoUrls.map((url, index) => 
+        window.createFilePreviewItem(url, index, 'window.removeInstructorPhoto')
+    ).join('');
 }
 
 // ==================== 공휴일 관리 ====================
@@ -4489,6 +5146,7 @@ window.editHoliday = function(id) {
 }
 
 window.deleteHoliday = async function(id) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     if (!confirm('이 공휴일을 삭제하시겠습니까?')) return;
     
     try {
@@ -5279,6 +5937,7 @@ window.editCourse = function(code) {
 }
 
 window.deleteCourse = async function(code) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     if (!confirm('이 과정을 삭제하시겠습니까?\n삭제하면 복구할 수 없습니다.')) return;
     
     try {
@@ -5641,7 +6300,7 @@ window.showProjectForm = function(code = null) {
         <!-- 사진 업로드 섹션 -->
         <div class="mt-6">
             <h4 class="font-semibold mb-2">
-                <i class="fas fa-camera mr-2"></i>사진 첨부
+                <i class="fas fa-paperclip mr-2"></i>사진 및 파일 첨부 (그림파일, PDF, HWP, PPT, Excel, Word, TXT 등)
             </h4>
             <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
                 <div class="flex flex-wrap gap-2 mb-3">
@@ -5665,7 +6324,7 @@ window.showProjectForm = function(code = null) {
                         </div>
                     </div>
                 </div>
-                <input type="file" id="project-file-input" accept="image/*" multiple 
+                <input type="file" id="project-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
                        onchange="window.handleProjectImageUpload(event)" class="hidden">
                 <input type="file" id="project-camera-input" accept="image/*" 
                        onchange="window.handleProjectImageUpload(event)" class="hidden">
@@ -5688,6 +6347,9 @@ window.showProjectForm = function(code = null) {
             </button>
         </div>
     `;
+    
+    // 폼으로 스크롤
+    formDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
     // 초기 학생 목록 업데이트
     window.updateProjectStudentList();
@@ -5879,6 +6541,7 @@ window.editProject = function(code) {
 }
 
 window.deleteProject = async function(code) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     const confirmed = await window.showConfirm('이 팀을 삭제하시겠습니까?\n\n삭제하면 복구할 수 없습니다.');
     if (!confirmed) return;
     
@@ -5898,6 +6561,16 @@ window.deleteProject = async function(code) {
 window.handleProjectImageUpload = async function(event) {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
+
+    // 파일 검증
+    for (let file of files) {
+        const validation = window.validateFile(file);
+        if (!validation.valid) {
+            window.showAlert(validation.message);
+            event.target.value = '';
+            return;
+        }
+    }
 
     const progressDiv = document.getElementById('project-upload-progress');
     const progressBar = document.getElementById('project-progress-bar');
@@ -5994,27 +6667,9 @@ function updateProjectPhotoPreview(photoUrls) {
         return;
     }
 
-    previewDiv.innerHTML = photoUrls.map((url, idx) => `
-        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
-            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="flex-shrink-0">
-                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
-                     alt="사진 ${idx + 1}"
-                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
-                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27100%27 height=%27100%27%3E%3Crect fill=%27%23ddd%27 width=%27100%27 height=%27100%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27 fill=%27%23999%27%3E이미지 없음%3C/text%3E%3C/svg%3E';">
-            </a>
-            <div class="flex-1">
-                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download 
-                   class="text-blue-600 hover:underline text-sm block">
-                    사진 ${idx + 1} 다운로드
-                </a>
-                <p class="text-xs text-gray-500 mt-1">클릭하여 다운로드</p>
-            </div>
-            <button type="button" onclick="window.removeProjectPhoto(${idx})" 
-                    class="text-red-500 hover:text-red-700 px-2">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
-    `).join('');
+    previewDiv.innerHTML = photoUrls.map((url, idx) => 
+        window.createFilePreviewItem(url, idx, 'window.removeProjectPhoto')
+    ).join('');
 }
 
 // ==================== 팀 활동일지 관리 ====================
@@ -6244,7 +6899,7 @@ window.showTeamActivityLogForm = function(logId = null) {
                     <!-- 사진 업로드 -->
                     <div class="mb-4">
                         <label class="block text-gray-700 mb-2">
-                            <i class="fas fa-camera mr-2"></i>사진 첨부
+                            <i class="fas fa-paperclip mr-2"></i>사진 및 파일 첨부 (그림파일, PDF, HWP, PPT, Excel, Word, TXT 등)
                         </label>
                         <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
                             <div class="flex flex-wrap gap-2 mb-3">
@@ -6268,7 +6923,7 @@ window.showTeamActivityLogForm = function(logId = null) {
                                     </div>
                                 </div>
                             </div>
-                            <input type="file" id="team-log-file-input" accept="image/*" multiple 
+                            <input type="file" id="team-log-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
                                    onchange="window.handleTeamLogImageUpload(event)" class="hidden">
                             <input type="file" id="team-log-camera-input" accept="image/*" capture="environment" 
                                    onchange="window.handleTeamLogImageUpload(event)" class="hidden">
@@ -6412,10 +7067,12 @@ window.editTeamActivityLog = function(logId) {
     if (log) {
         selectedProjectForLogs = log.project_id;
         window.showTeamActivityLogForm(logId);
+        setTimeout(() => window.scrollToForm('team-activity-log-form'), 100);
     }
 }
 
 window.deleteTeamActivityLog = async function(logId) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     if (!confirm('정말 삭제하시겠습니까?')) return;
     
     try {
@@ -6437,6 +7094,16 @@ window.handleTeamLogImageUpload = async function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
+    // 파일 검증
+    for (let file of files) {
+        const validation = window.validateFile(file);
+        if (!validation.valid) {
+            window.showAlert(validation.message);
+            event.target.value = '';
+            return;
+        }
+    }
+    
     const progressDiv = document.getElementById('team-log-upload-progress');
     const progressBar = document.getElementById('team-log-progress-bar');
     progressDiv.classList.remove('hidden');
@@ -6446,16 +7113,13 @@ window.handleTeamLogImageUpload = async function(event) {
         let uploadedCount = 0;
         
         for (let file of files) {
-            // 파일 크기 체크 (10MB)
-            if (file.size > 10 * 1024 * 1024) {
-                window.showAlert(`${file.name}은(는) 10MB를 초과합니다`);
-                continue;
-            }
+            // 이미지 압축 (PDF와 문서 파일은 압축 안 함)
+            const compressedFile = await window.compressImage(file);
             
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', compressedFile);
             
-            const response = await axios.post(`${API_BASE_URL}/api/upload-photo`, formData, {
+            const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=team-log`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
                 onUploadProgress: (e) => {
                     const percent = Math.round((e.loaded * 100) / e.total);
@@ -6463,8 +7127,14 @@ window.handleTeamLogImageUpload = async function(event) {
                 }
             });
             
-            currentPhotos.push(response.data.url);
-            uploadedCount++;
+            if (response.data.success) {
+                // URL과 원본 파일명을 함께 저장 (URL#원본파일명 형식)
+                const urlWithOriginalName = response.data.original_filename 
+                    ? `${response.data.url}#${encodeURIComponent(response.data.original_filename)}`
+                    : response.data.url;
+                currentPhotos.push(urlWithOriginalName);
+                uploadedCount++;
+            }
         }
         
         document.getElementById('team-log-photo-urls').value = JSON.stringify(currentPhotos);
@@ -6496,15 +7166,9 @@ function renderTeamLogPhotos() {
     const photos = JSON.parse(document.getElementById('team-log-photo-urls').value || '[]');
     const previewDiv = document.getElementById('team-log-photos-preview');
     
-    previewDiv.innerHTML = photos.map((url, idx) => `
-        <div class="relative group">
-            <img src="${url}" class="w-full h-24 object-cover rounded border">
-            <button type="button" onclick="window.removeTeamLogPhoto(${idx})" 
-                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                <i class="fas fa-times text-xs"></i>
-            </button>
-        </div>
-    `).join('');
+    previewDiv.innerHTML = photos.map((url, idx) => 
+        window.createFilePreviewItem(url, idx, 'window.removeTeamLogPhoto')
+    ).join('');
 }
 
 // ==================== 시간표 관리 ====================
@@ -6812,11 +7476,57 @@ function calculateDuration(startTime, endTime) {
 // 날짜에 요일 추가하는 헬퍼 함수
 function formatDateWithDay(dateStr) {
     if (!dateStr) return '-';
-    // 한국 시간대로 변환 (UTC+9)
-    const date = new Date(dateStr + 'T00:00:00+09:00');
-    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-    const dayOfWeek = dayNames[date.getDay()];
-    return `${dateStr.substring(0, 10)} (${dayOfWeek})`;
+    
+    // 이미 00.00.00 형식인 경우 그대로 반환
+    if (/^\d{2}\.\d{2}\.\d{2}$/.test(dateStr)) {
+        return dateStr;
+    }
+    
+    // YYYY-MM-DD 형식인 경우 00.00.00으로 변환
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const parts = dateStr.split('-');
+        return `${parts[0].substring(2)}.${parts[1]}.${parts[2]}`;
+    }
+    
+    // 그 외의 경우 그대로 반환
+    return dateStr;
+}
+
+// 생년월일을 표준 형식(YYYY-MM-DD)으로 변환하는 함수
+function normalizeBirthDate(dateStr) {
+    if (!dateStr) return null;
+    
+    // 이미 YYYY-MM-DD 형식인 경우
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return dateStr;
+    }
+    
+    // 00.00.00 형식인 경우 20YY-MM-DD로 변환
+    if (/^\d{2}\.\d{2}\.\d{2}$/.test(dateStr)) {
+        const parts = dateStr.split('.');
+        const year = parseInt(parts[0]);
+        const fullYear = year >= 0 && year <= 30 ? `20${parts[0]}` : `19${parts[0]}`;
+        return `${fullYear}-${parts[1]}-${parts[2]}`;
+    }
+    
+    return dateStr;
+}
+
+// 전화번호를 표준 형식(010-0000-0000)으로 변환하는 함수
+function normalizePhone(phone) {
+    if (!phone) return null;
+    
+    // 숫자만 추출
+    const numbers = phone.replace(/[^0-9]/g, '');
+    
+    // 010-0000-0000 형식으로 변환
+    if (numbers.length === 11 && numbers.startsWith('010')) {
+        return `${numbers.substring(0, 3)}-${numbers.substring(3, 7)}-${numbers.substring(7)}`;
+    } else if (numbers.length === 10) {
+        return `${numbers.substring(0, 3)}-${numbers.substring(3, 6)}-${numbers.substring(6)}`;
+    }
+    
+    return phone;
 }
 
 window.filterTimetables = function() {
@@ -6986,6 +7696,7 @@ window.editTimetable = function(id) {
 }
 
 window.deleteTimetable = async function(id) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     if (!confirm('이 시간표를 삭제하시겠습니까?')) return;
     
     try {
@@ -7428,7 +8139,7 @@ window.showTrainingLogForm = async function(timetableId) {
                     <!-- 사진 업로드 -->
                     <div>
                         <label class="block text-gray-700 mb-2">
-                            <i class="fas fa-camera mr-2"></i>사진 첨부
+                            <i class="fas fa-paperclip mr-2"></i>사진 및 파일 첨부 (그림파일, PDF, HWP, PPT, Excel, Word, TXT 등)
                         </label>
                         <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
                             <div class="flex flex-wrap gap-2 mb-3">
@@ -7441,7 +8152,7 @@ window.showTrainingLogForm = async function(timetableId) {
                                     <i class="fas fa-camera mr-2"></i>사진 촬영
                                 </button>
                             </div>
-                            <input type="file" id="training-file-input" accept="image/*" multiple 
+                            <input type="file" id="training-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
                             <input type="file" id="training-camera-input" accept="image/*"  
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
@@ -7601,7 +8312,7 @@ window.editTrainingLog = async function(logId, timetableId) {
                     <!-- 사진 업로드 -->
                     <div>
                         <label class="block text-gray-700 mb-2">
-                            <i class="fas fa-camera mr-2"></i>사진 첨부
+                            <i class="fas fa-paperclip mr-2"></i>사진 및 파일 첨부 (그림파일, PDF, HWP, PPT, Excel, Word, TXT 등)
                         </label>
                         <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
                             <div class="flex flex-wrap gap-2 mb-3">
@@ -7614,7 +8325,7 @@ window.editTrainingLog = async function(logId, timetableId) {
                                     <i class="fas fa-camera mr-2"></i>사진 촬영
                                 </button>
                             </div>
-                            <input type="file" id="training-file-input" accept="image/*" multiple 
+                            <input type="file" id="training-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
                             <input type="file" id="training-camera-input" accept="image/*"  
                                    onchange="window.handleTrainingImageUpload(event)" class="hidden">
@@ -7676,6 +8387,16 @@ window.handleTrainingImageUpload = async function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
+    // 파일 검증
+    for (let file of files) {
+        const validation = window.validateFile(file);
+        if (!validation.valid) {
+            window.showAlert(validation.message);
+            event.target.value = '';
+            return;
+        }
+    }
+    
     // 프로그레스 바 표시
     const progressDiv = document.getElementById('training-upload-progress');
     const progressBar = document.getElementById('training-progress-bar');
@@ -7706,7 +8427,11 @@ window.handleTrainingImageUpload = async function(event) {
             );
             
             if (response.data.success) {
-                photoUrls.push(response.data.url);
+                // URL과 원본 파일명을 함께 저장 (URL#원본파일명 형식)
+                const urlWithOriginalName = response.data.original_filename 
+                    ? `${response.data.url}#${encodeURIComponent(response.data.original_filename)}`
+                    : response.data.url;
+                photoUrls.push(urlWithOriginalName);
             }
             
             // 완료 프로그레스
@@ -7794,27 +8519,9 @@ function updateTrainingPhotoPreview(photoUrls) {
         return;
     }
     
-    previewDiv.innerHTML = photoUrls.map((url, idx) => `
-        <div class="flex items-center gap-3 bg-white border rounded p-2 hover:bg-gray-50">
-            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download class="flex-shrink-0">
-                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
-                     alt="사진 ${idx + 1}"
-                     class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
-                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
-            </a>
-            <div class="flex-1">
-                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" download 
-                   class="text-blue-600 hover:underline text-sm block">
-                    사진 ${idx + 1} 다운로드
-                </a>
-                <p class="text-xs text-gray-500 mt-1">클릭하여 다운로드</p>
-            </div>
-            <button type="button" onclick="window.removeTrainingPhoto(${idx})" 
-                    class="text-red-500 hover:text-red-700 px-2">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
-    `).join('');
+    previewDiv.innerHTML = photoUrls.map((url, idx) => 
+        window.createFilePreviewItem(url, idx, 'window.removeTrainingPhoto')
+    ).join('');
 }
 
 window.generateAIContent = async function(timetableId, subjectName, subjectCode, classDate, instructorName, detailLevel = 'normal') {
@@ -7949,6 +8656,7 @@ window.updateTrainingLog = async function(logId, autoSave = false) {
 }
 
 window.deleteTrainingLog = async function(logId) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     const confirmed = await window.showConfirm('이 훈련일지를 삭제하시겠습니까?');
     if (!confirmed) return;
     

@@ -289,6 +289,13 @@ async def create_student(data: dict):
         next_num = (result[0] or 0) + 1
         code = f"S{next_num:03d}"
         
+        # course_code 유효성 검증
+        course_code = data.get('course_code')
+        if course_code:
+            cursor.execute("SELECT COUNT(*) FROM courses WHERE code = %s", (course_code,))
+            if cursor.fetchone()[0] == 0:
+                course_code = None  # 유효하지 않은 과정 코드는 NULL로
+        
         query = """
             INSERT INTO students 
             (code, name, birth_date, gender, phone, email, address, interests, education, introduction, campus, course_code, notes, photo_urls)
@@ -307,7 +314,7 @@ async def create_student(data: dict):
             data.get('education'),
             data.get('introduction'),
             data.get('campus'),
-            data.get('course_code'),
+            course_code,  # 검증된 course_code 사용
             data.get('notes'),
             data.get('photo_urls')
         ))
@@ -2748,8 +2755,16 @@ async def upload_image(
         업로드된 파일의 URL
     """
     try:
-        # 파일 확장자 검증
-        allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+        # 파일 확장자 검증 (이미지 + PDF)
+        allowed_extensions = [
+            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp',  # 이미지
+            '.pdf',  # PDF
+            '.ppt', '.pptx',  # PowerPoint
+            '.xls', '.xlsx',  # Excel
+            '.doc', '.docx',  # Word
+            '.txt',  # 텍스트
+            '.hwp'  # 한글
+        ]
         file_ext = os.path.splitext(file.filename)[1].lower()
         
         if file_ext not in allowed_extensions:
@@ -2761,14 +2776,40 @@ async def upload_image(
         # 파일 읽기
         file_data = await file.read()
         
-        # 파일 크기 체크 (10MB 제한)
-        if len(file_data) > 10 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="파일 크기는 10MB를 초과할 수 없습니다")
+        # 파일 크기 체크 (20MB 제한)
+        if len(file_data) > 20 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="파일 크기는 20MB를 초과할 수 없습니다")
         
-        # 고유한 파일명 생성 (타임스탬프 + UUID + 원본 확장자)
+        # 원본 파일명 보존 (타임스탬프 접두어로 중복 방지)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         unique_id = str(uuid.uuid4())[:8]
-        new_filename = f"{timestamp}_{unique_id}{file_ext}"
+        
+        # 원본 파일명에서 확장자 제거
+        original_name = os.path.splitext(file.filename)[0]
+        
+        # 안전한 파일명으로 변환 (ASCII 문자만 허용)
+        # 한글/특수문자는 언더스코어로, 영문/숫자/-/_/.만 유지
+        safe_name = ""
+        for c in original_name:
+            if c.isascii() and (c.isalnum() or c in ('-', '_', '.')):
+                safe_name += c
+            else:
+                safe_name += '_'
+        
+        # 연속된 언더스코어 제거
+        import re
+        safe_name = re.sub(r'_+', '_', safe_name)
+        safe_name = safe_name.strip('_')
+        
+        # 너무 긴 파일명은 자르기
+        if len(safe_name) > 50:
+            safe_name = safe_name[:50]
+        
+        # 파일명이 비어있으면 file로 대체
+        if not safe_name:
+            safe_name = "file"
+        
+        new_filename = f"{timestamp}_{unique_id}_{safe_name}{file_ext}"
         
         # FTP 업로드
         file_url = upload_to_ftp(file_data, new_filename, category)
@@ -2777,6 +2818,7 @@ async def upload_image(
             "success": True,
             "url": file_url,
             "filename": new_filename,
+            "original_filename": file.filename,  # 원본 파일명 추가
             "size": len(file_data)
         }
         
@@ -2822,9 +2864,9 @@ async def upload_image_base64(data: dict):
         # Base64 디코딩
         file_data = base64.b64decode(base64_data)
         
-        # 파일 크기 체크 (10MB 제한)
-        if len(file_data) > 10 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="파일 크기는 10MB를 초과할 수 없습니다")
+        # 파일 크기 체크 (20MB 제한)
+        if len(file_data) > 20 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="파일 크기는 20MB를 초과할 수 없습니다")
         
         # 고유한 파일명 생성
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -2906,16 +2948,29 @@ async def download_image(url: str = Query(..., description="FTP URL to download"
             '.png': 'image/png',
             '.gif': 'image/gif',
             '.bmp': 'image/bmp',
-            '.webp': 'image/webp'
+            '.webp': 'image/webp',
+            '.pdf': 'application/pdf',
+            '.ppt': 'application/vnd.ms-powerpoint',
+            '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            '.xls': 'application/vnd.ms-excel',
+            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.txt': 'text/plain',
+            '.hwp': 'application/x-hwp'
         }
         media_type = media_type_map.get(ext, 'application/octet-stream')
+        
+        # PDF와 이미지는 inline으로 보여주고, 나머지는 다운로드
+        inline_types = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.txt']
+        disposition_type = 'inline' if ext in inline_types else 'attachment'
         
         return FileResponse(
             temp_filename,
             media_type=media_type,
             filename=filename,
             headers={
-                'Content-Disposition': f'attachment; filename="{filename}"'
+                'Content-Disposition': f'{disposition_type}; filename="{filename}"'
             }
         )
         
