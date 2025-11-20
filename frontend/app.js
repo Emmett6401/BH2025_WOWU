@@ -10946,6 +10946,9 @@ window.closeMyPage = async function() {
     if (modal) {
         modal.remove();
     }
+    
+    // 대시보드로 이동
+    showDashboard();
 };
 
 window.uploadMyPagePhoto = async function(event) {
