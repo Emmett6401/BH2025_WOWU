@@ -6749,14 +6749,29 @@ function formatTime(timeValue) {
 }
 
 function timeToSeconds(timeStr) {
-    const [hours, minutes] = timeStr.split(':');
-    return parseInt(hours) * 3600 + parseInt(minutes) * 60;
+    if (!timeStr) return 0;
+    const parts = timeStr.split(':');
+    const hours = parseInt(parts[0]) || 0;
+    const minutes = parseInt(parts[1]) || 0;
+    return hours * 3600 + minutes * 60;
 }
 
-function calculateDuration(startSeconds, endSeconds) {
-    if (!startSeconds || !endSeconds) return 0;
-    const durationSeconds = endSeconds - startSeconds;
-    return Math.round(durationSeconds / 3600); // 시간 단위로 반환
+function calculateDuration(startTime, endTime) {
+    // startTime과 endTime이 문자열(HH:MM:SS 또는 HH:MM)인 경우
+    if (typeof startTime === 'string' && typeof endTime === 'string') {
+        const startSeconds = timeToSeconds(startTime);
+        const endSeconds = timeToSeconds(endTime);
+        const durationSeconds = endSeconds - startSeconds;
+        return Math.round(durationSeconds / 3600 * 10) / 10; // 소수점 1자리 (예: 2.5시간)
+    }
+    
+    // startTime과 endTime이 숫자(초)인 경우
+    if (typeof startTime === 'number' && typeof endTime === 'number') {
+        const durationSeconds = endTime - startTime;
+        return Math.round(durationSeconds / 3600 * 10) / 10;
+    }
+    
+    return 0;
 }
 
 // 날짜에 요일 추가하는 헬퍼 함수
