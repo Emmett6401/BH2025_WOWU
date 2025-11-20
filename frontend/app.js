@@ -5363,11 +5363,36 @@ window.handleInstructorProfileUpload = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    // 이미지 파일인지 확인
+    if (!file.type.startsWith('image/')) {
+        window.showAlert('⚠️ 이미지 파일만 업로드 가능합니다.', 'warning');
+        event.target.value = '';
+        return;
+    }
+    
     // 프로그레스바 요소
     const progressDiv = document.getElementById('instructor-profile-upload-progress');
     const progressBar = document.getElementById('instructor-profile-progress-bar');
     
     try {
+        // 파일 압축 (Cafe24 1MB 제한 대응)
+        let uploadFile = file;
+        const originalSize = file.size / 1024 / 1024; // MB
+        
+        if (file.size > 1 * 1024 * 1024) {  // 1MB 이상이면 압축
+            window.showAlert('📦 이미지를 최적화하는 중...', 'info');
+            uploadFile = await compressImage(file, 1);  // 1MB 이하로 압축
+            const compressedSize = uploadFile.size / 1024 / 1024;
+            console.log(`✅ 이미지 압축: ${originalSize.toFixed(2)}MB → ${compressedSize.toFixed(2)}MB`);
+        }
+        
+        // 최종 크기 확인
+        if (uploadFile.size > 1 * 1024 * 1024) {
+            window.showAlert('⚠️ 파일 크기는 1MB를 초과할 수 없습니다.\n\n현재 크기: ' + (uploadFile.size / 1024 / 1024).toFixed(2) + 'MB', 'warning');
+            event.target.value = '';
+            return;
+        }
+        
         // 프로그레스바 표시
         if (progressDiv) {
             progressDiv.classList.remove('hidden');
@@ -5375,7 +5400,7 @@ window.handleInstructorProfileUpload = async function(event) {
         }
         
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', uploadFile);
         
         const response = await axios.post(
             `${API_BASE_URL}/api/upload-image?category=teacher`,
@@ -5393,9 +5418,10 @@ window.handleInstructorProfileUpload = async function(event) {
         
         if (response.data.success) {
             const profilePhotoUrl = response.data.url;
-            // 캐시 버스팅
+            // 강력한 캐시 버스팅
             const timestamp = new Date().getTime();
-            document.getElementById('instructor-profile-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(profilePhotoUrl) + '&t=' + timestamp;
+            const random = Math.random().toString(36).substring(7);
+            document.getElementById('instructor-profile-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(profilePhotoUrl) + '&t=' + timestamp + '&r=' + random;
             document.getElementById('instructor-profile-photo-url').value = profilePhotoUrl;
             
             // 자동 저장
@@ -11055,20 +11081,108 @@ window.closeMyPage = async function() {
     loadDashboard();
 };
 
+// 이미지 압축 함수 (Cafe24 업로드 크기 제한 대응)
+async function compressImage(file, maxSizeMB = 1) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onerror = reject;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                
+                // 최대 크기 계산 (1920px - 웹 사용에 충분)
+                const maxDimension = 1920;
+                if (width > maxDimension || height > maxDimension) {
+                    if (width > height) {
+                        height = (height / width) * maxDimension;
+                        width = maxDimension;
+                    } else {
+                        width = (width / height) * maxDimension;
+                        height = maxDimension;
+                    }
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // 품질을 낮춰가며 압축
+                let quality = 0.9;
+                const tryCompress = () => {
+                    canvas.toBlob((blob) => {
+                        if (!blob) {
+                            reject(new Error('압축 실패'));
+                            return;
+                        }
+                        
+                        // 목표 크기 이하거나 품질이 너무 낮으면 완료
+                        if (blob.size <= maxSizeMB * 1024 * 1024 || quality <= 0.1) {
+                            resolve(new File([blob], file.name, {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            }));
+                        } else {
+                            // 품질 낮춰서 재시도
+                            quality -= 0.1;
+                            tryCompress();
+                        }
+                    }, 'image/jpeg', quality);
+                };
+                
+                tryCompress();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 window.uploadMyPagePhoto = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
     
-    // 파일 크기 체크 (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-        window.showAlert('⚠️ 파일 크기는 5MB를 초과할 수 없습니다.\n\n현재 크기: ' + (file.size / 1024 / 1024).toFixed(2) + 'MB', 'warning');
+    const instructor = JSON.parse(localStorage.getItem('instructor'));
+    
+    // 이미지 파일인지 확인
+    if (!file.type.startsWith('image/')) {
+        window.showAlert('⚠️ 이미지 파일만 업로드 가능합니다.', 'warning');
         event.target.value = '';
         return;
     }
     
-    const instructor = JSON.parse(localStorage.getItem('instructor'));
+    // 파일 압축 (Cafe24 1MB 제한 대응)
+    let uploadFile = file;
+    const originalSize = file.size / 1024 / 1024; // MB
+    
+    if (file.size > 1 * 1024 * 1024) {  // 1MB 이상이면 압축
+        try {
+            window.showAlert('📦 이미지를 최적화하는 중...', 'info');
+            uploadFile = await compressImage(file, 1);  // 1MB 이하로 압축
+            const compressedSize = uploadFile.size / 1024 / 1024;
+            console.log(`✅ 이미지 압축: ${originalSize.toFixed(2)}MB → ${compressedSize.toFixed(2)}MB`);
+        } catch (error) {
+            console.error('이미지 압축 실패:', error);
+            window.showAlert('⚠️ 이미지 압축에 실패했습니다. 더 작은 파일을 선택해주세요.', 'error');
+            event.target.value = '';
+            return;
+        }
+    }
+    
+    // 최종 크기 확인
+    if (uploadFile.size > 1 * 1024 * 1024) {
+        window.showAlert('⚠️ 파일 크기는 1MB를 초과할 수 없습니다.\n\n현재 크기: ' + (uploadFile.size / 1024 / 1024).toFixed(2) + 'MB', 'warning');
+        event.target.value = '';
+        return;
+    }
+    
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', uploadFile);
     
     // 프로그래스바 표시
     const progressContainer = document.getElementById('mypage-upload-progress');
@@ -11090,9 +11204,10 @@ window.uploadMyPagePhoto = async function(event) {
         
         const photoUrl = response.data.url;
         
-        // 프로필 사진 업데이트 (캐시 버스팅)
+        // 프로필 사진 업데이트 (강력한 캐시 버스팅)
         const timestamp = new Date().getTime();
-        document.getElementById('mypage-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(photoUrl) + '&t=' + timestamp;
+        const random = Math.random().toString(36).substring(7);
+        document.getElementById('mypage-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(photoUrl) + '&t=' + timestamp + '&r=' + random;
         
         // 기존 첨부 파일 가져오기
         let attachments = [];
