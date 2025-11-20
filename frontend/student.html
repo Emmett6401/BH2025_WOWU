@@ -601,7 +601,7 @@
                     notes: student.notes || '',
                     career_path: student.career_path || '4. 미정',
                     profile_photo: profilePhoto,
-                    attachments: JSON.stringify(photoUrls)
+                    attachments: JSON.stringify(attachments)
                 };
                 
                 await axios.put(`${API_BASE_URL}/api/students/${student.id}`, updateData, {
@@ -621,7 +621,7 @@
                 }
                 
                 progressBar.style.width = '100%';
-                alert(`✅ 파일이 업로드되었습니다! (${attachments.length}/20)`);
+                window.showAlert(`✅ ${files.length}개 파일이 업로드되고 자동 저장되었습니다! (${attachments.length}/20)`, 'success');
                 
                 setTimeout(() => {
                     progressDiv.classList.add('hidden');
@@ -630,7 +630,7 @@
             } catch (error) {
                 console.error('파일 업로드 실패:', error);
                 progressDiv.classList.add('hidden');
-                alert('❌ 파일 업로드에 실패했습니다: ' + error.message);
+                window.showAlert('❌ 파일 업로드에 실패했습니다: ' + error.message, 'error');
             }
             
             // 파일 input 초기화

@@ -10561,6 +10561,13 @@ async function updateHeader() {
                 logoElement.src = settings.logo_url;
             }
         }
+        
+        // 강사 이름 업데이트
+        const instructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+        const nameElement = document.getElementById('instructorName');
+        if (nameElement && instructor.name) {
+            nameElement.textContent = instructor.name;
+        }
     } catch (error) {
         console.error('❌ 헤더 업데이트 실패:', error);
     }
@@ -10948,7 +10955,7 @@ window.closeMyPage = async function() {
     }
     
     // 대시보드로 이동
-    showDashboard();
+    loadDashboard();
 };
 
 window.uploadMyPagePhoto = async function(event) {
