@@ -2253,7 +2253,7 @@ window.showStudentForm = async function(studentId = null) {
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-2">생년월일 (YY.MM.DD)</label>
-                    <input type="text" name="birth_date" value="${student?.birth_date || ''}" 
+                    <input type="text" name="birth_date" value="${student?.birth_date ? formatDateWithDay(student.birth_date) : ''}" 
                            placeholder="99.02.25"
                            class="w-full px-3 py-2 border rounded-lg">
                 </div>
@@ -2267,7 +2267,7 @@ window.showStudentForm = async function(studentId = null) {
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-2">연락처</label>
-                    <input type="tel" name="phone" value="${student?.phone || ''}" required 
+                    <input type="tel" name="phone" value="${student?.phone ? normalizePhone(student.phone) : ''}" required 
                            class="w-full px-3 py-2 border rounded-lg">
                 </div>
                 <div class="col-span-2">
@@ -3458,7 +3458,7 @@ window.showStudentDetail = async function(studentId) {
                                     <p class="text-sm text-gray-600 mb-2 font-semibold flex items-center">
                                         <i class="fas fa-phone text-green-600 mr-2"></i>전화번호
                                     </p>
-                                    <p class="font-bold text-gray-800 text-xl">${student.phone || '-'}</p>
+                                    <p class="font-bold text-gray-800 text-xl">${student.phone ? normalizePhone(student.phone) : '-'}</p>
                                 </div>
                                 <div class="bg-blue-50 p-5 rounded-xl border-l-4 border-blue-500">
                                     <p class="text-sm text-gray-600 mb-2 font-semibold flex items-center">
