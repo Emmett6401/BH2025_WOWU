@@ -3289,7 +3289,34 @@ window.showStudentDetail = async function(studentId) {
         
         // 기존 상세 정보 초기화
         const detailDiv = document.getElementById('student-detail');
-        detailDiv.innerHTML = '<div class="p-4 text-center"><i class="fas fa-spinner fa-spin mr-2"></i>로딩 중...</div>';
+        detailDiv.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+        detailDiv.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+                <div class="text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-user-circle text-6xl text-blue-500 animate-pulse"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">학생 정보 불러오는 중...</h3>
+                    <p class="text-gray-600 mb-4">잠시만 기다려주세요</p>
+                    
+                    <!-- 프로그레스바 -->
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 mb-4 overflow-hidden">
+                        <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-2.5 rounded-full animate-progress"></div>
+                    </div>
+                    
+                    <style>
+                        @keyframes progress {
+                            0% { width: 0%; }
+                            50% { width: 70%; }
+                            100% { width: 100%; }
+                        }
+                        .animate-progress {
+                            animation: progress 2s ease-in-out infinite;
+                        }
+                    </style>
+                </div>
+            </div>
+        `;
         detailDiv.classList.remove('hidden');
         
         // 학생 정보 조회
@@ -3478,9 +3505,23 @@ window.showStudentDetail = async function(studentId) {
                             </div>
                             주소
                         </h4>
-                        <div class="bg-orange-50 p-5 rounded-xl border-l-4 border-orange-500">
+                        <div class="bg-orange-50 p-5 rounded-xl border-l-4 border-orange-500 mb-4">
                             <p class="font-semibold text-gray-800 text-lg">${student.address || '주소 정보가 없습니다'}</p>
                         </div>
+                        ${student.address ? `
+                            <!-- 구글 지도 -->
+                            <div class="rounded-xl overflow-hidden shadow-md border-2 border-gray-200">
+                                <iframe
+                                    width="100%"
+                                    height="300"
+                                    style="border:0"
+                                    loading="lazy"
+                                    allowfullscreen
+                                    referrerpolicy="no-referrer-when-downgrade"
+                                    src="https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(student.address)}&zoom=15&language=ko">
+                                </iframe>
+                            </div>
+                        ` : ''}
                     </div>
                     
                     <!-- 4단: 자기소개 & 비고 -->
