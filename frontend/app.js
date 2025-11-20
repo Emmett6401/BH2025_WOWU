@@ -9933,13 +9933,16 @@ window.saveSystemSettings = async function() {
     formData.append('logo_url', document.getElementById('logo-url').value);
     
     try {
+        console.log('시스템 설정 저장 시작...');
         await axios.post(`${API_BASE_URL}/api/system-settings`, formData);
-        window.showAlert('시스템 설정이 저장되었습니다. 페이지를 새로고침하여 변경사항을 확인하세요.');
+        console.log('✅ 시스템 설정 저장 완료');
         
         // 헤더 즉시 업데이트
-        updateHeader();
+        await updateHeader();
+        
+        window.showAlert('✅ 시스템 설정이 저장되고 헤더가 업데이트되었습니다!');
     } catch (error) {
-        console.error('시스템 설정 저장 실패:', error);
+        console.error('❌ 시스템 설정 저장 실패:', error);
         window.showAlert('시스템 설정 저장에 실패했습니다: ' + error.message);
     }
 }
@@ -9950,27 +9953,43 @@ async function updateHeader() {
         const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
         const settings = response.data;
         
+        console.log('헤더 업데이트:', settings);
+        
         // 제목 업데이트
-        const titleElement = document.querySelector('header h1');
+        const titleElement = document.getElementById('system-title-header');
         if (titleElement) {
             titleElement.innerHTML = `<i class="fas fa-school mr-3"></i>${settings.system_title || 'KDT교육관리시스템 v3.2'}`;
+            console.log('제목 업데이트 완료');
         }
         
-        // 부제목 업데이트
-        const subtitleElement = document.querySelector('header p.text-blue-100');
-        if (subtitleElement) {
-            subtitleElement.textContent = `${settings.system_subtitle1 || ''} ${settings.system_subtitle2 || ''}`;
+        // 부제목 1 업데이트
+        const subtitle1Element = document.getElementById('system-subtitle1-header');
+        if (subtitle1Element) {
+            subtitle1Element.textContent = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
+            console.log('부제목1 업데이트 완료');
+        }
+        
+        // 부제목 2 업데이트
+        const subtitle2Element = document.getElementById('system-subtitle2-header');
+        if (subtitle2Element) {
+            subtitle2Element.textContent = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
+            console.log('부제목2 업데이트 완료');
         }
         
         // 로고 업데이트
         const logoElement = document.querySelector('header img[alt*="로고"]');
         if (logoElement && settings.logo_url) {
-            logoElement.src = settings.logo_url.startsWith('ftp://') 
-                ? API_BASE_URL + '/api/download-image?file_path=' + encodeURIComponent(settings.logo_url)
-                : settings.logo_url;
+            if (settings.logo_url.startsWith('ftp://')) {
+                logoElement.src = API_BASE_URL + '/api/download-image?file_path=' + encodeURIComponent(settings.logo_url);
+            } else {
+                logoElement.src = settings.logo_url;
+            }
+            console.log('로고 업데이트 완료');
         }
+        
+        console.log('✅ 헤더 업데이트 완료');
     } catch (error) {
-        console.error('헤더 업데이트 실패:', error);
+        console.error('❌ 헤더 업데이트 실패:', error);
     }
 }
 
