@@ -3390,6 +3390,98 @@ async def proxy_ftp_image(url: str):
         print(f"FTP 이미지 프록시 에러: {e}")
         raise HTTPException(status_code=500, detail=f"이미지를 불러올 수 없습니다: {str(e)}")
 
+# ==================== 시스템 설정 API ====================
+
+def ensure_system_settings_table(cursor):
+    """system_settings 테이블이 없으면 생성"""
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS system_settings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                setting_key VARCHAR(50) UNIQUE NOT NULL,
+                setting_value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        """)
+        print("✅ system_settings 테이블 확인/생성 완료")
+    except Exception as e:
+        print(f"⚠️ system_settings 테이블 생성 실패: {e}")
+
+@app.get("/api/system-settings")
+async def get_system_settings():
+    """시스템 설정 조회"""
+    conn = get_db_connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+    
+    try:
+        ensure_system_settings_table(cursor)
+        conn.commit()
+        
+        cursor.execute("SELECT * FROM system_settings")
+        settings = cursor.fetchall()
+        
+        # 설정을 키-값 형태로 변환
+        settings_dict = {}
+        for setting in settings:
+            settings_dict[setting['setting_key']] = setting['setting_value']
+        
+        # 기본값 설정
+        if 'system_title' not in settings_dict:
+            settings_dict['system_title'] = 'KDT교육관리시스템 v3.2'
+        if 'system_subtitle1' not in settings_dict:
+            settings_dict['system_subtitle1'] = '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단'
+        if 'system_subtitle2' not in settings_dict:
+            settings_dict['system_subtitle2'] = '바이오헬스아카데미 올인원테크 이노베이터'
+        if 'logo_url' not in settings_dict:
+            settings_dict['logo_url'] = '/woosong-logo.png'
+        
+        return settings_dict
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.post("/api/system-settings")
+async def update_system_settings(
+    system_title: Optional[str] = None,
+    system_subtitle1: Optional[str] = None,
+    system_subtitle2: Optional[str] = None,
+    logo_url: Optional[str] = None
+):
+    """시스템 설정 업데이트"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        ensure_system_settings_table(cursor)
+        conn.commit()
+        
+        updates = {
+            'system_title': system_title,
+            'system_subtitle1': system_subtitle1,
+            'system_subtitle2': system_subtitle2,
+            'logo_url': logo_url
+        }
+        
+        for key, value in updates.items():
+            if value is not None:
+                cursor.execute("""
+                    INSERT INTO system_settings (setting_key, setting_value)
+                    VALUES (%s, %s)
+                    ON DUPLICATE KEY UPDATE setting_value = %s
+                """, (key, value, value))
+        
+        conn.commit()
+        return {"message": "시스템 설정이 업데이트되었습니다"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

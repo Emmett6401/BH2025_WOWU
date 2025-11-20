@@ -1939,6 +1939,9 @@ window.showTab = function(tab, addToHistory = true) {
         case 'ai-counseling':
             loadAICounseling();
             break;
+        case 'system-settings':
+            loadSystemSettings();
+            break;
     }
 }
 
@@ -9771,5 +9774,226 @@ window.resetPassword = async function(code, name) {
     } catch (error) {
         console.error('비밀번호 초기화 실패:', error);
         window.showAlert('비밀번호 초기화에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+// ==================== 시스템 설정 ====================
+async function loadSystemSettings() {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
+        const settings = response.data;
+        renderSystemSettings(settings);
+    } catch (error) {
+        console.error('시스템 설정 로드 실패:', error);
+        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">시스템 설정을 불러오는데 실패했습니다.</div>';
+    }
+}
+
+function renderSystemSettings(settings) {
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-cog mr-2"></i>시스템 등록
+                </h2>
+            </div>
+            
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 mb-6 border-l-4 border-blue-500">
+                <p class="text-gray-700 mb-2">
+                    <i class="fas fa-info-circle mr-2 text-blue-500"></i>
+                    시스템 제목, 부제목, 로고를 설정할 수 있습니다.
+                </p>
+                <p class="text-sm text-gray-600">
+                    설정한 내용은 헤더에 즉시 반영됩니다.
+                </p>
+            </div>
+            
+            <form id="system-settings-form" class="space-y-6">
+                <!-- 큰 제목 -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-heading mr-2 text-blue-500"></i>큰 제목 (시스템 이름)
+                    </label>
+                    <input type="text" id="system-title" value="${settings.system_title || 'KDT교육관리시스템 v3.2'}" 
+                           class="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="예: KDT교육관리시스템 v3.2">
+                    <p class="text-sm text-gray-500 mt-1">헤더 상단에 표시되는 메인 제목입니다</p>
+                </div>
+                
+                <!-- 작은 제목 1줄 -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-align-left mr-2 text-green-500"></i>작은 제목 (1줄)
+                    </label>
+                    <input type="text" id="system-subtitle1" value="${settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단'}" 
+                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="예: 보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단">
+                    <p class="text-sm text-gray-500 mt-1">헤더 하단 첫 번째 줄에 표시됩니다</p>
+                </div>
+                
+                <!-- 작은 제목 2줄 -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-align-left mr-2 text-green-500"></i>작은 제목 (2줄)
+                    </label>
+                    <input type="text" id="system-subtitle2" value="${settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터'}" 
+                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="예: 바이오헬스아카데미 올인원테크 이노베이터">
+                    <p class="text-sm text-gray-500 mt-1">헤더 하단 두 번째 줄에 표시됩니다</p>
+                </div>
+                
+                <!-- 로고 이미지 -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-image mr-2 text-purple-500"></i>로고 이미지
+                    </label>
+                    
+                    <!-- 현재 로고 미리보기 -->
+                    <div class="mb-4 p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                        <p class="text-sm text-gray-600 mb-2">현재 로고:</p>
+                        <img id="current-logo" src="${settings.logo_url || '/woosong-logo.png'}" 
+                             alt="현재 로고" class="h-20 object-contain bg-white p-2 rounded shadow-sm"
+                             onerror="this.style.display='none'">
+                    </div>
+                    
+                    <!-- 로고 업로드 -->
+                    <div class="space-y-3">
+                        <input type="file" id="logo-file" accept="image/*" 
+                               onchange="window.handleLogoUpload(event)"
+                               class="w-full px-3 py-2 border rounded-lg">
+                        <p class="text-sm text-gray-500">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            권장: PNG, 투명 배경, 가로 300px 이상
+                        </p>
+                    </div>
+                    
+                    <input type="hidden" id="logo-url" value="${settings.logo_url || '/woosong-logo.png'}">
+                </div>
+                
+                <!-- 저장 버튼 -->
+                <div class="flex gap-3 pt-4 border-t">
+                    <button type="button" onclick="window.saveSystemSettings()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold flex-1">
+                        <i class="fas fa-save mr-2"></i>저장
+                    </button>
+                    <button type="button" onclick="window.resetSystemSettings()" 
+                            class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-lg font-semibold">
+                        <i class="fas fa-undo mr-2"></i>기본값으로 초기화
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+}
+
+// 로고 업로드 처리
+window.handleLogoUpload = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // 파일 형식 검증
+    if (!file.type.startsWith('image/')) {
+        window.showAlert('이미지 파일만 업로드 가능합니다.');
+        return;
+    }
+    
+    // 파일 크기 검증 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        window.showAlert('파일 크기는 5MB 이하여야 합니다.');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await axios.post(`${API_BASE_URL}/api/upload-image`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        
+        const logoUrl = response.data.url;
+        document.getElementById('logo-url').value = logoUrl;
+        document.getElementById('current-logo').src = API_BASE_URL + '/api/download-image?file_path=' + encodeURIComponent(logoUrl);
+        document.getElementById('current-logo').style.display = 'block';
+        
+        window.showAlert('로고가 업로드되었습니다. 저장 버튼을 눌러 적용하세요.');
+    } catch (error) {
+        console.error('로고 업로드 실패:', error);
+        window.showAlert('로고 업로드에 실패했습니다: ' + error.message);
+    }
+}
+
+// 시스템 설정 저장
+window.saveSystemSettings = async function() {
+    const formData = new FormData();
+    formData.append('system_title', document.getElementById('system-title').value);
+    formData.append('system_subtitle1', document.getElementById('system-subtitle1').value);
+    formData.append('system_subtitle2', document.getElementById('system-subtitle2').value);
+    formData.append('logo_url', document.getElementById('logo-url').value);
+    
+    try {
+        await axios.post(`${API_BASE_URL}/api/system-settings`, formData);
+        window.showAlert('시스템 설정이 저장되었습니다. 페이지를 새로고침하여 변경사항을 확인하세요.');
+        
+        // 헤더 즉시 업데이트
+        updateHeader();
+    } catch (error) {
+        console.error('시스템 설정 저장 실패:', error);
+        window.showAlert('시스템 설정 저장에 실패했습니다: ' + error.message);
+    }
+}
+
+// 헤더 업데이트
+async function updateHeader() {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
+        const settings = response.data;
+        
+        // 제목 업데이트
+        const titleElement = document.querySelector('header h1');
+        if (titleElement) {
+            titleElement.innerHTML = `<i class="fas fa-school mr-3"></i>${settings.system_title || 'KDT교육관리시스템 v3.2'}`;
+        }
+        
+        // 부제목 업데이트
+        const subtitleElement = document.querySelector('header p.text-blue-100');
+        if (subtitleElement) {
+            subtitleElement.textContent = `${settings.system_subtitle1 || ''} ${settings.system_subtitle2 || ''}`;
+        }
+        
+        // 로고 업데이트
+        const logoElement = document.querySelector('header img[alt*="로고"]');
+        if (logoElement && settings.logo_url) {
+            logoElement.src = settings.logo_url.startsWith('ftp://') 
+                ? API_BASE_URL + '/api/download-image?file_path=' + encodeURIComponent(settings.logo_url)
+                : settings.logo_url;
+        }
+    } catch (error) {
+        console.error('헤더 업데이트 실패:', error);
+    }
+}
+
+// 기본값으로 초기화
+window.resetSystemSettings = async function() {
+    const confirmed = await window.showConfirm('시스템 설정을 기본값으로 초기화하시겠습니까?');
+    if (!confirmed) return;
+    
+    try {
+        const formData = new FormData();
+        formData.append('system_title', 'KDT교육관리시스템 v3.2');
+        formData.append('system_subtitle1', '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단');
+        formData.append('system_subtitle2', '바이오헬스아카데미 올인원테크 이노베이터');
+        formData.append('logo_url', '/woosong-logo.png');
+        
+        await axios.post(`${API_BASE_URL}/api/system-settings`, formData);
+        window.showAlert('시스템 설정이 기본값으로 초기화되었습니다.');
+        
+        // 화면 새로고침
+        loadSystemSettings();
+        updateHeader();
+    } catch (error) {
+        console.error('시스템 설정 초기화 실패:', error);
+        window.showAlert('시스템 설정 초기화에 실패했습니다: ' + error.message);
     }
 }
