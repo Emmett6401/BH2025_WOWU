@@ -50,9 +50,31 @@
         </div>
     </header>
 
+    <!-- 탭 메뉴 -->
+    <div class="bg-white shadow-md sticky top-0 z-10">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto">
+                <div class="flex gap-2">
+                    <button onclick="showTab('profile')" 
+                            id="tab-profile"
+                            class="px-6 py-3 font-semibold transition-all border-b-2 border-transparent hover:border-green-500 hover:text-green-600">
+                        <i class="fas fa-user mr-2"></i>내 정보
+                    </button>
+                    <button onclick="showTab('notes')" 
+                            id="tab-notes"
+                            class="px-6 py-3 font-semibold transition-all border-b-2 border-green-500 text-green-600">
+                        <i class="fas fa-book-open mr-2"></i>수업 메모
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 메인 컨텐츠 -->
     <main class="container mx-auto px-4 py-8">
         <div class="max-w-4xl mx-auto">
+            <!-- 수업메모 섹션 -->
+            <div id="section-notes">
             <!-- 수업메모 카드 -->
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
                 <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
@@ -110,7 +132,11 @@
                     </div>
                 </div>
             </div>
+            </div>
+            <!-- 수업메모 섹션 끝 -->
             
+            <!-- 프로필 섹션 -->
+            <div id="section-profile" class="hidden">
             <!-- 프로필 카드 -->
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
                 <!-- 프로필 헤더 -->
@@ -311,6 +337,8 @@
                     </div>
                 </div>
             </div>
+            </div>
+            <!-- 프로필 섹션 끝 -->
         </div>
     </main>
 
@@ -842,8 +870,31 @@
             }
         };
         
+        // ==================== 탭 전환 ====================
+        
+        window.showTab = function(tabName) {
+            // 모든 탭 버튼 비활성화
+            document.getElementById('tab-profile').classList.remove('border-green-500', 'text-green-600');
+            document.getElementById('tab-notes').classList.remove('border-green-500', 'text-green-600');
+            
+            // 모든 섹션 숨기기
+            document.getElementById('section-profile').classList.add('hidden');
+            document.getElementById('section-notes').classList.add('hidden');
+            
+            // 선택된 탭 활성화
+            if (tabName === 'profile') {
+                document.getElementById('tab-profile').classList.add('border-green-500', 'text-green-600');
+                document.getElementById('section-profile').classList.remove('hidden');
+            } else if (tabName === 'notes') {
+                document.getElementById('tab-notes').classList.add('border-green-500', 'text-green-600');
+                document.getElementById('section-notes').classList.remove('hidden');
+            }
+        };
+        
         // 페이지 로드 시 학생 정보 표시
         window.addEventListener('DOMContentLoaded', async () => {
+            // 기본적으로 수업메모 탭 표시
+            showTab('notes');
             // 메모 목록 불러오기
             setTimeout(() => {
                 loadAllNotes();
