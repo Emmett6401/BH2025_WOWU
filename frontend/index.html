@@ -28,6 +28,27 @@
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link href="/pwa-styles.css" rel="stylesheet">
+    
+    <!-- 로그인 체크 (즉시 실행) -->
+    <script>
+        (function() {
+            console.log('🔒 즉시 로그인 체크 실행');
+            const loggedIn = localStorage.getItem('logged_in');
+            const instructor = localStorage.getItem('instructor');
+            
+            // 로그인 정보가 없으면 즉시 로그인 페이지로 리다이렉트
+            if (!loggedIn || loggedIn !== 'true' || !instructor) {
+                console.log('❌ 로그인 안 됨 - 로그인 페이지로 즉시 리다이렉트');
+                window.location.replace('/login.html');
+                // 페이지 로딩 중단
+                document.addEventListener('DOMContentLoaded', function(e) {
+                    e.stopImmediatePropagation();
+                }, true);
+            } else {
+                console.log('✅ 로그인 확인됨 - 페이지 로드 계속');
+            }
+        })();
+    </script>
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen">
