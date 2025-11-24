@@ -11367,7 +11367,29 @@ window.showMyPage = async function() {
                 </button>
             </div>
             
-            <div class="p-8">
+            <!-- 탭 메뉴 -->
+            <div class="bg-white border-b sticky" style="top: 88px; z-index: 9;">
+                <div class="flex gap-2 px-8">
+                    <button onclick="switchMyPageTab('profile')" 
+                            id="mypage-tab-profile"
+                            class="px-6 py-3 font-semibold transition-all border-b-2 border-blue-500 text-blue-600">
+                        <i class="fas fa-user mr-2"></i>내 정보
+                    </button>
+                    <button onclick="switchMyPageTab('ssirn')" 
+                            id="mypage-tab-ssirn"
+                            class="px-6 py-3 font-semibold transition-all border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 text-gray-600">
+                        <i class="fas fa-book-open mr-2"></i>SSIRN메모장
+                    </button>
+                    <button onclick="switchMyPageTab('notices')" 
+                            id="mypage-tab-notices"
+                            class="px-6 py-3 font-semibold transition-all border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 text-gray-600">
+                        <i class="fas fa-bullhorn mr-2"></i>공지사항
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 내 정보 섹션 -->
+            <div id="mypage-section-profile" class="p-8">
                 <!-- 프로필 사진 -->
                 <div class="mb-8 text-center">
                     <div class="inline-block relative">
@@ -11538,6 +11560,47 @@ window.showMyPage = async function() {
                     </div>
                 </form>
             </div>
+            <!-- /내 정보 섹션 -->
+            
+            <!-- SSIRN메모장 섹션 -->
+            <div id="mypage-section-ssirn" class="p-8 hidden">
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+                        <h2 class="text-2xl font-bold flex items-center">
+                            <i class="fas fa-book-open mr-3"></i>나의 SSIRN메모장
+                        </h2>
+                        <p class="text-blue-100 mt-2 text-sm">작성한 학생별 메모를 확인하세요</p>
+                    </div>
+                    <div class="p-6">
+                        <div id="mypage-ssirn-list" class="space-y-4"></div>
+                        <div id="mypage-ssirn-empty" class="text-center py-12 text-gray-500">
+                            <i class="fas fa-inbox text-6xl mb-4"></i>
+                            <p>작성된 SSIRN메모장이 없습니다</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /SSIRN메모장 섹션 -->
+            
+            <!-- 공지사항 섹션 -->
+            <div id="mypage-section-notices" class="p-8 hidden">
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                    <div class="bg-gradient-to-r from-purple-600 to-pink-600 p-6 text-white">
+                        <h2 class="text-2xl font-bold flex items-center">
+                            <i class="fas fa-bullhorn mr-3"></i>공지사항
+                        </h2>
+                        <p class="text-purple-100 mt-2 text-sm">중요한 공지사항을 확인하세요</p>
+                    </div>
+                    <div class="p-6">
+                        <div id="mypage-notices-list" class="space-y-4"></div>
+                        <div id="mypage-notices-empty" class="hidden text-center py-12 text-gray-500">
+                            <i class="fas fa-inbox text-6xl mb-4"></i>
+                            <p>게시된 공지사항이 없습니다</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /공지사항 섹션 -->
         </div>
     `;
     
@@ -11559,6 +11622,146 @@ window.showMyPage = async function() {
         } catch (e) {
             console.error('첨부 파일 URL 파싱 오류:', e);
         }
+    }
+};
+
+// MyPage 탭 전환 함수
+window.switchMyPageTab = function(tabName) {
+    // 탭 버튼 스타일 업데이트
+    const tabs = ['profile', 'ssirn', 'notices'];
+    tabs.forEach(tab => {
+        const btn = document.getElementById(`mypage-tab-${tab}`);
+        if (btn) {
+            if (tab === tabName) {
+                btn.className = 'px-6 py-3 font-semibold transition-all border-b-2 border-blue-500 text-blue-600';
+            } else {
+                btn.className = 'px-6 py-3 font-semibold transition-all border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 text-gray-600';
+            }
+        }
+    });
+    
+    // 섹션 표시/숨김
+    document.getElementById('mypage-section-profile').classList.toggle('hidden', tabName !== 'profile');
+    document.getElementById('mypage-section-ssirn').classList.toggle('hidden', tabName !== 'ssirn');
+    document.getElementById('mypage-section-notices').classList.toggle('hidden', tabName !== 'notices');
+    
+    // 콘텐츠 로드
+    if (tabName === 'ssirn') {
+        loadInstructorSSIRN();
+    } else if (tabName === 'notices') {
+        loadInstructorNotices();
+    }
+};
+
+// 강사 SSIRN메모장 로드
+window.loadInstructorSSIRN = async function() {
+    try {
+        const instructor = JSON.parse(sessionStorage.getItem('instructor'));
+        if (!instructor) return;
+        
+        // 모든 학생의 노트 가져오기 (강사가 작성한 것만)
+        const response = await axios.get(`${API_BASE_URL}/api/students`);
+        const students = response.data;
+        
+        const allNotes = [];
+        for (const student of students) {
+            const notesResponse = await axios.get(`${API_BASE_URL}/api/students/${student.id}/notes`);
+            notesResponse.data.forEach(note => {
+                allNotes.push({
+                    ...note,
+                    student: student
+                });
+            });
+        }
+        
+        // 최신순 정렬
+        allNotes.sort((a, b) => new Date(b.note_date) - new Date(a.note_date));
+        
+        const listDiv = document.getElementById('mypage-ssirn-list');
+        const emptyDiv = document.getElementById('mypage-ssirn-empty');
+        
+        if (!allNotes || allNotes.length === 0) {
+            listDiv.innerHTML = '';
+            emptyDiv.classList.remove('hidden');
+            return;
+        }
+        
+        emptyDiv.classList.add('hidden');
+        listDiv.innerHTML = allNotes.map(note => `
+            <div class="border-l-4 border-blue-500 bg-blue-50 p-4 rounded-r-lg hover:shadow-md transition-shadow cursor-pointer"
+                 onclick="showClassNoteDetail(${note.id}, '${note.student.name}')">
+                <div class="flex items-start gap-3">
+                    <div class="text-blue-600 text-2xl">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-2">
+                            <h3 class="text-lg font-bold text-gray-800">${note.student.name}</h3>
+                            <span class="text-sm text-gray-500">(${note.student.code})</span>
+                        </div>
+                        <div class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-calendar mr-1"></i>
+                            ${new Date(note.note_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        </div>
+                        <p class="text-gray-700 line-clamp-2">
+                            ${note.content.substring(0, 150)}${note.content.length > 150 ? '...' : ''}
+                        </p>
+                        <div class="mt-2 text-xs text-gray-400">
+                            <i class="fas fa-clock mr-1"></i>
+                            작성: ${new Date(note.created_at).toLocaleString('ko-KR')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('SSIRN메모장 로드 실패:', error);
+    }
+};
+
+// 강사용 공지사항 로드
+window.loadInstructorNotices = async function() {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/notices?active_only=true`);
+        const notices = response.data;
+        
+        const listDiv = document.getElementById('mypage-notices-list');
+        const emptyDiv = document.getElementById('mypage-notices-empty');
+        
+        if (!notices || notices.length === 0) {
+            listDiv.innerHTML = '';
+            emptyDiv.classList.remove('hidden');
+            return;
+        }
+        
+        emptyDiv.classList.add('hidden');
+        listDiv.innerHTML = notices.map(notice => {
+            const rawHtml = marked.parse(notice.content);
+            const cleanHtml = DOMPurify.sanitize(rawHtml);
+            const finalHtml = cleanHtml.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
+            
+            return `
+                <div class="border-l-4 border-purple-500 bg-purple-50 p-4 rounded-r-lg">
+                    <div class="flex items-start gap-3">
+                        <div class="text-purple-600 text-2xl">
+                            <i class="fas fa-bullhorn"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-gray-800 mb-2">${notice.title}</h3>
+                            <div class="text-sm text-gray-600 mb-3">
+                                <i class="fas fa-calendar mr-1"></i>
+                                ${notice.start_date} ~ ${notice.end_date}
+                            </div>
+                            <div class="prose max-w-none text-gray-700">
+                                ${finalHtml}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('공지사항 로드 실패:', error);
     }
 };
 
