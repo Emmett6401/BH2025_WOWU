@@ -11970,8 +11970,8 @@ window.showMyPageModal = async function() {
         </div>
     `;
     
-    document.body.appendChild(modal);
-    
+        document.body.appendChild(modal);
+        
         // 파일 미리보기 초기화
         if (instructor.attachments) {
             try {
