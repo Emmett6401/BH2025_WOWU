@@ -3367,19 +3367,19 @@ async def health_check():
 @app.post("/api/auth/login")
 async def login(credentials: dict):
     """
-    로그인 API
-    - 강사 이름으로 로그인
+    통합 로그인 API
+    - 이름으로 강사 또는 학생 자동 구분 로그인
     - 기본 비밀번호: kdt2025
     - 관리자 계정: root / xhRl1004!@# (DB 없이 접속 가능)
     """
-    instructor_name = credentials.get('name')
+    user_name = credentials.get('name')
     password = credentials.get('password')
     
-    if not instructor_name or not password:
+    if not user_name or not password:
         raise HTTPException(status_code=400, detail="이름과 비밀번호를 입력하세요")
     
     # 🔐 관리자 계정 하드코딩 (DB 없이 무조건 접속 가능)
-    if instructor_name.strip() == "root" and password == "xhRl1004!@#":
+    if user_name.strip() == "root" and password == "xhRl1004!@#":
         print("✅ 관리자(root) 로그인 성공")
         # 모든 메뉴에 대한 권한 부여
         all_permissions = {
@@ -3423,15 +3423,13 @@ async def login(credentials: dict):
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
-        # password 컬럼 존재 여부 확인
+        # 1️⃣ 먼저 강사 테이블에서 검색
         cursor.execute("SHOW COLUMNS FROM instructors LIKE 'password'")
-        has_password = cursor.fetchone() is not None
+        has_instructor_password = cursor.fetchone() is not None
         
-        # profile_photo와 attachments 컬럼 자동 생성
         ensure_profile_photo_columns(cursor, 'instructors')
         
-        # 강사 테이블에서 이름으로 검색 (공백 제거하여 비교 및 반환, permissions 및 default_screen 포함)
-        if has_password:
+        if has_instructor_password:
             cursor.execute("""
                 SELECT i.code, TRIM(i.name) as name, i.phone, i.major, i.instructor_type, 
                        i.email, i.created_at, i.updated_at, i.profile_photo, i.attachments, i.password,
@@ -3440,7 +3438,7 @@ async def login(credentials: dict):
                 FROM instructors i
                 LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
                 WHERE TRIM(i.name) = %s
-            """, (instructor_name.strip(),))
+            """, (user_name.strip(),))
         else:
             cursor.execute("""
                 SELECT i.code, TRIM(i.name) as name, i.phone, i.major, i.instructor_type, 
@@ -3450,18 +3448,76 @@ async def login(credentials: dict):
                 FROM instructors i
                 LEFT JOIN instructor_codes ic ON i.instructor_type = ic.code
                 WHERE TRIM(i.name) = %s
-            """, (instructor_name.strip(),))
+            """, (user_name.strip(),))
         
         instructor = cursor.fetchone()
         
-        if not instructor:
-            raise HTTPException(status_code=401, detail="등록되지 않은 강사입니다")
+        # 2️⃣ 강사로 검색되면 강사 로그인 처리
+        if instructor:
         
-        # 비밀번호 확인 (기본값: kdt2025)
+            # 비밀번호 확인 (기본값: kdt2025)
+            default_password = "kdt2025"
+            stored_password = instructor.get('password', default_password)
+            
+            if stored_password is None:
+                stored_password = default_password
+            
+            if password != stored_password:
+                raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다")
+            
+            # datetime 변환
+            for key, value in instructor.items():
+                if isinstance(value, (datetime, date)):
+                    instructor[key] = value.isoformat()
+                elif isinstance(value, bytes):
+                    instructor[key] = None
+            
+            # permissions JSON 파싱
+            if instructor.get('permissions'):
+                try:
+                    import json
+                    instructor['permissions'] = json.loads(instructor['permissions'])
+                except:
+                    instructor['permissions'] = {}
+            else:
+                instructor['permissions'] = {}
+            
+            print(f"✅ 강사 로그인 성공: {instructor['name']}")
+            return {
+                "success": True,
+                "message": f"{instructor['name']}님, 환영합니다!",
+                "user_type": "instructor",
+                "instructor": instructor
+            }
+        
+        # 3️⃣ 강사가 아니면 학생 테이블에서 검색
+        ensure_profile_photo_columns(cursor, 'students')
+        
+        cursor.execute("SHOW COLUMNS FROM students LIKE 'password'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE students ADD COLUMN password VARCHAR(100) DEFAULT 'kdt2025'")
+            conn.commit()
+        
+        cursor.execute("""
+            SELECT s.*, 
+                   c.name as course_name,
+                   c.start_date,
+                   c.final_end_date as end_date
+            FROM students s
+            LEFT JOIN courses c ON s.course_code = c.code
+            WHERE s.name = %s
+            LIMIT 1
+        """, (user_name.strip(),))
+        
+        student = cursor.fetchone()
+        
+        if not student:
+            raise HTTPException(status_code=401, detail="등록되지 않은 사용자입니다")
+        
+        # 비밀번호 확인
         default_password = "kdt2025"
-        stored_password = instructor.get('password', default_password)
+        stored_password = student.get('password', default_password)
         
-        # password 컬럼이 없으면 기본 비밀번호로 체크
         if stored_password is None:
             stored_password = default_password
         
@@ -3469,26 +3525,18 @@ async def login(credentials: dict):
             raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다")
         
         # datetime 변환
-        for key, value in instructor.items():
+        for key, value in student.items():
             if isinstance(value, (datetime, date)):
-                instructor[key] = value.isoformat()
+                student[key] = value.isoformat()
             elif isinstance(value, bytes):
-                instructor[key] = None
+                student[key] = None
         
-        # permissions JSON 파싱
-        if instructor.get('permissions'):
-            try:
-                import json
-                instructor['permissions'] = json.loads(instructor['permissions'])
-            except:
-                instructor['permissions'] = {}
-        else:
-            instructor['permissions'] = {}
-        
+        print(f"✅ 학생 로그인 성공: {student['name']}")
         return {
             "success": True,
-            "message": f"{instructor['name']}님, 환영합니다!",
-            "instructor": instructor
+            "message": f"{student['name']}님, 환영합니다!",
+            "user_type": "student",
+            "student": student
         }
         
     except HTTPException:
