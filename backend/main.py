@@ -4020,27 +4020,22 @@ async def create_or_update_class_note(data: dict):
         student_id = data.get('student_id')
         note_date = data.get('note_date')
         content = data.get('content', '')
+        note_id = data.get('id')  # ID가 있으면 수정, 없으면 생성
         
         if not student_id or not note_date:
             raise HTTPException(status_code=400, detail="student_id와 note_date는 필수입니다")
         
-        # 해당 날짜의 일지가 있는지 확인
-        cursor.execute(
-            "SELECT id FROM class_notes WHERE student_id = %s AND note_date = %s",
-            (student_id, note_date)
-        )
-        existing = cursor.fetchone()
-        
-        if existing:
-            # 업데이트
+        if note_id:
+            # ID가 제공된 경우: 기존 노트 업데이트
             cursor.execute(
-                "UPDATE class_notes SET content = %s WHERE id = %s",
-                (content, existing['id'])
+                "UPDATE class_notes SET content = %s, note_date = %s WHERE id = %s AND student_id = %s",
+                (content, note_date, note_id, student_id)
             )
-            note_id = existing['id']
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=404, detail="수업일지를 찾을 수 없습니다")
             message = "수업일지가 수정되었습니다"
         else:
-            # 새로 생성
+            # ID가 없는 경우: 항상 새로 생성 (같은 날짜에도 여러 개 가능)
             cursor.execute(
                 "INSERT INTO class_notes (student_id, note_date, content) VALUES (%s, %s, %s)",
                 (student_id, note_date, content)
