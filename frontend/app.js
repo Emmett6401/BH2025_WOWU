@@ -12386,7 +12386,15 @@ window.saveInstructorNote = async function(event) {
         }
         
         closeInstructorNoteModal();
-        loadInstructorNotes();
+        
+        // MyPage 모달이 열려있으면 MyPage SSIRN메모장 새로고침, 아니면 메인 화면 새로고침
+        const mypageModal = document.getElementById('mypage-modal');
+        if (mypageModal) {
+            await loadMyPageSSIRN();
+        } else {
+            loadInstructorNotes();
+        }
+        
         window.hideLoading();
     } catch (error) {
         window.hideLoading();
@@ -12587,7 +12595,14 @@ window.deleteInstructorNote = async function(noteId) {
     try {
         await axios.delete(`${API_BASE_URL}/api/class-notes/${noteId}`);
         await window.showSuccess('메모가 삭제되었습니다.', '삭제 완료');
-        loadInstructorNotes();
+        
+        // MyPage 모달이 열려있으면 MyPage SSIRN메모장 새로고침, 아니면 메인 화면 새로고침
+        const mypageModal = document.getElementById('mypage-modal');
+        if (mypageModal) {
+            await loadMyPageSSIRN();
+        } else {
+            loadInstructorNotes();
+        }
     } catch (error) {
         console.error('메모 삭제 실패:', error);
         const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류가 발생했습니다.';
