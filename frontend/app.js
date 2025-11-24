@@ -11783,54 +11783,174 @@ async function loadMyProfile() {
             </div>
 
             <!-- 내 정보 섹션 -->
+            <!-- 내 정보 섹션 -->
             <div id="instructor-section-profile" class="hidden bg-white rounded-b-lg shadow-md">
-                <div class="p-6">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                        <i class="fas fa-id-card mr-3 text-blue-600"></i>
-                        내 정보
-                    </h2>
+                <div class="p-8">
+                    <!-- 프로필 사진 -->
+                    <div class="mb-8 text-center">
+                        <div class="inline-block relative">
+                            <img id="mypage-photo" 
+                                 src="${instructor.profile_photo ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(instructor.profile_photo) + '&t=' + new Date().getTime() : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23ddd%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2716%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3ENo Photo%3C/text%3E%3C/svg%3E'}" 
+                                 alt="프로필 사진" 
+                                 class="w-40 h-40 rounded-full object-cover border-4 border-blue-500 shadow-lg"
+                                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23ddd%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2716%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3ENo Photo%3C/text%3E%3C/svg%3E'">
+                            <button onclick="document.getElementById('mypage-photo-input').click()" 
+                                    class="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg">
+                                <i class="fas fa-camera"></i>
+                            </button>
+                        </div>
+                        <input type="file" id="mypage-photo-input" accept="image/*" class="hidden" onchange="uploadMyPagePhoto(event)">
+                        <p class="text-sm text-gray-500 mt-3">클릭하여 프로필 사진 변경</p>
+                        <!-- 프로그래스바 -->
+                        <div id="mypage-upload-progress" class="hidden mt-4">
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div id="mypage-progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <p id="mypage-progress-text" class="text-sm text-gray-600 mt-2 text-center">업로드 중... 0%</p>
+                        </div>
+                    </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 파일 업로드 섹션 -->
+                    <div class="border-t pt-6 mb-6">
+                        <h4 class="text-lg font-bold text-gray-800 mb-4">
+                            <i class="fas fa-paperclip mr-2 text-green-500"></i>사진 및 파일 첨부 (그림파일, PDF, HWP, PPT, Excel, Word, TXT 등)
+                        </h4>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <button type="button" onclick="document.getElementById('mypage-file-input').click()" 
+                                        class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm">
+                                    <i class="fas fa-folder-open mr-2"></i>파일 선택
+                                </button>
+                                <button type="button" onclick="document.getElementById('mypage-camera-input').click()" 
+                                        class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm">
+                                    <i class="fas fa-camera mr-2"></i>사진 촬영
+                                </button>
+                            </div>
+                            <input type="file" id="mypage-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
+                                   onchange="window.handleMyPageFileUpload(event)" class="hidden">
+                            <input type="file" id="mypage-camera-input" accept="image/*" capture="environment"
+                                   onchange="window.handleMyPageFileUpload(event)" class="hidden">
+                            <div id="mypage-file-upload-progress" class="hidden mb-3">
+                                <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                    <p class="text-sm text-blue-800 mb-2">
+                                        <i class="fas fa-cloud-upload-alt mr-2"></i>
+                                        서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                                    </p>
+                                    <div class="w-full bg-blue-200 rounded-full h-2">
+                                        <div id="mypage-file-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="mypage-files-preview" class="flex flex-col gap-2 mt-2"></div>
+                            <p class="text-xs text-gray-500 mt-2">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                첨부 파일: <span id="mypage-file-count">${instructor.attachments ? JSON.parse(instructor.attachments).length : 0}</span>/20
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- 정보 수정 폼 -->
+                    <form id="mypage-form" class="space-y-6">
+                        <!-- 이름 -->
                         <div>
                             <label class="block text-gray-700 font-semibold mb-2">
                                 <i class="fas fa-user mr-2 text-blue-500"></i>이름
                             </label>
-                            <input type="text" value="${instructor.name || ''}" 
-                                   class="w-full px-4 py-3 border rounded-lg bg-gray-50" readonly>
+                            <input type="text" id="mypage-name" value="${instructor.name || ''}" 
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                         
+                        <!-- 전공 -->
                         <div>
                             <label class="block text-gray-700 font-semibold mb-2">
-                                <i class="fas fa-id-badge mr-2 text-green-500"></i>강사코드
+                                <i class="fas fa-book mr-2 text-green-500"></i>전공
                             </label>
-                            <input type="text" value="${instructor.instructor_code || ''}" 
-                                   class="w-full px-4 py-3 border rounded-lg bg-gray-50" readonly>
+                            <input type="text" id="mypage-major" value="${instructor.major || ''}" 
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                         
-                        <div>
-                            <label class="block text-gray-700 font-semibold mb-2">
-                                <i class="fas fa-user-tag mr-2 text-purple-500"></i>강사유형
-                            </label>
-                            <input type="text" value="${instructor.instructor_type || ''}" 
-                                   class="w-full px-4 py-3 border rounded-lg bg-gray-50" readonly>
-                        </div>
-                        
+                        <!-- 연락처 -->
                         <div>
                             <label class="block text-gray-700 font-semibold mb-2">
                                 <i class="fas fa-phone mr-2 text-yellow-500"></i>연락처
                             </label>
-                            <input type="text" value="${instructor.phone || ''}" 
-                                   class="w-full px-4 py-3 border rounded-lg bg-gray-50" readonly>
+                            <input type="tel" id="mypage-phone" value="${instructor.phone || ''}" 
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                         
-                        <div class="md:col-span-2">
+                        <!-- 이메일 -->
+                        <div>
                             <label class="block text-gray-700 font-semibold mb-2">
                                 <i class="fas fa-envelope mr-2 text-red-500"></i>이메일
                             </label>
-                            <input type="text" value="${instructor.email || ''}" 
-                                   class="w-full px-4 py-3 border rounded-lg bg-gray-50" readonly>
+                            <input type="email" id="mypage-email" value="${instructor.email || ''}" 
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
-                    </div>
+                        
+                        <!-- 비밀번호 변경 -->
+                        <div class="border-t pt-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-lg font-bold text-gray-800">
+                                    <i class="fas fa-key mr-2 text-purple-500"></i>비밀번호 변경
+                                </h4>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="checkbox" id="mypage-change-password-checkbox" 
+                                           class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-2"
+                                           onchange="togglePasswordFields()">
+                                    <span class="text-sm text-gray-700 font-semibold">비밀번호 변경하기</span>
+                                </label>
+                            </div>
+                            <div id="mypage-password-fields" class="space-y-4 hidden">
+                                <div>
+                                    <label class="block text-gray-700 mb-2">현재 비밀번호</label>
+                                    <div class="relative">
+                                        <input type="password" id="mypage-old-password" 
+                                               class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                               placeholder="현재 비밀번호를 입력하세요"
+                                               disabled>
+                                        <button type="button" onclick="togglePasswordVisibility('mypage-old-password')" 
+                                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-eye" id="mypage-old-password-icon"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">새 비밀번호</label>
+                                    <div class="relative">
+                                        <input type="password" id="mypage-new-password" 
+                                               class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                               placeholder="새 비밀번호를 입력하세요"
+                                               disabled>
+                                        <button type="button" onclick="togglePasswordVisibility('mypage-new-password')" 
+                                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-eye" id="mypage-new-password-icon"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">새 비밀번호 확인</label>
+                                    <div class="relative">
+                                        <input type="password" id="mypage-new-password-confirm" 
+                                               class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                               placeholder="새 비밀번호를 다시 입력하세요"
+                                               disabled>
+                                        <button type="button" onclick="togglePasswordVisibility('mypage-new-password-confirm')" 
+                                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-eye" id="mypage-new-password-confirm-icon"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 버튼 -->
+                        <div class="flex gap-3 pt-4">
+                            <button type="button" onclick="saveMyPage()" 
+                                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+                                <i class="fas fa-save mr-2"></i>저장
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -11863,6 +11983,17 @@ window.switchInstructorTab = function(tab) {
     // 데이터 로드
     if (tab === 'notes') {
         loadInstructorNotes();
+    } else if (tab === 'profile') {
+        // 프로필 탭 로드 시 파일 미리보기 초기화
+        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+        if (instructor.attachments) {
+            try {
+                const attachments = JSON.parse(instructor.attachments);
+                updateMyPageFilePreview(attachments);
+            } catch (e) {
+                console.error('첨부파일 로드 실패:', e);
+            }
+        }
     }
 };
 
@@ -12362,6 +12493,471 @@ window.deleteInstructorNote = async function(noteId) {
         console.error('메모 삭제 실패:', error);
         const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류가 발생했습니다.';
         await window.showError(`메모 삭제 중 오류가 발생했습니다.\n\n${errorMsg}`, '삭제 실패');
+    }
+};
+
+// ==================== MyPage 프로필 관리 함수들 ====================
+
+window.uploadMyPagePhoto = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
+    
+    // 이미지 파일인지 확인
+    if (!file.type.startsWith('image/')) {
+        window.showAlert('⚠️ 이미지 파일만 업로드 가능합니다.', 'warning');
+        event.target.value = '';
+        return;
+    }
+    
+    // 파일 압축 (1MB 이상이면 압축)
+    let uploadFile = file;
+    const originalSize = file.size / 1024 / 1024; // MB
+    
+    if (file.size > 1 * 1024 * 1024) {  // 1MB 이상이면 압축
+        try {
+            window.showAlert('📦 이미지를 최적화하는 중...', 'info');
+            uploadFile = await window.compressImage(file);
+            const compressedSize = uploadFile.size / 1024 / 1024;
+            console.log(`✅ 이미지 압축: ${originalSize.toFixed(2)}MB → ${compressedSize.toFixed(2)}MB`);
+        } catch (error) {
+            console.error('이미지 압축 실패:', error);
+            window.showAlert('⚠️ 이미지 압축에 실패했습니다. 더 작은 파일을 선택해주세요.', 'error');
+            event.target.value = '';
+            return;
+        }
+    }
+    
+    const formData = new FormData();
+    formData.append('file', uploadFile);
+    
+    // 프로그래스바 표시
+    const progressContainer = document.getElementById('mypage-upload-progress');
+    const progressBar = document.getElementById('mypage-progress-bar');
+    const progressText = document.getElementById('mypage-progress-text');
+    
+    progressContainer.classList.remove('hidden');
+    progressBar.style.width = '0%';
+    progressText.textContent = '업로드 중... 0%';
+    
+    try {
+        const response = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: (progressEvent) => {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                progressBar.style.width = percentCompleted + '%';
+                progressText.textContent = `업로드 중... ${percentCompleted}%`;
+            }
+        });
+        
+        const photoUrl = response.data.url;
+        
+        // 프로필 사진 업데이트
+        const timestamp = new Date().getTime();
+        document.getElementById('mypage-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(photoUrl) + '&t=' + timestamp;
+        
+        // 기존 첨부 파일 가져오기
+        let attachments = [];
+        if (instructor.attachments) {
+            try {
+                attachments = JSON.parse(instructor.attachments);
+            } catch (e) {
+                attachments = [];
+            }
+        }
+        
+        // 자동 저장
+        const data = {
+            name: document.getElementById('mypage-name').value,
+            major: document.getElementById('mypage-major').value || '',
+            phone: document.getElementById('mypage-phone').value || '',
+            email: document.getElementById('mypage-email').value || '',
+            profile_photo: photoUrl,
+            attachments: JSON.stringify(attachments)
+        };
+        
+        await axios.put(`${API_BASE_URL}/api/instructors/${instructor.code}`, data);
+        
+        // sessionStorage 업데이트
+        instructor.profile_photo = photoUrl;
+        sessionStorage.setItem('instructor', JSON.stringify(instructor));
+        
+        // 완료 표시
+        progressBar.style.width = '100%';
+        progressText.textContent = '✅ 업로드 완료!';
+        progressBar.classList.remove('bg-blue-600');
+        progressBar.classList.add('bg-green-600');
+        
+        setTimeout(() => {
+            progressContainer.classList.add('hidden');
+            progressBar.classList.remove('bg-green-600');
+            progressBar.classList.add('bg-blue-600');
+        }, 2000);
+        
+        window.showAlert('✅ 프로필 사진이 업로드되고 저장되었습니다!', 'success');
+    } catch (error) {
+        console.error('사진 업로드 실패:', error);
+        progressBar.classList.remove('bg-blue-600');
+        progressBar.classList.add('bg-red-600');
+        progressText.textContent = '❌ 업로드 실패';
+        
+        setTimeout(() => {
+            progressContainer.classList.add('hidden');
+            progressBar.classList.remove('bg-red-600');
+            progressBar.classList.add('bg-blue-600');
+        }, 2000);
+        
+        window.showAlert('❌ 사진 업로드에 실패했습니다', 'error');
+    }
+};
+
+window.handleMyPageFileUpload = async function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
+    const progressDiv = document.getElementById('mypage-file-upload-progress');
+    const progressBar = document.getElementById('mypage-file-progress-bar');
+    
+    try {
+        // 기존 첨부 파일 가져오기
+        let attachments = [];
+        if (instructor.attachments) {
+            try {
+                attachments = JSON.parse(instructor.attachments);
+            } catch (e) {
+                attachments = [];
+            }
+        }
+        
+        // 파일 개수 제한 체크 (최대 20개)
+        const remainingSlots = 20 - attachments.length;
+        if (remainingSlots <= 0) {
+            window.showAlert('⚠️ 첨부 파일은 최대 20개까지만 업로드할 수 있습니다.', 'warning');
+            event.target.value = '';
+            return;
+        }
+        
+        if (files.length > remainingSlots) {
+            window.showAlert(`⚠️ ${remainingSlots}개의 파일만 업로드할 수 있습니다. (현재: ${attachments.length}/20)`, 'warning');
+            event.target.value = '';
+            return;
+        }
+        
+        progressDiv.classList.remove('hidden');
+        progressBar.style.width = '0%';
+        
+        // 파일 업로드
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    progressBar.style.width = percentCompleted + '%';
+                }
+            });
+            
+            // URL과 원본 파일명을 함께 저장
+            const urlWithOriginalName = response.data.original_filename 
+                ? `${response.data.url}#${encodeURIComponent(response.data.original_filename)}`
+                : response.data.url;
+            attachments.push(urlWithOriginalName);
+        }
+        
+        // 프로필 사진 URL 가져오기
+        const profilePhotoSrc = document.getElementById('mypage-photo').src;
+        let profilePhoto = null;
+        if (profilePhotoSrc.includes('/api/thumbnail')) {
+            const urlParams = new URLSearchParams(profilePhotoSrc.split('?')[1]);
+            profilePhoto = urlParams.get('url');
+        }
+        
+        // 자동 저장
+        const data = {
+            name: document.getElementById('mypage-name').value,
+            major: document.getElementById('mypage-major').value || '',
+            phone: document.getElementById('mypage-phone').value || '',
+            email: document.getElementById('mypage-email').value || '',
+            profile_photo: profilePhoto,
+            attachments: JSON.stringify(attachments)
+        };
+        
+        await axios.put(`${API_BASE_URL}/api/instructors/${instructor.code}`, data);
+        
+        // sessionStorage 업데이트
+        instructor.attachments = JSON.stringify(attachments);
+        sessionStorage.setItem('instructor', JSON.stringify(instructor));
+        
+        // 미리보기 업데이트
+        updateMyPageFilePreview(attachments);
+        
+        // 파일 개수 업데이트
+        const fileCountSpan = document.getElementById('mypage-file-count');
+        if (fileCountSpan) {
+            fileCountSpan.textContent = attachments.length;
+        }
+        
+        progressBar.style.width = '100%';
+        window.showAlert(`✅ ${files.length}개 파일이 업로드되고 저장되었습니다! (${attachments.length}/20)`, 'success');
+        
+        setTimeout(() => {
+            progressDiv.classList.add('hidden');
+        }, 2000);
+        
+    } catch (error) {
+        console.error('파일 업로드 실패:', error);
+        progressDiv.classList.add('hidden');
+        window.showAlert('❌ 파일 업로드에 실패했습니다: ' + error.message, 'error');
+    }
+    
+    // 파일 input 초기화
+    event.target.value = '';
+};
+
+function updateMyPageFilePreview(photoUrls) {
+    const previewDiv = document.getElementById('mypage-files-preview');
+    if (!previewDiv || !photoUrls || photoUrls.length === 0) {
+        if (previewDiv) previewDiv.innerHTML = '';
+        return;
+    }
+    
+    previewDiv.innerHTML = photoUrls.map((urlData, index) => {
+        // URL과 원본 파일명 분리
+        const [url, encodedFilename] = urlData.split('#');
+        const originalFilename = encodedFilename ? decodeURIComponent(encodedFilename) : url.split('/').pop();
+        
+        // 확장자 추출
+        const extension = originalFilename.split('.').pop().toLowerCase();
+        
+        // 이미지 파일인지 확인
+        const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension);
+        
+        if (isImage) {
+            return `
+                <div class="relative flex items-center gap-3 p-3 bg-white border rounded-lg">
+                    <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
+                         alt="첨부 ${index + 1}" 
+                         class="w-16 h-16 object-cover rounded">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">${originalFilename}</p>
+                        <p class="text-xs text-gray-500">이미지 파일</p>
+                    </div>
+                    <button onclick="removeMyPageFile(${index})" 
+                            class="text-red-500 hover:text-red-700 px-3 py-1">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="relative flex items-center gap-3 p-3 bg-white border rounded-lg">
+                    <div class="w-16 h-16 flex items-center justify-center bg-gray-100 rounded">
+                        <i class="${getFileIcon(extension)} text-3xl text-gray-600"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">${originalFilename}</p>
+                        <p class="text-xs text-gray-500">${extension.toUpperCase()} 파일</p>
+                    </div>
+                    <button onclick="removeMyPageFile(${index})" 
+                            class="text-red-500 hover:text-red-700 px-3 py-1">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+        }
+    }).join('');
+}
+
+function getFileIcon(extension) {
+    const iconMap = {
+        'pdf': 'fas fa-file-pdf',
+        'doc': 'fas fa-file-word',
+        'docx': 'fas fa-file-word',
+        'xls': 'fas fa-file-excel',
+        'xlsx': 'fas fa-file-excel',
+        'ppt': 'fas fa-file-powerpoint',
+        'pptx': 'fas fa-file-powerpoint',
+        'txt': 'fas fa-file-alt',
+        'hwp': 'fas fa-file-alt',
+        'zip': 'fas fa-file-archive',
+        'rar': 'fas fa-file-archive'
+    };
+    return iconMap[extension] || 'fas fa-file';
+}
+
+window.removeMyPageFile = async function(index) {
+    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
+    
+    let attachments = [];
+    if (instructor.attachments) {
+        try {
+            attachments = JSON.parse(instructor.attachments);
+        } catch (e) {
+            attachments = [];
+        }
+    }
+    
+    // 파일 제거
+    attachments.splice(index, 1);
+    
+    // 프로필 사진 URL 가져오기
+    const profilePhotoSrc = document.getElementById('mypage-photo').src;
+    let profilePhoto = null;
+    if (profilePhotoSrc.includes('/api/thumbnail')) {
+        const urlParams = new URLSearchParams(profilePhotoSrc.split('?')[1]);
+        profilePhoto = urlParams.get('url');
+    }
+    
+    // 서버에 저장
+    try {
+        const data = {
+            name: document.getElementById('mypage-name').value,
+            major: document.getElementById('mypage-major').value || '',
+            phone: document.getElementById('mypage-phone').value || '',
+            email: document.getElementById('mypage-email').value || '',
+            profile_photo: profilePhoto,
+            attachments: JSON.stringify(attachments)
+        };
+        
+        await axios.put(`${API_BASE_URL}/api/instructors/${instructor.code}`, data);
+        
+        // sessionStorage 업데이트
+        instructor.attachments = JSON.stringify(attachments);
+        sessionStorage.setItem('instructor', JSON.stringify(instructor));
+        
+        // 미리보기 업데이트
+        updateMyPageFilePreview(attachments);
+        
+        // 파일 개수 업데이트
+        const fileCountSpan = document.getElementById('mypage-file-count');
+        if (fileCountSpan) {
+            fileCountSpan.textContent = attachments.length;
+        }
+        
+        window.showAlert('✅ 파일이 삭제되었습니다.', 'success');
+    } catch (error) {
+        console.error('파일 삭제 실패:', error);
+        window.showAlert('❌ 파일 삭제에 실패했습니다.', 'error');
+    }
+};
+
+window.saveMyPage = async function() {
+    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
+    
+    try {
+        // 프로필 사진 URL 가져오기
+        const profilePhotoSrc = document.getElementById('mypage-photo').src;
+        let profilePhoto = null;
+        if (profilePhotoSrc.includes('/api/thumbnail')) {
+            const urlParams = new URLSearchParams(profilePhotoSrc.split('?')[1]);
+            profilePhoto = urlParams.get('url');
+        }
+        
+        // 첨부 파일 가져오기
+        let attachments = [];
+        if (instructor.attachments) {
+            try {
+                attachments = JSON.parse(instructor.attachments);
+            } catch (e) {
+                attachments = [];
+            }
+        }
+        
+        // 데이터 준비
+        const data = {
+            name: document.getElementById('mypage-name').value,
+            major: document.getElementById('mypage-major').value || '',
+            phone: document.getElementById('mypage-phone').value || '',
+            email: document.getElementById('mypage-email').value || '',
+            profile_photo: profilePhoto,
+            attachments: JSON.stringify(attachments)
+        };
+        
+        // 비밀번호 변경 체크
+        const changePassword = document.getElementById('mypage-change-password-checkbox').checked;
+        if (changePassword) {
+            const oldPassword = document.getElementById('mypage-old-password').value;
+            const newPassword = document.getElementById('mypage-new-password').value;
+            const newPasswordConfirm = document.getElementById('mypage-new-password-confirm').value;
+            
+            if (!oldPassword || !newPassword || !newPasswordConfirm) {
+                window.showAlert('⚠️ 비밀번호 변경을 원하시면 모든 필드를 입력해주세요.', 'warning');
+                return;
+            }
+            
+            if (newPassword !== newPasswordConfirm) {
+                window.showAlert('⚠️ 새 비밀번호가 일치하지 않습니다.', 'warning');
+                return;
+            }
+            
+            if (oldPassword !== instructor.password) {
+                window.showAlert('⚠️ 현재 비밀번호가 올바르지 않습니다.', 'error');
+                return;
+            }
+            
+            data.password = newPassword;
+        }
+        
+        // 서버에 저장
+        await axios.put(`${API_BASE_URL}/api/instructors/${instructor.code}`, data);
+        
+        // sessionStorage 업데이트
+        Object.assign(instructor, data);
+        if (changePassword) {
+            instructor.password = data.password;
+        }
+        sessionStorage.setItem('instructor', JSON.stringify(instructor));
+        
+        // 헤더 업데이트
+        updateHeader();
+        
+        window.showAlert('✅ 정보가 저장되었습니다!', 'success');
+        
+        // 비밀번호 필드 초기화
+        if (changePassword) {
+            document.getElementById('mypage-change-password-checkbox').checked = false;
+            togglePasswordFields();
+        }
+    } catch (error) {
+        console.error('정보 저장 실패:', error);
+        window.showAlert('❌ 정보 저장에 실패했습니다: ' + error.message, 'error');
+    }
+};
+
+window.togglePasswordFields = function() {
+    const checkbox = document.getElementById('mypage-change-password-checkbox');
+    const fields = document.getElementById('mypage-password-fields');
+    const inputs = fields.querySelectorAll('input');
+    
+    if (checkbox.checked) {
+        fields.classList.remove('hidden');
+        inputs.forEach(input => input.disabled = false);
+    } else {
+        fields.classList.add('hidden');
+        inputs.forEach(input => {
+            input.disabled = true;
+            input.value = '';
+        });
+    }
+};
+
+window.togglePasswordVisibility = function(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(inputId + '-icon');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
     }
 };
 
