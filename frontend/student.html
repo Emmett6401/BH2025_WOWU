@@ -53,69 +53,59 @@
     <!-- 메인 컨텐츠 -->
     <main class="container mx-auto px-4 py-8">
         <div class="max-w-4xl mx-auto">
-            <!-- 수업일지 카드 -->
+            <!-- 수업메모 카드 -->
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
                 <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-                    <h2 class="text-2xl font-bold flex items-center">
-                        <i class="fas fa-book-open mr-3"></i>
-                        오늘의 수업 메모
-                    </h2>
-                    <p class="text-blue-100 mt-2 text-sm">오늘 배운 내용을 자유롭게 기록하세요 (마크다운 지원)</p>
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-2xl font-bold flex items-center">
+                                <i class="fas fa-book-open mr-3"></i>
+                                수업 메모
+                            </h2>
+                            <p class="text-blue-100 mt-2 text-sm">수업 내용을 기록하고 관리하세요</p>
+                        </div>
+                        <button onclick="showNewNoteModal()" 
+                                class="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 font-semibold">
+                            <i class="fas fa-plus mr-2"></i>새 메모
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="p-6">
-                    <!-- 날짜 선택 -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 font-semibold mb-2">
-                            <i class="fas fa-calendar mr-2 text-blue-500"></i>날짜
-                        </label>
-                        <input type="date" id="note-date" 
-                               class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <button onclick="loadClassNote()" 
-                                class="ml-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-                            <i class="fas fa-search mr-2"></i>불러오기
+                    <!-- 검색 및 필터 -->
+                    <div class="mb-6 flex gap-2">
+                        <div class="flex-1">
+                            <input type="text" id="note-search" 
+                                   placeholder="내용 검색..." 
+                                   class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   onkeyup="searchNotes()">
+                        </div>
+                        <input type="date" id="note-date-filter" 
+                               class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                               onchange="searchNotes()">
+                        <button onclick="clearNoteFilters()" 
+                                class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                            <i class="fas fa-times"></i>
                         </button>
                     </div>
                     
-                    <!-- 마크다운 에디터 -->
-                    <div class="mb-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <label class="block text-gray-700 font-semibold">
-                                <i class="fas fa-edit mr-2 text-green-500"></i>내용
-                            </label>
-                            <button type="button" onclick="togglePreview()" 
-                                    class="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded">
-                                <i class="fas fa-eye mr-1"></i><span id="preview-toggle-text">미리보기</span>
-                            </button>
-                        </div>
-                        
-                        <!-- 에디터 영역 -->
-                        <div id="editor-container" class="border rounded-lg">
-                            <textarea id="class-note-content" rows="15"
-                                      class="w-full px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                                      placeholder="# 오늘 배운 내용&#10;&#10;## 주요 개념&#10;- 개념 1&#10;- 개념 2&#10;&#10;## 링크&#10;[참고 자료](https://example.com)&#10;&#10;## 코드 예제&#10;```javascript&#10;console.log('Hello World');&#10;```"></textarea>
-                        </div>
-                        
-                        <!-- 미리보기 영역 (숨김 상태) -->
-                        <div id="preview-container" class="hidden border rounded-lg p-4 bg-gray-50">
-                            <div id="markdown-preview" class="prose max-w-none"></div>
-                        </div>
-                        
-                        <p class="text-xs text-gray-500 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            마크다운 문법 사용 가능 | 링크는 새 창에서 열립니다
-                        </p>
+                    <!-- 메모 개수 -->
+                    <div class="mb-4 text-sm text-gray-600">
+                        총 <span id="notes-count" class="font-bold text-blue-600">0</span>개의 메모
                     </div>
                     
-                    <!-- 저장 버튼 -->
-                    <div class="flex gap-2">
-                        <button type="button" onclick="saveClassNote()" 
-                                class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
-                            <i class="fas fa-save mr-2"></i>저장
-                        </button>
-                        <button type="button" onclick="clearClassNote()" 
-                                class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">
-                            <i class="fas fa-eraser mr-2"></i>초기화
+                    <!-- 메모 그리드 -->
+                    <div id="notes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- 메모 카드들이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                    
+                    <!-- 빈 상태 -->
+                    <div id="notes-empty" class="hidden text-center py-12">
+                        <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">작성된 메모가 없습니다</p>
+                        <button onclick="showNewNoteModal()" 
+                                class="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            <i class="fas fa-plus mr-2"></i>첫 메모 작성하기
                         </button>
                     </div>
                 </div>
@@ -324,6 +314,114 @@
         </div>
     </main>
 
+    <!-- 수업메모 작성/편집 모달 -->
+    <div id="note-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl">
+                <h3 class="text-2xl font-bold flex items-center">
+                    <i class="fas fa-edit mr-3"></i>
+                    <span id="modal-title">수업 메모 작성</span>
+                </h3>
+            </div>
+            
+            <div class="p-6">
+                <input type="hidden" id="edit-note-id">
+                
+                <!-- 날짜 -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-calendar mr-2 text-blue-500"></i>날짜
+                    </label>
+                    <input type="date" id="modal-note-date" 
+                           class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <!-- 내용 -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-gray-700 font-semibold">
+                            <i class="fas fa-pen mr-2 text-green-500"></i>내용
+                        </label>
+                        <button type="button" onclick="toggleModalPreview()" 
+                                class="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded">
+                            <i class="fas fa-eye mr-1"></i><span id="modal-preview-toggle-text">미리보기</span>
+                        </button>
+                    </div>
+                    
+                    <!-- 에디터 -->
+                    <div id="modal-editor-container">
+                        <textarea id="modal-note-content" rows="12"
+                                  class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                                  placeholder="# 오늘 배운 내용&#10;&#10;## 주요 개념&#10;- 개념 1&#10;- 개념 2&#10;&#10;[참고 자료](https://example.com)"></textarea>
+                    </div>
+                    
+                    <!-- 미리보기 -->
+                    <div id="modal-preview-container" class="hidden border rounded-lg p-4 bg-gray-50 max-h-96 overflow-y-auto">
+                        <div id="modal-markdown-preview" class="prose max-w-none"></div>
+                    </div>
+                    
+                    <p class="text-xs text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        마크다운 문법 사용 가능 | 링크는 새 창에서 열립니다
+                    </p>
+                </div>
+                
+                <!-- 버튼 -->
+                <div class="flex gap-2">
+                    <button type="button" onclick="saveNoteFromModal()" 
+                            class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+                        <i class="fas fa-save mr-2"></i>저장
+                    </button>
+                    <button type="button" onclick="closeNoteModal()" 
+                            class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">
+                        <i class="fas fa-times mr-2"></i>취소
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 수업메모 상세보기 모달 -->
+    <div id="note-detail-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-2xl font-bold flex items-center mb-2">
+                            <i class="fas fa-book-open mr-3"></i>
+                            수업 메모
+                        </h3>
+                        <p class="text-blue-100 text-sm" id="detail-note-date"></p>
+                    </div>
+                    <button onclick="closeDetailModal()" class="text-white hover:text-gray-200">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <div class="prose max-w-none mb-6" id="detail-note-content">
+                    <!-- 렌더링된 마크다운 내용 -->
+                </div>
+                
+                <div class="flex gap-2 border-t pt-4">
+                    <button type="button" onclick="editNoteFromDetail()" 
+                            class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+                        <i class="fas fa-edit mr-2"></i>수정
+                    </button>
+                    <button type="button" onclick="deleteNoteFromDetail()" 
+                            class="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 font-semibold">
+                        <i class="fas fa-trash mr-2"></i>삭제
+                    </button>
+                    <button type="button" onclick="closeDetailModal()" 
+                            class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">
+                        <i class="fas fa-times mr-2"></i>닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 커스텀 알림 모달 -->
     <div id="custom-alert" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="alert-box rounded-lg p-4 shadow-lg max-w-md">
@@ -483,9 +581,12 @@
             return url.split('#')[0];
         };
         
-        // ==================== 수업일지 관련 함수 ====================
+        // ==================== 수업메모 관련 함수 ====================
         
-        // 마크다운 렌더러 설정 (링크를 새 창에서 열기)
+        let allNotes = [];
+        let currentNoteId = null;
+        
+        // 마크다운 렌더러 설정
         marked.setOptions({
             breaks: true,
             gfm: true
@@ -496,7 +597,6 @@
             const html = marked.parse(markdown || '');
             const clean = DOMPurify.sanitize(html);
             
-            // 모든 링크에 target="_blank" 추가
             const div = document.createElement('div');
             div.innerHTML = clean;
             div.querySelectorAll('a').forEach(link => {
@@ -507,62 +607,130 @@
             return div.innerHTML;
         };
         
-        // 미리보기 토글
-        window.togglePreview = function() {
-            const editorContainer = document.getElementById('editor-container');
-            const previewContainer = document.getElementById('preview-container');
-            const toggleText = document.getElementById('preview-toggle-text');
-            const textarea = document.getElementById('class-note-content');
-            const preview = document.getElementById('markdown-preview');
-            
-            if (previewContainer.classList.contains('hidden')) {
-                // 미리보기 표시
-                preview.innerHTML = renderMarkdown(textarea.value);
-                editorContainer.classList.add('hidden');
-                previewContainer.classList.remove('hidden');
-                toggleText.textContent = '편집';
-            } else {
-                // 편집 모드로 전환
-                editorContainer.classList.remove('hidden');
-                previewContainer.classList.add('hidden');
-                toggleText.textContent = '미리보기';
-            }
-        };
-        
-        // 수업일지 불러오기
-        window.loadClassNote = async function() {
+        // 모든 메모 불러오기
+        window.loadAllNotes = async function() {
             const student = JSON.parse(sessionStorage.getItem('student'));
             if (!student) return;
             
-            const noteDate = document.getElementById('note-date').value;
-            if (!noteDate) {
-                window.showAlert('날짜를 선택하세요', 'error');
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/class-notes/${student.id}`);
+                allNotes = response.data || [];
+                renderNotesGrid(allNotes);
+            } catch (error) {
+                console.error('메모 불러오기 실패:', error);
+            }
+        };
+        
+        // 메모 그리드 렌더링
+        window.renderNotesGrid = function(notes) {
+            const grid = document.getElementById('notes-grid');
+            const empty = document.getElementById('notes-empty');
+            const countSpan = document.getElementById('notes-count');
+            
+            countSpan.textContent = notes.length;
+            
+            if (notes.length === 0) {
+                grid.innerHTML = '';
+                empty.classList.remove('hidden');
                 return;
             }
             
-            try {
-                const response = await axios.get(`${API_BASE_URL}/api/class-notes/${student.id}?note_date=${noteDate}`);
+            empty.classList.add('hidden');
+            
+            grid.innerHTML = notes.map(note => {
+                const preview = note.content.substring(0, 100) + (note.content.length > 100 ? '...' : '');
+                const dateObj = new Date(note.note_date);
+                const dateStr = dateObj.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
                 
-                if (response.data) {
-                    document.getElementById('class-note-content').value = response.data.content || '';
-                    window.showAlert('✅ 수업일지를 불러왔습니다', 'success');
-                } else {
-                    document.getElementById('class-note-content').value = '';
-                    window.showAlert('해당 날짜의 수업일지가 없습니다', 'info');
-                }
-            } catch (error) {
-                console.error('수업일지 불러오기 실패:', error);
-                document.getElementById('class-note-content').value = '';
-            }
+                return `
+                    <div class="border rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer bg-white"
+                         onclick="showNoteDetail(${note.id})">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-gray-800 flex items-center">
+                                <i class="fas fa-calendar-day mr-2 text-blue-500"></i>
+                                ${dateStr}
+                            </h4>
+                            <div class="flex gap-1">
+                                <button onclick="event.stopPropagation(); editNote(${note.id})" 
+                                        class="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                        title="수정">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); deleteNote(${note.id})" 
+                                        class="p-1 text-red-600 hover:bg-red-50 rounded"
+                                        title="삭제">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 text-sm line-clamp-3">${preview}</p>
+                        <div class="mt-2 text-xs text-gray-400">
+                            <i class="fas fa-clock mr-1"></i>
+                            ${new Date(note.created_at).toLocaleString('ko-KR')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         };
         
-        // 수업일지 저장
-        window.saveClassNote = async function() {
+        // 메모 검색
+        window.searchNotes = function() {
+            const searchText = document.getElementById('note-search').value.toLowerCase();
+            const dateFilter = document.getElementById('note-date-filter').value;
+            
+            let filtered = allNotes;
+            
+            if (searchText) {
+                filtered = filtered.filter(note => 
+                    note.content.toLowerCase().includes(searchText)
+                );
+            }
+            
+            if (dateFilter) {
+                filtered = filtered.filter(note => 
+                    note.note_date === dateFilter
+                );
+            }
+            
+            renderNotesGrid(filtered);
+        };
+        
+        // 필터 초기화
+        window.clearNoteFilters = function() {
+            document.getElementById('note-search').value = '';
+            document.getElementById('note-date-filter').value = '';
+            renderNotesGrid(allNotes);
+        };
+        
+        // 새 메모 모달 열기
+        window.showNewNoteModal = function() {
+            document.getElementById('modal-title').textContent = '수업 메모 작성';
+            document.getElementById('edit-note-id').value = '';
+            document.getElementById('modal-note-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modal-note-content').value = '';
+            document.getElementById('note-modal').classList.remove('hidden');
+        };
+        
+        // 메모 편집
+        window.editNote = async function(noteId) {
+            const note = allNotes.find(n => n.id === noteId);
+            if (!note) return;
+            
+            document.getElementById('modal-title').textContent = '수업 메모 수정';
+            document.getElementById('edit-note-id').value = note.id;
+            document.getElementById('modal-note-date').value = note.note_date;
+            document.getElementById('modal-note-content').value = note.content || '';
+            document.getElementById('note-modal').classList.remove('hidden');
+        };
+        
+        // 모달에서 저장
+        window.saveNoteFromModal = async function() {
             const student = JSON.parse(sessionStorage.getItem('student'));
             if (!student) return;
             
-            const noteDate = document.getElementById('note-date').value;
-            const content = document.getElementById('class-note-content').value;
+            const noteId = document.getElementById('edit-note-id').value;
+            const noteDate = document.getElementById('modal-note-date').value;
+            const content = document.getElementById('modal-note-content').value;
             
             if (!noteDate) {
                 window.showAlert('날짜를 선택하세요', 'error');
@@ -583,30 +751,102 @@
                 
                 if (response.data.success) {
                     window.showAlert('✅ ' + response.data.message, 'success');
+                    closeNoteModal();
+                    loadAllNotes();
                 }
             } catch (error) {
-                console.error('수업일지 저장 실패:', error);
+                console.error('메모 저장 실패:', error);
                 window.showAlert('❌ 저장에 실패했습니다', 'error');
             }
         };
         
-        // 수업일지 초기화
-        window.clearClassNote = function() {
-            if (confirm('작성 중인 내용을 초기화하시겠습니까?')) {
-                document.getElementById('class-note-content').value = '';
-                window.showAlert('✅ 초기화되었습니다', 'success');
+        // 메모 삭제
+        window.deleteNote = async function(noteId) {
+            if (!confirm('이 메모를 삭제하시겠습니까?')) return;
+            
+            try {
+                const response = await axios.delete(`${API_BASE_URL}/api/class-notes/${noteId}`);
+                
+                if (response.data.success) {
+                    window.showAlert('✅ 메모가 삭제되었습니다', 'success');
+                    loadAllNotes();
+                }
+            } catch (error) {
+                console.error('메모 삭제 실패:', error);
+                window.showAlert('❌ 삭제에 실패했습니다', 'error');
+            }
+        };
+        
+        // 상세보기 모달
+        window.showNoteDetail = function(noteId) {
+            const note = allNotes.find(n => n.id === noteId);
+            if (!note) return;
+            
+            currentNoteId = noteId;
+            
+            const dateObj = new Date(note.note_date);
+            const dateStr = dateObj.toLocaleDateString('ko-KR', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                weekday: 'long'
+            });
+            
+            document.getElementById('detail-note-date').textContent = dateStr;
+            document.getElementById('detail-note-content').innerHTML = renderMarkdown(note.content);
+            document.getElementById('note-detail-modal').classList.remove('hidden');
+        };
+        
+        // 상세보기에서 수정
+        window.editNoteFromDetail = function() {
+            closeDetailModal();
+            editNote(currentNoteId);
+        };
+        
+        // 상세보기에서 삭제
+        window.deleteNoteFromDetail = async function() {
+            closeDetailModal();
+            await deleteNote(currentNoteId);
+        };
+        
+        // 모달 닫기
+        window.closeNoteModal = function() {
+            document.getElementById('note-modal').classList.add('hidden');
+            document.getElementById('modal-editor-container').classList.remove('hidden');
+            document.getElementById('modal-preview-container').classList.add('hidden');
+            document.getElementById('modal-preview-toggle-text').textContent = '미리보기';
+        };
+        
+        window.closeDetailModal = function() {
+            document.getElementById('note-detail-modal').classList.add('hidden');
+            currentNoteId = null;
+        };
+        
+        // 모달 미리보기 토글
+        window.toggleModalPreview = function() {
+            const editorContainer = document.getElementById('modal-editor-container');
+            const previewContainer = document.getElementById('modal-preview-container');
+            const toggleText = document.getElementById('modal-preview-toggle-text');
+            const textarea = document.getElementById('modal-note-content');
+            const preview = document.getElementById('modal-markdown-preview');
+            
+            if (previewContainer.classList.contains('hidden')) {
+                preview.innerHTML = renderMarkdown(textarea.value);
+                editorContainer.classList.add('hidden');
+                previewContainer.classList.remove('hidden');
+                toggleText.textContent = '편집';
+            } else {
+                editorContainer.classList.remove('hidden');
+                previewContainer.classList.add('hidden');
+                toggleText.textContent = '미리보기';
             }
         };
         
         // 페이지 로드 시 학생 정보 표시
         window.addEventListener('DOMContentLoaded', async () => {
-            // 오늘 날짜로 초기화
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('note-date').value = today;
-            
-            // 오늘의 수업일지 자동 불러오기 (있으면)
+            // 메모 목록 불러오기
             setTimeout(() => {
-                loadClassNote();
+                loadAllNotes();
             }, 500);
             let student = JSON.parse(sessionStorage.getItem('student'));
             if (!student) {
