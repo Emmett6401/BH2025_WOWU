@@ -11707,17 +11707,13 @@ window.showMyPageModal = async function() {
                 `;
             }).join('');
         }
-    } catch (error) {
-        console.error('공지사항 로드 실패:', error);
-        noticesHTML = '<p class="text-red-500">공지사항을 불러오는데 실패했습니다.</p>';
-    }
-    
-    const modal = document.createElement('div');
-    modal.id = 'mypage-modal';
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
-    modal.onclick = (e) => { if (e.target === modal) closeMyPageModal(); };
-    
-    modal.innerHTML = `
+        
+        const modal = document.createElement('div');
+        modal.id = 'mypage-modal';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+        modal.onclick = (e) => { if (e.target === modal) closeMyPageModal(); };
+        
+        modal.innerHTML = `
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
             <!-- 헤더 -->
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-6 rounded-t-2xl flex justify-between items-center sticky top-0 z-10">
@@ -11968,8 +11964,8 @@ window.showMyPageModal = async function() {
                 </div>
             </div>
         </div>
-    `;
-    
+        `;
+        
         document.body.appendChild(modal);
         
         // 파일 미리보기 초기화
