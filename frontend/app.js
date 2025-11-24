@@ -8425,14 +8425,13 @@ function renderTrainingLogsSelection(courses) {
                 <div>
                     <label class="block text-gray-700 mb-2">강사 선택</label>
                     <select id="log-instructor" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
-                        <option value="">전체 강사</option>
+                        <option value="" selected>전체 강사</option>
                         ${(() => {
                             const loggedInInstructor = JSON.parse(localStorage.getItem('instructor') || '{}');
                             const sortedInstructors = [...instructors].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
                             return sortedInstructors.map(i => {
-                                const isSelected = i.code === loggedInInstructor.code;
-                                const displayMark = isSelected ? ' (나)' : '';
-                                return `<option value="${i.code}" ${isSelected ? 'selected' : ''}>${i.name}-${i.instructor_type_name || '강사'}${displayMark}</option>`;
+                                const displayMark = i.code === loggedInInstructor.code ? ' (나)' : '';
+                                return `<option value="${i.code}">${i.name}-${i.instructor_type_name || '강사'}${displayMark}</option>`;
                             }).join('');
                         })()}
                     </select>
