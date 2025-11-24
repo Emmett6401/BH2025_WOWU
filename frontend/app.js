@@ -135,7 +135,7 @@ window.scrollToForm = function(formId) {
 
 // 파일 검증 함수
 window.validateFile = function(file) {
-    const maxSize = 20 * 1024 * 1024; // 20MB
+    const maxSize = 100 * 1024 * 1024; // 100MB (압축 후 업로드)
     const allowedExtensions = [
         'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp',  // 이미지
         'pdf',  // PDF
@@ -151,7 +151,7 @@ window.validateFile = function(file) {
         const sizeMB = (file.size / 1024 / 1024).toFixed(1);
         return {
             valid: false,
-            message: `"${file.name}"의 크기가 20MB를 초과합니다. (현재: ${sizeMB}MB)\n\n최대 업로드 가능 크기: 20MB`
+            message: `"${file.name}"의 크기가 너무 큽니다. (현재: ${sizeMB}MB)\n\n최대 업로드 가능 크기: 100MB\n\n💡 이미지 파일은 자동으로 압축되어 업로드됩니다.`
         };
     }
     
@@ -160,8 +160,15 @@ window.validateFile = function(file) {
     if (!allowedExtensions.includes(ext)) {
         return {
             valid: false,
-            message: `"${file.name}"은(는) 지원하지 않는 파일 형식입니다.\n\n지원 형식:\n• 이미지: JPG, PNG, GIF, BMP, WebP\n• 문서: PDF, TXT\n• Office: PPT, PPTX, XLS, XLSX, DOC, DOCX\n• 한글: HWP`
+            message: `"${file.name}"은(는) 지원하지 않는 파일 형식입니다.\n\n지원 형식:\n• 이미지: JPG, PNG, GIF, BMP, WebP (자동 압축)\n• 문서: PDF, TXT\n• Office: PPT, PPTX, XLS, XLSX, DOC, DOCX\n• 한글: HWP`
         };
+    }
+    
+    // 20MB 이상 이미지 파일 경고
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext);
+    if (isImage && file.size > 20 * 1024 * 1024) {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+        console.log(`⚠️ 대용량 이미지 파일 (${sizeMB}MB) - 자동 압축 예정`);
     }
     
     return { valid: true };
@@ -303,6 +310,23 @@ window.compressImage = function(file, maxWidth = 1920, quality = 0.85) {
             return;
         }
         
+        // 파일 크기에 따라 압축 강도 조정
+        const fileSizeMB = file.size / (1024 * 1024);
+        let targetMaxWidth = maxWidth;
+        let targetQuality = quality;
+        
+        if (fileSizeMB > 20) {
+            // 20MB 이상: 강력한 압축
+            targetMaxWidth = Math.min(maxWidth, 1280);
+            targetQuality = 0.6;
+            console.log(`📦 대용량 파일 감지 (${fileSizeMB.toFixed(1)}MB) - 강력한 압축 적용`);
+        } else if (fileSizeMB > 10) {
+            // 10-20MB: 중간 압축
+            targetMaxWidth = Math.min(maxWidth, 1600);
+            targetQuality = 0.7;
+            console.log(`📦 큰 파일 감지 (${fileSizeMB.toFixed(1)}MB) - 중간 압축 적용`);
+        }
+        
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = new Image();
@@ -312,9 +336,9 @@ window.compressImage = function(file, maxWidth = 1920, quality = 0.85) {
                 let height = img.height;
                 
                 // 최대 너비 제한
-                if (width > maxWidth) {
-                    height = Math.round((height * maxWidth) / width);
-                    width = maxWidth;
+                if (width > targetMaxWidth) {
+                    height = Math.round((height * targetMaxWidth) / width);
+                    width = targetMaxWidth;
                 }
                 
                 canvas.width = width;
@@ -326,6 +350,12 @@ window.compressImage = function(file, maxWidth = 1920, quality = 0.85) {
                 // Canvas를 Blob으로 변환
                 canvas.toBlob(function(blob) {
                     if (blob) {
+                        const originalSizeMB = file.size / (1024 * 1024);
+                        const compressedSizeMB = blob.size / (1024 * 1024);
+                        const reduction = ((1 - blob.size / file.size) * 100).toFixed(1);
+                        
+                        console.log(`✅ 압축 완료: ${originalSizeMB.toFixed(1)}MB → ${compressedSizeMB.toFixed(1)}MB (${reduction}% 감소)`);
+                        
                         // 압축된 파일이 원본보다 크면 원본 사용
                         if (blob.size > file.size) {
                             resolve(file);
@@ -340,7 +370,7 @@ window.compressImage = function(file, maxWidth = 1920, quality = 0.85) {
                     } else {
                         resolve(file);
                     }
-                }, 'image/jpeg', quality);
+                }, 'image/jpeg', targetQuality);
             };
             img.onerror = function() {
                 reject(new Error('이미지 로드 실패'));
