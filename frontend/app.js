@@ -11731,7 +11731,7 @@ window.showMyPageModal = async function() {
                         <h3 class="text-2xl font-bold">My Page</h3>
                         <p class="text-sm text-blue-100 mt-1">
                             ${instructor.name}
-                            ${instructor.instructor_type ? ' · ' + instructor.instructor_type : ' · 강사'}
+                            ${instructor.instructor_type_name ? ' · ' + instructor.instructor_type_name : ' · 강사'}
                             ${instructor.major ? ' · ' + instructor.major : ''}
                         </p>
                     </div>
