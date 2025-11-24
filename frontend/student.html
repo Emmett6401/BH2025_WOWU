@@ -755,22 +755,34 @@
         // 모든 메모 불러오기
         window.loadAllNotes = async function() {
             const student = JSON.parse(sessionStorage.getItem('student'));
-            if (!student) return;
+            if (!student) {
+                console.error('❌ 학생 정보가 없습니다.');
+                return;
+            }
+            
+            console.log('📋 학생 정보:', student);
+            console.log('🔍 학생 ID:', student.id);
             
             try {
                 // 프로그레스바 표시
                 window.showLoading('SSIRN 메모를 불러오는 중...');
                 
                 // 학생 ID로 필터링하여 조회
-                const response = await axios.get(`${API_BASE_URL}/api/class-notes?student_id=${student.id}`);
+                const url = `${API_BASE_URL}/api/class-notes?student_id=${student.id}`;
+                console.log('🌐 API 요청:', url);
+                const response = await axios.get(url);
                 const fetchedNotes = response.data || [];
+                console.log('📥 서버에서 받은 메모:', fetchedNotes);
                 
                 // 유효한 메모만 필터링 (id가 있고, student_id가 현재 학생과 일치하는 것만)
                 allNotes = fetchedNotes.filter(note => {
-                    return note && note.id && note.student_id === student.id;
+                    const isValid = note && note.id && note.student_id === student.id;
+                    console.log(`메모 ID ${note?.id}: student_id=${note?.student_id}, 현재 학생=${student.id}, 유효=${isValid}`);
+                    return isValid;
                 });
                 
                 console.log(`✅ 총 ${fetchedNotes.length}개 메모 중 ${allNotes.length}개 유효한 메모 로드됨`);
+                console.log('📝 필터링된 메모:', allNotes);
                 
                 renderNotesGrid(allNotes);
                 
