@@ -71,8 +71,8 @@ window.clearCache = function(key) {
 
 // ==================== 로그인 체크 ====================
 function checkLogin() {
-    const loggedIn = localStorage.getItem('logged_in');
-    const instructor = localStorage.getItem('instructor');
+    const loggedIn = sessionStorage.getItem('logged_in');
+    const instructor = sessionStorage.getItem('instructor');
     
     // 로그인 정보가 없거나 유효하지 않으면
     if (!loggedIn || loggedIn !== 'true' || !instructor) {
@@ -116,7 +116,7 @@ function checkLogin() {
 // 주강사 권한 체크 함수
 function isMainInstructor() {
     try {
-        const instructor = localStorage.getItem('instructor');
+        const instructor = sessionStorage.getItem('instructor');
         if (!instructor) return false;
         const instructorData = JSON.parse(instructor);
         return instructorData.instructor_type_type === '1. 주강사';
@@ -701,7 +701,7 @@ function clearAllSessions() {
 // 로그아웃 함수
 function logout() {
     // 커스텀 확인 모달
-    const instructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+    const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
     const instructorName = instructor.name || '사용자';
     
     const modal = document.createElement('div');
@@ -3948,7 +3948,7 @@ window.showCounselingForm = function(counselingId = null) {
                     <select name="instructor_code" required class="w-full px-3 py-2 border rounded-lg">
                         <option value="">선택하세요</option>
                         ${[...instructors].sort((a, b) => a.name.localeCompare(b.name, 'ko')).map(i => {
-                            const loggedInInstructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+                            const loggedInInstructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
                             const isLoggedInInstructor = i.code === loggedInInstructor.code;
                             const isSelected = existingCounseling?.instructor_code === i.code || (!existingCounseling && isLoggedInInstructor);
                             return `
@@ -7505,7 +7505,7 @@ window.showTeamActivityLogForm = function(logId = null) {
                         <select id="log-instructor-code" required class="w-full border rounded px-3 py-2">
                             <option value="">작성자를 선택하세요</option>
                             ${(() => {
-                                const loggedInInstructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+                                const loggedInInstructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
                                 return [...instructors].sort((a, b) => a.name.localeCompare(b.name, 'ko')).map(inst => {
                                     const isCurrentUser = inst.code === loggedInInstructor.code;
                                     // 항상 접속자를 기본 선택 (추가 모드와 수정 모드 모두)
@@ -8427,7 +8427,7 @@ function renderTrainingLogsSelection(courses) {
                     <select id="log-instructor" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
                         <option value="" selected>전체 강사</option>
                         ${(() => {
-                            const loggedInInstructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+                            const loggedInInstructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
                             const sortedInstructors = [...instructors].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
                             return sortedInstructors.map(i => {
                                 const displayMark = i.code === loggedInInstructor.code ? ' (나)' : '';
@@ -9405,7 +9405,7 @@ function renderAITrainingLog() {
                         <select id="ai-instructor" class="w-full border rounded px-3 py-2">
                             <option value="">-- 전체 강사 --</option>
                             ${(() => {
-                                const loggedInInstructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+                                const loggedInInstructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
                                 return instructors.map(i => {
                                     const typeInfo = instructorTypes.find(t => t.code === i.instructor_type);
                                     const typeName = typeInfo ? typeInfo.name : '';
@@ -10730,7 +10730,7 @@ async function updateHeader() {
         }
         
         // 강사 이름 업데이트
-        const instructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
         const nameElement = document.getElementById('instructorName');
         if (nameElement && instructor.name) {
             nameElement.textContent = instructor.name;
@@ -10742,7 +10742,7 @@ async function updateHeader() {
 
 // 메뉴 권한 적용
 function applyMenuPermissions() {
-    const instructor = JSON.parse(localStorage.getItem('instructor') || '{}');
+    const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
     
     if (!instructor || !instructor.code) {
         console.log('⚠️ 로그인 정보 없음 - 권한 체크 스킵');
@@ -10832,7 +10832,7 @@ window.resetSystemSettings = async function() {
 
 // ==================== MyPage (강사 프로필 관리) ====================
 window.showMyPage = async function() {
-    let instructor = JSON.parse(localStorage.getItem('instructor'));
+    let instructor = JSON.parse(sessionStorage.getItem('instructor'));
     if (!instructor) {
         window.showAlert('로그인 정보를 찾을 수 없습니다.', 'error');
         return;
@@ -10851,12 +10851,12 @@ window.showMyPage = async function() {
             instructor = updatedInstructor;
             
             // localStorage도 업데이트 (비밀번호 제외)
-            const storedInstructor = JSON.parse(localStorage.getItem('instructor'));
+            const storedInstructor = JSON.parse(sessionStorage.getItem('instructor'));
             const updatedData = {
                 ...instructor,
                 password: storedInstructor.password // 기존 비밀번호 유지
             };
-            localStorage.setItem('instructor', JSON.stringify(updatedData));
+            sessionStorage.setItem('instructor', JSON.stringify(updatedData));
         }
     } catch (error) {
         console.error('최신 강사 정보 로드 실패:', error);
@@ -11085,7 +11085,7 @@ window.closeMyPage = async function() {
     localStorage.removeItem('cache_instructors');
     
     // localStorage의 instructor 최신 데이터로 갱신
-    const currentInstructor = JSON.parse(localStorage.getItem('instructor'));
+    const currentInstructor = JSON.parse(sessionStorage.getItem('instructor'));
     if (currentInstructor) {
         try {
             // 서버에서 최신 강사 정보 가져오기
@@ -11101,7 +11101,7 @@ window.closeMyPage = async function() {
                     ...updatedInstructor,
                     password: currentInstructor.password // 기존 비밀번호 유지
                 };
-                localStorage.setItem('instructor', JSON.stringify(updatedData));
+                sessionStorage.setItem('instructor', JSON.stringify(updatedData));
                 
                 // 헤더의 강사 이름도 업데이트
                 const nameElement = document.getElementById('instructorName');
@@ -11191,7 +11191,7 @@ window.uploadMyPagePhoto = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
     
-    const instructor = JSON.parse(localStorage.getItem('instructor'));
+    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
     
     // 이미지 파일인지 확인
     if (!file.type.startsWith('image/')) {
@@ -11277,7 +11277,7 @@ window.uploadMyPagePhoto = async function(event) {
         
         // 로컬스토리지 업데이트
         instructor.profile_photo = photoUrl;
-        localStorage.setItem('instructor', JSON.stringify(instructor));
+        sessionStorage.setItem('instructor', JSON.stringify(instructor));
         
         // 완료 표시
         progressBar.style.width = '100%';
@@ -11323,7 +11323,7 @@ window.handleMyPageFileUpload = async function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
-    const instructor = JSON.parse(localStorage.getItem('instructor'));
+    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
     const progressDiv = document.getElementById('mypage-file-upload-progress');
     const progressBar = document.getElementById('mypage-file-progress-bar');
     
@@ -11395,7 +11395,7 @@ window.handleMyPageFileUpload = async function(event) {
         // 로컬스토리지 업데이트
         instructor.profile_photo = profilePhoto;
         instructor.attachments = JSON.stringify(attachments);
-        localStorage.setItem('instructor', JSON.stringify(instructor));
+        sessionStorage.setItem('instructor', JSON.stringify(instructor));
         
         // 미리보기 업데이트
         updateMyPageFilePreview(attachments);
@@ -11511,7 +11511,7 @@ window.removeMyPageFile = async function(index) {
     const confirmed = await window.showConfirm('⚠️ 이 파일을 삭제하시겠습니까?\n\n삭제된 파일은 복구할 수 없습니다.');
     if (!confirmed) return;
     
-    const instructor = JSON.parse(localStorage.getItem('instructor'));
+    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
     
     try {
         // 기존 첨부 파일 가져오기
@@ -11546,7 +11546,7 @@ window.removeMyPageFile = async function(index) {
         
         // 로컬스토리지 업데이트
         instructor.attachments = JSON.stringify(attachments);
-        localStorage.setItem('instructor', JSON.stringify(instructor));
+        sessionStorage.setItem('instructor', JSON.stringify(instructor));
         
         // 미리보기 업데이트
         updateMyPageFilePreview(attachments);
@@ -11566,7 +11566,7 @@ window.removeMyPageFile = async function(index) {
 
 // MyPage 정보 저장
 window.saveMyPage = async function() {
-    const instructor = JSON.parse(localStorage.getItem('instructor'));
+    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
     
     const name = document.getElementById('mypage-name').value;
     const major = document.getElementById('mypage-major').value;
@@ -11661,7 +11661,7 @@ window.saveMyPage = async function() {
         instructor.email = email;
         instructor.profile_photo = profilePhoto;
         instructor.attachments = JSON.stringify(attachments);
-        localStorage.setItem('instructor', JSON.stringify(instructor));
+        sessionStorage.setItem('instructor', JSON.stringify(instructor));
         
         // 헤더 업데이트
         document.getElementById('instructorName').textContent = name;

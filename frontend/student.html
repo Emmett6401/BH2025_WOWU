@@ -391,7 +391,7 @@
         
         // 페이지 로드 시 학생 정보 표시
         window.addEventListener('DOMContentLoaded', async () => {
-            let student = JSON.parse(localStorage.getItem('student'));
+            let student = JSON.parse(sessionStorage.getItem('student'));
             if (!student) {
                 window.showAlert('로그인이 필요합니다.', 'error');
                 setTimeout(() => {
@@ -408,12 +408,12 @@
                     student = response.data;
                     
                     // localStorage도 업데이트 (비밀번호 제외)
-                    const storedStudent = JSON.parse(localStorage.getItem('student'));
+                    const storedStudent = JSON.parse(sessionStorage.getItem('student'));
                     const updatedData = {
                         ...student,
                         password: storedStudent.password
                     };
-                    localStorage.setItem('student', JSON.stringify(updatedData));
+                    sessionStorage.setItem('student', JSON.stringify(updatedData));
                 }
             } catch (error) {
                 console.error('최신 학생 정보 로드 실패:', error);
@@ -495,7 +495,7 @@
                 progressText.textContent = '✅ 업로드 완료!';
                 
                 // 자동 저장
-                const student = JSON.parse(localStorage.getItem('student'));
+                const student = JSON.parse(sessionStorage.getItem('student'));
                 if (student && student.id) {
                     await saveStudentProfileSilent(photoUrl);
                     window.showAlert('✅ 프로필 사진이 업로드되고 자동 저장되었습니다!', 'success');
@@ -540,7 +540,7 @@
             const files = event.target.files;
             if (!files || files.length === 0) return;
             
-            const student = JSON.parse(localStorage.getItem('student'));
+            const student = JSON.parse(sessionStorage.getItem('student'));
             const progressDiv = document.getElementById('student-file-upload-progress');
             const progressBar = document.getElementById('student-file-progress-bar');
             
@@ -627,7 +627,7 @@
                 
                 // 로컬스토리지 업데이트
                 student.attachments = JSON.stringify(attachments);
-                localStorage.setItem('student', JSON.stringify(student));
+                sessionStorage.setItem('student', JSON.stringify(student));
                 
                 // 파일 개수 업데이트
                 const fileCountSpan = document.getElementById('student-file-count');
@@ -717,7 +717,7 @@
             const confirmed = await window.showConfirm('⚠️ 이 파일을 삭제하시겠습니까?\n\n삭제된 파일은 복구할 수 없습니다.');
             if (!confirmed) return;
             
-            const student = JSON.parse(localStorage.getItem('student'));
+            const student = JSON.parse(sessionStorage.getItem('student'));
             
             // 기존 attachments 가져오기
             let attachments = [];
@@ -767,7 +767,7 @@
                 
                 // 로컬스토리지 업데이트
                 student.attachments = JSON.stringify(attachments);
-                localStorage.setItem('student', JSON.stringify(student));
+                sessionStorage.setItem('student', JSON.stringify(student));
                 
                 // 파일 개수 업데이트
                 const fileCountSpan = document.getElementById('student-file-count');
@@ -787,7 +787,7 @@
         
         // 프로필 사진 자동 저장 (Silent)
         async function saveStudentProfileSilent(profilePhotoUrl) {
-            const student = JSON.parse(localStorage.getItem('student'));
+            const student = JSON.parse(sessionStorage.getItem('student'));
             
             // 첨부 파일 가져오기
             let attachments = [];
@@ -827,7 +827,7 @@
                 
                 // 로컬 스토리지 업데이트
                 student.profile_photo = profilePhotoUrl;
-                localStorage.setItem('student', JSON.stringify(student));
+                sessionStorage.setItem('student', JSON.stringify(student));
                 
                 // 캐시 삭제
                 localStorage.removeItem('cache_students');
@@ -839,7 +839,7 @@
         
         // 학생 정보 저장
         window.saveStudentProfile = async function() {
-            const student = JSON.parse(localStorage.getItem('student'));
+            const student = JSON.parse(sessionStorage.getItem('student'));
             
             // 프로필 사진 URL
             const photoImg = document.getElementById('student-photo');
@@ -897,7 +897,7 @@
                 student.interests = document.getElementById('student-interests').value;
                 student.education = document.getElementById('student-education').value;
                 student.introduction = document.getElementById('student-introduction').value;
-                localStorage.setItem('student', JSON.stringify(student));
+                sessionStorage.setItem('student', JSON.stringify(student));
                 
                 // 캐시 삭제
                 localStorage.removeItem('cache_students');
@@ -912,7 +912,7 @@
         // 로그아웃
         window.logout = function() {
             // 커스텀 확인 모달
-            const student = JSON.parse(localStorage.getItem('student') || '{}');
+            const student = JSON.parse(sessionStorage.getItem('student') || '{}');
             const studentName = student.name || '학생';
             
             const modal = document.createElement('div');
@@ -940,9 +940,9 @@
             
             document.getElementById('logout-cancel').onclick = () => modal.remove();
             document.getElementById('logout-confirm').onclick = () => {
-                localStorage.removeItem('student');
-                localStorage.removeItem('user_type');
-                localStorage.removeItem('logged_in');
+                sessionStorage.removeItem('student');
+                sessionStorage.removeItem('user_type');
+                sessionStorage.removeItem('logged_in');
                 window.location.href = '/login.html';
             };
         };

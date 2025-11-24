@@ -262,10 +262,10 @@
         window.addEventListener('DOMContentLoaded', () => {
             console.log('=== 로그인 페이지 초기화 ===');
             
-            // 이미 로그인되어 있는지 확인
-            const loggedIn = localStorage.getItem('logged_in');
-            const instructor = localStorage.getItem('instructor');
-            const student = localStorage.getItem('student');
+            // 이미 로그인되어 있는지 확인 (sessionStorage 사용)
+            const loggedIn = sessionStorage.getItem('logged_in');
+            const instructor = sessionStorage.getItem('instructor');
+            const student = sessionStorage.getItem('student');
             
             // 강사 또는 학생으로 이미 로그인되어 있으면 메인 페이지로 리다이렉트
             if (loggedIn === 'true' && (instructor || student)) {
@@ -383,9 +383,9 @@
                     // 로그인 성공
                     const instructor = response.data.instructor;
                     
-                    // 로컬 스토리지에 강사 정보 저장 (뒤로가기 시에도 유지)
-                    localStorage.setItem('instructor', JSON.stringify(instructor));
-                    localStorage.setItem('logged_in', 'true');
+                    // 세션 스토리지에 강사 정보 저장 (브라우저 닫으면 삭제됨)
+                    sessionStorage.setItem('instructor', JSON.stringify(instructor));
+                    sessionStorage.setItem('logged_in', 'true');
                     
                     // 아이디 저장 옵션
                     if (rememberName) {
@@ -452,10 +452,10 @@
                     // 로그인 성공
                     const student = response.data.student;
                     
-                    // 로컬 스토리지에 학생 정보 저장
-                    localStorage.setItem('student', JSON.stringify(student));
-                    localStorage.setItem('user_type', 'student');
-                    localStorage.setItem('logged_in', 'true');
+                    // 세션 스토리지에 학생 정보 저장 (브라우저 닫으면 삭제됨)
+                    sessionStorage.setItem('student', JSON.stringify(student));
+                    sessionStorage.setItem('user_type', 'student');
+                    sessionStorage.setItem('logged_in', 'true');
                     
                     // 이름 저장 옵션
                     if (rememberName) {

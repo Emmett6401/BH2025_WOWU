@@ -29,12 +29,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link href="/pwa-styles.css" rel="stylesheet">
     
-    <!-- 로그인 체크 (즉시 실행) -->
+    <!-- 로그인 체크 (즉시 실행) - sessionStorage 사용 (브라우저 닫으면 세션 삭제) -->
     <script>
         (function() {
             console.log('🔒 즉시 로그인 체크 실행');
-            const loggedIn = localStorage.getItem('logged_in');
-            const instructor = localStorage.getItem('instructor');
+            const loggedIn = sessionStorage.getItem('logged_in');
+            const instructor = sessionStorage.getItem('instructor');
             
             // 로그인 정보가 없으면 즉시 로그인 페이지로 리다이렉트
             if (!loggedIn || loggedIn !== 'true' || !instructor) {
