@@ -3949,100 +3949,144 @@ async def update_system_settings(
 # ==================== 학생 수업일지 API ====================
 
 def ensure_class_notes_table(cursor):
-    """class_notes 테이블이 없으면 생성"""
+    """class_notes 테이블이 없으면 생성하고 필요한 컬럼 추가"""
     try:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS class_notes (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                student_id INT NOT NULL,
+                student_id INT,
+                instructor_id INT,
                 note_date DATE NOT NULL,
                 content TEXT,
+                photo_urls TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-                INDEX idx_student_date (student_id, note_date)
+                INDEX idx_student_date (student_id, note_date),
+                INDEX idx_instructor_date (instructor_id, note_date)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
+        
+        # 기존 테이블에 instructor_id 컬럼이 없으면 추가
+        try:
+            cursor.execute("""
+                ALTER TABLE class_notes 
+                ADD COLUMN instructor_id INT AFTER student_id
+            """)
+            print("✅ instructor_id 컬럼 추가됨")
+        except Exception:
+            pass  # 이미 존재하면 무시
+        
+        # 기존 테이블에 photo_urls 컬럼이 없으면 추가
+        try:
+            cursor.execute("""
+                ALTER TABLE class_notes 
+                ADD COLUMN photo_urls TEXT AFTER content
+            """)
+            print("✅ photo_urls 컬럼 추가됨")
+        except Exception:
+            pass  # 이미 존재하면 무시
+        
+        # student_id를 NULL 허용으로 변경
+        try:
+            cursor.execute("""
+                ALTER TABLE class_notes 
+                MODIFY COLUMN student_id INT NULL
+            """)
+            print("✅ student_id NULL 허용으로 변경됨")
+        except Exception:
+            pass
+        
         print("✅ class_notes 테이블 확인/생성 완료")
     except Exception as e:
         print(f"⚠️ class_notes 테이블 생성 실패: {e}")
 
-@app.get("/api/class-notes/{student_id}")
-async def get_class_notes(student_id: int, note_date: Optional[str] = None):
-    """학생의 수업일지 조회"""
+@app.get("/api/class-notes")
+async def get_all_class_notes(student_id: Optional[int] = None, instructor_id: Optional[int] = None):
+    """모든 수업일지 조회 (필터링 옵션)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         ensure_class_notes_table(cursor)
         conn.commit()
         
-        if note_date:
-            # 특정 날짜의 수업일지 조회
-            cursor.execute(
-                "SELECT * FROM class_notes WHERE student_id = %s AND note_date = %s",
-                (student_id, note_date)
-            )
-            note = cursor.fetchone()
-            
-            # datetime 변환
-            if note:
-                for key, value in note.items():
-                    if isinstance(value, (datetime, date)):
-                        note[key] = value.isoformat()
-            
-            return note if note else None
-        else:
-            # 모든 수업일지 조회 (최근 순)
-            cursor.execute(
-                "SELECT * FROM class_notes WHERE student_id = %s ORDER BY note_date DESC",
-                (student_id,)
-            )
-            notes = cursor.fetchall()
-            
-            # datetime 변환
-            for note in notes:
-                for key, value in note.items():
-                    if isinstance(value, (datetime, date)):
-                        note[key] = value.isoformat()
-            
-            return notes
+        query = "SELECT * FROM class_notes WHERE 1=1"
+        params = []
+        
+        if student_id is not None:
+            query += " AND student_id = %s"
+            params.append(student_id)
+        
+        if instructor_id is not None:
+            query += " AND instructor_id = %s"
+            params.append(instructor_id)
+        
+        query += " ORDER BY note_date DESC"
+        
+        cursor.execute(query, params)
+        notes = cursor.fetchall()
+        
+        # datetime 변환
+        for note in notes:
+            for key, value in note.items():
+                if isinstance(value, (datetime, date)):
+                    note[key] = value.isoformat()
+        
+        return notes
+    finally:
+        conn.close()
+
+@app.get("/api/class-notes/{note_id}")
+async def get_class_note_by_id(note_id: int):
+    """ID로 특정 수업일지 조회"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        ensure_class_notes_table(cursor)
+        conn.commit()
+        
+        cursor.execute("SELECT * FROM class_notes WHERE id = %s", (note_id,))
+        note = cursor.fetchone()
+        
+        if not note:
+            raise HTTPException(status_code=404, detail="수업일지를 찾을 수 없습니다")
+        
+        # datetime 변환
+        for key, value in note.items():
+            if isinstance(value, (datetime, date)):
+                note[key] = value.isoformat()
+        
+        return note
     finally:
         conn.close()
 
 @app.post("/api/class-notes")
-async def create_or_update_class_note(data: dict):
-    """수업일지 생성 또는 업데이트"""
+async def create_class_note(data: dict):
+    """수업일지 생성"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         ensure_class_notes_table(cursor)
         
         student_id = data.get('student_id')
+        instructor_id = data.get('instructor_id')
         note_date = data.get('note_date')
         content = data.get('content', '')
-        note_id = data.get('id')  # ID가 있으면 수정, 없으면 생성
+        photo_urls = data.get('photo_urls', '[]')
         
-        if not student_id or not note_date:
-            raise HTTPException(status_code=400, detail="student_id와 note_date는 필수입니다")
+        if not note_date:
+            raise HTTPException(status_code=400, detail="note_date는 필수입니다")
         
-        if note_id:
-            # ID가 제공된 경우: 기존 노트 업데이트
-            cursor.execute(
-                "UPDATE class_notes SET content = %s, note_date = %s WHERE id = %s AND student_id = %s",
-                (content, note_date, note_id, student_id)
-            )
-            if cursor.rowcount == 0:
-                raise HTTPException(status_code=404, detail="수업일지를 찾을 수 없습니다")
-            message = "수업일지가 수정되었습니다"
-        else:
-            # ID가 없는 경우: 항상 새로 생성 (같은 날짜에도 여러 개 가능)
-            cursor.execute(
-                "INSERT INTO class_notes (student_id, note_date, content) VALUES (%s, %s, %s)",
-                (student_id, note_date, content)
-            )
-            note_id = cursor.lastrowid
-            message = "수업일지가 저장되었습니다"
+        # student_id와 instructor_id 중 하나는 반드시 있어야 함
+        if not student_id and not instructor_id:
+            raise HTTPException(status_code=400, detail="student_id 또는 instructor_id가 필요합니다")
         
+        # INSERT 쿼리
+        cursor.execute(
+            """INSERT INTO class_notes (student_id, instructor_id, note_date, content, photo_urls) 
+               VALUES (%s, %s, %s, %s, %s)""",
+            (student_id, instructor_id, note_date, content, photo_urls)
+        )
+        note_id = cursor.lastrowid
         conn.commit()
         
         # 저장된 일지 반환
@@ -4054,7 +4098,51 @@ async def create_or_update_class_note(data: dict):
             if isinstance(value, (datetime, date)):
                 note[key] = value.isoformat()
         
-        return {"success": True, "message": message, "note": note}
+        return {"success": True, "message": "수업일지가 저장되었습니다", "note": note}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+@app.put("/api/class-notes/{note_id}")
+async def update_class_note(note_id: int, data: dict):
+    """수업일지 수정"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        ensure_class_notes_table(cursor)
+        
+        note_date = data.get('note_date')
+        content = data.get('content', '')
+        photo_urls = data.get('photo_urls', '[]')
+        
+        if not note_date:
+            raise HTTPException(status_code=400, detail="note_date는 필수입니다")
+        
+        # UPDATE 쿼리
+        cursor.execute(
+            """UPDATE class_notes 
+               SET note_date = %s, content = %s, photo_urls = %s 
+               WHERE id = %s""",
+            (note_date, content, photo_urls, note_id)
+        )
+        
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="수업일지를 찾을 수 없습니다")
+        
+        conn.commit()
+        
+        # 수정된 일지 반환
+        cursor.execute("SELECT * FROM class_notes WHERE id = %s", (note_id,))
+        note = cursor.fetchone()
+        
+        # datetime 변환
+        for key, value in note.items():
+            if isinstance(value, (datetime, date)):
+                note[key] = value.isoformat()
+        
+        return {"success": True, "message": "수업일지가 수정되었습니다", "note": note}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))

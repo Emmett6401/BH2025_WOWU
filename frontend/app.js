@@ -2229,6 +2229,9 @@ window.showTab = function(tab, addToHistory = true) {
         case 'notices':
             loadNotices();
             break;
+        case 'my-profile':
+            loadMyProfile();
+            break;
     }
 }
 
@@ -12962,6 +12965,637 @@ window.deleteNotice = async function(noticeId) {
         console.error('공지사항 삭제 실패:', error);
         const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류가 발생했습니다.';
         await window.showError(`공지사항 삭제 중 오류가 발생했습니다.\n\n${errorMsg}`, '삭제 실패');
+    }
+};
+
+// ==================== 강사 마이페이지 ====================
+let instructorNotes = [];
+let currentInstructorNoteId = null;
+let currentInstructorTab = 'notes'; // 기본 탭: SSIRN메모장
+
+async function loadMyProfile() {
+    const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+    
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <div class="max-w-6xl mx-auto">
+            <!-- 탭 메뉴 -->
+            <div class="bg-white rounded-t-lg shadow-md mb-0">
+                <div class="flex gap-2 border-b">
+                    <button onclick="switchInstructorTab('notes')" 
+                            id="instructor-tab-notes"
+                            class="px-6 py-3 font-semibold transition-all border-b-2 border-blue-500 text-blue-600">
+                        <i class="fas fa-book-open mr-2"></i>SSIRN메모장
+                    </button>
+                    <button onclick="switchInstructorTab('profile')" 
+                            id="instructor-tab-profile"
+                            class="px-6 py-3 font-semibold transition-all border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 text-gray-600">
+                        <i class="fas fa-user mr-2"></i>내 정보
+                    </button>
+                </div>
+            </div>
+
+            <!-- SSIRN메모장 섹션 -->
+            <div id="instructor-section-notes" class="bg-white rounded-b-lg shadow-md">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                                <i class="fas fa-book-open mr-3 text-blue-600"></i>
+                                내 SSIRN메모장
+                            </h2>
+                            <p class="text-gray-600 mt-1 text-sm">나의 수업 내용과 기억할 내용을 기록하세요</p>
+                        </div>
+                        <button onclick="showInstructorNewNoteModal()" 
+                                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold">
+                            <i class="fas fa-plus mr-2"></i>새 메모
+                        </button>
+                    </div>
+
+                    <!-- 검색 및 필터 -->
+                    <div class="mb-6 flex gap-2">
+                        <div class="flex-1">
+                            <input type="text" id="instructor-note-search" 
+                                   placeholder="내용 검색..." 
+                                   class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   onkeyup="searchInstructorNotes()">
+                        </div>
+                        <input type="date" id="instructor-note-date-filter" 
+                               class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                               onchange="searchInstructorNotes()">
+                        <button onclick="clearInstructorNoteFilters()" 
+                                class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- 메모 개수 -->
+                    <div class="mb-4 text-sm text-gray-600">
+                        총 <span id="instructor-notes-count" class="font-bold text-blue-600">0</span>개의 메모
+                    </div>
+                    
+                    <!-- 메모 그리드 -->
+                    <div id="instructor-notes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- 메모 카드들이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                    
+                    <!-- 빈 상태 -->
+                    <div id="instructor-notes-empty" class="hidden text-center py-12">
+                        <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">작성된 메모가 없습니다</p>
+                        <button onclick="showInstructorNewNoteModal()" 
+                                class="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            <i class="fas fa-plus mr-2"></i>첫 메모 작성하기
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 내 정보 섹션 -->
+            <div id="instructor-section-profile" class="hidden bg-white rounded-b-lg shadow-md">
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                        <i class="fas fa-id-card mr-3 text-blue-600"></i>
+                        내 정보
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-user mr-2 text-blue-500"></i>이름
+                            </label>
+                            <input type="text" value="${instructor.name || ''}" 
+                                   class="w-full px-4 py-3 border rounded-lg bg-gray-50" readonly>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-id-badge mr-2 text-green-500"></i>강사코드
+                            </label>
+                            <input type="text" value="${instructor.instructor_code || ''}" 
+                                   class="w-full px-4 py-3 border rounded-lg bg-gray-50" readonly>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-user-tag mr-2 text-purple-500"></i>강사유형
+                            </label>
+                            <input type="text" value="${instructor.instructor_type || ''}" 
+                                   class="w-full px-4 py-3 border rounded-lg bg-gray-50" readonly>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-phone mr-2 text-yellow-500"></i>연락처
+                            </label>
+                            <input type="text" value="${instructor.phone || ''}" 
+                                   class="w-full px-4 py-3 border rounded-lg bg-gray-50" readonly>
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-envelope mr-2 text-red-500"></i>이메일
+                            </label>
+                            <input type="text" value="${instructor.email || ''}" 
+                                   class="w-full px-4 py-3 border rounded-lg bg-gray-50" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 기본 탭 로드
+    switchInstructorTab('notes');
+}
+
+window.switchInstructorTab = function(tab) {
+    currentInstructorTab = tab;
+    
+    // 탭 버튼 스타일 업데이트
+    document.querySelectorAll('[id^="instructor-tab-"]').forEach(btn => {
+        btn.classList.remove('border-blue-500', 'text-blue-600');
+        btn.classList.add('border-transparent', 'text-gray-600');
+    });
+    document.getElementById(`instructor-tab-${tab}`).classList.remove('border-transparent', 'text-gray-600');
+    document.getElementById(`instructor-tab-${tab}`).classList.add('border-blue-500', 'text-blue-600');
+    
+    // 섹션 표시/숨김
+    document.getElementById('instructor-section-notes').classList.toggle('hidden', tab !== 'notes');
+    document.getElementById('instructor-section-profile').classList.toggle('hidden', tab !== 'profile');
+    
+    // 데이터 로드
+    if (tab === 'notes') {
+        loadInstructorNotes();
+    }
+};
+
+async function loadInstructorNotes() {
+    try {
+        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+        const response = await axios.get(`${API_BASE_URL}/api/class-notes`);
+        
+        // 본인의 메모만 필터링 (instructor_id가 본인 ID인 것)
+        instructorNotes = response.data.filter(note => note.instructor_id === instructor.id);
+        
+        renderInstructorNotes();
+    } catch (error) {
+        console.error('강사 메모 로드 실패:', error);
+        await window.showError('메모 목록을 불러오는데 실패했습니다.', '로드 실패');
+    }
+}
+
+function renderInstructorNotes() {
+    const grid = document.getElementById('instructor-notes-grid');
+    const empty = document.getElementById('instructor-notes-empty');
+    const count = document.getElementById('instructor-notes-count');
+    
+    if (!grid || !empty || !count) return;
+    
+    const searchText = document.getElementById('instructor-note-search')?.value.toLowerCase() || '';
+    const dateFilter = document.getElementById('instructor-note-date-filter')?.value || '';
+    
+    let filtered = instructorNotes;
+    
+    if (searchText) {
+        filtered = filtered.filter(note => 
+            note.content?.toLowerCase().includes(searchText)
+        );
+    }
+    
+    if (dateFilter) {
+        filtered = filtered.filter(note => note.note_date === dateFilter);
+    }
+    
+    count.textContent = filtered.length;
+    
+    if (filtered.length === 0) {
+        grid.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+    }
+    
+    grid.classList.remove('hidden');
+    empty.classList.add('hidden');
+    
+    // 최신순 정렬
+    filtered.sort((a, b) => new Date(b.note_date) - new Date(a.note_date));
+    
+    grid.innerHTML = filtered.map(note => {
+        const date = new Date(note.note_date);
+        const formattedDate = date.toLocaleDateString('ko-KR', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        
+        // 마크다운 미리보기 (첫 100자)
+        const preview = note.content.substring(0, 100) + (note.content.length > 100 ? '...' : '');
+        
+        return `
+            <div class="bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-lg transition-all cursor-pointer"
+                 onclick="viewInstructorNote(${note.id})">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-calendar-alt text-blue-500"></i>
+                        <span class="text-sm font-semibold text-gray-700">${formattedDate}</span>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick="event.stopPropagation(); editInstructorNote(${note.id})" 
+                                class="text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors" 
+                                title="수정">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="event.stopPropagation(); deleteInstructorNote(${note.id})" 
+                                class="text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors" 
+                                title="삭제">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="text-gray-700 text-sm line-clamp-3 whitespace-pre-wrap">${preview}</div>
+                ${note.photo_urls && JSON.parse(note.photo_urls).length > 0 ? `
+                    <div class="mt-3 flex items-center text-xs text-gray-500">
+                        <i class="fas fa-image mr-1"></i>
+                        사진 ${JSON.parse(note.photo_urls).length}장
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+window.searchInstructorNotes = function() {
+    renderInstructorNotes();
+};
+
+window.clearInstructorNoteFilters = function() {
+    document.getElementById('instructor-note-search').value = '';
+    document.getElementById('instructor-note-date-filter').value = '';
+    renderInstructorNotes();
+};
+
+window.showInstructorNewNoteModal = function() {
+    currentInstructorNoteId = null;
+    const today = new Date().toISOString().split('T')[0];
+    
+    const modal = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="closeInstructorNoteModal(event)">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl sticky top-0 z-10">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-2xl font-bold">
+                            <i class="fas fa-plus-circle mr-2"></i>새 메모 작성
+                        </h3>
+                        <button onclick="closeInstructorNoteModal()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="p-6">
+                    <form id="instructor-note-form" onsubmit="saveInstructorNote(event)">
+                        <!-- 날짜 -->
+                        <div class="mb-4">
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-calendar mr-2 text-blue-500"></i>날짜
+                            </label>
+                            <input type="date" id="instructor-note-date" value="${today}" 
+                                   class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                        
+                        <!-- 내용 -->
+                        <div class="mb-4">
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-pen mr-2 text-green-500"></i>내용 (마크다운 지원)
+                            </label>
+                            <textarea id="instructor-note-content" rows="10" 
+                                      class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                                      placeholder="메모 내용을 입력하세요...&#10;&#10;마크다운 문법을 사용할 수 있습니다:&#10;# 제목&#10;**굵게**, *기울임*&#10;- 목록&#10;[링크](URL)" required></textarea>
+                        </div>
+                        
+                        <!-- 미리보기 -->
+                        <div class="mb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-gray-700 font-semibold">
+                                    <i class="fas fa-eye mr-2 text-purple-500"></i>미리보기
+                                </label>
+                                <button type="button" onclick="updateInstructorNotePreview()" 
+                                        class="text-sm text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-sync-alt mr-1"></i>새로고침
+                                </button>
+                            </div>
+                            <div id="instructor-note-preview" class="border rounded-lg p-4 bg-gray-50 prose max-w-none min-h-[100px]">
+                                <p class="text-gray-400 italic">미리보기가 여기에 표시됩니다...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- 사진 업로드 -->
+                        <div class="mb-6">
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-camera mr-2 text-pink-500"></i>사진 첨부 (선택사항)
+                            </label>
+                            <input type="file" id="instructor-note-photos" multiple accept="image/*" 
+                                   class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <p class="text-sm text-gray-500 mt-1">
+                                <i class="fas fa-info-circle mr-1"></i>여러 장의 사진을 선택할 수 있습니다
+                            </p>
+                            <div id="instructor-note-photo-preview" class="mt-3 grid grid-cols-3 gap-2"></div>
+                        </div>
+                        
+                        <!-- 버튼 -->
+                        <div class="flex gap-3">
+                            <button type="submit" 
+                                    class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+                                <i class="fas fa-save mr-2"></i>저장
+                            </button>
+                            <button type="button" onclick="closeInstructorNoteModal()" 
+                                    class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">
+                                <i class="fas fa-times mr-2"></i>취소
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modal);
+    
+    // 실시간 미리보기
+    document.getElementById('instructor-note-content').addEventListener('input', updateInstructorNotePreview);
+    updateInstructorNotePreview();
+};
+
+window.updateInstructorNotePreview = function() {
+    const content = document.getElementById('instructor-note-content').value;
+    const preview = document.getElementById('instructor-note-preview');
+    
+    if (content.trim()) {
+        const rawHtml = marked.parse(content);
+        const cleanHtml = DOMPurify.sanitize(rawHtml);
+        preview.innerHTML = cleanHtml;
+    } else {
+        preview.innerHTML = '<p class="text-gray-400 italic">미리보기가 여기에 표시됩니다...</p>';
+    }
+};
+
+window.closeInstructorNoteModal = function(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.querySelector('.fixed.inset-0')?.remove();
+};
+
+window.saveInstructorNote = async function(event) {
+    event.preventDefault();
+    
+    try {
+        window.showLoading('메모 저장 중...');
+        
+        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+        const noteDate = document.getElementById('instructor-note-date').value;
+        const content = document.getElementById('instructor-note-content').value;
+        const photoInput = document.getElementById('instructor-note-photos');
+        
+        let photoUrls = [];
+        
+        // 사진 업로드
+        if (photoInput.files.length > 0) {
+            for (let file of photoInput.files) {
+                const compressedFile = await window.compressImage(file);
+                const formData = new FormData();
+                formData.append('file', compressedFile);
+                
+                const uploadResponse = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                
+                photoUrls.push(uploadResponse.data.url);
+            }
+        }
+        
+        const noteData = {
+            instructor_id: instructor.id,
+            student_id: null, // 강사 본인 메모는 student_id가 null
+            note_date: noteDate,
+            content: content,
+            photo_urls: JSON.stringify(photoUrls)
+        };
+        
+        if (currentInstructorNoteId) {
+            await axios.put(`${API_BASE_URL}/api/class-notes/${currentInstructorNoteId}`, noteData);
+            await window.showSuccess('메모가 수정되었습니다.', '수정 완료');
+        } else {
+            await axios.post(`${API_BASE_URL}/api/class-notes`, noteData);
+            await window.showSuccess('메모가 저장되었습니다.', '저장 완료');
+        }
+        
+        closeInstructorNoteModal();
+        loadInstructorNotes();
+        window.hideLoading();
+    } catch (error) {
+        window.hideLoading();
+        console.error('메모 저장 실패:', error);
+        const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류가 발생했습니다.';
+        await window.showError(`메모 저장 중 오류가 발생했습니다.\n\n${errorMsg}`, '저장 실패');
+    }
+};
+
+window.viewInstructorNote = function(noteId) {
+    const note = instructorNotes.find(n => n.id === noteId);
+    if (!note) return;
+    
+    const date = new Date(note.note_date);
+    const formattedDate = date.toLocaleDateString('ko-KR', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        weekday: 'long'
+    });
+    
+    const rawHtml = marked.parse(note.content);
+    const cleanHtml = DOMPurify.sanitize(rawHtml);
+    
+    const photoUrls = note.photo_urls ? JSON.parse(note.photo_urls) : [];
+    
+    const modal = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="closeInstructorNoteModal(event)">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl sticky top-0 z-10">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <h3 class="text-2xl font-bold mb-2">
+                                <i class="fas fa-book-open mr-2"></i>${formattedDate}
+                            </h3>
+                            <p class="text-blue-100 text-sm">
+                                <i class="fas fa-user mr-1"></i>강사 메모
+                            </p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="event.stopPropagation(); editInstructorNote(${note.id})" 
+                                    class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2" title="수정">
+                                <i class="fas fa-edit text-xl"></i>
+                            </button>
+                            <button onclick="closeInstructorNoteModal()" 
+                                    class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-6">
+                    <div class="prose max-w-none mb-6">
+                        ${cleanHtml}
+                    </div>
+                    
+                    ${photoUrls.length > 0 ? `
+                        <div class="border-t pt-6">
+                            <h4 class="font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-images mr-2 text-pink-500"></i>첨부 사진 (${photoUrls.length}장)
+                            </h4>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                ${photoUrls.map((url, idx) => `
+                                    <img src="${url}" alt="사진 ${idx + 1}" 
+                                         class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                         onclick="window.open('${url}', '_blank')">
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modal);
+};
+
+window.editInstructorNote = async function(noteId) {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/class-notes/${noteId}`);
+        const note = response.data;
+        
+        currentInstructorNoteId = noteId;
+        
+        const modal = `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="closeInstructorNoteModal(event)">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl sticky top-0 z-10">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-2xl font-bold">
+                                <i class="fas fa-edit mr-2"></i>메모 수정
+                            </h3>
+                            <button onclick="closeInstructorNoteModal()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="p-6">
+                        <form id="instructor-note-form" onsubmit="saveInstructorNote(event)">
+                            <!-- 날짜 -->
+                            <div class="mb-4">
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-calendar mr-2 text-blue-500"></i>날짜
+                                </label>
+                                <input type="date" id="instructor-note-date" value="${note.note_date}" 
+                                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                            </div>
+                            
+                            <!-- 내용 -->
+                            <div class="mb-4">
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-pen mr-2 text-green-500"></i>내용 (마크다운 지원)
+                                </label>
+                                <textarea id="instructor-note-content" rows="10" 
+                                          class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                                          required>${note.content}</textarea>
+                            </div>
+                            
+                            <!-- 미리보기 -->
+                            <div class="mb-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="block text-gray-700 font-semibold">
+                                        <i class="fas fa-eye mr-2 text-purple-500"></i>미리보기
+                                    </label>
+                                    <button type="button" onclick="updateInstructorNotePreview()" 
+                                            class="text-sm text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-sync-alt mr-1"></i>새로고침
+                                    </button>
+                                </div>
+                                <div id="instructor-note-preview" class="border rounded-lg p-4 bg-gray-50 prose max-w-none min-h-[100px]"></div>
+                            </div>
+                            
+                            <!-- 기존 사진 -->
+                            ${note.photo_urls && JSON.parse(note.photo_urls).length > 0 ? `
+                                <div class="mb-4">
+                                    <label class="block text-gray-700 font-semibold mb-2">
+                                        <i class="fas fa-images mr-2 text-pink-500"></i>기존 사진
+                                    </label>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        ${JSON.parse(note.photo_urls).map((url, idx) => `
+                                            <img src="${url}" alt="사진 ${idx + 1}" 
+                                                 class="w-full h-32 object-cover rounded-lg">
+                                        `).join('')}
+                                    </div>
+                                    <p class="text-sm text-gray-500 mt-2">
+                                        <i class="fas fa-info-circle mr-1"></i>기존 사진은 유지됩니다
+                                    </p>
+                                </div>
+                            ` : ''}
+                            
+                            <!-- 새 사진 업로드 -->
+                            <div class="mb-6">
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-camera mr-2 text-pink-500"></i>추가 사진 첨부 (선택사항)
+                                </label>
+                                <input type="file" id="instructor-note-photos" multiple accept="image/*" 
+                                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            
+                            <!-- 버튼 -->
+                            <div class="flex gap-3">
+                                <button type="submit" 
+                                        class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+                                    <i class="fas fa-save mr-2"></i>수정 완료
+                                </button>
+                                <button type="button" onclick="closeInstructorNoteModal()" 
+                                        class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">
+                                    <i class="fas fa-times mr-2"></i>취소
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 기존 모달 제거
+        document.querySelector('.fixed.inset-0')?.remove();
+        
+        document.body.insertAdjacentHTML('beforeend', modal);
+        
+        // 실시간 미리보기
+        document.getElementById('instructor-note-content').addEventListener('input', updateInstructorNotePreview);
+        updateInstructorNotePreview();
+    } catch (error) {
+        console.error('메모 로드 실패:', error);
+        await window.showError('메모를 불러오는데 실패했습니다.', '로드 실패');
+    }
+};
+
+window.deleteInstructorNote = async function(noteId) {
+    const confirmed = await window.showConfirm('이 메모를 삭제하시겠습니까?', '삭제 확인');
+    if (!confirmed) return;
+    
+    try {
+        await axios.delete(`${API_BASE_URL}/api/class-notes/${noteId}`);
+        await window.showSuccess('메모가 삭제되었습니다.', '삭제 완료');
+        loadInstructorNotes();
+    } catch (error) {
+        console.error('메모 삭제 실패:', error);
+        const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류가 발생했습니다.';
+        await window.showError(`메모 삭제 중 오류가 발생했습니다.\n\n${errorMsg}`, '삭제 실패');
     }
 };
 
