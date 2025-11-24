@@ -11899,58 +11899,7 @@ window.openInstructorNoteModal = function(noteId = null) {
     document.body.appendChild(modal);
 };
 
-window.closeInstructorNoteModal = function() {
-    const modal = document.getElementById('instructor-note-modal');
-    if (modal) modal.remove();
-};
-
-window.saveInstructorNote = async function() {
-    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
-    if (!instructor) return;
-    
-    const noteId = document.getElementById('instructor-note-id').value;
-    const noteDate = document.getElementById('instructor-note-date').value;
-    const content = document.getElementById('instructor-note-content').value;
-    
-    if (!noteDate) {
-        window.showAlert('날짜를 선택하세요', 'error');
-        return;
-    }
-    
-    if (!content.trim()) {
-        window.showAlert('내용을 입력하세요', 'error');
-        return;
-    }
-    
-    try {
-        const data = {
-            note_date: noteDate,
-            content: content
-        };
-        
-        if (noteId) {
-            data.id = parseInt(noteId);
-        }
-        
-        const response = await axios.post(
-            `${API_BASE_URL}/api/instructors/${instructor.id}/notes`,
-            data
-        );
-        
-        if (response.data.success) {
-            window.showAlert('✅ ' + response.data.message, 'success');
-            closeInstructorNoteModal();
-            loadInstructorSSIRN();
-        }
-    } catch (error) {
-        console.error('메모 저장 실패:', error);
-        window.showAlert('❌ 저장에 실패했습니다', 'error');
-    }
-};
-
-window.editInstructorNote = function(noteId) {
-    openInstructorNoteModal(noteId);
-};
+// 이 함수들은 학생 메모를 보는 강사용 - 아래 마이페이지 함수와 구분됨
 
 window.deleteInstructorNote = async function(noteId) {
     if (!confirm('이 메모를 삭제하시겠습니까?')) return;
@@ -12974,9 +12923,12 @@ let currentInstructorNoteId = null;
 let currentInstructorTab = 'notes'; // 기본 탭: SSIRN메모장
 
 async function loadMyProfile() {
-    const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
-    
-    const app = document.getElementById('app');
+    try {
+        window.showLoading('내 정보를 불러오는 중...');
+        
+        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+        
+        const app = document.getElementById('app');
     app.innerHTML = `
         <div class="max-w-6xl mx-auto">
             <!-- 탭 메뉴 -->
@@ -13107,6 +13059,11 @@ async function loadMyProfile() {
     
     // 기본 탭 로드
     switchInstructorTab('notes');
+    } catch (error) {
+        window.hideLoading();
+        console.error('마이페이지 로드 실패:', error);
+        await window.showError('마이페이지를 불러오는데 실패했습니다.', '로드 실패');
+    }
 }
 
 window.switchInstructorTab = function(tab) {
@@ -13132,14 +13089,22 @@ window.switchInstructorTab = function(tab) {
 
 async function loadInstructorNotes() {
     try {
-        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
-        const response = await axios.get(`${API_BASE_URL}/api/class-notes`);
+        window.showLoading('메모를 불러오는 중...');
         
-        // 본인의 메모만 필터링 (instructor_id가 본인 ID인 것)
-        instructorNotes = response.data.filter(note => note.instructor_id === instructor.id);
+        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+        console.log('🔍 강사 코드:', instructor.code);
+        
+        const response = await axios.get(`${API_BASE_URL}/api/class-notes`);
+        console.log('📦 전체 메모:', response.data.length);
+        
+        // 본인의 메모만 필터링 (instructor_code가 본인 code인 것)
+        instructorNotes = response.data.filter(note => note.instructor_code === instructor.code);
+        console.log('✅ 내 메모:', instructorNotes.length);
         
         renderInstructorNotes();
+        window.hideLoading();
     } catch (error) {
+        window.hideLoading();
         console.error('강사 메모 로드 실패:', error);
         await window.showError('메모 목록을 불러오는데 실패했습니다.', '로드 실패');
     }
@@ -13374,7 +13339,7 @@ window.saveInstructorNote = async function(event) {
         }
         
         const noteData = {
-            instructor_id: instructor.id,
+            instructor_code: instructor.code,
             student_id: null, // 강사 본인 메모는 student_id가 null
             note_date: noteDate,
             content: content,

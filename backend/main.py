@@ -3955,24 +3955,24 @@ def ensure_class_notes_table(cursor):
             CREATE TABLE IF NOT EXISTS class_notes (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 student_id INT,
-                instructor_id INT,
+                instructor_code VARCHAR(50),
                 note_date DATE NOT NULL,
                 content TEXT,
                 photo_urls TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_student_date (student_id, note_date),
-                INDEX idx_instructor_date (instructor_id, note_date)
+                INDEX idx_instructor_code (instructor_code, note_date)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
         
-        # 기존 테이블에 instructor_id 컬럼이 없으면 추가
+        # 기존 테이블에 instructor_code 컬럼이 없으면 추가
         try:
             cursor.execute("""
                 ALTER TABLE class_notes 
-                ADD COLUMN instructor_id INT AFTER student_id
+                ADD COLUMN instructor_code VARCHAR(50) AFTER student_id
             """)
-            print("✅ instructor_id 컬럼 추가됨")
+            print("✅ instructor_code 컬럼 추가됨")
         except Exception:
             pass  # 이미 존재하면 무시
         
@@ -4001,7 +4001,7 @@ def ensure_class_notes_table(cursor):
         print(f"⚠️ class_notes 테이블 생성 실패: {e}")
 
 @app.get("/api/class-notes")
-async def get_all_class_notes(student_id: Optional[int] = None, instructor_id: Optional[int] = None):
+async def get_all_class_notes(student_id: Optional[int] = None, instructor_code: Optional[str] = None):
     """모든 수업일지 조회 (필터링 옵션)"""
     conn = get_db_connection()
     try:
@@ -4016,9 +4016,9 @@ async def get_all_class_notes(student_id: Optional[int] = None, instructor_id: O
             query += " AND student_id = %s"
             params.append(student_id)
         
-        if instructor_id is not None:
-            query += " AND instructor_id = %s"
-            params.append(instructor_id)
+        if instructor_code is not None:
+            query += " AND instructor_code = %s"
+            params.append(instructor_code)
         
         query += " ORDER BY note_date DESC"
         
@@ -4068,7 +4068,7 @@ async def create_class_note(data: dict):
         ensure_class_notes_table(cursor)
         
         student_id = data.get('student_id')
-        instructor_id = data.get('instructor_id')
+        instructor_code = data.get('instructor_code')
         note_date = data.get('note_date')
         content = data.get('content', '')
         photo_urls = data.get('photo_urls', '[]')
@@ -4076,15 +4076,15 @@ async def create_class_note(data: dict):
         if not note_date:
             raise HTTPException(status_code=400, detail="note_date는 필수입니다")
         
-        # student_id와 instructor_id 중 하나는 반드시 있어야 함
-        if not student_id and not instructor_id:
-            raise HTTPException(status_code=400, detail="student_id 또는 instructor_id가 필요합니다")
+        # student_id와 instructor_code 중 하나는 반드시 있어야 함
+        if not student_id and not instructor_code:
+            raise HTTPException(status_code=400, detail="student_id 또는 instructor_code가 필요합니다")
         
         # INSERT 쿼리
         cursor.execute(
-            """INSERT INTO class_notes (student_id, instructor_id, note_date, content, photo_urls) 
+            """INSERT INTO class_notes (student_id, instructor_code, note_date, content, photo_urls) 
                VALUES (%s, %s, %s, %s, %s)""",
-            (student_id, instructor_id, note_date, content, photo_urls)
+            (student_id, instructor_code, note_date, content, photo_urls)
         )
         note_id = cursor.lastrowid
         conn.commit()
