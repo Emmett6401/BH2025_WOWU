@@ -277,7 +277,7 @@ async def get_students(
 
 @app.get("/api/students/{student_id}")
 async def get_student(student_id: int):
-    """특정 학생 조회"""
+    """특정 학생 조회 (과정 정보 포함)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -285,7 +285,14 @@ async def get_student(student_id: int):
         # profile_photo, attachments 컬럼 확인 및 추가
         ensure_profile_photo_columns(cursor, 'students')
         
-        cursor.execute("SELECT * FROM students WHERE id = %s", (student_id,))
+        # 학생 정보와 과정 정보를 JOIN하여 가져오기
+        query = """
+            SELECT s.*, c.name as course_name, c.start_date, c.end_date
+            FROM students s
+            LEFT JOIN courses c ON s.course_code = c.code
+            WHERE s.id = %s
+        """
+        cursor.execute(query, (student_id,))
         student = cursor.fetchone()
         
         if not student:
