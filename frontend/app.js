@@ -3186,17 +3186,17 @@ window.deleteSubject = async function(subjectCode) {
     }
 }
 
-// ==================== 자율수업메모 관리 ====================
+// ==================== SSIRN메모장(수업,기억,정보,etc) 관리 ====================
 async function loadClassNotes() {
     try {
-        window.showLoading('자율수업메모를 불러오는 중...');
+        window.showLoading('SSIRN메모장을 불러오는 중...');
         
-        // 모든 학생과 그들의 자율수업메모 불러오기
+        // 모든 학생과 그들의 SSIRN메모장 불러오기
         const studentsData = await window.getCachedData('students', () => 
             axios.get(`${API_BASE_URL}/api/students`).then(r => r.data)
         );
         
-        // 각 학생의 자율수업메모 가져오기 (병렬 처리)
+        // 각 학생의 SSIRN메모장 가져오기 (병렬 처리)
         const notesPromises = studentsData.map(student => 
             axios.get(`${API_BASE_URL}/api/class-notes/${student.id}`)
                 .then(r => ({ student, notes: r.data || [] }))
@@ -3211,9 +3211,9 @@ async function loadClassNotes() {
         renderClassNotes(studentsWithNotes, studentsData);
         window.hideLoading();
     } catch (error) {
-        console.error('자율수업메모 로드 실패:', error);
+        console.error('SSIRN메모장 로드 실패:', error);
         window.hideLoading();
-        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">자율수업메모를 불러오는데 실패했습니다: ' + error.message + '</div>';
+        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">SSIRN메모장을 불러오는데 실패했습니다: ' + error.message + '</div>';
     }
 }
 
@@ -3225,7 +3225,7 @@ function renderClassNotes(studentNotes, allStudents) {
             <div class="flex justify-between items-center mb-6">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800 flex items-center">
-                        <i class="fas fa-book-open mr-3 text-blue-600"></i>학생 자율수업메모
+                        <i class="fas fa-book-open mr-3 text-blue-600"></i>학생 SSIRN메모장(수업,기억,정보,etc)
                     </h2>
                     <p class="text-gray-600 mt-1">총 ${studentNotes.length}명의 학생, ${totalNotes}개의 일지</p>
                 </div>
@@ -3244,7 +3244,7 @@ function renderClassNotes(studentNotes, allStudents) {
             ${studentNotes.length === 0 ? `
                 <div class="text-center py-12">
                     <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
-                    <p class="text-gray-500">작성된 자율수업메모가 없습니다</p>
+                    <p class="text-gray-500">작성된 SSIRN메모장이 없습니다</p>
                 </div>
             ` : `
                 <div id="notes-container" class="space-y-6">
@@ -3349,7 +3349,7 @@ window.showClassNoteDetail = async function(noteId, studentName) {
                         <div>
                             <h3 class="text-2xl font-bold mb-2">
                                 <i class="fas fa-book-open mr-2"></i>
-                                ${studentName}님의 자율수업메모
+                                ${studentName}님의 SSIRN메모장
                             </h3>
                             <p class="text-blue-100">${dateStr}</p>
                         </div>
@@ -4861,7 +4861,7 @@ window.showInstructorCodeForm = function(code = null) {
         { id: 'holidays', name: '공휴일', icon: 'fa-calendar-alt' },
         { id: 'courses', name: '과정관리', icon: 'fa-school' },
         { id: 'students', name: '학생관리', icon: 'fa-users' },
-        { id: 'class-notes', name: '자율수업메모', icon: 'fa-book-open' },
+        { id: 'class-notes', name: 'SSIRN메모장(수업,기억,정보,etc)', icon: 'fa-book-open' },
         { id: 'counselings', name: '상담관리', icon: 'fa-comments' },
         { id: 'timetables', name: '시간표', icon: 'fa-clock' },
         { id: 'training-logs', name: '훈련일지 관리', icon: 'fa-clipboard-list' },
