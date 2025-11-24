@@ -557,6 +557,20 @@
     <script>
         const API_BASE_URL = '';
         
+        // ==================== Axios 인터셉터 (404 에러 조용히 처리) ====================
+        axios.interceptors.response.use(
+            response => response,
+            error => {
+                // 404 에러를 콘솔에만 경고로 표시하고 조용히 처리
+                if (error.response && error.response.status === 404) {
+                    console.warn('⚠️ 리소스를 찾을 수 없습니다:', error.config.url);
+                    // 에러를 반환하지만 알림은 표시하지 않음
+                    return Promise.reject(error);
+                }
+                return Promise.reject(error);
+            }
+        );
+        
         // ==================== 커스텀 알림/확인 모달 ====================
         let alertTimer = null;
         
@@ -749,7 +763,15 @@
                 
                 // 학생 ID로 필터링하여 조회
                 const response = await axios.get(`${API_BASE_URL}/api/class-notes?student_id=${student.id}`);
-                allNotes = response.data || [];
+                const fetchedNotes = response.data || [];
+                
+                // 유효한 메모만 필터링 (id가 있고, student_id가 현재 학생과 일치하는 것만)
+                allNotes = fetchedNotes.filter(note => {
+                    return note && note.id && note.student_id === student.id;
+                });
+                
+                console.log(`✅ 총 ${fetchedNotes.length}개 메모 중 ${allNotes.length}개 유효한 메모 로드됨`);
+                
                 renderNotesGrid(allNotes);
                 
                 // 프로그레스바 숨김
@@ -757,7 +779,15 @@
             } catch (error) {
                 console.error('메모 불러오기 실패:', error);
                 window.hideLoading();
-                window.showAlert('메모를 불러오는데 실패했습니다', 'error');
+                
+                // 404 에러는 조용히 무시 (존재하지 않는 메모)
+                if (error.response && error.response.status === 404) {
+                    console.warn('⚠️ 일부 메모를 찾을 수 없습니다. 계속 진행합니다.');
+                    allNotes = [];
+                    renderNotesGrid(allNotes);
+                } else {
+                    window.showAlert('메모를 불러오는데 실패했습니다', 'error');
+                }
             }
         };
         
