@@ -258,8 +258,46 @@
         const instructorTab = document.getElementById('instructor-tab');
         const studentTab = document.getElementById('student-tab');
         
-        // 페이지 로드 시 저장된 정보 불러오기
+        // 페이지 로드 시 로그인 상태 확인 및 저장된 정보 불러오기
         window.addEventListener('DOMContentLoaded', () => {
+            console.log('=== 로그인 페이지 초기화 ===');
+            
+            // 이미 로그인되어 있는지 확인
+            const loggedIn = localStorage.getItem('logged_in');
+            const instructor = localStorage.getItem('instructor');
+            const student = localStorage.getItem('student');
+            
+            // 강사 또는 학생으로 이미 로그인되어 있으면 메인 페이지로 리다이렉트
+            if (loggedIn === 'true' && (instructor || student)) {
+                console.log('✅ 이미 로그인됨 - 메인 페이지로 리다이렉트');
+                
+                // 학생인 경우
+                if (student) {
+                    window.location.replace('/student.html');
+                    return;
+                }
+                
+                // 강사인 경우
+                if (instructor) {
+                    try {
+                        const instructorData = JSON.parse(instructor);
+                        // 초기 화면 설정이 있으면 해당 탭으로
+                        if (instructorData.default_screen) {
+                            window.location.replace(`/?tab=${instructorData.default_screen}`);
+                        } else {
+                            window.location.replace('/');
+                        }
+                    } catch (e) {
+                        console.error('강사 정보 파싱 오류:', e);
+                        window.location.replace('/');
+                    }
+                    return;
+                }
+            }
+            
+            console.log('❌ 로그인 안 됨 - 로그인 페이지 표시');
+            
+            // 저장된 아이디 불러오기
             const savedName = localStorage.getItem('instructor_name');
             const rememberName = localStorage.getItem('remember_name') === 'true';
             const savedStudentName = localStorage.getItem('student_name');

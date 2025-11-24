@@ -74,19 +74,40 @@ function checkLogin() {
     const loggedIn = localStorage.getItem('logged_in');
     const instructor = localStorage.getItem('instructor');
     
-    if (!loggedIn || !instructor) {
-        // 로그인되지 않았으면 로그인 페이지로 리다이렉트
-        window.location.href = '/login.html';
+    // 로그인 정보가 없거나 유효하지 않으면
+    if (!loggedIn || loggedIn !== 'true' || !instructor) {
+        console.log('❌ 로그인 정보 없음 - 로그인 페이지로 리다이렉트');
+        // 모든 세션 데이터 클리어
+        clearAllSessions();
+        // 로그인 페이지로 강제 이동
+        window.location.replace('/login.html');
         return false;
     }
     
-    // 강사 정보 표시
+    // 강사 정보 검증
     try {
         const instructorData = JSON.parse(instructor);
-        document.getElementById('instructorName').textContent = instructorData.name || '강사';
-        document.getElementById('instructorType').textContent = instructorData.instructor_type_name || '';
+        
+        // 필수 정보가 없으면 로그인 페이지로
+        if (!instructorData.code || !instructorData.name) {
+            console.log('❌ 강사 정보 불완전 - 로그인 페이지로 리다이렉트');
+            clearAllSessions();
+            window.location.replace('/login.html');
+            return false;
+        }
+        
+        // 강사 정보 표시
+        const nameElement = document.getElementById('instructorName');
+        const typeElement = document.getElementById('instructorType');
+        if (nameElement) nameElement.textContent = instructorData.name || '강사';
+        if (typeElement) typeElement.textContent = instructorData.instructor_type_name || '';
+        
+        console.log('✅ 로그인 확인:', instructorData.name);
     } catch (e) {
-        console.error('강사 정보 파싱 오류:', e);
+        console.error('❌ 강사 정보 파싱 오류:', e);
+        clearAllSessions();
+        window.location.replace('/login.html');
+        return false;
     }
     
     return true;
@@ -659,6 +680,24 @@ window.uploadFilesWithCompression = async function(files, category, progressBar)
     return uploadedUrls;
 }
 
+// 모든 세션 데이터 클리어 함수
+function clearAllSessions() {
+    console.log('🧹 모든 세션 데이터 클리어 중...');
+    
+    // localStorage 완전 클리어
+    localStorage.clear();
+    
+    // sessionStorage도 클리어
+    sessionStorage.clear();
+    
+    // 쿠키 클리어 (있다면)
+    document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+    });
+    
+    console.log('✅ 세션 데이터 클리어 완료');
+}
+
 // 로그아웃 함수
 function logout() {
     // 커스텀 확인 모달
@@ -690,15 +729,11 @@ function logout() {
     
     document.getElementById('logout-cancel').onclick = () => modal.remove();
     document.getElementById('logout-confirm').onclick = () => {
-        // 로컬 스토리지에서 로그인 정보 삭제
-        localStorage.removeItem('logged_in');
-        localStorage.removeItem('instructor');
+        // 모든 세션 데이터 완전 삭제
+        clearAllSessions();
         
-        // 캐시도 전체 삭제
-        window.clearCache();
-        
-        // 로그인 페이지로 이동
-        window.location.href = '/login.html';
+        // 로그인 페이지로 강제 이동 (히스토리 남기지 않음)
+        window.location.replace('/login.html');
     };
 }
 
@@ -1913,12 +1948,15 @@ async function loadDashboard() {
 
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('App initialized');
+    console.log('=== KDT 교육관리시스템 초기화 ===');
     
-    // 로그인 체크
+    // 로그인 체크 (필수)
     if (!checkLogin()) {
-        return; // 로그인 안 되어 있으면 여기서 중단
+        console.log('❌ 로그인 체크 실패 - 앱 로드 중단');
+        return; // 로그인 안 되어 있으면 여기서 완전히 중단
     }
+    
+    console.log('✅ 로그인 확인 완료 - 앱 로드 시작');
     
     // URL 파라미터에서 tab 값 읽기 (초기 화면 설정)
     const urlParams = new URLSearchParams(window.location.search);
@@ -1929,6 +1967,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 브라우저 뒤로가기/앞으로가기 처리
     window.addEventListener('popstate', (event) => {
+        // 로그인 체크 (뒤로가기 시에도)
+        if (!checkLogin()) {
+            return;
+        }
+        
         if (event.state && event.state.tab) {
             // 히스토리에 저장된 탭으로 이동 (히스토리 추가 안 함)
             showTab(event.state.tab, false);
@@ -1940,6 +1983,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 초기 히스토리 상태 설정
     history.replaceState({ tab: initialTab }, '', '');
+    
+    console.log('✅ 앱 초기화 완료');
 });
 
 // 탭 전환
