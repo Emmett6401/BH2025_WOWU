@@ -13036,39 +13036,6 @@ window.uploadMyPagePhoto = async function(event) {
     };
     reader.readAsDataURL(file);
 };
-        
-        // sessionStorage 업데이트
-        instructor.profile_photo = photoUrl;
-        sessionStorage.setItem('instructor', JSON.stringify(instructor));
-        
-        // 완료 표시
-        progressBar.style.width = '100%';
-        progressText.textContent = '✅ 업로드 완료!';
-        progressBar.classList.remove('bg-blue-600');
-        progressBar.classList.add('bg-green-600');
-        
-        setTimeout(() => {
-            progressContainer.classList.add('hidden');
-            progressBar.classList.remove('bg-green-600');
-            progressBar.classList.add('bg-blue-600');
-        }, 2000);
-        
-        window.showAlert('✅ 프로필 사진이 업로드되고 저장되었습니다!', 'success');
-    } catch (error) {
-        console.error('사진 업로드 실패:', error);
-        progressBar.classList.remove('bg-blue-600');
-        progressBar.classList.add('bg-red-600');
-        progressText.textContent = '❌ 업로드 실패';
-        
-        setTimeout(() => {
-            progressContainer.classList.add('hidden');
-            progressBar.classList.remove('bg-red-600');
-            progressBar.classList.add('bg-blue-600');
-        }, 2000);
-        
-        window.showAlert('❌ 사진 업로드에 실패했습니다', 'error');
-    }
-};
 
 window.handleMyPageFileUpload = async function(event) {
     const files = event.target.files;
