@@ -11124,7 +11124,7 @@ async function updateHeader() {
 }
 
 // 메뉴 권한 적용
-function applyMenuPermissions() {
+async function applyMenuPermissions() {
     const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
     
     if (!instructor || !instructor.code) {
@@ -11132,9 +11132,9 @@ function applyMenuPermissions() {
         return;
     }
     
-    // 관리자 (타입 IC-999)는 모든 메뉴 접근 가능
+    // 관리자 (타입 IC-999 또는 0)는 모든 메뉴 접근 가능
     if (instructor.instructor_type === 'IC-999' || instructor.instructor_type === '0') {
-        console.log('✅ 관리자 계정 (타입 IC-999) - 모든 메뉴 접근 가능');
+        console.log('✅ 관리자 계정 - 모든 메뉴 접근 가능');
         // 모든 메뉴 버튼 활성화
         const menuButtons = document.querySelectorAll('[data-tab]');
         menuButtons.forEach(button => {
@@ -11146,47 +11146,68 @@ function applyMenuPermissions() {
         return;
     }
     
-    const permissions = instructor.permissions || {};
-    const menuButtons = document.querySelectorAll('[data-tab]');
-    
-    console.log('📋 권한 정보:', permissions);
-    console.log('📋 메뉴 버튼 개수:', menuButtons.length);
-    
-    let disabledCount = 0;
-    let enabledCount = 0;
-    
-    menuButtons.forEach(button => {
-        const menuId = button.getAttribute('data-tab');
-        const hasPermission = permissions[menuId] === true;
+    // instructor_type으로 menu_permissions 조회
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/instructor-codes`);
+        const instructorType = response.data.find(code => code.code === instructor.instructor_type);
         
-        if (!hasPermission) {
-            // 권한 없음 - 비활성화 및 시각적 피드백
-            button.disabled = true;
-            button.style.opacity = '0.5';
-            button.style.cursor = 'not-allowed';
-            button.title = '접근 권한이 없습니다';
-            
-            // 클릭 이벤트 차단
-            button.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                window.showAlert('접근 권한이 없습니다.');
-            }, true);
-            
-            disabledCount++;
-            console.log(`❌ 메뉴 비활성화: ${menuId}`);
-        } else {
-            // 권한 있음 - 활성화
-            button.disabled = false;
-            button.style.opacity = '1';
-            button.style.cursor = 'pointer';
-            button.removeAttribute('title');
-            enabledCount++;
-            console.log(`✅ 메뉴 활성화: ${menuId}`);
+        if (!instructorType) {
+            console.log('⚠️ 강사 타입 정보를 찾을 수 없음:', instructor.instructor_type);
+            return;
         }
-    });
-    
-    console.log(`✅ 메뉴 권한 적용 완료 - 활성화: ${enabledCount}개, 비활성화: ${disabledCount}개`);
+        
+        // menu_permissions 배열 (새 버전) 또는 permissions 객체 (구 버전) 사용
+        let allowedMenus = [];
+        if (instructorType.menu_permissions && Array.isArray(instructorType.menu_permissions)) {
+            allowedMenus = instructorType.menu_permissions;
+        } else if (instructorType.permissions && typeof instructorType.permissions === 'object') {
+            // 구버전 permissions 객체를 배열로 변환
+            allowedMenus = Object.keys(instructorType.permissions).filter(key => instructorType.permissions[key] === true);
+        }
+        
+        console.log('📋 허용된 메뉴:', allowedMenus);
+        
+        const menuButtons = document.querySelectorAll('[data-tab]');
+        console.log('📋 메뉴 버튼 개수:', menuButtons.length);
+        
+        let disabledCount = 0;
+        let enabledCount = 0;
+        
+        menuButtons.forEach(button => {
+            const menuId = button.getAttribute('data-tab');
+            const hasPermission = allowedMenus.includes(menuId);
+            
+            if (!hasPermission) {
+                // 권한 없음 - 비활성화 및 시각적 피드백
+                button.disabled = true;
+                button.style.opacity = '0.5';
+                button.style.cursor = 'not-allowed';
+                button.title = '접근 권한이 없습니다';
+                
+                // 클릭 이벤트 차단
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.showAlert('접근 권한이 없습니다.');
+                }, true);
+                
+                disabledCount++;
+                console.log(`❌ 메뉴 비활성화: ${menuId}`);
+            } else {
+                // 권한 있음 - 활성화
+                button.disabled = false;
+                button.style.opacity = '1';
+                button.style.cursor = 'pointer';
+                button.removeAttribute('title');
+                enabledCount++;
+                console.log(`✅ 메뉴 활성화: ${menuId}`);
+            }
+        });
+        
+        console.log(`✅ 메뉴 권한 적용 완료 - 활성화: ${enabledCount}개, 비활성화: ${disabledCount}개`);
+    } catch (error) {
+        console.error('❌ 메뉴 권한 조회 실패:', error);
+    }
 }
 
 // 기본값으로 초기화
