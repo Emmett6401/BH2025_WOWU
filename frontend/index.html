@@ -107,6 +107,9 @@
                             <p class="text-sm text-blue-100">로그인: <span id="instructorName" class="font-semibold text-white"></span></p>
                             <p class="text-xs text-blue-200"><span id="instructorType"></span></p>
                         </div>
+                        <button onclick="showMyPageModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-all">
+                            <i class="fas fa-user-circle mr-2"></i>MyPage
+                        </button>
                         <button onclick="logout()" class="bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg font-semibold transition-all">
                             <i class="fas fa-sign-out-alt mr-2"></i>로그아웃
                         </button>
@@ -234,11 +237,7 @@
                             </button>
                         </div>
                     </div>
-                    
-                    <!-- 내 정보 -->
-                    <button onclick="showTab('my-profile')" class="tab-btn px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-t ml-auto" data-tab="my-profile">
-                        <i class="fas fa-user-circle mr-1"></i>내 정보
-                    </button>
+
                 </div>
             </div>
         </nav>

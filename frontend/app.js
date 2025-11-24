@@ -2229,9 +2229,6 @@ window.showTab = function(tab, addToHistory = true) {
         case 'notices':
             loadNotices();
             break;
-        case 'my-profile':
-            loadMyProfile();
-            break;
     }
 }
 
@@ -11311,18 +11308,6 @@ async function applyMenuPermissions() {
         
         menuButtons.forEach(button => {
             const menuId = button.getAttribute('data-tab');
-            
-            // my-profile은 모든 강사가 접근 가능
-            if (menuId === 'my-profile') {
-                button.disabled = false;
-                button.style.opacity = '1';
-                button.style.cursor = 'pointer';
-                button.removeAttribute('title');
-                enabledCount++;
-                console.log(`✅ 메뉴 활성화 (기본 허용): ${menuId}`);
-                return;
-            }
-            
             const hasPermission = allowedMenus.includes(menuId);
             
             if (!hasPermission) {
@@ -11686,33 +11671,56 @@ let instructorNotes = [];
 let currentInstructorNoteId = null;
 let currentInstructorTab = 'notes'; // 기본 탭: SSIRN메모장
 
-async function loadMyProfile() {
-    console.log('🚀 loadMyProfile 함수 시작');
-    try {
-        window.showLoading('내 정보를 불러오는 중...');
-        console.log('✅ showLoading 호출됨');
-        
-        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
-        console.log('👤 강사 정보:', instructor);
-        
-        const app = document.getElementById('app');
-    app.innerHTML = `
-        <div class="max-w-6xl mx-auto">
+window.showMyPageModal = async function() {
+    const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+    if (!instructor || !instructor.code) {
+        window.showAlert('로그인 정보를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.id = 'mypage-modal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+    modal.onclick = (e) => { if (e.target === modal) closeMyPageModal(); };
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+            <!-- 헤더 -->
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-6 rounded-t-2xl flex justify-between items-center sticky top-0 z-10">
+                <div class="flex items-center gap-4">
+                    <i class="fas fa-user-circle text-4xl"></i>
+                    <div>
+                        <h3 class="text-2xl font-bold">My Page</h3>
+                        <p class="text-sm text-blue-100 mt-1">${instructor.name} (${instructor.code})</p>
+                    </div>
+                </div>
+                <button onclick="closeMyPageModal()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            
             <!-- 탭 메뉴 -->
-            <div class="bg-white rounded-t-lg shadow-md mb-0">
-                <div class="flex gap-2 border-b">
-                    <button onclick="switchInstructorTab('notes')" 
-                            id="instructor-tab-notes"
+            <div class="bg-white border-b sticky" style="top: 88px; z-index: 9;">
+                <div class="flex gap-2 px-8">
+                    <button onclick="switchMyPageTab('profile')" 
+                            id="mypage-tab-profile"
                             class="px-6 py-3 font-semibold transition-all border-b-2 border-blue-500 text-blue-600">
+                        <i class="fas fa-user mr-2"></i>내 정보
+                    </button>
+                    <button onclick="switchMyPageTab('ssirn')" 
+                            id="mypage-tab-ssirn"
+                            class="px-6 py-3 font-semibold transition-all border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 text-gray-600">
                         <i class="fas fa-book-open mr-2"></i>SSIRN메모장
                     </button>
-                    <button onclick="switchInstructorTab('profile')" 
-                            id="instructor-tab-profile"
+                    <button onclick="switchMyPageTab('notices')" 
+                            id="mypage-tab-notices"
                             class="px-6 py-3 font-semibold transition-all border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 text-gray-600">
-                        <i class="fas fa-user mr-2"></i>내 정보
+                        <i class="fas fa-bullhorn mr-2"></i>공지사항
                     </button>
                 </div>
             </div>
+            
+            <!-- 내 정보 섹션 -->
 
             <!-- SSIRN메모장 섹션 -->
             <div id="instructor-section-notes" class="bg-white rounded-b-lg shadow-md">
