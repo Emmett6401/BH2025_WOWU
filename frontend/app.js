@@ -11771,12 +11771,12 @@ window.showMyPageModal = async function() {
                 <div class="flex gap-2 px-8">
                     <button onclick="switchMyPageTab('profile')" 
                             id="mypage-tab-profile"
-                            class="px-6 py-3 font-semibold transition-all border-b-2 border-blue-500 text-blue-600">
+                            class="px-6 py-3 font-semibold transition-all border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 text-gray-600">
                         <i class="fas fa-user mr-2"></i>내 정보
                     </button>
                     <button onclick="switchMyPageTab('ssirn')" 
                             id="mypage-tab-ssirn"
-                            class="px-6 py-3 font-semibold transition-all border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 text-gray-600">
+                            class="px-6 py-3 font-semibold transition-all border-b-2 border-blue-500 text-blue-600">
                         <i class="fas fa-book-open mr-2"></i>SSIRN메모장
                     </button>
                     <button onclick="switchMyPageTab('notices')" 
@@ -11788,7 +11788,7 @@ window.showMyPageModal = async function() {
             </div>
             
             <!-- 내 정보 섹션 -->
-            <div id="mypage-section-profile" class="p-8">
+            <div id="mypage-section-profile" class="p-8 hidden">
                 <!-- 프로필 사진 -->
                 <div class="mb-8 text-center">
                     <div class="inline-block relative">
@@ -11957,7 +11957,7 @@ window.showMyPageModal = async function() {
             </div>
             
             <!-- SSIRN메모장 섹션 -->
-            <div id="mypage-section-ssirn" class="p-8 hidden">
+            <div id="mypage-section-ssirn" class="p-8">
                 <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
                     <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
                         <h2 class="text-2xl font-bold flex items-center">
@@ -12029,7 +12029,7 @@ window.showMyPageModal = async function() {
         }
         
         // 기본 탭 로드
-        switchMyPageTab('profile');
+        switchMyPageTab('ssirn');
         
         window.hideLoading();
     } catch (error) {
