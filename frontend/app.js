@@ -987,10 +987,18 @@ window.hideAlert = function() {
 // 확인 모달용 콜백 저장
 let confirmCallback = null;
 
-window.showConfirm = function(message) {
+window.showConfirm = function(message, title = '확인') {
     return new Promise((resolve) => {
         const confirmModal = document.getElementById('custom-confirm');
         const confirmMessage = document.getElementById('confirm-message');
+        
+        if (!confirmModal || !confirmMessage) {
+            // Fallback to native confirm if modal not found
+            console.warn('Custom confirm modal not found, using native confirm');
+            resolve(confirm(message));
+            return;
+        }
+        
         confirmMessage.textContent = message;
         confirmModal.classList.remove('hidden');
         confirmCallback = resolve;
