@@ -800,11 +800,18 @@
             }
             
             try {
-                const response = await axios.post(`${API_BASE_URL}/api/class-notes`, {
+                const data = {
                     student_id: student.id,
                     note_date: noteDate,
                     content: content
-                });
+                };
+                
+                // ID가 있으면 수정, 없으면 새로 생성
+                if (noteId) {
+                    data.id = parseInt(noteId);
+                }
+                
+                const response = await axios.post(`${API_BASE_URL}/api/class-notes`, data);
                 
                 if (response.data.success) {
                     window.showAlert('✅ ' + response.data.message, 'success');
