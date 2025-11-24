@@ -127,21 +127,24 @@
                         <i class="fas fa-tachometer-alt mr-1"></i>대시보드
                     </button>
                     
-                    <!-- 강사 메뉴 -->
+                    <!-- 시스템관리 메뉴 -->
                     <div class="relative group">
                         <button class="px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-t">
-                            <i class="fas fa-chalkboard-teacher mr-1"></i>강사
+                            <i class="fas fa-cogs mr-1"></i>시스템관리
                             <i class="fas fa-chevron-down ml-1 text-xs"></i>
                         </button>
                         <div class="hidden group-hover:block absolute left-0 top-full bg-white shadow-lg rounded-b z-10 min-w-[150px]">
                             <button onclick="showTab('instructor-codes')" class="tab-btn block w-full text-left px-4 py-2 text-sm hover:bg-blue-50" data-tab="instructor-codes">
-                                <i class="fas fa-code mr-2"></i>강사코드
+                                <i class="fas fa-user-shield mr-2"></i>강사권한
                             </button>
                             <button onclick="showTab('instructors')" class="tab-btn block w-full text-left px-4 py-2 text-sm hover:bg-blue-50" data-tab="instructors">
                                 <i class="fas fa-user-tie mr-2"></i>강사관리
                             </button>
                             <button onclick="showTab('system-settings')" class="tab-btn block w-full text-left px-4 py-2 text-sm hover:bg-blue-50" data-tab="system-settings">
                                 <i class="fas fa-cog mr-2"></i>시스템 등록
+                            </button>
+                            <button onclick="showTab('notices')" class="tab-btn block w-full text-left px-4 py-2 text-sm hover:bg-blue-50" data-tab="notices">
+                                <i class="fas fa-bullhorn mr-2"></i>공지사항
                             </button>
                         </div>
                     </div>
@@ -316,6 +319,29 @@
 
             <!-- 학생 상세보기 모달 -->
             <div id="student-detail" class="hidden"></div>
+            
+            <!-- 예쁜 알림 모달 -->
+            <div id="alert-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
+                    <div id="alert-header" class="p-6 rounded-t-2xl">
+                        <div class="flex items-center gap-4">
+                            <div id="alert-icon" class="text-4xl"></div>
+                            <h3 id="alert-title" class="text-xl font-bold text-white"></h3>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <p id="alert-message" class="text-gray-700 text-lg leading-relaxed whitespace-pre-line"></p>
+                    </div>
+                    <div class="p-6 pt-0 flex justify-end gap-3">
+                        <button id="alert-cancel-btn" class="hidden px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-semibold transition-colors">
+                            취소
+                        </button>
+                        <button id="alert-confirm-btn" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors">
+                            확인
+                        </button>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 

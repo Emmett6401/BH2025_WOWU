@@ -167,6 +167,112 @@ window.validateFile = function(file) {
     return { valid: true };
 }
 
+// ==================== 예쁜 알림 모달 ====================
+window.showAlert = function(message, type = 'info', options = {}) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('alert-modal');
+        const header = document.getElementById('alert-header');
+        const icon = document.getElementById('alert-icon');
+        const title = document.getElementById('alert-title');
+        const messageEl = document.getElementById('alert-message');
+        const confirmBtn = document.getElementById('alert-confirm-btn');
+        const cancelBtn = document.getElementById('alert-cancel-btn');
+        
+        // 타입별 설정
+        const configs = {
+            success: {
+                headerClass: 'bg-gradient-to-r from-green-500 to-emerald-600',
+                icon: '✅',
+                title: options.title || '성공',
+                confirmBtnClass: 'bg-green-600 hover:bg-green-700'
+            },
+            error: {
+                headerClass: 'bg-gradient-to-r from-red-500 to-rose-600',
+                icon: '❌',
+                title: options.title || '오류',
+                confirmBtnClass: 'bg-red-600 hover:bg-red-700'
+            },
+            warning: {
+                headerClass: 'bg-gradient-to-r from-yellow-500 to-orange-600',
+                icon: '⚠️',
+                title: options.title || '경고',
+                confirmBtnClass: 'bg-yellow-600 hover:bg-yellow-700'
+            },
+            info: {
+                headerClass: 'bg-gradient-to-r from-blue-500 to-indigo-600',
+                icon: 'ℹ️',
+                title: options.title || '알림',
+                confirmBtnClass: 'bg-blue-600 hover:bg-blue-700'
+            },
+            confirm: {
+                headerClass: 'bg-gradient-to-r from-purple-500 to-indigo-600',
+                icon: '❓',
+                title: options.title || '확인',
+                confirmBtnClass: 'bg-purple-600 hover:bg-purple-700'
+            }
+        };
+        
+        const config = configs[type] || configs.info;
+        
+        // 스타일 적용
+        header.className = `p-6 rounded-t-2xl ${config.headerClass}`;
+        icon.textContent = config.icon;
+        title.textContent = config.title;
+        messageEl.textContent = message;
+        confirmBtn.className = `px-6 py-2.5 text-white rounded-lg font-semibold transition-colors ${config.confirmBtnClass}`;
+        
+        // confirm 타입이면 취소 버튼 표시
+        if (type === 'confirm' || options.showCancel) {
+            cancelBtn.classList.remove('hidden');
+            confirmBtn.textContent = options.confirmText || '확인';
+            cancelBtn.textContent = options.cancelText || '취소';
+        } else {
+            cancelBtn.classList.add('hidden');
+            confirmBtn.textContent = options.confirmText || '확인';
+        }
+        
+        // 이벤트 핸들러
+        const handleConfirm = () => {
+            modal.classList.add('hidden');
+            resolve(true);
+            cleanup();
+        };
+        
+        const handleCancel = () => {
+            modal.classList.add('hidden');
+            resolve(false);
+            cleanup();
+        };
+        
+        const cleanup = () => {
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+        };
+        
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+        
+        // ESC 키로 닫기
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                handleCancel();
+                document.removeEventListener('keydown', handleEsc);
+            }
+        };
+        document.addEventListener('keydown', handleEsc);
+        
+        // 모달 표시
+        modal.classList.remove('hidden');
+    });
+};
+
+// 간편 함수들
+window.showSuccess = (message, title) => window.showAlert(message, 'success', { title });
+window.showError = (message, title) => window.showAlert(message, 'error', { title });
+window.showWarning = (message, title) => window.showAlert(message, 'warning', { title });
+window.showInfo = (message, title) => window.showAlert(message, 'info', { title });
+window.showConfirm = (message, title) => window.showAlert(message, 'confirm', { title });
+
 // 이미지 자동 압축 함수
 window.compressImage = function(file, maxWidth = 1920, quality = 0.85) {
     return new Promise((resolve, reject) => {
@@ -2068,6 +2174,9 @@ window.showTab = function(tab, addToHistory = true) {
             break;
         case 'system-settings':
             loadSystemSettings();
+            break;
+        case 'notices':
+            loadNotices();
             break;
     }
 }
@@ -4343,16 +4452,41 @@ window.saveCounseling = async function(counselingId, autoSave = false) {
         career_decision: formData.get('career_decision') || null  // 진로결정 추가
     };
     
+    // 필수 입력 검증
+    if (!data.student_id || isNaN(data.student_id)) {
+        await window.showError('학생을 선택해주세요.', '필수 항목 누락');
+        document.getElementById('student_id').focus();
+        return;
+    }
+    
+    if (!data.consultation_date) {
+        await window.showError('상담 날짜를 입력해주세요.', '필수 항목 누락');
+        document.getElementById('consultation_date').focus();
+        return;
+    }
+    
+    if (!data.consultation_type) {
+        await window.showError('상담 유형을 선택해주세요.', '필수 항목 누락');
+        document.getElementById('consultation_type').focus();
+        return;
+    }
+    
+    if (!data.content || data.content.trim() === '') {
+        await window.showError('상담 내용을 입력해주세요.', '필수 항목 누락');
+        document.getElementById('content').focus();
+        return;
+    }
+    
     try {
         if (counselingId) {
             await axios.put(`${API_BASE_URL}/api/counselings/${counselingId}`, data);
             if (!autoSave) {
-                window.showAlert('상담이 수정되었습니다.');
+                await window.showSuccess('상담 내용이 성공적으로 수정되었습니다.', '저장 완료');
             }
         } else {
             await axios.post(`${API_BASE_URL}/api/counselings`, data);
             if (!autoSave) {
-                window.showAlert('상담이 추가되었습니다.');
+                await window.showSuccess('상담 내용이 성공적으로 등록되었습니다.', '저장 완료');
             }
         }
         
@@ -4365,7 +4499,8 @@ window.saveCounseling = async function(counselingId, autoSave = false) {
         }
     } catch (error) {
         console.error('상담 저장 실패:', error);
-        window.showAlert('저장 실패: ' + (error.response?.data?.detail || error.message));
+        const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류가 발생했습니다.';
+        await window.showError(`상담 저장 중 오류가 발생했습니다.\n\n${errorMsg}`, '저장 실패');
     }
 }
 
@@ -4854,9 +4989,10 @@ window.showInstructorCodeForm = function(code = null) {
     // 메뉴 목록 정의
     const menuList = [
         { id: 'dashboard', name: '대시보드', icon: 'fa-tachometer-alt' },
-        { id: 'instructor-codes', name: '강사코드', icon: 'fa-code' },
+        { id: 'instructor-codes', name: '강사권한', icon: 'fa-user-shield' },
         { id: 'instructors', name: '강사관리', icon: 'fa-user-tie' },
         { id: 'system-settings', name: '시스템 등록', icon: 'fa-cog' },
+        { id: 'notices', name: '공지사항', icon: 'fa-bullhorn' },
         { id: 'subjects', name: '교과목', icon: 'fa-book' },
         { id: 'holidays', name: '공휴일', icon: 'fa-calendar-alt' },
         { id: 'courses', name: '과정관리', icon: 'fa-school' },
@@ -11959,6 +12095,303 @@ window.togglePasswordVisibility = function(inputId) {
         input.type = 'password';
         icon.classList.remove('fa-eye-slash');
         icon.classList.add('fa-eye');
+    }
+};
+
+// ==================== 공지사항 관리 ====================
+let notices = [];
+
+async function loadNotices() {
+    try {
+        window.showLoading('공지사항을 불러오는 중...');
+        const response = await axios.get(`${API_BASE_URL}/api/notices`);
+        notices = response.data;
+        renderNotices();
+        window.hideLoading();
+    } catch (error) {
+        window.hideLoading();
+        console.error('공지사항 로드 실패:', error);
+        await window.showError('공지사항을 불러오는데 실패했습니다.\n\n' + error.message, '로드 실패');
+    }
+}
+
+function renderNotices() {
+    const today = new Date().toISOString().split('T')[0];
+    const app = document.getElementById('app');
+    
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-bullhorn mr-2"></i>공지사항 관리
+                </h2>
+                <button onclick="showNoticeForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-plus mr-2"></i>공지사항 추가
+                </button>
+            </div>
+            
+            <!-- 공지사항 폼 (숨김) -->
+            <div id="notice-form" class="hidden bg-gray-50 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4" id="form-title">공지사항 추가</h3>
+                <form id="notice-save-form">
+                    <input type="hidden" id="edit-notice-id">
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">제목 *</label>
+                        <input type="text" id="notice-title" class="w-full border rounded px-3 py-2" required>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">게시 시작일 *</label>
+                            <input type="date" id="notice-start-date" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">게시 종료일 *</label>
+                            <input type="date" id="notice-end-date" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">
+                            내용 * 
+                            <span class="text-sm text-gray-500">(마크다운 지원, 이미지 URL 포함 가능)</span>
+                        </label>
+                        <textarea id="notice-content" rows="10" class="w-full border rounded px-3 py-2 font-mono" placeholder="# 제목&#10;&#10;내용을 작성하세요...&#10;&#10;- 마크다운 문법 사용 가능&#10;- 이미지: ![설명](이미지URL)&#10;- 링크: [텍스트](URL)" required></textarea>
+                        <div class="mt-2 text-sm text-gray-600">
+                            <strong>마크다운 문법 예시:</strong><br>
+                            # 큰 제목, ## 중간 제목, ### 작은 제목<br>
+                            **굵게**, *기울임*, [링크](URL), ![이미지](URL)<br>
+                            - 목록1, - 목록2
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button type="button" onclick="saveNotice()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                            <i class="fas fa-save mr-2"></i>저장
+                        </button>
+                        <button type="button" onclick="hideNoticeForm()" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg">
+                            취소
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- 공지사항 목록 -->
+            <div class="space-y-4">
+                ${notices.length === 0 ? `
+                    <div class="text-center py-12 text-gray-500">
+                        <i class="fas fa-inbox text-6xl mb-4"></i>
+                        <p>등록된 공지사항이 없습니다</p>
+                    </div>
+                ` : notices.map(notice => {
+                    const isActive = today >= notice.start_date && today <= notice.end_date;
+                    const statusColor = isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600';
+                    const statusIcon = isActive ? 'fa-check-circle' : 'fa-clock';
+                    const statusText = isActive ? '게시중' : today < notice.start_date ? '게시 예정' : '종료';
+                    
+                    return `
+                        <div class="border rounded-lg p-4 hover:shadow-md transition-shadow ${isActive ? 'border-green-300' : ''}">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusColor}">
+                                            <i class="fas ${statusIcon} mr-1"></i>${statusText}
+                                        </span>
+                                        <h3 class="text-lg font-bold text-gray-800">${notice.title}</h3>
+                                    </div>
+                                    <div class="text-sm text-gray-600 mb-2">
+                                        <i class="fas fa-calendar mr-1"></i>
+                                        ${notice.start_date} ~ ${notice.end_date}
+                                        ${notice.created_by ? `<span class="ml-4"><i class="fas fa-user mr-1"></i>${notice.created_by}</span>` : ''}
+                                    </div>
+                                    <div class="text-gray-700 line-clamp-3">
+                                        ${notice.content.substring(0, 150)}${notice.content.length > 150 ? '...' : ''}
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 ml-4">
+                                    <button onclick="viewNotice(${notice.id})" class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded" title="자세히 보기">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button onclick="editNotice(${notice.id})" class="text-green-600 hover:text-green-800 px-3 py-1 rounded" title="수정">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="deleteNotice(${notice.id})" class="text-red-600 hover:text-red-800 px-3 py-1 rounded" title="삭제">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+window.showNoticeForm = function(noticeId = null) {
+    const formDiv = document.getElementById('notice-form');
+    const formTitle = document.getElementById('form-title');
+    
+    if (noticeId) {
+        formTitle.textContent = '공지사항 수정';
+        const notice = notices.find(n => n.id === noticeId);
+        if (notice) {
+            document.getElementById('edit-notice-id').value = notice.id;
+            document.getElementById('notice-title').value = notice.title;
+            document.getElementById('notice-content').value = notice.content;
+            document.getElementById('notice-start-date').value = notice.start_date;
+            document.getElementById('notice-end-date').value = notice.end_date;
+        }
+    } else {
+        formTitle.textContent = '공지사항 추가';
+        document.getElementById('notice-save-form').reset();
+        document.getElementById('edit-notice-id').value = '';
+        // 기본값: 오늘부터 30일간
+        const today = new Date();
+        const endDate = new Date(today);
+        endDate.setDate(endDate.getDate() + 30);
+        document.getElementById('notice-start-date').value = today.toISOString().split('T')[0];
+        document.getElementById('notice-end-date').value = endDate.toISOString().split('T')[0];
+    }
+    
+    formDiv.classList.remove('hidden');
+    formDiv.scrollIntoView({ behavior: 'smooth' });
+};
+
+window.hideNoticeForm = function() {
+    document.getElementById('notice-form').classList.add('hidden');
+};
+
+window.saveNotice = async function() {
+    const noticeId = document.getElementById('edit-notice-id').value;
+    const title = document.getElementById('notice-title').value;
+    const content = document.getElementById('notice-content').value;
+    const startDate = document.getElementById('notice-start-date').value;
+    const endDate = document.getElementById('notice-end-date').value;
+    
+    // 필수 입력 검증
+    if (!title.trim()) {
+        await window.showError('제목을 입력해주세요.', '필수 항목 누락');
+        document.getElementById('notice-title').focus();
+        return;
+    }
+    
+    if (!content.trim()) {
+        await window.showError('내용을 입력해주세요.', '필수 항목 누락');
+        document.getElementById('notice-content').focus();
+        return;
+    }
+    
+    if (!startDate) {
+        await window.showError('게시 시작일을 입력해주세요.', '필수 항목 누락');
+        document.getElementById('notice-start-date').focus();
+        return;
+    }
+    
+    if (!endDate) {
+        await window.showError('게시 종료일을 입력해주세요.', '필수 항목 누락');
+        document.getElementById('notice-end-date').focus();
+        return;
+    }
+    
+    if (startDate > endDate) {
+        await window.showError('종료일은 시작일 이후여야 합니다.', '날짜 오류');
+        return;
+    }
+    
+    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
+    const data = {
+        title: title.trim(),
+        content: content.trim(),
+        start_date: startDate,
+        end_date: endDate,
+        created_by: instructor?.name || null
+    };
+    
+    try {
+        if (noticeId) {
+            await axios.put(`${API_BASE_URL}/api/notices/${noticeId}`, data);
+            await window.showSuccess('공지사항이 수정되었습니다.', '저장 완료');
+        } else {
+            await axios.post(`${API_BASE_URL}/api/notices`, data);
+            await window.showSuccess('공지사항이 등록되었습니다.', '저장 완료');
+        }
+        
+        hideNoticeForm();
+        loadNotices();
+    } catch (error) {
+        console.error('공지사항 저장 실패:', error);
+        const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류가 발생했습니다.';
+        await window.showError(`공지사항 저장 중 오류가 발생했습니다.\n\n${errorMsg}`, '저장 실패');
+    }
+};
+
+window.editNotice = function(noticeId) {
+    window.showNoticeForm(noticeId);
+};
+
+window.viewNotice = function(noticeId) {
+    const notice = notices.find(n => n.id === noticeId);
+    if (!notice) return;
+    
+    // 마크다운 렌더링
+    const rawHtml = marked.parse(notice.content);
+    const cleanHtml = DOMPurify.sanitize(rawHtml);
+    const finalHtml = cleanHtml.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
+    
+    const today = new Date().toISOString().split('T')[0];
+    const isActive = today >= notice.start_date && today <= notice.end_date;
+    const statusColor = isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600';
+    const statusIcon = isActive ? 'fa-check-circle' : 'fa-clock';
+    const statusText = isActive ? '게시중' : today < notice.start_date ? '게시 예정' : '종료';
+    
+    const modal = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="this.remove()">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl sticky top-0 z-10">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="px-3 py-1 rounded-full text-sm font-semibold ${statusColor}">
+                                    <i class="fas ${statusIcon} mr-1"></i>${statusText}
+                                </span>
+                                <span class="text-blue-100 text-sm">
+                                    <i class="fas fa-calendar mr-1"></i>${notice.start_date} ~ ${notice.end_date}
+                                </span>
+                            </div>
+                            <h3 class="text-2xl font-bold">${notice.title}</h3>
+                            ${notice.created_by ? `<p class="text-blue-100 text-sm mt-2"><i class="fas fa-user mr-1"></i>${notice.created_by}</p>` : ''}
+                        </div>
+                        <button onclick="this.closest('.fixed').remove()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-8">
+                    <div class="prose prose-lg max-w-none">
+                        ${finalHtml}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modal);
+};
+
+window.deleteNotice = async function(noticeId) {
+    const confirmed = await window.showConfirm('이 공지사항을 삭제하시겠습니까?', '삭제 확인');
+    if (!confirmed) return;
+    
+    try {
+        await axios.delete(`${API_BASE_URL}/api/notices/${noticeId}`);
+        await window.showSuccess('공지사항이 삭제되었습니다.', '삭제 완료');
+        loadNotices();
+    } catch (error) {
+        console.error('공지사항 삭제 실패:', error);
+        const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류가 발생했습니다.';
+        await window.showError(`공지사항 삭제 중 오류가 발생했습니다.\n\n${errorMsg}`, '삭제 실패');
     }
 };
 

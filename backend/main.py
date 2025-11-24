@@ -4082,6 +4082,150 @@ async def delete_class_note(note_id: int):
     finally:
         conn.close()
 
+# ==================== 공지사항 관리 ====================
+def ensure_notices_table(cursor):
+    """notices 테이블이 없으면 생성"""
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS notices (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(500) NOT NULL,
+                content TEXT NOT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                created_by VARCHAR(50),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_dates (start_date, end_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+        print("✅ notices 테이블 확인/생성 완료")
+    except Exception as e:
+        print(f"⚠️ notices 테이블 생성 실패: {e}")
+
+@app.get("/api/notices")
+async def get_notices(active_only: bool = False):
+    """공지사항 목록 조회"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        ensure_notices_table(cursor)
+        conn.commit()
+        
+        if active_only:
+            # 현재 활성화된 공지만 조회 (오늘 날짜가 start_date와 end_date 사이)
+            cursor.execute("""
+                SELECT * FROM notices 
+                WHERE CURDATE() BETWEEN start_date AND end_date
+                ORDER BY created_at DESC
+            """)
+        else:
+            # 모든 공지 조회
+            cursor.execute("SELECT * FROM notices ORDER BY created_at DESC")
+        
+        notices = cursor.fetchall()
+        
+        # datetime 변환
+        for notice in notices:
+            for key, value in notice.items():
+                if isinstance(value, (datetime, date)):
+                    notice[key] = value.isoformat()
+        
+        return notices
+    finally:
+        conn.close()
+
+@app.get("/api/notices/{notice_id}")
+async def get_notice(notice_id: int):
+    """특정 공지사항 조회"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT * FROM notices WHERE id = %s", (notice_id,))
+        notice = cursor.fetchone()
+        
+        if not notice:
+            raise HTTPException(status_code=404, detail="공지사항을 찾을 수 없습니다")
+        
+        # datetime 변환
+        for key, value in notice.items():
+            if isinstance(value, (datetime, date)):
+                notice[key] = value.isoformat()
+        
+        return notice
+    finally:
+        conn.close()
+
+@app.post("/api/notices")
+async def create_notice(data: dict):
+    """공지사항 생성"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        ensure_notices_table(cursor)
+        conn.commit()
+        
+        query = """
+            INSERT INTO notices (title, content, start_date, end_date, created_by)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        cursor.execute(query, (
+            data['title'],
+            data['content'],
+            data['start_date'],
+            data['end_date'],
+            data.get('created_by')
+        ))
+        conn.commit()
+        
+        return {"id": cursor.lastrowid, "success": True, "message": "공지사항이 등록되었습니다"}
+    finally:
+        conn.close()
+
+@app.put("/api/notices/{notice_id}")
+async def update_notice(notice_id: int, data: dict):
+    """공지사항 수정"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        query = """
+            UPDATE notices
+            SET title = %s, content = %s, start_date = %s, end_date = %s
+            WHERE id = %s
+        """
+        cursor.execute(query, (
+            data['title'],
+            data['content'],
+            data['start_date'],
+            data['end_date'],
+            notice_id
+        ))
+        conn.commit()
+        
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="공지사항을 찾을 수 없습니다")
+        
+        return {"success": True, "message": "공지사항이 수정되었습니다"}
+    finally:
+        conn.close()
+
+@app.delete("/api/notices/{notice_id}")
+async def delete_notice(notice_id: int):
+    """공지사항 삭제"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM notices WHERE id = %s", (notice_id,))
+        conn.commit()
+        
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="공지사항을 찾을 수 없습니다")
+        
+        return {"success": True, "message": "공지사항이 삭제되었습니다"}
+    finally:
+        conn.close()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
