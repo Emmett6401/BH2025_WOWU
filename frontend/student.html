@@ -65,6 +65,11 @@
                             class="px-6 py-3 font-semibold transition-all border-b-2 border-green-500 text-green-600">
                         <i class="fas fa-book-open mr-2"></i>SSIRN메모장(수업,기억,정보,etc)
                     </button>
+                    <button onclick="showTab('notices')" 
+                            id="tab-notices"
+                            class="px-6 py-3 font-semibold transition-all border-b-2 border-transparent hover:border-green-500 hover:text-green-600">
+                        <i class="fas fa-bullhorn mr-2"></i>공지사항
+                    </button>
                 </div>
             </div>
         </div>
@@ -339,6 +344,30 @@
             </div>
             </div>
             <!-- 프로필 섹션 끝 -->
+            
+            <!-- 공지사항 섹션 -->
+            <div id="section-notices" class="hidden">
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
+                    <div class="bg-gradient-to-r from-purple-600 to-pink-600 p-6 text-white">
+                        <h2 class="text-2xl font-bold flex items-center">
+                            <i class="fas fa-bullhorn mr-3"></i>
+                            공지사항
+                        </h2>
+                        <p class="text-purple-100 mt-2 text-sm">중요한 공지사항을 확인하세요</p>
+                    </div>
+                    
+                    <div class="p-6">
+                        <div id="student-notices-list" class="space-y-4">
+                            <!-- 공지사항 목록이 여기에 동적으로 추가됩니다 -->
+                        </div>
+                        <div id="student-notices-empty" class="hidden text-center py-12 text-gray-500">
+                            <i class="fas fa-inbox text-6xl mb-4"></i>
+                            <p>게시된 공지사항이 없습니다</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 공지사항 섹션 끝 -->
         </div>
     </main>
 
@@ -876,10 +905,12 @@
             // 모든 탭 버튼 비활성화
             document.getElementById('tab-profile').classList.remove('border-green-500', 'text-green-600');
             document.getElementById('tab-notes').classList.remove('border-green-500', 'text-green-600');
+            document.getElementById('tab-notices').classList.remove('border-green-500', 'text-green-600');
             
             // 모든 섹션 숨기기
             document.getElementById('section-profile').classList.add('hidden');
             document.getElementById('section-notes').classList.add('hidden');
+            document.getElementById('section-notices').classList.add('hidden');
             
             // 선택된 탭 활성화
             if (tabName === 'profile') {
@@ -888,6 +919,62 @@
             } else if (tabName === 'notes') {
                 document.getElementById('tab-notes').classList.add('border-green-500', 'text-green-600');
                 document.getElementById('section-notes').classList.remove('hidden');
+            } else if (tabName === 'notices') {
+                document.getElementById('tab-notices').classList.add('border-green-500', 'text-green-600');
+                document.getElementById('section-notices').classList.remove('hidden');
+                loadStudentNotices();
+            }
+        };
+        
+        // 학생용 공지사항 로드
+        window.loadStudentNotices = async function() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/notices?active_only=true`);
+                const notices = response.data;
+                
+                const listDiv = document.getElementById('student-notices-list');
+                const emptyDiv = document.getElementById('student-notices-empty');
+                
+                if (!notices || notices.length === 0) {
+                    listDiv.innerHTML = '';
+                    emptyDiv.classList.remove('hidden');
+                    return;
+                }
+                
+                emptyDiv.classList.add('hidden');
+                listDiv.innerHTML = notices.map(notice => {
+                    const rawHtml = marked.parse(notice.content);
+                    const cleanHtml = DOMPurify.sanitize(rawHtml);
+                    const finalHtml = cleanHtml.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
+                    
+                    return `
+                        <div class="border-l-4 border-purple-500 bg-purple-50 p-4 rounded-r-lg">
+                            <div class="flex items-start gap-3">
+                                <div class="text-purple-600 text-2xl">
+                                    <i class="fas fa-bullhorn"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-800 mb-2">${notice.title}</h3>
+                                    <div class="text-sm text-gray-600 mb-3">
+                                        <i class="fas fa-calendar mr-1"></i>
+                                        ${notice.start_date} ~ ${notice.end_date}
+                                    </div>
+                                    <div class="prose max-w-none text-gray-700">
+                                        ${finalHtml}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('공지사항 로드 실패:', error);
+                document.getElementById('student-notices-list').innerHTML = `
+                    <div class="text-center py-8 text-red-600">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
+                        <p>공지사항을 불러오는데 실패했습니다</p>
+                    </div>
+                `;
             }
         };
         

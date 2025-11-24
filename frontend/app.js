@@ -3327,7 +3327,19 @@ async function loadClassNotes() {
 }
 
 function renderClassNotes(studentNotes, allStudents) {
-    const totalNotes = studentNotes.reduce((sum, sn) => sum + sn.notes.length, 0);
+    // 모든 노트를 하나의 배열로 평탄화하고 학생 정보 포함
+    const allNotes = [];
+    studentNotes.forEach(sn => {
+        sn.notes.forEach(note => {
+            allNotes.push({
+                ...note,
+                student: sn.student
+            });
+        });
+    });
+    
+    // 최신순 정렬
+    allNotes.sort((a, b) => new Date(b.note_date) - new Date(a.note_date));
     
     const html = `
         <div class="p-6">
@@ -3336,9 +3348,10 @@ function renderClassNotes(studentNotes, allStudents) {
                     <h2 class="text-2xl font-bold text-gray-800 flex items-center">
                         <i class="fas fa-book-open mr-3 text-blue-600"></i>학생 SSIRN메모장(수업,기억,정보,etc)
                     </h2>
-                    <p class="text-gray-600 mt-1">총 ${studentNotes.length}명의 학생, ${totalNotes}개의 일지</p>
+                    <p class="text-gray-600 mt-1">총 ${studentNotes.length}명의 학생, ${allNotes.length}개의 일지</p>
                 </div>
                 <div class="flex gap-2">
+                    <input type="text" id="search-filter" placeholder="학생 이름 검색..." class="px-4 py-2 border rounded-lg" oninput="filterClassNotes()">
                     <select id="student-filter" class="px-4 py-2 border rounded-lg" onchange="filterClassNotes()">
                         <option value="">전체 학생</option>
                         ${allStudents.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join('')}
@@ -3350,20 +3363,54 @@ function renderClassNotes(studentNotes, allStudents) {
                 </div>
             </div>
             
-            ${studentNotes.length === 0 ? `
+            ${allNotes.length === 0 ? `
                 <div class="text-center py-12">
                     <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
                     <p class="text-gray-500">작성된 SSIRN메모장이 없습니다</p>
                 </div>
             ` : `
-                <div id="notes-container" class="space-y-6">
-                    ${studentNotes.map(sn => renderStudentNotesCard(sn.student, sn.notes)).join('')}
+                <div id="notes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    ${allNotes.map(note => `
+                        <div class="bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden"
+                             onclick="showClassNoteDetail(${note.id}, '${note.student.name}')"
+                             data-student-id="${note.student.id}"
+                             data-note-date="${note.note_date}">
+                            <div class="bg-gradient-to-r from-blue-500 to-indigo-500 p-3 text-white">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-user-circle text-xl"></i>
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="font-bold truncate">${note.student.name}</h3>
+                                        <p class="text-xs text-blue-100 truncate">${note.student.code}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i class="fas fa-calendar-day text-blue-500 text-sm"></i>
+                                    <span class="text-sm font-semibold text-gray-700">
+                                        ${new Date(note.note_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    </span>
+                                </div>
+                                <p class="text-sm text-gray-600 line-clamp-3">
+                                    ${note.content.substring(0, 100)}${note.content.length > 100 ? '...' : ''}
+                                </p>
+                                <div class="mt-2 text-xs text-gray-400">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    ${new Date(note.created_at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
                 </div>
             `}
         </div>
     `;
     
     document.getElementById('app').innerHTML = html;
+    
+    // 전역 변수에 저장 (필터링용)
+    window.allClassNotes = allNotes;
+    window.allClassStudents = allStudents;
 }
 
 function renderStudentNotesCard(student, notes) {
@@ -3491,47 +3538,80 @@ window.showClassNoteDetail = async function(noteId, studentName) {
 };
 
 window.filterClassNotes = function() {
+    if (!window.allClassNotes) return;
+    
+    const searchFilter = document.getElementById('search-filter').value.toLowerCase();
     const studentFilter = document.getElementById('student-filter').value;
     const dateFilter = document.getElementById('date-filter').value;
     
-    const studentCards = document.querySelectorAll('[data-student-id]');
-    
-    studentCards.forEach(card => {
-        const studentId = card.getAttribute('data-student-id');
-        const noteCards = card.querySelectorAll('[data-note-date]');
+    const filtered = window.allClassNotes.filter(note => {
+        // 검색 필터 (학생 이름)
+        if (searchFilter && !note.student.name.toLowerCase().includes(searchFilter)) {
+            return false;
+        }
         
         // 학생 필터
-        if (studentFilter && studentId !== studentFilter) {
-            card.style.display = 'none';
-            return;
+        if (studentFilter && note.student.id.toString() !== studentFilter) {
+            return false;
         }
         
         // 날짜 필터
-        if (dateFilter) {
-            let hasMatchingDate = false;
-            noteCards.forEach(noteCard => {
-                const noteDate = noteCard.getAttribute('data-note-date');
-                if (noteDate === dateFilter) {
-                    hasMatchingDate = true;
-                    noteCard.style.display = 'block';
-                } else {
-                    noteCard.style.display = 'none';
-                }
-            });
-            card.style.display = hasMatchingDate ? 'block' : 'none';
-        } else {
-            noteCards.forEach(noteCard => noteCard.style.display = 'block');
-            card.style.display = 'block';
+        if (dateFilter && note.note_date !== dateFilter) {
+            return false;
         }
+        
+        return true;
     });
+    
+    // 그리드 다시 렌더링
+    const container = document.getElementById('notes-container');
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full text-center py-12">
+                <i class="fas fa-search text-6xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">검색 결과가 없습니다</p>
+            </div>
+        `;
+    } else {
+        container.innerHTML = filtered.map(note => `
+            <div class="bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden"
+                 onclick="showClassNoteDetail(${note.id}, '${note.student.name}')"
+                 data-student-id="${note.student.id}"
+                 data-note-date="${note.note_date}">
+                <div class="bg-gradient-to-r from-blue-500 to-indigo-500 p-3 text-white">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-user-circle text-xl"></i>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-bold truncate">${note.student.name}</h3>
+                            <p class="text-xs text-blue-100 truncate">${note.student.code}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fas fa-calendar-day text-blue-500 text-sm"></i>
+                        <span class="text-sm font-semibold text-gray-700">
+                            ${new Date(note.note_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-600 line-clamp-3">
+                        ${note.content.substring(0, 100)}${note.content.length > 100 ? '...' : ''}
+                    </p>
+                    <div class="mt-2 text-xs text-gray-400">
+                        <i class="fas fa-clock mr-1"></i>
+                        ${new Date(note.created_at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
 };
 
 window.clearClassNotesFilters = function() {
+    document.getElementById('search-filter').value = '';
     document.getElementById('student-filter').value = '';
     document.getElementById('date-filter').value = '';
-    
-    document.querySelectorAll('[data-student-id]').forEach(card => card.style.display = 'block');
-    document.querySelectorAll('[data-note-date]').forEach(card => card.style.display = 'block');
+    filterClassNotes();
 };
 
 // ==================== 상담 관리 ====================
