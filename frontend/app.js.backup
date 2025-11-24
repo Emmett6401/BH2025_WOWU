@@ -11669,45 +11669,13 @@ window.deleteNotice = async function(noticeId) {
 // ==================== 강사 마이페이지 ====================
 let instructorNotes = [];
 let currentInstructorNoteId = null;
+let currentInstructorTab = 'notes'; // 기본 탭: SSIRN메모장
+
 window.showMyPageModal = async function() {
     const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
     if (!instructor || !instructor.code) {
         window.showAlert('로그인 정보를 찾을 수 없습니다.', 'error');
         return;
-    }
-    
-    // 공지사항 데이터 미리 로드
-    let noticesHTML = '';
-    try {
-        const noticesResponse = await axios.get(`${API_BASE_URL}/api/notices`);
-        const notices = noticesResponse.data;
-        
-        if (notices.length === 0) {
-            noticesHTML = `
-                <div class="text-center py-12 text-gray-500">
-                    <i class="fas fa-inbox text-6xl mb-4"></i>
-                    <p>등록된 공지사항이 없습니다</p>
-                </div>
-            `;
-        } else {
-            noticesHTML = notices.map(notice => {
-                const date = new Date(notice.created_at);
-                const formattedDate = date.toLocaleDateString('ko-KR');
-                
-                return `
-                    <div class="bg-white border rounded-lg p-6 hover:shadow-md transition-shadow">
-                        <div class="flex justify-between items-start mb-3">
-                            <h3 class="text-lg font-bold text-gray-800">${notice.title}</h3>
-                            <span class="text-sm text-gray-500">${formattedDate}</span>
-                        </div>
-                        <p class="text-gray-600 whitespace-pre-wrap">${notice.content}</p>
-                    </div>
-                `;
-            }).join('');
-        }
-    } catch (error) {
-        console.error('공지사항 로드 실패:', error);
-        noticesHTML = '<p class="text-red-500">공지사항을 불러오는데 실패했습니다.</p>';
     }
     
     const modal = document.createElement('div');
@@ -11753,326 +11721,289 @@ window.showMyPageModal = async function() {
             </div>
             
             <!-- 내 정보 섹션 -->
-            <div id="mypage-section-profile" class="p-8">
-                <!-- 프로필 사진 -->
-                <div class="mb-8 text-center">
-                    <div class="inline-block relative">
-                        <img id="mypage-photo" 
-                             src="${instructor.profile_photo ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(instructor.profile_photo) + '&t=' + new Date().getTime() : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23ddd%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2716%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3ENo Photo%3C/text%3E%3C/svg%3E'}" 
-                             alt="프로필 사진" 
-                             class="w-40 h-40 rounded-full object-cover border-4 border-blue-500 shadow-lg"
-                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23ddd%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2716%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3ENo Photo%3C/text%3E%3C/svg%3E'">
-                        <button onclick="document.getElementById('mypage-photo-input').click()" 
-                                class="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg">
-                            <i class="fas fa-camera"></i>
-                        </button>
-                    </div>
-                    <input type="file" id="mypage-photo-input" accept="image/*" class="hidden" onchange="uploadMyPagePhoto(event)">
-                    <p class="text-sm text-gray-500 mt-3">클릭하여 프로필 사진 변경</p>
-                    <!-- 프로그래스바 -->
-                    <div id="mypage-upload-progress" class="hidden mt-4">
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div id="mypage-progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
-                        </div>
-                        <p id="mypage-progress-text" class="text-sm text-gray-600 mt-2 text-center">업로드 중... 0%</p>
-                    </div>
-                </div>
-                
-                <!-- 파일 업로드 섹션 -->
-                <div class="border-t pt-6 mb-6">
-                    <h4 class="text-lg font-bold text-gray-800 mb-4">
-                        <i class="fas fa-paperclip mr-2 text-green-500"></i>사진 및 파일 첨부 (그림파일, PDF, HWP, PPT, Excel, Word, TXT 등)
-                    </h4>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
-                        <div class="flex flex-wrap gap-2 mb-3">
-                            <button type="button" onclick="document.getElementById('mypage-file-input').click()" 
-                                    class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm">
-                                <i class="fas fa-folder-open mr-2"></i>파일 선택
-                            </button>
-                            <button type="button" onclick="document.getElementById('mypage-camera-input').click()" 
-                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm">
-                                <i class="fas fa-camera mr-2"></i>사진 촬영
-                            </button>
-                        </div>
-                        <input type="file" id="mypage-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
-                               onchange="window.handleMyPageFileUpload(event)" class="hidden">
-                        <input type="file" id="mypage-camera-input" accept="image/*" capture="environment"
-                               onchange="window.handleMyPageFileUpload(event)" class="hidden">
-                        <div id="mypage-file-upload-progress" class="hidden mb-3">
-                            <div class="bg-blue-50 border border-blue-200 rounded p-3">
-                                <p class="text-sm text-blue-800 mb-2">
-                                    <i class="fas fa-cloud-upload-alt mr-2"></i>
-                                    서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
-                                </p>
-                                <div class="w-full bg-blue-200 rounded-full h-2">
-                                    <div id="mypage-file-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="mypage-files-preview" class="flex flex-col gap-2 mt-2"></div>
-                        <p class="text-xs text-gray-500 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            첨부 파일: <span id="mypage-file-count">${instructor.attachments ? JSON.parse(instructor.attachments).length : 0}</span>/20
-                        </p>
-                    </div>
-                </div>
-                
-                <!-- 정보 수정 폼 -->
-                <form id="mypage-form" class="space-y-6">
-                    <!-- 이름 -->
-                    <div>
-                        <label class="block text-gray-700 font-semibold mb-2">
-                            <i class="fas fa-user mr-2 text-blue-500"></i>이름
-                        </label>
-                        <input type="text" id="mypage-name" value="${instructor.name || ''}" 
-                               class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    
-                    <!-- 전공 -->
-                    <div>
-                        <label class="block text-gray-700 font-semibold mb-2">
-                            <i class="fas fa-book mr-2 text-green-500"></i>전공
-                        </label>
-                        <input type="text" id="mypage-major" value="${instructor.major || ''}" 
-                               class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    
-                    <!-- 연락처 -->
-                    <div>
-                        <label class="block text-gray-700 font-semibold mb-2">
-                            <i class="fas fa-phone mr-2 text-yellow-500"></i>연락처
-                        </label>
-                        <input type="tel" id="mypage-phone" value="${instructor.phone || ''}" 
-                               class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    
-                    <!-- 이메일 -->
-                    <div>
-                        <label class="block text-gray-700 font-semibold mb-2">
-                            <i class="fas fa-envelope mr-2 text-red-500"></i>이메일
-                        </label>
-                        <input type="email" id="mypage-email" value="${instructor.email || ''}" 
-                               class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    
-                    <!-- 비밀번호 변경 -->
-                    <div class="border-t pt-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <h4 class="text-lg font-bold text-gray-800">
-                                <i class="fas fa-key mr-2 text-purple-500"></i>비밀번호 변경
-                            </h4>
-                            <label class="flex items-center cursor-pointer">
-                                <input type="checkbox" id="mypage-change-password-checkbox" 
-                                       class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-2"
-                                       onchange="togglePasswordFields()">
-                                <span class="text-sm text-gray-700 font-semibold">비밀번호 변경하기</span>
-                            </label>
-                        </div>
-                        <div id="mypage-password-fields" class="space-y-4 hidden">
-                            <div>
-                                <label class="block text-gray-700 mb-2">현재 비밀번호</label>
-                                <div class="relative">
-                                    <input type="password" id="mypage-old-password" 
-                                           class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                                           placeholder="현재 비밀번호를 입력하세요"
-                                           disabled>
-                                    <button type="button" onclick="togglePasswordVisibility('mypage-old-password')" 
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
-                                        <i class="fas fa-eye" id="mypage-old-password-icon"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 mb-2">새 비밀번호</label>
-                                <div class="relative">
-                                    <input type="password" id="mypage-new-password" 
-                                           class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                                           placeholder="새 비밀번호를 입력하세요"
-                                           disabled>
-                                    <button type="button" onclick="togglePasswordVisibility('mypage-new-password')" 
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
-                                        <i class="fas fa-eye" id="mypage-new-password-icon"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 mb-2">새 비밀번호 확인</label>
-                                <div class="relative">
-                                    <input type="password" id="mypage-new-password-confirm" 
-                                           class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                                           placeholder="새 비밀번호를 다시 입력하세요"
-                                           disabled>
-                                    <button type="button" onclick="togglePasswordVisibility('mypage-new-password-confirm')" 
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
-                                        <i class="fas fa-eye" id="mypage-new-password-confirm-icon"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 버튼 -->
-                    <div class="flex gap-3 pt-4">
-                        <button type="button" onclick="saveMyPage()" 
-                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
-                            <i class="fas fa-save mr-2"></i>저장
-                        </button>
-                    </div>
-                </form>
-            </div>
-            
+
             <!-- SSIRN메모장 섹션 -->
-            <div id="mypage-section-ssirn" class="p-8 hidden">
-                <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
-                    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-                        <h2 class="text-2xl font-bold flex items-center">
-                            <i class="fas fa-book-open mr-3"></i>나의 SSIRN메모장
-                        </h2>
-                        <p class="text-blue-100 mt-2 text-sm">나의 수업 내용과 기억할 내용을 기록하세요</p>
+            <div id="instructor-section-notes" class="bg-white rounded-b-lg shadow-md">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                                <i class="fas fa-book-open mr-3 text-blue-600"></i>
+                                내 SSIRN메모장
+                            </h2>
+                            <p class="text-gray-600 mt-1 text-sm">나의 수업 내용과 기억할 내용을 기록하세요</p>
+                        </div>
+                        <button onclick="showInstructorNewNoteModal()" 
+                                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold">
+                            <i class="fas fa-plus mr-2"></i>새 메모
+                        </button>
                     </div>
-                    <div class="p-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <p class="text-gray-600">총 <span id="mypage-ssirn-count" class="font-bold text-blue-600">0</span>개의 메모</p>
-                            <button onclick="showInstructorNewNoteModal()" 
-                                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold">
-                                <i class="fas fa-plus mr-2"></i>새 메모
-                            </button>
+
+                    <!-- 검색 및 필터 -->
+                    <div class="mb-6 flex gap-2">
+                        <div class="flex-1">
+                            <input type="text" id="instructor-note-search" 
+                                   placeholder="내용 검색..." 
+                                   class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   onkeyup="searchInstructorNotes()">
                         </div>
-                        <div id="mypage-ssirn-list" class="space-y-4"></div>
-                        <div id="mypage-ssirn-empty" class="text-center py-12 text-gray-500">
-                            <i class="fas fa-inbox text-6xl mb-4"></i>
-                            <p>작성된 메모가 없습니다</p>
-                            <button onclick="showInstructorNewNoteModal()" 
-                                    class="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                <i class="fas fa-plus mr-2"></i>첫 메모 작성하기
-                            </button>
-                        </div>
+                        <input type="date" id="instructor-note-date-filter" 
+                               class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                               onchange="searchInstructorNotes()">
+                        <button onclick="clearInstructorNoteFilters()" 
+                                class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- 메모 개수 -->
+                    <div class="mb-4 text-sm text-gray-600">
+                        총 <span id="instructor-notes-count" class="font-bold text-blue-600">0</span>개의 메모
+                    </div>
+                    
+                    <!-- 메모 테이블 -->
+                    <div class="overflow-x-auto">
+                        <table id="instructor-notes-table" class="min-w-full bg-white border border-gray-200 rounded-lg">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">날짜</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">내용</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">사진</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="instructor-notes-tbody" class="divide-y divide-gray-200">
+                                <!-- 메모 행들이 여기에 동적으로 추가됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 빈 상태 -->
+                    <div id="instructor-notes-empty" class="hidden text-center py-12">
+                        <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">작성된 메모가 없습니다</p>
+                        <button onclick="showInstructorNewNoteModal()" 
+                                class="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            <i class="fas fa-plus mr-2"></i>첫 메모 작성하기
+                        </button>
                     </div>
                 </div>
             </div>
-            
-            <!-- 공지사항 섹션 -->
-            <div id="mypage-section-notices" class="p-8 hidden">
-                <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
-                    <div class="bg-gradient-to-r from-purple-600 to-pink-600 p-6 text-white">
-                        <h2 class="text-2xl font-bold flex items-center">
-                            <i class="fas fa-bullhorn mr-3"></i>공지사항
-                        </h2>
-                        <p class="text-purple-100 mt-2 text-sm">중요한 공지사항을 확인하세요</p>
+
+            <!-- 내 정보 섹션 -->
+            <!-- 내 정보 섹션 -->
+            <div id="instructor-section-profile" class="hidden bg-white rounded-b-lg shadow-md">
+                <div class="p-8">
+                    <!-- 프로필 사진 -->
+                    <div class="mb-8 text-center">
+                        <div class="inline-block relative">
+                            <img id="mypage-photo" 
+                                 src="${instructor.profile_photo ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(instructor.profile_photo) + '&t=' + new Date().getTime() : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23ddd%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2716%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3ENo Photo%3C/text%3E%3C/svg%3E'}" 
+                                 alt="프로필 사진" 
+                                 class="w-40 h-40 rounded-full object-cover border-4 border-blue-500 shadow-lg"
+                                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23ddd%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2716%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3ENo Photo%3C/text%3E%3C/svg%3E'">
+                            <button onclick="document.getElementById('mypage-photo-input').click()" 
+                                    class="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg">
+                                <i class="fas fa-camera"></i>
+                            </button>
+                        </div>
+                        <input type="file" id="mypage-photo-input" accept="image/*" class="hidden" onchange="uploadMyPagePhoto(event)">
+                        <p class="text-sm text-gray-500 mt-3">클릭하여 프로필 사진 변경</p>
+                        <!-- 프로그래스바 -->
+                        <div id="mypage-upload-progress" class="hidden mt-4">
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div id="mypage-progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <p id="mypage-progress-text" class="text-sm text-gray-600 mt-2 text-center">업로드 중... 0%</p>
+                        </div>
                     </div>
-                    <div class="p-6 space-y-4">
-                        ${noticesHTML}
+                    
+                    <!-- 파일 업로드 섹션 -->
+                    <div class="border-t pt-6 mb-6">
+                        <h4 class="text-lg font-bold text-gray-800 mb-4">
+                            <i class="fas fa-paperclip mr-2 text-green-500"></i>사진 및 파일 첨부 (그림파일, PDF, HWP, PPT, Excel, Word, TXT 등)
+                        </h4>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <button type="button" onclick="document.getElementById('mypage-file-input').click()" 
+                                        class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm">
+                                    <i class="fas fa-folder-open mr-2"></i>파일 선택
+                                </button>
+                                <button type="button" onclick="document.getElementById('mypage-camera-input').click()" 
+                                        class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm">
+                                    <i class="fas fa-camera mr-2"></i>사진 촬영
+                                </button>
+                            </div>
+                            <input type="file" id="mypage-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
+                                   onchange="window.handleMyPageFileUpload(event)" class="hidden">
+                            <input type="file" id="mypage-camera-input" accept="image/*" capture="environment"
+                                   onchange="window.handleMyPageFileUpload(event)" class="hidden">
+                            <div id="mypage-file-upload-progress" class="hidden mb-3">
+                                <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                    <p class="text-sm text-blue-800 mb-2">
+                                        <i class="fas fa-cloud-upload-alt mr-2"></i>
+                                        서버에 업로드 후 자동 저장됩니다. 잠시만 기다리세요...
+                                    </p>
+                                    <div class="w-full bg-blue-200 rounded-full h-2">
+                                        <div id="mypage-file-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="mypage-files-preview" class="flex flex-col gap-2 mt-2"></div>
+                            <p class="text-xs text-gray-500 mt-2">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                첨부 파일: <span id="mypage-file-count">${instructor.attachments ? JSON.parse(instructor.attachments).length : 0}</span>/20
+                            </p>
+                        </div>
                     </div>
+                    
+                    <!-- 정보 수정 폼 -->
+                    <form id="mypage-form" class="space-y-6">
+                        <!-- 이름 -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-user mr-2 text-blue-500"></i>이름
+                            </label>
+                            <input type="text" id="mypage-name" value="${instructor.name || ''}" 
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <!-- 전공 -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-book mr-2 text-green-500"></i>전공
+                            </label>
+                            <input type="text" id="mypage-major" value="${instructor.major || ''}" 
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <!-- 연락처 -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-phone mr-2 text-yellow-500"></i>연락처
+                            </label>
+                            <input type="tel" id="mypage-phone" value="${instructor.phone || ''}" 
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <!-- 이메일 -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-envelope mr-2 text-red-500"></i>이메일
+                            </label>
+                            <input type="email" id="mypage-email" value="${instructor.email || ''}" 
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <!-- 비밀번호 변경 -->
+                        <div class="border-t pt-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-lg font-bold text-gray-800">
+                                    <i class="fas fa-key mr-2 text-purple-500"></i>비밀번호 변경
+                                </h4>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="checkbox" id="mypage-change-password-checkbox" 
+                                           class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-2"
+                                           onchange="togglePasswordFields()">
+                                    <span class="text-sm text-gray-700 font-semibold">비밀번호 변경하기</span>
+                                </label>
+                            </div>
+                            <div id="mypage-password-fields" class="space-y-4 hidden">
+                                <div>
+                                    <label class="block text-gray-700 mb-2">현재 비밀번호</label>
+                                    <div class="relative">
+                                        <input type="password" id="mypage-old-password" 
+                                               class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                               placeholder="현재 비밀번호를 입력하세요"
+                                               disabled>
+                                        <button type="button" onclick="togglePasswordVisibility('mypage-old-password')" 
+                                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-eye" id="mypage-old-password-icon"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">새 비밀번호</label>
+                                    <div class="relative">
+                                        <input type="password" id="mypage-new-password" 
+                                               class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                               placeholder="새 비밀번호를 입력하세요"
+                                               disabled>
+                                        <button type="button" onclick="togglePasswordVisibility('mypage-new-password')" 
+                                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-eye" id="mypage-new-password-icon"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">새 비밀번호 확인</label>
+                                    <div class="relative">
+                                        <input type="password" id="mypage-new-password-confirm" 
+                                               class="w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                               placeholder="새 비밀번호를 다시 입력하세요"
+                                               disabled>
+                                        <button type="button" onclick="togglePasswordVisibility('mypage-new-password-confirm')" 
+                                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-eye" id="mypage-new-password-confirm-icon"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 버튼 -->
+                        <div class="flex gap-3 pt-4">
+                            <button type="button" onclick="saveMyPage()" 
+                                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+                                <i class="fas fa-save mr-2"></i>저장
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
     `;
     
-    document.body.appendChild(modal);
-    
-    // 파일 미리보기 초기화
-    if (instructor.attachments) {
-        try {
-            const attachments = JSON.parse(instructor.attachments);
-            updateMyPageFilePreview(attachments);
-        } catch (e) {
-            console.error('첨부파일 로드 실패:', e);
-        }
-    }
-    
     // 기본 탭 로드
-    switchMyPageTab('profile');
-};
-
-window.closeMyPageModal = function() {
-    const modal = document.getElementById('mypage-modal');
-    if (modal) {
-        modal.remove();
+    switchInstructorTab('notes');
+    } catch (error) {
+        window.hideLoading();
+        console.error('마이페이지 로드 실패:', error);
+        await window.showError('마이페이지를 불러오는데 실패했습니다.', '로드 실패');
     }
-};
+}
 
-window.switchMyPageTab = async function(tab) {
+window.switchInstructorTab = function(tab) {
+    currentInstructorTab = tab;
+    
     // 탭 버튼 스타일 업데이트
-    document.querySelectorAll('[id^="mypage-tab-"]').forEach(btn => {
+    document.querySelectorAll('[id^="instructor-tab-"]').forEach(btn => {
         btn.classList.remove('border-blue-500', 'text-blue-600');
         btn.classList.add('border-transparent', 'text-gray-600');
     });
-    document.getElementById(`mypage-tab-${tab}`).classList.remove('border-transparent', 'text-gray-600');
-    document.getElementById(`mypage-tab-${tab}`).classList.add('border-blue-500', 'text-blue-600');
+    document.getElementById(`instructor-tab-${tab}`).classList.remove('border-transparent', 'text-gray-600');
+    document.getElementById(`instructor-tab-${tab}`).classList.add('border-blue-500', 'text-blue-600');
     
     // 섹션 표시/숨김
-    document.getElementById('mypage-section-profile').classList.toggle('hidden', tab !== 'profile');
-    document.getElementById('mypage-section-ssirn').classList.toggle('hidden', tab !== 'ssirn');
-    document.getElementById('mypage-section-notices').classList.toggle('hidden', tab !== 'notices');
+    document.getElementById('instructor-section-notes').classList.toggle('hidden', tab !== 'notes');
+    document.getElementById('instructor-section-profile').classList.toggle('hidden', tab !== 'profile');
     
-    // SSIRN메모장 탭 선택 시 데이터 로드
-    if (tab === 'ssirn') {
-        await loadMyPageSSIRN();
-    }
-};
-
-async function loadMyPageSSIRN() {
-    const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
-    
-    try {
-        const response = await axios.get(`${API_BASE_URL}/api/class-notes?instructor_code=${instructor.code}`);
-        const notes = response.data;
-        
-        const countSpan = document.getElementById('mypage-ssirn-count');
-        const listDiv = document.getElementById('mypage-ssirn-list');
-        const emptyDiv = document.getElementById('mypage-ssirn-empty');
-        
-        if (countSpan) countSpan.textContent = notes.length;
-        
-        if (notes.length === 0) {
-            if (listDiv) listDiv.innerHTML = '';
-            if (emptyDiv) emptyDiv.classList.remove('hidden');
-        } else {
-            if (emptyDiv) emptyDiv.classList.add('hidden');
-            if (listDiv) {
-                listDiv.innerHTML = notes.map(note => {
-                    const date = new Date(note.note_date);
-                    const formattedDate = date.toLocaleDateString('ko-KR');
-                    const preview = note.content.substring(0, 100) + (note.content.length > 100 ? '...' : '');
-                    const photoCount = note.photo_urls ? JSON.parse(note.photo_urls).length : 0;
-                    
-                    return `
-                        <div class="bg-white border rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer" onclick="viewInstructorNote(${note.id})">
-                            <div class="flex justify-between items-start mb-3">
-                                <div class="flex items-center gap-2">
-                                    <i class="fas fa-calendar-alt text-blue-500"></i>
-                                    <span class="font-semibold text-gray-800">${formattedDate}</span>
-                                </div>
-                                ${photoCount > 0 ? `<span class="text-sm text-green-600"><i class="fas fa-image mr-1"></i>${photoCount}장</span>` : ''}
-                            </div>
-                            <p class="text-gray-600 mb-4">${preview}</p>
-                            <div class="flex gap-2">
-                                <button onclick="event.stopPropagation(); viewInstructorNote(${note.id})" 
-                                        class="px-3 py-1 text-sm bg-blue-100 text-blue-600 rounded hover:bg-blue-200">
-                                    <i class="fas fa-eye mr-1"></i>보기
-                                </button>
-                                <button onclick="event.stopPropagation(); editInstructorNote(${note.id})" 
-                                        class="px-3 py-1 text-sm bg-green-100 text-green-600 rounded hover:bg-green-200">
-                                    <i class="fas fa-edit mr-1"></i>수정
-                                </button>
-                                <button onclick="event.stopPropagation(); deleteInstructorNote(${note.id})" 
-                                        class="px-3 py-1 text-sm bg-red-100 text-red-600 rounded hover:bg-red-200">
-                                    <i class="fas fa-trash mr-1"></i>삭제
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+    // 데이터 로드
+    if (tab === 'notes') {
+        loadInstructorNotes();
+    } else if (tab === 'profile') {
+        // 프로필 탭 로드 시 파일 미리보기 초기화
+        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+        if (instructor.attachments) {
+            try {
+                const attachments = JSON.parse(instructor.attachments);
+                updateMyPageFilePreview(attachments);
+            } catch (e) {
+                console.error('첨부파일 로드 실패:', e);
             }
         }
-    } catch (error) {
-        console.error('SSIRN메모장 로드 실패:', error);
-        const listDiv = document.getElementById('mypage-ssirn-list');
-        if (listDiv) {
-            listDiv.innerHTML = '<p class="text-red-500">메모를 불러오는데 실패했습니다.</p>';
-        }
     }
-}
+};
 
 async function loadInstructorNotes() {
     console.log('📝 loadInstructorNotes 함수 시작');
