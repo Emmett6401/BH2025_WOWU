@@ -12050,7 +12050,6 @@ async function loadMyPageSSIRN() {
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">날짜</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">내용</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">사진</th>
-                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-40">관리</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200">
@@ -12065,7 +12064,7 @@ async function loadMyPageSSIRN() {
                                     const photoCount = note.photo_urls ? JSON.parse(note.photo_urls).length : 0;
                                     
                                     return `
-                                        <tr class="hover:bg-gray-50 cursor-pointer" onclick="viewInstructorNote(${note.id})">
+                                        <tr class="hover:bg-blue-50 cursor-pointer transition-colors" onclick="editInstructorNoteInline(${note.id})">
                                             <td class="px-6 py-4">
                                                 <i class="fas fa-calendar-alt text-blue-500 mr-2"></i>${formattedDate}
                                             </td>
@@ -12074,22 +12073,6 @@ async function loadMyPageSSIRN() {
                                             </td>
                                             <td class="px-6 py-4 text-center">
                                                 ${photoCount > 0 ? `<i class="fas fa-image text-green-500"></i> ${photoCount}장` : '-'}
-                                            </td>
-                                            <td class="px-6 py-4">
-                                                <div class="flex justify-center items-center gap-2">
-                                                    <button onclick="event.stopPropagation(); viewInstructorNote(${note.id})" 
-                                                            class="text-blue-600 hover:text-blue-800 p-1" title="보기">
-                                                        <i class="fas fa-eye"></i>
-                                                    </button>
-                                                    <button onclick="event.stopPropagation(); editInstructorNote(${note.id})" 
-                                                            class="text-green-600 hover:text-green-800 p-1" title="수정">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button onclick="event.stopPropagation(); deleteInstructorNote(${note.id})" 
-                                                            class="text-red-600 hover:text-red-800 p-1" title="삭제">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
                                             </td>
                                         </tr>
                                     `;
@@ -12373,7 +12356,7 @@ window.saveInstructorNote = async function(event) {
         const content = document.getElementById('instructor-note-content').value;
         const photoInput = document.getElementById('instructor-note-photos');
         
-        let photoUrls = [];
+        let photoData = [];
         
         // 사진 업로드
         if (photoInput.files.length > 0) {
@@ -12388,7 +12371,10 @@ window.saveInstructorNote = async function(event) {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 
-                photoUrls.push(uploadResponse.data.url);
+                photoData.push({
+                    url: uploadResponse.data.url,
+                    name: file.name
+                });
             }
         }
         
@@ -12400,7 +12386,7 @@ window.saveInstructorNote = async function(event) {
             student_id: null, // 강사 본인 메모는 student_id가 null
             note_date: noteDate,
             content: content,
-            photo_urls: JSON.stringify(photoUrls)
+            photo_urls: JSON.stringify(photoData)
         };
         
         if (currentInstructorNoteId) {
@@ -12637,6 +12623,264 @@ window.deleteInstructorNote = async function(noteId) {
         console.error('메모 삭제 실패:', error);
         const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류가 발생했습니다.';
         await window.showError(`메모 삭제 중 오류가 발생했습니다.\n\n${errorMsg}`, '삭제 실패');
+    }
+};
+
+// 인라인 수정 모드 (MyPage SSIRN용)
+window.editInstructorNoteInline = async function(noteId) {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/class-notes/${noteId}`);
+        const note = response.data;
+        
+        currentInstructorNoteId = noteId;
+        
+        // 사진 정보 파싱 (객체 배열 또는 URL 배열)
+        let photos = [];
+        try {
+            const parsed = JSON.parse(note.photo_urls || '[]');
+            photos = parsed.map(item => {
+                if (typeof item === 'string') {
+                    return { url: item, name: item.split('/').pop() };
+                }
+                return item;
+            });
+        } catch (e) {
+            photos = [];
+        }
+        
+        const modal = `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4" onclick="closeInstructorNoteModal(event)">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                    <div class="bg-gradient-to-r from-green-600 to-teal-600 p-6 text-white rounded-t-2xl sticky top-0 z-10">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-2xl font-bold">
+                                <i class="fas fa-edit mr-2"></i>메모 수정
+                            </h3>
+                            <button onclick="closeInstructorNoteModal()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="p-6">
+                        <form id="instructor-note-inline-form" onsubmit="saveInstructorNoteInline(event)">
+                            <!-- 날짜 -->
+                            <div class="mb-4">
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-calendar mr-2 text-blue-500"></i>날짜
+                                </label>
+                                <input type="date" id="instructor-note-inline-date" value="${note.note_date}" 
+                                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500" required>
+                            </div>
+                            
+                            <!-- 내용 -->
+                            <div class="mb-4">
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-pen mr-2 text-green-500"></i>내용
+                                </label>
+                                <textarea id="instructor-note-inline-content" rows="10" 
+                                          class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                          required>${note.content}</textarea>
+                            </div>
+                            
+                            <!-- 기존 사진 -->
+                            ${photos.length > 0 ? `
+                                <div class="mb-4">
+                                    <label class="block text-gray-700 font-semibold mb-2">
+                                        <i class="fas fa-images mr-2 text-pink-500"></i>기존 사진
+                                    </label>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3" id="existing-photos-container">
+                                        ${photos.map((photo, idx) => `
+                                            <div class="relative group">
+                                                <img src="${photo.url}" alt="${photo.name}" 
+                                                     class="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition"
+                                                     onclick="previewPhoto('${photo.url}', '${photo.name}')">
+                                                <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-1 rounded-b-lg truncate">
+                                                    ${photo.name}
+                                                </div>
+                                                <button type="button" onclick="removeExistingPhoto(${idx})"
+                                                        class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                                    <i class="fas fa-times text-xs"></i>
+                                                </button>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    <input type="hidden" id="remaining-photos" value='${JSON.stringify(photos)}'>
+                                </div>
+                            ` : ''}
+                            
+                            <!-- 새 사진 업로드 -->
+                            <div class="mb-6">
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-camera mr-2 text-pink-500"></i>추가 사진 첨부 (선택사항)
+                                </label>
+                                <input type="file" id="instructor-note-inline-photos" multiple accept="image/*" 
+                                       onchange="previewNewPhotos(event)"
+                                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500">
+                                <div id="new-photos-preview" class="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3"></div>
+                            </div>
+                            
+                            <!-- 버튼 -->
+                            <div class="flex gap-3">
+                                <button type="submit" 
+                                        class="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-semibold transition">
+                                    <i class="fas fa-save mr-2"></i>저장
+                                </button>
+                                <button type="button" onclick="closeInstructorNoteModal()" 
+                                        class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold transition">
+                                    <i class="fas fa-times mr-2"></i>취소
+                                </button>
+                                <button type="button" onclick="deleteInstructorNoteInline(${noteId})" 
+                                        class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold transition">
+                                    <i class="fas fa-trash mr-2"></i>삭제
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modal);
+    } catch (error) {
+        console.error('메모 로드 실패:', error);
+        await window.showError('메모를 불러오는데 실패했습니다.', '로드 실패');
+    }
+};
+
+// 인라인 수정 모드에서 삭제
+window.deleteInstructorNoteInline = async function(noteId) {
+    const confirmed = await window.showConfirm('이 메모를 삭제하시겠습니까?', '삭제 확인');
+    if (!confirmed) return;
+    
+    try {
+        window.showLoading('메모 삭제 중...');
+        await axios.delete(`${API_BASE_URL}/api/class-notes/${noteId}`);
+        window.hideLoading();
+        
+        closeInstructorNoteModal();
+        await loadMyPageSSIRN();
+        window.showSuccess('메모가 삭제되었습니다.', '삭제 완료');
+    } catch (error) {
+        window.hideLoading();
+        console.error('메모 삭제 실패:', error);
+        const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류가 발생했습니다.';
+        await window.showError(`메모 삭제 중 오류가 발생했습니다.\n\n${errorMsg}`, '삭제 실패');
+    }
+};
+
+// 기존 사진 삭제
+window.removeExistingPhoto = function(index) {
+    const input = document.getElementById('remaining-photos');
+    const photos = JSON.parse(input.value);
+    photos.splice(index, 1);
+    input.value = JSON.stringify(photos);
+    
+    // UI 업데이트
+    const container = document.getElementById('existing-photos-container');
+    const items = container.querySelectorAll('.relative.group');
+    if (items[index]) {
+        items[index].remove();
+    }
+};
+
+// 새 사진 미리보기
+window.previewNewPhotos = function(event) {
+    const files = event.target.files;
+    const previewContainer = document.getElementById('new-photos-preview');
+    previewContainer.innerHTML = '';
+    
+    Array.from(files).forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const div = document.createElement('div');
+            div.className = 'relative';
+            div.innerHTML = `
+                <img src="${e.target.result}" alt="${file.name}" 
+                     class="w-full h-32 object-cover rounded-lg">
+                <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-1 rounded-b-lg truncate">
+                    ${file.name}
+                </div>
+            `;
+            previewContainer.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+    });
+};
+
+// 사진 확대 미리보기
+window.previewPhoto = function(url, name) {
+    const modal = `
+        <div class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[70] p-4" onclick="this.remove()">
+            <div class="max-w-5xl w-full" onclick="event.stopPropagation()">
+                <div class="bg-white rounded-t-lg p-4 flex justify-between items-center">
+                    <h3 class="font-semibold text-gray-800">${name}</h3>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <img src="${url}" alt="${name}" class="w-full max-h-[80vh] object-contain bg-gray-100">
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+};
+
+// 인라인 저장
+window.saveInstructorNoteInline = async function(event) {
+    event.preventDefault();
+    
+    try {
+        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+        const noteDate = document.getElementById('instructor-note-inline-date').value;
+        const content = document.getElementById('instructor-note-inline-content').value;
+        const photoInput = document.getElementById('instructor-note-inline-photos');
+        
+        // 기존 사진 (삭제되지 않은 것들)
+        const remainingPhotosInput = document.getElementById('remaining-photos');
+        let allPhotos = remainingPhotosInput ? JSON.parse(remainingPhotosInput.value) : [];
+        
+        // 새 사진 업로드
+        if (photoInput && photoInput.files.length > 0) {
+            window.showLoading('사진 업로드 중...');
+            
+            for (let file of photoInput.files) {
+                const compressedFile = await window.compressImage(file);
+                const formData = new FormData();
+                formData.append('file', compressedFile);
+                
+                const uploadResponse = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                
+                allPhotos.push({
+                    url: uploadResponse.data.url,
+                    name: file.name
+                });
+            }
+        }
+        
+        window.showLoading('메모 저장 중...');
+        
+        const noteData = {
+            instructor_code: instructor.code,
+            student_id: null,
+            note_date: noteDate,
+            content: content,
+            photo_urls: JSON.stringify(allPhotos)
+        };
+        
+        await axios.put(`${API_BASE_URL}/api/class-notes/${currentInstructorNoteId}`, noteData);
+        
+        window.hideLoading();
+        closeInstructorNoteModal();
+        await loadMyPageSSIRN();
+        window.showSuccess('메모가 수정되었습니다.', '수정 완료');
+    } catch (error) {
+        window.hideLoading();
+        console.error('메모 저장 실패:', error);
+        const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류가 발생했습니다.';
+        await window.showError(`메모 저장 중 오류가 발생했습니다.\n\n${errorMsg}`, '저장 실패');
     }
 };
 
