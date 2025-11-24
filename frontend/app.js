@@ -12030,39 +12030,61 @@ async function loadMyPageSSIRN() {
         } else {
             if (emptyDiv) emptyDiv.classList.add('hidden');
             if (listDiv) {
-                listDiv.innerHTML = notes.map(note => {
-                    const date = new Date(note.note_date);
-                    const formattedDate = date.toLocaleDateString('ko-KR');
-                    const preview = note.content.substring(0, 100) + (note.content.length > 100 ? '...' : '');
-                    const photoCount = note.photo_urls ? JSON.parse(note.photo_urls).length : 0;
-                    
-                    return `
-                        <div class="bg-white border rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer" onclick="viewInstructorNote(${note.id})">
-                            <div class="flex justify-between items-start mb-3">
-                                <div class="flex items-center gap-2">
-                                    <i class="fas fa-calendar-alt text-blue-500"></i>
-                                    <span class="font-semibold text-gray-800">${formattedDate}</span>
-                                </div>
-                                ${photoCount > 0 ? `<span class="text-sm text-green-600"><i class="fas fa-image mr-1"></i>${photoCount}장</span>` : ''}
-                            </div>
-                            <p class="text-gray-600 mb-4">${preview}</p>
-                            <div class="flex gap-2">
-                                <button onclick="event.stopPropagation(); viewInstructorNote(${note.id})" 
-                                        class="px-3 py-1 text-sm bg-blue-100 text-blue-600 rounded hover:bg-blue-200">
-                                    <i class="fas fa-eye mr-1"></i>보기
-                                </button>
-                                <button onclick="event.stopPropagation(); editInstructorNote(${note.id})" 
-                                        class="px-3 py-1 text-sm bg-green-100 text-green-600 rounded hover:bg-green-200">
-                                    <i class="fas fa-edit mr-1"></i>수정
-                                </button>
-                                <button onclick="event.stopPropagation(); deleteInstructorNote(${note.id})" 
-                                        class="px-3 py-1 text-sm bg-red-100 text-red-600 rounded hover:bg-red-200">
-                                    <i class="fas fa-trash mr-1"></i>삭제
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                // 테이블 형식으로 변경
+                listDiv.innerHTML = `
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white border border-gray-200 rounded-lg">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">날짜</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">내용</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">사진</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                ${notes.map(note => {
+                                    const date = new Date(note.note_date);
+                                    const formattedDate = date.toLocaleDateString('ko-KR', { 
+                                        year: 'numeric', 
+                                        month: '2-digit', 
+                                        day: '2-digit' 
+                                    });
+                                    const preview = note.content.substring(0, 80) + (note.content.length > 80 ? '...' : '');
+                                    const photoCount = note.photo_urls ? JSON.parse(note.photo_urls).length : 0;
+                                    
+                                    return `
+                                        <tr class="hover:bg-gray-50 cursor-pointer" onclick="viewInstructorNote(${note.id})">
+                                            <td class="px-6 py-4">
+                                                <i class="fas fa-calendar-alt text-blue-500 mr-2"></i>${formattedDate}
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <div class="line-clamp-2">${preview}</div>
+                                            </td>
+                                            <td class="px-6 py-4 text-center">
+                                                ${photoCount > 0 ? `<i class="fas fa-image text-green-500"></i> ${photoCount}장` : '-'}
+                                            </td>
+                                            <td class="px-6 py-4 text-center">
+                                                <button onclick="event.stopPropagation(); viewInstructorNote(${note.id})" 
+                                                        class="text-blue-600 hover:text-blue-800 px-2">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button onclick="event.stopPropagation(); editInstructorNote(${note.id})" 
+                                                        class="text-green-600 hover:text-green-800 px-2">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button onclick="event.stopPropagation(); deleteInstructorNote(${note.id})" 
+                                                        class="text-red-600 hover:text-red-800 px-2">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
             }
         }
     } catch (error) {
@@ -12339,7 +12361,7 @@ window.saveInstructorNote = async function(event) {
                 const formData = new FormData();
                 formData.append('file', compressedFile);
                 
-                const uploadResponse = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
+                const uploadResponse = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 
@@ -12619,7 +12641,7 @@ window.uploadMyPagePhoto = async function(event) {
     progressText.textContent = '업로드 중... 0%';
     
     try {
-        const response = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
+        const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
             onUploadProgress: (progressEvent) => {
                 const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -12731,7 +12753,7 @@ window.handleMyPageFileUpload = async function(event) {
             const formData = new FormData();
             formData.append('file', file);
             
-            const response = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
+            const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
                 onUploadProgress: (progressEvent) => {
                     const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
