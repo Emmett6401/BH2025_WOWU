@@ -12923,20 +12923,33 @@ window.editInstructorNoteInline = async function(noteId) {
                                     <label class="block text-gray-700 font-semibold mb-2">
                                         <i class="fas fa-images mr-2 text-pink-500"></i>기존 사진
                                     </label>
-                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3" id="existing-photos-container">
+                                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3" id="existing-photos-container">
                                         ${photos.map((photo, idx) => `
                                             <div class="relative group" data-photo-idx="${idx}">
-                                                <img src="${photo.url}" alt="${photo.name}" 
-                                                     class="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition"
+                                                <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(photo.url)}&size=300" 
+                                                     alt="${photo.name}" 
+                                                     class="w-full h-32 object-cover rounded-lg cursor-pointer hover:ring-4 hover:ring-blue-300 transition shadow-md"
+                                                     onclick="showEditPhotoModal(${idx})"
                                                      data-photo-url="${photo.url.replace(/"/g, '&quot;')}" 
-                                                     data-photo-name="${photo.name.replace(/"/g, '&quot;')}">
-                                                <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-1 rounded-b-lg truncate">
-                                                    ${photo.name}
+                                                     data-photo-name="${photo.name.replace(/"/g, '&quot;')}"
+                                                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27300%27 height=%27200%27%3E%3Crect fill=%27%23ddd%27 width=%27300%27 height=%27200%27/%3E%3Ctext fill=%27%23999%27 font-size=%2716%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3E❌ 로드 실패%3C/text%3E%3C/svg%3E'">
+                                                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent text-white text-xs p-2 rounded-b-lg">
+                                                    <div class="truncate font-semibold">${photo.name}</div>
                                                 </div>
-                                                <button type="button" 
-                                                        class="photo-remove-btn absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                                                    <i class="fas fa-times text-xs"></i>
-                                                </button>
+                                                <div class="absolute top-2 right-2 flex gap-1">
+                                                    <button type="button" 
+                                                            onclick="event.stopPropagation(); showEditPhotoModal(${idx})"
+                                                            class="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg"
+                                                            title="미리보기">
+                                                        <i class="fas fa-search-plus text-sm"></i>
+                                                    </button>
+                                                    <button type="button" 
+                                                            onclick="event.stopPropagation(); removeExistingPhoto(${idx})"
+                                                            class="photo-remove-btn bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg"
+                                                            title="삭제">
+                                                        <i class="fas fa-trash text-sm"></i>
+                                                    </button>
+                                                </div>
                                             </div>
                                         `).join('')}
                                     </div>
@@ -13022,6 +13035,121 @@ window.deleteInstructorNoteInline = async function(noteId) {
         await window.showError(`메모 삭제 중 오류가 발생했습니다.\n\n${errorMsg}`, '삭제 실패');
     }
 };
+
+// 수정 모달에서 기존 사진 미리보기
+window.showEditPhotoModal = function(startIndex = 0) {
+    const input = document.getElementById('remaining-photos');
+    if (!input) return;
+    
+    const photos = JSON.parse(input.value);
+    if (photos.length === 0) return;
+    
+    window.currentEditPhotoIndex = startIndex;
+    window.currentEditPhotos = photos;
+    
+    const modal = document.createElement('div');
+    modal.id = 'edit-photo-modal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[80]';
+    modal.onclick = (e) => { if (e.target === modal) closeEditPhotoModal(); };
+    
+    modal.innerHTML = `
+        <div class="relative w-full h-full flex items-center justify-center p-4">
+            <!-- 닫기 버튼 -->
+            <button onclick="closeEditPhotoModal()" 
+                    class="absolute top-4 right-4 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-3 z-10">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+            
+            <!-- 이전 버튼 -->
+            ${photos.length > 1 ? `
+                <button onclick="showEditPrevPhoto()" 
+                        class="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-4 z-10">
+                    <i class="fas fa-chevron-left text-2xl"></i>
+                </button>
+            ` : ''}
+            
+            <!-- 사진 표시 영역 -->
+            <div class="flex flex-col items-center justify-center max-w-6xl max-h-full">
+                <img id="edit-modal-photo-img" 
+                     src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(photos[startIndex].url)}&size=1200" 
+                     alt="${photos[startIndex].name || '사진'}"
+                     class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23333%27 width=%27800%27 height=%27600%27/%3E%3Ctext fill=%27%23999%27 font-size=%2724%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3E이미지 로드 실패%3C/text%3E%3C/svg%3E'">
+                
+                <!-- 파일명 및 카운터 -->
+                <div class="mt-4 text-center">
+                    <p id="edit-modal-photo-name" class="text-white text-lg font-semibold">${photos[startIndex].name || '사진'}</p>
+                    <p id="edit-modal-photo-counter" class="text-gray-400 text-sm mt-1">${startIndex + 1} / ${photos.length}</p>
+                </div>
+            </div>
+            
+            <!-- 다음 버튼 -->
+            ${photos.length > 1 ? `
+                <button onclick="showEditNextPhoto()" 
+                        class="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-4 z-10">
+                    <i class="fas fa-chevron-right text-2xl"></i>
+                </button>
+            ` : ''}
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // ESC 키로 닫기
+    document.addEventListener('keydown', handleEditPhotoModalKeydown);
+};
+
+window.closeEditPhotoModal = function() {
+    const modal = document.getElementById('edit-photo-modal');
+    if (modal) {
+        modal.remove();
+        document.removeEventListener('keydown', handleEditPhotoModalKeydown);
+    }
+};
+
+window.showEditPrevPhoto = function() {
+    if (!window.currentEditPhotos || window.currentEditPhotos.length === 0) return;
+    
+    window.currentEditPhotoIndex = (window.currentEditPhotoIndex - 1 + window.currentEditPhotos.length) % window.currentEditPhotos.length;
+    updateEditPhotoModal();
+};
+
+window.showEditNextPhoto = function() {
+    if (!window.currentEditPhotos || window.currentEditPhotos.length === 0) return;
+    
+    window.currentEditPhotoIndex = (window.currentEditPhotoIndex + 1) % window.currentEditPhotos.length;
+    updateEditPhotoModal();
+};
+
+function updateEditPhotoModal() {
+    const photo = window.currentEditPhotos[window.currentEditPhotoIndex];
+    const imgElement = document.getElementById('edit-modal-photo-img');
+    const nameElement = document.getElementById('edit-modal-photo-name');
+    const counterElement = document.getElementById('edit-modal-photo-counter');
+    
+    if (imgElement) {
+        imgElement.src = `${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(photo.url)}&size=1200`;
+        imgElement.alt = photo.name || '사진';
+    }
+    
+    if (nameElement) {
+        nameElement.textContent = photo.name || '사진';
+    }
+    
+    if (counterElement) {
+        counterElement.textContent = `${window.currentEditPhotoIndex + 1} / ${window.currentEditPhotos.length}`;
+    }
+}
+
+function handleEditPhotoModalKeydown(event) {
+    if (event.key === 'Escape') {
+        closeEditPhotoModal();
+    } else if (event.key === 'ArrowLeft') {
+        showEditPrevPhoto();
+    } else if (event.key === 'ArrowRight') {
+        showEditNextPhoto();
+    }
+}
 
 // 기존 사진 삭제
 window.removeExistingPhoto = function(index) {
