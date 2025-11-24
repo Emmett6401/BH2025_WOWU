@@ -3186,17 +3186,17 @@ window.deleteSubject = async function(subjectCode) {
     }
 }
 
-// ==================== 수업일지 관리 ====================
+// ==================== 자율수업메모 관리 ====================
 async function loadClassNotes() {
     try {
-        window.showLoading('수업일지를 불러오는 중...');
+        window.showLoading('자율수업메모를 불러오는 중...');
         
-        // 모든 학생과 그들의 수업일지 불러오기
+        // 모든 학생과 그들의 자율수업메모 불러오기
         const studentsData = await window.getCachedData('students', () => 
             axios.get(`${API_BASE_URL}/api/students`).then(r => r.data)
         );
         
-        // 각 학생의 수업일지 가져오기 (병렬 처리)
+        // 각 학생의 자율수업메모 가져오기 (병렬 처리)
         const notesPromises = studentsData.map(student => 
             axios.get(`${API_BASE_URL}/api/class-notes/${student.id}`)
                 .then(r => ({ student, notes: r.data || [] }))
@@ -3211,9 +3211,9 @@ async function loadClassNotes() {
         renderClassNotes(studentsWithNotes, studentsData);
         window.hideLoading();
     } catch (error) {
-        console.error('수업일지 로드 실패:', error);
+        console.error('자율수업메모 로드 실패:', error);
         window.hideLoading();
-        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">수업일지를 불러오는데 실패했습니다: ' + error.message + '</div>';
+        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">자율수업메모를 불러오는데 실패했습니다: ' + error.message + '</div>';
     }
 }
 
@@ -3225,7 +3225,7 @@ function renderClassNotes(studentNotes, allStudents) {
             <div class="flex justify-between items-center mb-6">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800 flex items-center">
-                        <i class="fas fa-book-open mr-3 text-blue-600"></i>학생 수업일지
+                        <i class="fas fa-book-open mr-3 text-blue-600"></i>학생 자율수업메모
                     </h2>
                     <p class="text-gray-600 mt-1">총 ${studentNotes.length}명의 학생, ${totalNotes}개의 일지</p>
                 </div>
@@ -3244,7 +3244,7 @@ function renderClassNotes(studentNotes, allStudents) {
             ${studentNotes.length === 0 ? `
                 <div class="text-center py-12">
                     <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
-                    <p class="text-gray-500">작성된 수업일지가 없습니다</p>
+                    <p class="text-gray-500">작성된 자율수업메모가 없습니다</p>
                 </div>
             ` : `
                 <div id="notes-container" class="space-y-6">
@@ -3349,7 +3349,7 @@ window.showClassNoteDetail = async function(noteId, studentName) {
                         <div>
                             <h3 class="text-2xl font-bold mb-2">
                                 <i class="fas fa-book-open mr-2"></i>
-                                ${studentName}님의 수업일지
+                                ${studentName}님의 자율수업메모
                             </h3>
                             <p class="text-blue-100">${dateStr}</p>
                         </div>
@@ -4835,6 +4835,7 @@ window.showInstructorCodeForm = function(code = null) {
     
     const existingCode = code ? instructorCodes.find(c => c.code === code) : null;
     const existingPermissions = existingCode?.permissions || {};
+    const existingMenuPermissions = existingCode?.menu_permissions || [];
     
     // 강사코드 자동 생성 (IC-001, IC-002...)
     let autoCode = '';
@@ -4860,6 +4861,7 @@ window.showInstructorCodeForm = function(code = null) {
         { id: 'holidays', name: '공휴일', icon: 'fa-calendar-alt' },
         { id: 'courses', name: '과정관리', icon: 'fa-school' },
         { id: 'students', name: '학생관리', icon: 'fa-users' },
+        { id: 'class-notes', name: '자율수업메모', icon: 'fa-book-open' },
         { id: 'counselings', name: '상담관리', icon: 'fa-comments' },
         { id: 'timetables', name: '시간표', icon: 'fa-clock' },
         { id: 'training-logs', name: '훈련일지 관리', icon: 'fa-clipboard-list' },
@@ -4928,7 +4930,7 @@ window.showInstructorCodeForm = function(code = null) {
                                 <input type="checkbox" 
                                        class="permission-checkbox w-4 h-4 text-blue-600 rounded focus:ring-blue-500" 
                                        data-menu-id="${menu.id}"
-                                       ${existingPermissions[menu.id] ? 'checked' : ''}>
+                                       ${existingMenuPermissions.includes(menu.id) || existingPermissions[menu.id] ? 'checked' : ''}>
                                 <span class="text-sm">
                                     <i class="fas ${menu.icon} mr-1 text-gray-500"></i>
                                     ${menu.name}
@@ -4988,12 +4990,14 @@ window.saveInstructorCode = async function(existingCode) {
         return;
     }
     
-    // 권한 데이터 수집
-    const permissions = {};
+    // 권한 데이터 수집 (배열 형태로)
+    const menuPermissions = [];
     const checkboxes = document.querySelectorAll('.permission-checkbox');
     checkboxes.forEach(checkbox => {
-        const menuId = checkbox.getAttribute('data-menu-id');
-        permissions[menuId] = checkbox.checked;
+        if (checkbox.checked) {
+            const menuId = checkbox.getAttribute('data-menu-id');
+            menuPermissions.push(menuId);
+        }
     });
     
     // 초기 화면 설정 수집
@@ -5004,7 +5008,8 @@ window.saveInstructorCode = async function(existingCode) {
         code: code,
         name: name,
         type: type,
-        permissions: permissions,
+        permissions: {}, // 호환성을 위해 유지
+        menu_permissions: menuPermissions,
         default_screen: defaultScreen
     };
     

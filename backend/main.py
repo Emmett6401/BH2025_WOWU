@@ -105,6 +105,17 @@ def ensure_profile_photo_columns(cursor, table_name: str):
         print(f"⚠️ {table_name} 컬럼 추가 실패: {e}")
         pass  # 이미 존재하거나 권한 문제
 
+def ensure_menu_permissions_column(cursor):
+    """instructor_types 테이블에 menu_permissions 컬럼이 없으면 추가"""
+    try:
+        cursor.execute("SHOW COLUMNS FROM instructor_types LIKE 'menu_permissions'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE instructor_types ADD COLUMN menu_permissions TEXT DEFAULT NULL")
+            print("✅ instructor_types 테이블에 menu_permissions 컬럼 추가 완료")
+    except Exception as e:
+        print(f"⚠️ menu_permissions 컬럼 추가 실패: {e}")
+        pass
+
 # FTP 설정 (환경 변수에서 로드)
 FTP_CONFIG = {
     'host': os.getenv('FTP_HOST', 'bitnmeta2.synology.me'),
@@ -732,6 +743,10 @@ async def get_instructor_codes():
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
+        # menu_permissions 컬럼 확인 및 추가
+        ensure_menu_permissions_column(cursor)
+        conn.commit()
+        
         # permissions 컬럼 존재 여부 확인 및 추가
         cursor.execute("SHOW COLUMNS FROM instructor_codes LIKE 'permissions'")
         if not cursor.fetchone():
@@ -752,14 +767,19 @@ async def get_instructor_codes():
         cursor.execute("SELECT * FROM instructor_codes ORDER BY code")
         codes = cursor.fetchall()
         
-        # permissions를 JSON으로 파싱
+        # permissions와 menu_permissions를 JSON으로 파싱
+        import json
         for code in codes:
             if code.get('permissions'):
                 try:
-                    import json
                     code['permissions'] = json.loads(code['permissions'])
                 except:
                     code['permissions'] = None
+            if code.get('menu_permissions'):
+                try:
+                    code['menu_permissions'] = json.loads(code['menu_permissions'])
+                except:
+                    code['menu_permissions'] = None
         
         return [convert_datetime(code) for code in codes]
     finally:
@@ -781,13 +801,14 @@ async def create_instructor_code(data: dict):
         
         import json
         permissions_json = json.dumps(data.get('permissions', {})) if data.get('permissions') else None
+        menu_permissions_json = json.dumps(data.get('menu_permissions', [])) if data.get('menu_permissions') else None
         default_screen = data.get('default_screen')
         
         query = """
-            INSERT INTO instructor_codes (code, name, type, permissions, default_screen)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO instructor_codes (code, name, type, permissions, menu_permissions, default_screen)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """
-        cursor.execute(query, (data['code'], data['name'], data['type'], permissions_json, default_screen))
+        cursor.execute(query, (data['code'], data['name'], data['type'], permissions_json, menu_permissions_json, default_screen))
         conn.commit()
         return {"code": data['code']}
     finally:
@@ -809,14 +830,15 @@ async def update_instructor_code(code: str, data: dict):
         
         import json
         permissions_json = json.dumps(data.get('permissions', {})) if data.get('permissions') else None
+        menu_permissions_json = json.dumps(data.get('menu_permissions', [])) if data.get('menu_permissions') else None
         default_screen = data.get('default_screen')
         
         query = """
             UPDATE instructor_codes
-            SET name = %s, type = %s, permissions = %s, default_screen = %s
+            SET name = %s, type = %s, permissions = %s, menu_permissions = %s, default_screen = %s
             WHERE code = %s
         """
-        cursor.execute(query, (data['name'], data['type'], permissions_json, default_screen, code))
+        cursor.execute(query, (data['name'], data['type'], permissions_json, menu_permissions_json, default_screen, code))
         conn.commit()
         return {"code": code}
     finally:
