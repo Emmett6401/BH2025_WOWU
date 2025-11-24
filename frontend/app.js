@@ -3413,7 +3413,7 @@ function renderClassNotes(studentNotes, allStudents) {
                     <p class="text-gray-600 mt-1">총 ${studentNotes.length}명의 학생, ${allNotes.length}개의 일지</p>
                 </div>
                 <div class="flex gap-2">
-                    <input type="text" id="search-filter" placeholder="학생 이름 검색..." class="px-4 py-2 border rounded-lg" oninput="filterClassNotes()">
+                    <input type="text" id="search-filter" placeholder="내용 검색..." class="px-4 py-2 border rounded-lg" oninput="filterClassNotes()">
                     <select id="student-filter" class="px-4 py-2 border rounded-lg" onchange="filterClassNotes()">
                         <option value="">전체 학생</option>
                         ${allStudents.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join('')}
@@ -3431,38 +3431,52 @@ function renderClassNotes(studentNotes, allStudents) {
                     <p class="text-gray-500">작성된 SSIRN메모장이 없습니다</p>
                 </div>
             ` : `
-                <div id="notes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    ${allNotes.map(note => `
-                        <div class="bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden"
-                             onclick="showClassNoteDetail(${note.id}, '${note.student.name}')"
-                             data-student-id="${note.student.id}"
-                             data-note-date="${note.note_date}">
-                            <div class="bg-gradient-to-r from-blue-500 to-indigo-500 p-3 text-white">
-                                <div class="flex items-center gap-2">
-                                    <i class="fas fa-user-circle text-xl"></i>
-                                    <div class="flex-1 min-w-0">
-                                        <h3 class="font-bold truncate">${note.student.name}</h3>
-                                        <p class="text-xs text-blue-100 truncate">${note.student.code}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="p-3">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <i class="fas fa-calendar-day text-blue-500 text-sm"></i>
-                                    <span class="text-sm font-semibold text-gray-700">
-                                        ${new Date(note.note_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
-                                    </span>
-                                </div>
-                                <p class="text-sm text-gray-600 line-clamp-3">
-                                    ${note.content.substring(0, 100)}${note.content.length > 100 ? '...' : ''}
-                                </p>
-                                <div class="mt-2 text-xs text-gray-400">
-                                    <i class="fas fa-clock mr-1"></i>
-                                    ${new Date(note.created_at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
+                <div class="overflow-x-auto" style="max-height: 600px; overflow-y: auto;">
+                    <table class="min-w-full bg-white border border-gray-300">
+                        <thead class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white sticky top-0 z-10">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-sm font-semibold">학생명</th>
+                                <th class="px-6 py-3 text-left text-sm font-semibold">날짜</th>
+                                <th class="px-6 py-3 text-left text-sm font-semibold" style="width: 50%;">내용</th>
+                                <th class="px-6 py-3 text-left text-sm font-semibold">생성시간</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notes-tbody">
+                            ${allNotes.map((note, index) => `
+                                <tr class="border-b hover:bg-blue-50 cursor-pointer transition-colors"
+                                    onclick="showClassNoteDetail(${note.id}, '${note.student.name}')"
+                                    data-student-id="${note.student.id}"
+                                    data-note-date="${note.note_date}"
+                                    data-content="${note.content.toLowerCase().replace(/"/g, '&quot;')}">
+                                    <td class="px-6 py-4 text-sm">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-user-circle mr-2 text-blue-500"></i>
+                                            <span class="font-medium">${note.student.name}</span>
+                                            <span class="ml-2 text-xs text-gray-500">(${note.student.code})</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">
+                                        <i class="fas fa-calendar-day mr-2 text-blue-500"></i>
+                                        ${new Date(note.note_date).toLocaleDateString('ko-KR')}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">
+                                        <div class="truncate" style="max-width: 500px;">
+                                            ${note.content.substring(0, 100)}${note.content.length > 100 ? '...' : ''}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-xs text-gray-500">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        ${new Date(note.created_at).toLocaleString('ko-KR', { 
+                                            month: '2-digit', 
+                                            day: '2-digit', 
+                                            hour: '2-digit', 
+                                            minute: '2-digit' 
+                                        })}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
                 </div>
             `}
         </div>
@@ -3607,8 +3621,8 @@ window.filterClassNotes = function() {
     const dateFilter = document.getElementById('date-filter').value;
     
     const filtered = window.allClassNotes.filter(note => {
-        // 검색 필터 (학생 이름)
-        if (searchFilter && !note.student.name.toLowerCase().includes(searchFilter)) {
+        // 검색 필터 (내용 검색)
+        if (searchFilter && !note.content.toLowerCase().includes(searchFilter)) {
             return false;
         }
         
@@ -3625,46 +3639,54 @@ window.filterClassNotes = function() {
         return true;
     });
     
-    // 그리드 다시 렌더링
-    const container = document.getElementById('notes-container');
+    // 테이블 tbody 다시 렌더링
+    const tbody = document.getElementById('notes-tbody');
+    if (!tbody) return;
+    
     if (filtered.length === 0) {
-        container.innerHTML = `
-            <div class="col-span-full text-center py-12">
-                <i class="fas fa-search text-6xl text-gray-300 mb-4"></i>
-                <p class="text-gray-500">검색 결과가 없습니다</p>
-            </div>
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center py-12">
+                    <div class="flex flex-col items-center">
+                        <i class="fas fa-search text-6xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">검색 결과가 없습니다</p>
+                    </div>
+                </td>
+            </tr>
         `;
     } else {
-        container.innerHTML = filtered.map(note => `
-            <div class="bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden"
-                 onclick="showClassNoteDetail(${note.id}, '${note.student.name}')"
-                 data-student-id="${note.student.id}"
-                 data-note-date="${note.note_date}">
-                <div class="bg-gradient-to-r from-blue-500 to-indigo-500 p-3 text-white">
-                    <div class="flex items-center gap-2">
-                        <i class="fas fa-user-circle text-xl"></i>
-                        <div class="flex-1 min-w-0">
-                            <h3 class="font-bold truncate">${note.student.name}</h3>
-                            <p class="text-xs text-blue-100 truncate">${note.student.code}</p>
-                        </div>
+        tbody.innerHTML = filtered.map((note, index) => `
+            <tr class="border-b hover:bg-blue-50 cursor-pointer transition-colors"
+                onclick="showClassNoteDetail(${note.id}, '${note.student.name}')"
+                data-student-id="${note.student.id}"
+                data-note-date="${note.note_date}"
+                data-content="${note.content.toLowerCase().replace(/"/g, '&quot;')}">
+                <td class="px-6 py-4 text-sm">
+                    <div class="flex items-center">
+                        <i class="fas fa-user-circle mr-2 text-blue-500"></i>
+                        <span class="font-medium">${note.student.name}</span>
+                        <span class="ml-2 text-xs text-gray-500">(${note.student.code})</span>
                     </div>
-                </div>
-                <div class="p-3">
-                    <div class="flex items-center gap-2 mb-2">
-                        <i class="fas fa-calendar-day text-blue-500 text-sm"></i>
-                        <span class="text-sm font-semibold text-gray-700">
-                            ${new Date(note.note_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
-                        </span>
-                    </div>
-                    <p class="text-sm text-gray-600 line-clamp-3">
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-700">
+                    <i class="fas fa-calendar-day mr-2 text-blue-500"></i>
+                    ${new Date(note.note_date).toLocaleDateString('ko-KR')}
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-700">
+                    <div class="truncate" style="max-width: 500px;">
                         ${note.content.substring(0, 100)}${note.content.length > 100 ? '...' : ''}
-                    </p>
-                    <div class="mt-2 text-xs text-gray-400">
-                        <i class="fas fa-clock mr-1"></i>
-                        ${new Date(note.created_at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
-                </div>
-            </div>
+                </td>
+                <td class="px-6 py-4 text-xs text-gray-500">
+                    <i class="fas fa-clock mr-1"></i>
+                    ${new Date(note.created_at).toLocaleString('ko-KR', { 
+                        month: '2-digit', 
+                        day: '2-digit', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    })}
+                </td>
+            </tr>
         `).join('');
     }
 };
