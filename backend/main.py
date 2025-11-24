@@ -4077,6 +4077,135 @@ async def delete_class_note(note_id: int):
     finally:
         conn.close()
 
+# ==================== 강사 SSIRN 메모 관리 ====================
+def ensure_instructor_notes_table(cursor):
+    """instructor_notes 테이블이 없으면 생성"""
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS instructor_notes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                instructor_id INT NOT NULL,
+                note_date DATE NOT NULL,
+                content TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE CASCADE,
+                INDEX idx_instructor_date (instructor_id, note_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+        print("✅ instructor_notes 테이블 확인/생성 완료")
+    except Exception as e:
+        print(f"⚠️ instructor_notes 테이블 생성 실패: {e}")
+
+@app.get("/api/instructors/{instructor_id}/notes")
+async def get_instructor_notes(instructor_id: int, note_date: Optional[str] = None):
+    """강사의 SSIRN 메모 조회"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        ensure_instructor_notes_table(cursor)
+        conn.commit()
+        
+        if note_date:
+            # 특정 날짜의 메모 조회
+            cursor.execute(
+                "SELECT * FROM instructor_notes WHERE instructor_id = %s AND note_date = %s",
+                (instructor_id, note_date)
+            )
+            notes = cursor.fetchall()
+            
+            # datetime 변환
+            for note in notes:
+                for key, value in note.items():
+                    if isinstance(value, (datetime, date)):
+                        note[key] = value.isoformat()
+            
+            return notes
+        else:
+            # 모든 메모 조회 (최근 순)
+            cursor.execute(
+                "SELECT * FROM instructor_notes WHERE instructor_id = %s ORDER BY note_date DESC, created_at DESC",
+                (instructor_id,)
+            )
+            notes = cursor.fetchall()
+            
+            # datetime 변환
+            for note in notes:
+                for key, value in note.items():
+                    if isinstance(value, (datetime, date)):
+                        note[key] = value.isoformat()
+            
+            return notes
+    finally:
+        conn.close()
+
+@app.post("/api/instructors/{instructor_id}/notes")
+async def create_or_update_instructor_note(instructor_id: int, data: dict):
+    """강사 SSIRN 메모 생성 또는 업데이트"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        ensure_instructor_notes_table(cursor)
+        
+        note_date = data.get('note_date')
+        content = data.get('content', '')
+        note_id = data.get('id')  # ID가 있으면 수정, 없으면 생성
+        
+        if not note_date:
+            raise HTTPException(status_code=400, detail="note_date는 필수입니다")
+        
+        if note_id:
+            # ID가 제공된 경우: 기존 메모 업데이트
+            cursor.execute(
+                "UPDATE instructor_notes SET content = %s, note_date = %s WHERE id = %s AND instructor_id = %s",
+                (content, note_date, note_id, instructor_id)
+            )
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
+            message = "메모가 수정되었습니다"
+        else:
+            # ID가 없는 경우: 항상 새로 생성 (같은 날짜에도 여러 개 가능)
+            cursor.execute(
+                "INSERT INTO instructor_notes (instructor_id, note_date, content) VALUES (%s, %s, %s)",
+                (instructor_id, note_date, content)
+            )
+            note_id = cursor.lastrowid
+            message = "메모가 저장되었습니다"
+        
+        conn.commit()
+        
+        # 저장된 메모 반환
+        cursor.execute("SELECT * FROM instructor_notes WHERE id = %s", (note_id,))
+        note = cursor.fetchone()
+        
+        # datetime 변환
+        for key, value in note.items():
+            if isinstance(value, (datetime, date)):
+                note[key] = value.isoformat()
+        
+        return {"success": True, "message": message, "note": note}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+@app.delete("/api/instructors/{instructor_id}/notes/{note_id}")
+async def delete_instructor_note(instructor_id: int, note_id: int):
+    """강사 SSIRN 메모 삭제"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM instructor_notes WHERE id = %s AND instructor_id = %s", (note_id, instructor_id))
+        conn.commit()
+        
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
+        
+        return {"success": True, "message": "메모가 삭제되었습니다"}
+    finally:
+        conn.close()
+
 # ==================== 공지사항 관리 ====================
 def ensure_notices_table(cursor):
     """notices 테이블이 없으면 생성"""

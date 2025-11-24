@@ -11653,67 +11653,84 @@ window.switchMyPageTab = function(tabName) {
     }
 };
 
+// 강사 SSIRN메모장 전역 변수
+window.instructorNotesData = [];
+
 // 강사 SSIRN메모장 로드
 window.loadInstructorSSIRN = async function() {
     try {
         const instructor = JSON.parse(sessionStorage.getItem('instructor'));
         if (!instructor) return;
         
-        // 모든 학생의 노트 가져오기 (강사가 작성한 것만)
-        const response = await axios.get(`${API_BASE_URL}/api/students`);
-        const students = response.data;
+        // 강사 자신의 메모 가져오기
+        const response = await axios.get(`${API_BASE_URL}/api/instructors/${instructor.id}/notes`);
+        const notes = response.data;
         
-        const allNotes = [];
-        for (const student of students) {
-            const notesResponse = await axios.get(`${API_BASE_URL}/api/students/${student.id}/notes`);
-            notesResponse.data.forEach(note => {
-                allNotes.push({
-                    ...note,
-                    student: student
-                });
-            });
-        }
+        // 전역 변수에 저장
+        window.instructorNotesData = notes;
         
         // 최신순 정렬
-        allNotes.sort((a, b) => new Date(b.note_date) - new Date(a.note_date));
+        notes.sort((a, b) => new Date(b.note_date) - new Date(a.note_date));
         
         const listDiv = document.getElementById('mypage-ssirn-list');
         const emptyDiv = document.getElementById('mypage-ssirn-empty');
         
-        if (!allNotes || allNotes.length === 0) {
-            listDiv.innerHTML = '';
+        if (!notes || notes.length === 0) {
+            listDiv.innerHTML = `
+                <div class="text-center py-8">
+                    <button onclick="openInstructorNoteModal()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all">
+                        <i class="fas fa-plus mr-2"></i>첫 메모 작성하기
+                    </button>
+                </div>
+            `;
             emptyDiv.classList.remove('hidden');
             return;
         }
         
         emptyDiv.classList.add('hidden');
-        listDiv.innerHTML = allNotes.map(note => `
-            <div class="border-l-4 border-blue-500 bg-blue-50 p-4 rounded-r-lg hover:shadow-md transition-shadow cursor-pointer"
-                 onclick="showClassNoteDetail(${note.id}, '${note.student.name}')">
-                <div class="flex items-start gap-3">
-                    <div class="text-blue-600 text-2xl">
-                        <i class="fas fa-user-circle"></i>
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-2">
-                            <h3 class="text-lg font-bold text-gray-800">${note.student.name}</h3>
-                            <span class="text-sm text-gray-500">(${note.student.code})</span>
-                        </div>
-                        <div class="text-sm text-gray-600 mb-2">
-                            <i class="fas fa-calendar mr-1"></i>
-                            ${new Date(note.note_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
-                        </div>
-                        <p class="text-gray-700 line-clamp-2">
-                            ${note.content.substring(0, 150)}${note.content.length > 150 ? '...' : ''}
-                        </p>
-                        <div class="mt-2 text-xs text-gray-400">
-                            <i class="fas fa-clock mr-1"></i>
-                            작성: ${new Date(note.created_at).toLocaleString('ko-KR')}
-                        </div>
-                    </div>
-                </div>
+        listDiv.innerHTML = `
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-800">총 ${notes.length}개의 메모</h3>
+                <button onclick="openInstructorNoteModal()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-all">
+                    <i class="fas fa-plus mr-2"></i>새 메모 작성
+                </button>
             </div>
-        `).join('');
+            <div class="space-y-4">
+                ${notes.map(note => `
+                    <div class="border-l-4 border-blue-500 bg-blue-50 p-4 rounded-r-lg hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start gap-3">
+                            <div class="flex-1 cursor-pointer" onclick="showInstructorNoteDetail(${note.id})">
+                                <div class="text-sm text-gray-600 mb-2">
+                                    <i class="fas fa-calendar mr-1"></i>
+                                    ${new Date(note.note_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                </div>
+                                <p class="text-gray-700 line-clamp-2">
+                                    ${note.content.substring(0, 150)}${note.content.length > 150 ? '...' : ''}
+                                </p>
+                                <div class="mt-2 text-xs text-gray-400">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    작성: ${new Date(note.created_at).toLocaleString('ko-KR')}
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="event.stopPropagation(); editInstructorNote(${note.id})" 
+                                        class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded transition-colors"
+                                        title="수정">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); deleteInstructorNote(${note.id})" 
+                                        class="text-red-600 hover:text-red-800 px-3 py-1 rounded transition-colors"
+                                        title="삭제">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
     } catch (error) {
         console.error('SSIRN메모장 로드 실패:', error);
     }
@@ -11763,6 +11780,200 @@ window.loadInstructorNotices = async function() {
     } catch (error) {
         console.error('공지사항 로드 실패:', error);
     }
+};
+
+// 강사 SSIRN 메모 CRUD 함수들
+window.openInstructorNoteModal = function(noteId = null) {
+    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
+    if (!instructor) return;
+    
+    const modal = document.createElement('div');
+    modal.id = 'instructor-note-modal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.onclick = (e) => { if (e.target === modal) closeInstructorNoteModal(); };
+    
+    let note = null;
+    if (noteId) {
+        note = window.instructorNotesData.find(n => n.id === noteId);
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl">
+                <h2 class="text-2xl font-bold flex items-center">
+                    <i class="fas fa-edit mr-3"></i>${note ? '메모 수정' : '새 메모 작성'}
+                </h2>
+            </div>
+            <div class="p-6">
+                <input type="hidden" id="instructor-note-id" value="${note ? note.id : ''}">
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold mb-2">날짜 *</label>
+                    <input type="date" id="instructor-note-date" 
+                           value="${note ? note.note_date : today}"
+                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-semibold mb-2">메모 내용 *</label>
+                    <textarea id="instructor-note-content" rows="12"
+                              class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                              placeholder="메모 내용을 입력하세요...">${note ? note.content : ''}</textarea>
+                    <p class="text-sm text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>Markdown 문법을 사용할 수 있습니다
+                    </p>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button onclick="saveInstructorNote()" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all">
+                        <i class="fas fa-save mr-2"></i>저장
+                    </button>
+                    <button onclick="closeInstructorNoteModal()" 
+                            class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-lg font-semibold transition-all">
+                        <i class="fas fa-times mr-2"></i>취소
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+};
+
+window.closeInstructorNoteModal = function() {
+    const modal = document.getElementById('instructor-note-modal');
+    if (modal) modal.remove();
+};
+
+window.saveInstructorNote = async function() {
+    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
+    if (!instructor) return;
+    
+    const noteId = document.getElementById('instructor-note-id').value;
+    const noteDate = document.getElementById('instructor-note-date').value;
+    const content = document.getElementById('instructor-note-content').value;
+    
+    if (!noteDate) {
+        window.showAlert('날짜를 선택하세요', 'error');
+        return;
+    }
+    
+    if (!content.trim()) {
+        window.showAlert('내용을 입력하세요', 'error');
+        return;
+    }
+    
+    try {
+        const data = {
+            note_date: noteDate,
+            content: content
+        };
+        
+        if (noteId) {
+            data.id = parseInt(noteId);
+        }
+        
+        const response = await axios.post(
+            `${API_BASE_URL}/api/instructors/${instructor.id}/notes`,
+            data
+        );
+        
+        if (response.data.success) {
+            window.showAlert('✅ ' + response.data.message, 'success');
+            closeInstructorNoteModal();
+            loadInstructorSSIRN();
+        }
+    } catch (error) {
+        console.error('메모 저장 실패:', error);
+        window.showAlert('❌ 저장에 실패했습니다', 'error');
+    }
+};
+
+window.editInstructorNote = function(noteId) {
+    openInstructorNoteModal(noteId);
+};
+
+window.deleteInstructorNote = async function(noteId) {
+    if (!confirm('이 메모를 삭제하시겠습니까?')) return;
+    
+    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
+    if (!instructor) return;
+    
+    try {
+        const response = await axios.delete(
+            `${API_BASE_URL}/api/instructors/${instructor.id}/notes/${noteId}`
+        );
+        
+        if (response.data.success) {
+            window.showAlert('✅ 메모가 삭제되었습니다', 'success');
+            loadInstructorSSIRN();
+        }
+    } catch (error) {
+        console.error('메모 삭제 실패:', error);
+        window.showAlert('❌ 삭제에 실패했습니다', 'error');
+    }
+};
+
+window.showInstructorNoteDetail = function(noteId) {
+    const note = window.instructorNotesData.find(n => n.id === noteId);
+    if (!note) return;
+    
+    const modal = document.createElement('div');
+    modal.id = 'instructor-note-detail-modal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.onclick = (e) => { if (e.target === modal) closeInstructorNoteDetailModal(); };
+    
+    const dateObj = new Date(note.note_date);
+    const dateStr = dateObj.toLocaleDateString('ko-KR', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        weekday: 'long'
+    });
+    
+    const rawHtml = marked.parse(note.content);
+    const cleanHtml = DOMPurify.sanitize(rawHtml);
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl">
+                <h2 class="text-2xl font-bold flex items-center">
+                    <i class="fas fa-book-open mr-3"></i>메모 상세보기
+                </h2>
+                <p class="text-blue-100 mt-2">${dateStr}</p>
+            </div>
+            <div class="p-8">
+                <div class="prose max-w-none mb-6">
+                    ${cleanHtml}
+                </div>
+                
+                <div class="flex gap-3 pt-4 border-t">
+                    <button onclick="closeInstructorNoteDetailModal(); editInstructorNote(${note.id});" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all">
+                        <i class="fas fa-edit mr-2"></i>수정
+                    </button>
+                    <button onclick="closeInstructorNoteDetailModal(); deleteInstructorNote(${note.id});" 
+                            class="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition-all">
+                        <i class="fas fa-trash mr-2"></i>삭제
+                    </button>
+                    <button onclick="closeInstructorNoteDetailModal()" 
+                            class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-lg font-semibold transition-all">
+                        <i class="fas fa-times mr-2"></i>닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+};
+
+window.closeInstructorNoteDetailModal = function() {
+    const modal = document.getElementById('instructor-note-detail-modal');
+    if (modal) modal.remove();
 };
 
 // MyPage 프로필 사진 업로드
