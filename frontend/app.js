@@ -2039,6 +2039,9 @@ window.showTab = function(tab, addToHistory = true) {
         case 'students':
             loadStudents();
             break;
+        case 'class-notes':
+            loadClassNotes();
+            break;
         case 'counselings':
             loadCounselings();
             break;
@@ -3182,6 +3185,245 @@ window.deleteSubject = async function(subjectCode) {
         window.showAlert('❌ 삭제 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
+
+// ==================== 수업일지 관리 ====================
+async function loadClassNotes() {
+    try {
+        window.showLoading('수업일지를 불러오는 중...');
+        
+        // 모든 학생과 그들의 수업일지 불러오기
+        const studentsData = await window.getCachedData('students', () => 
+            axios.get(`${API_BASE_URL}/api/students`).then(r => r.data)
+        );
+        
+        // 각 학생의 수업일지 가져오기 (병렬 처리)
+        const notesPromises = studentsData.map(student => 
+            axios.get(`${API_BASE_URL}/api/class-notes/${student.id}`)
+                .then(r => ({ student, notes: r.data || [] }))
+                .catch(err => ({ student, notes: [] }))
+        );
+        
+        const studentNotes = await Promise.all(notesPromises);
+        
+        // 일지가 있는 학생만 필터링
+        const studentsWithNotes = studentNotes.filter(sn => sn.notes.length > 0);
+        
+        renderClassNotes(studentsWithNotes, studentsData);
+        window.hideLoading();
+    } catch (error) {
+        console.error('수업일지 로드 실패:', error);
+        window.hideLoading();
+        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">수업일지를 불러오는데 실패했습니다: ' + error.message + '</div>';
+    }
+}
+
+function renderClassNotes(studentNotes, allStudents) {
+    const totalNotes = studentNotes.reduce((sum, sn) => sum + sn.notes.length, 0);
+    
+    const html = `
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-book-open mr-3 text-blue-600"></i>학생 수업일지
+                    </h2>
+                    <p class="text-gray-600 mt-1">총 ${studentNotes.length}명의 학생, ${totalNotes}개의 일지</p>
+                </div>
+                <div class="flex gap-2">
+                    <select id="student-filter" class="px-4 py-2 border rounded-lg" onchange="filterClassNotes()">
+                        <option value="">전체 학생</option>
+                        ${allStudents.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join('')}
+                    </select>
+                    <input type="date" id="date-filter" class="px-4 py-2 border rounded-lg" onchange="filterClassNotes()">
+                    <button onclick="clearClassNotesFilters()" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            ${studentNotes.length === 0 ? `
+                <div class="text-center py-12">
+                    <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500">작성된 수업일지가 없습니다</p>
+                </div>
+            ` : `
+                <div id="notes-container" class="space-y-6">
+                    ${studentNotes.map(sn => renderStudentNotesCard(sn.student, sn.notes)).join('')}
+                </div>
+            `}
+        </div>
+    `;
+    
+    document.getElementById('app').innerHTML = html;
+}
+
+function renderStudentNotesCard(student, notes) {
+    // 최신순 정렬
+    const sortedNotes = [...notes].sort((a, b) => new Date(b.note_date) - new Date(a.note_date));
+    
+    return `
+        <div class="bg-white rounded-lg shadow-md overflow-hidden" data-student-id="${student.id}">
+            <div class="bg-gradient-to-r from-blue-500 to-indigo-500 p-4 text-white">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-lg">${student.name} (${student.code})</h3>
+                        <p class="text-blue-100 text-sm">${student.course_name || '과정 미지정'}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm">
+                            ${notes.length}개의 일지
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    ${sortedNotes.map(note => `
+                        <div class="border rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer"
+                             onclick="showClassNoteDetail(${note.id}, '${student.name}')"
+                             data-note-date="${note.note_date}">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-sm font-semibold text-gray-700">
+                                    <i class="fas fa-calendar-day mr-1 text-blue-500"></i>
+                                    ${new Date(note.note_date).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}
+                                </span>
+                            </div>
+                            <p class="text-xs text-gray-600 line-clamp-2">
+                                ${note.content.substring(0, 60)}${note.content.length > 60 ? '...' : ''}
+                            </p>
+                            <div class="mt-2 text-xs text-gray-400">
+                                ${new Date(note.created_at).toLocaleString('ko-KR')}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+window.showClassNoteDetail = async function(noteId, studentName) {
+    try {
+        // 해당 일지의 전체 내용 가져오기
+        const allNotes = [];
+        const studentsData = await window.getCachedData('students', () => 
+            axios.get(`${API_BASE_URL}/api/students`).then(r => r.data)
+        );
+        
+        for (const student of studentsData) {
+            const response = await axios.get(`${API_BASE_URL}/api/class-notes/${student.id}`);
+            allNotes.push(...(response.data || []));
+        }
+        
+        const note = allNotes.find(n => n.id === noteId);
+        if (!note) {
+            window.showAlert('일지를 찾을 수 없습니다', 'error');
+            return;
+        }
+        
+        // 마크다운 렌더링
+        const rendered = marked.parse(note.content || '');
+        const clean = DOMPurify.sanitize(rendered);
+        
+        const div = document.createElement('div');
+        div.innerHTML = clean;
+        div.querySelectorAll('a').forEach(link => {
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener noreferrer');
+        });
+        
+        const dateStr = new Date(note.note_date).toLocaleDateString('ko-KR', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            weekday: 'long'
+        });
+        
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-2xl font-bold mb-2">
+                                <i class="fas fa-book-open mr-2"></i>
+                                ${studentName}님의 수업일지
+                            </h3>
+                            <p class="text-blue-100">${dateStr}</p>
+                        </div>
+                        <button onclick="this.closest('.fixed').remove()" class="text-white hover:text-gray-200">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="p-6">
+                    <div class="prose max-w-none">
+                        ${div.innerHTML}
+                    </div>
+                    
+                    <div class="mt-6 pt-4 border-t">
+                        <button onclick="this.closest('.fixed').remove()" 
+                                class="w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">
+                            <i class="fas fa-times mr-2"></i>닫기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    } catch (error) {
+        console.error('일지 상세보기 실패:', error);
+        window.showAlert('일지를 불러오는데 실패했습니다', 'error');
+    }
+};
+
+window.filterClassNotes = function() {
+    const studentFilter = document.getElementById('student-filter').value;
+    const dateFilter = document.getElementById('date-filter').value;
+    
+    const studentCards = document.querySelectorAll('[data-student-id]');
+    
+    studentCards.forEach(card => {
+        const studentId = card.getAttribute('data-student-id');
+        const noteCards = card.querySelectorAll('[data-note-date]');
+        
+        // 학생 필터
+        if (studentFilter && studentId !== studentFilter) {
+            card.style.display = 'none';
+            return;
+        }
+        
+        // 날짜 필터
+        if (dateFilter) {
+            let hasMatchingDate = false;
+            noteCards.forEach(noteCard => {
+                const noteDate = noteCard.getAttribute('data-note-date');
+                if (noteDate === dateFilter) {
+                    hasMatchingDate = true;
+                    noteCard.style.display = 'block';
+                } else {
+                    noteCard.style.display = 'none';
+                }
+            });
+            card.style.display = hasMatchingDate ? 'block' : 'none';
+        } else {
+            noteCards.forEach(noteCard => noteCard.style.display = 'block');
+            card.style.display = 'block';
+        }
+    });
+};
+
+window.clearClassNotesFilters = function() {
+    document.getElementById('student-filter').value = '';
+    document.getElementById('date-filter').value = '';
+    
+    document.querySelectorAll('[data-student-id]').forEach(card => card.style.display = 'block');
+    document.querySelectorAll('[data-note-date]').forEach(card => card.style.display = 'block');
+};
 
 // ==================== 상담 관리 ====================
 async function loadCounselings() {
