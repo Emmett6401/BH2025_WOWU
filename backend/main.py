@@ -287,7 +287,7 @@ async def get_student(student_id: int):
         
         # 학생 정보와 과정 정보를 JOIN하여 가져오기
         query = """
-            SELECT s.*, c.name as course_name, c.start_date, c.end_date
+            SELECT s.*, c.name as course_name
             FROM students s
             LEFT JOIN courses c ON s.course_code = c.code
             WHERE s.id = %s
@@ -3914,6 +3914,142 @@ async def update_system_settings(
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
+        conn.close()
+
+# ==================== 학생 수업일지 API ====================
+
+def ensure_class_notes_table(cursor):
+    """class_notes 테이블이 없으면 생성"""
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS class_notes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                student_id INT NOT NULL,
+                note_date DATE NOT NULL,
+                content TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+                INDEX idx_student_date (student_id, note_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+        print("✅ class_notes 테이블 확인/생성 완료")
+    except Exception as e:
+        print(f"⚠️ class_notes 테이블 생성 실패: {e}")
+
+@app.get("/api/class-notes/{student_id}")
+async def get_class_notes(student_id: int, note_date: Optional[str] = None):
+    """학생의 수업일지 조회"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        ensure_class_notes_table(cursor)
+        conn.commit()
+        
+        if note_date:
+            # 특정 날짜의 수업일지 조회
+            cursor.execute(
+                "SELECT * FROM class_notes WHERE student_id = %s AND note_date = %s",
+                (student_id, note_date)
+            )
+            note = cursor.fetchone()
+            
+            # datetime 변환
+            if note:
+                for key, value in note.items():
+                    if isinstance(value, (datetime, date)):
+                        note[key] = value.isoformat()
+            
+            return note if note else None
+        else:
+            # 모든 수업일지 조회 (최근 순)
+            cursor.execute(
+                "SELECT * FROM class_notes WHERE student_id = %s ORDER BY note_date DESC",
+                (student_id,)
+            )
+            notes = cursor.fetchall()
+            
+            # datetime 변환
+            for note in notes:
+                for key, value in note.items():
+                    if isinstance(value, (datetime, date)):
+                        note[key] = value.isoformat()
+            
+            return notes
+    finally:
+        conn.close()
+
+@app.post("/api/class-notes")
+async def create_or_update_class_note(data: dict):
+    """수업일지 생성 또는 업데이트"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        ensure_class_notes_table(cursor)
+        
+        student_id = data.get('student_id')
+        note_date = data.get('note_date')
+        content = data.get('content', '')
+        
+        if not student_id or not note_date:
+            raise HTTPException(status_code=400, detail="student_id와 note_date는 필수입니다")
+        
+        # 해당 날짜의 일지가 있는지 확인
+        cursor.execute(
+            "SELECT id FROM class_notes WHERE student_id = %s AND note_date = %s",
+            (student_id, note_date)
+        )
+        existing = cursor.fetchone()
+        
+        if existing:
+            # 업데이트
+            cursor.execute(
+                "UPDATE class_notes SET content = %s WHERE id = %s",
+                (content, existing['id'])
+            )
+            note_id = existing['id']
+            message = "수업일지가 수정되었습니다"
+        else:
+            # 새로 생성
+            cursor.execute(
+                "INSERT INTO class_notes (student_id, note_date, content) VALUES (%s, %s, %s)",
+                (student_id, note_date, content)
+            )
+            note_id = cursor.lastrowid
+            message = "수업일지가 저장되었습니다"
+        
+        conn.commit()
+        
+        # 저장된 일지 반환
+        cursor.execute("SELECT * FROM class_notes WHERE id = %s", (note_id,))
+        note = cursor.fetchone()
+        
+        # datetime 변환
+        for key, value in note.items():
+            if isinstance(value, (datetime, date)):
+                note[key] = value.isoformat()
+        
+        return {"success": True, "message": message, "note": note}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+@app.delete("/api/class-notes/{note_id}")
+async def delete_class_note(note_id: int):
+    """수업일지 삭제"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM class_notes WHERE id = %s", (note_id,))
+        conn.commit()
+        
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="수업일지를 찾을 수 없습니다")
+        
+        return {"success": True, "message": "수업일지가 삭제되었습니다"}
+    finally:
         conn.close()
 
 if __name__ == "__main__":
