@@ -4902,7 +4902,7 @@ window.downloadAIReport = function() {
     URL.revokeObjectURL(url);
 }
 
-// ==================== 강사코드 관리 ====================
+// ==================== 강사코드/권한 관리 ====================
 let instructorCodes = [];
 
 async function loadInstructorCodes() {
@@ -4922,10 +4922,10 @@ function renderInstructorCodes() {
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">
-                    <i class="fas fa-code mr-2"></i>강사코드 관리 (총 ${instructorCodes.length}개)
+                    <i class="fas fa-code mr-2"></i>강사코드/권한 관리 (총 ${instructorCodes.length}개)
                 </h2>
                 <button onclick="window.showInstructorCodeForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                    <i class="fas fa-plus mr-2"></i>강사코드 추가
+                    <i class="fas fa-plus mr-2"></i>강사코드/권한 추가
                 </button>
             </div>
             
@@ -4989,7 +4989,7 @@ window.showInstructorCodeForm = function(code = null) {
     // 메뉴 목록 정의
     const menuList = [
         { id: 'dashboard', name: '대시보드', icon: 'fa-tachometer-alt' },
-        { id: 'instructor-codes', name: '강사권한', icon: 'fa-user-shield' },
+        { id: 'instructor-codes', name: '강사코드/권한', icon: 'fa-user-shield' },
         { id: 'instructors', name: '강사관리', icon: 'fa-user-tie' },
         { id: 'system-settings', name: '시스템 등록', icon: 'fa-cog' },
         { id: 'notices', name: '공지사항', icon: 'fa-bullhorn' },
@@ -5009,7 +5009,7 @@ window.showInstructorCodeForm = function(code = null) {
     ];
     
     formDiv.innerHTML = `
-        <h3 class="text-lg font-semibold mb-4">${code ? '강사코드 수정' : '강사코드 추가'}</h3>
+        <h3 class="text-lg font-semibold mb-4">${code ? '강사코드/권한 수정' : '강사코드/권한 추가'}</h3>
         
         <!-- 기본 정보 -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
