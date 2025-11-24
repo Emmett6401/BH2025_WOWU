@@ -4013,11 +4013,13 @@ async def get_all_class_notes(student_id: Optional[int] = None, instructor_code:
         params = []
         
         if student_id is not None:
-            query += " AND student_id = %s"
+            # 학생 메모만 조회 (student_id가 일치하고 NULL이 아닌 것)
+            query += " AND student_id = %s AND student_id IS NOT NULL"
             params.append(student_id)
         
         if instructor_code is not None:
-            query += " AND instructor_code = %s"
+            # 강사 메모만 조회 (instructor_code가 일치하고 student_id가 NULL인 것)
+            query += " AND instructor_code = %s AND student_id IS NULL"
             params.append(instructor_code)
         
         query += " ORDER BY note_date DESC"
