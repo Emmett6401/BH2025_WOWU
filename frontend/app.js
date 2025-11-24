@@ -12999,8 +12999,6 @@ window.uploadMyPagePhoto = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
     
-    const instructor = JSON.parse(sessionStorage.getItem('instructor'));
-    
     // 이미지 파일인지 확인
     if (!file.type.startsWith('image/')) {
         window.showAlert('⚠️ 이미지 파일만 업로드 가능합니다.', 'warning');
@@ -13008,73 +13006,36 @@ window.uploadMyPagePhoto = async function(event) {
         return;
     }
     
-    // 파일 압축 (1MB 이상이면 압축)
-    let uploadFile = file;
-    const originalSize = file.size / 1024 / 1024; // MB
-    
-    if (file.size > 1 * 1024 * 1024) {  // 1MB 이상이면 압축
-        try {
-            window.showAlert('📦 이미지를 최적화하는 중...', 'info');
-            uploadFile = await window.compressImage(file);
-            const compressedSize = uploadFile.size / 1024 / 1024;
-            console.log(`✅ 이미지 압축: ${originalSize.toFixed(2)}MB → ${compressedSize.toFixed(2)}MB`);
-        } catch (error) {
-            console.error('이미지 압축 실패:', error);
-            window.showAlert('⚠️ 이미지 압축에 실패했습니다. 더 작은 파일을 선택해주세요.', 'error');
-            event.target.value = '';
-            return;
-        }
+    // 파일 크기 확인 (10MB 제한)
+    if (file.size > 10 * 1024 * 1024) {
+        window.showAlert('⚠️ 파일 크기는 10MB 이하로 선택해주세요.', 'warning');
+        event.target.value = '';
+        return;
     }
     
-    const formData = new FormData();
-    formData.append('file', uploadFile);
+    // 파일을 임시로 저장 (저장 버튼 클릭 시 실제 업로드)
+    window.mypagePendingPhoto = file;
     
-    // 프로그래스바 표시
-    const progressContainer = document.getElementById('mypage-upload-progress');
-    const progressBar = document.getElementById('mypage-progress-bar');
-    const progressText = document.getElementById('mypage-progress-text');
-    
-    progressContainer.classList.remove('hidden');
-    progressBar.style.width = '0%';
-    progressText.textContent = '업로드 중... 0%';
-    
-    try {
-        const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-            onUploadProgress: (progressEvent) => {
-                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                progressBar.style.width = percentCompleted + '%';
-                progressText.textContent = `업로드 중... ${percentCompleted}%`;
-            }
-        });
+    // 미리보기 표시
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const photoImg = document.getElementById('mypage-photo');
+        photoImg.src = e.target.result;
         
-        const photoUrl = response.data.url;
-        
-        // 프로필 사진 업데이트
-        const timestamp = new Date().getTime();
-        document.getElementById('mypage-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(photoUrl) + '&t=' + timestamp;
-        
-        // 기존 첨부 파일 가져오기
-        let attachments = [];
-        if (instructor.attachments) {
-            try {
-                attachments = JSON.parse(instructor.attachments);
-            } catch (e) {
-                attachments = [];
-            }
+        // 미리보기 배지 표시
+        const photoContainer = photoImg.parentElement;
+        let badge = photoContainer.querySelector('.preview-badge');
+        if (!badge) {
+            badge = document.createElement('div');
+            badge.className = 'preview-badge absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full shadow-lg';
+            badge.innerHTML = '<i class="fas fa-clock mr-1"></i>미리보기';
+            photoContainer.appendChild(badge);
         }
         
-        // 자동 저장
-        const data = {
-            name: document.getElementById('mypage-name').value,
-            major: document.getElementById('mypage-major').value || '',
-            phone: document.getElementById('mypage-phone').value || '',
-            email: document.getElementById('mypage-email').value || '',
-            profile_photo: photoUrl,
-            attachments: JSON.stringify(attachments)
-        };
-        
-        await axios.put(`${API_BASE_URL}/api/instructors/${instructor.code}`, data);
+        window.showAlert('📸 사진이 선택되었습니다. 저장 버튼을 눌러주세요.', 'info');
+    };
+    reader.readAsDataURL(file);
+};
         
         // sessionStorage 업데이트
         instructor.profile_photo = photoUrl;
@@ -13347,10 +13308,60 @@ window.saveMyPage = async function() {
     const instructor = JSON.parse(sessionStorage.getItem('instructor'));
     
     try {
+        window.showLoading('정보를 저장하는 중...');
+        
+        // 미리보기 배지 제거
+        const photoContainer = document.getElementById('mypage-photo').parentElement;
+        const badge = photoContainer.querySelector('.preview-badge');
+        if (badge) {
+            badge.remove();
+        }
+        
         // 프로필 사진 URL 가져오기
         const profilePhotoSrc = document.getElementById('mypage-photo').src;
         let profilePhoto = null;
-        if (profilePhotoSrc.includes('/api/thumbnail')) {
+        
+        // 미리보기 사진이 있으면 업로드
+        if (window.mypagePendingPhoto) {
+            try {
+                // 파일 압축 (1MB 이상이면 압축)
+                let uploadFile = window.mypagePendingPhoto;
+                const originalSize = window.mypagePendingPhoto.size / 1024 / 1024; // MB
+                
+                if (window.mypagePendingPhoto.size > 1 * 1024 * 1024) {  // 1MB 이상이면 압축
+                    try {
+                        uploadFile = await window.compressImage(window.mypagePendingPhoto);
+                        const compressedSize = uploadFile.size / 1024 / 1024;
+                        console.log(`✅ 이미지 압축: ${originalSize.toFixed(2)}MB → ${compressedSize.toFixed(2)}MB`);
+                    } catch (error) {
+                        console.error('이미지 압축 실패:', error);
+                    }
+                }
+                
+                const formData = new FormData();
+                formData.append('file', uploadFile);
+                
+                const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                
+                profilePhoto = response.data.url;
+                
+                // 업로드된 사진으로 미리보기 업데이트
+                const timestamp = new Date().getTime();
+                document.getElementById('mypage-photo').src = API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(profilePhoto) + '&t=' + timestamp;
+                
+                // 임시 파일 제거
+                window.mypagePendingPhoto = null;
+                
+                console.log('✅ 프로필 사진 업로드 완료:', profilePhoto);
+            } catch (error) {
+                window.hideLoading();
+                console.error('사진 업로드 실패:', error);
+                window.showAlert('❌ 사진 업로드에 실패했습니다: ' + error.message, 'error');
+                return;
+            }
+        } else if (profilePhotoSrc.includes('/api/thumbnail')) {
             const urlParams = new URLSearchParams(profilePhotoSrc.split('?')[1]);
             profilePhoto = urlParams.get('url');
         }
@@ -13413,6 +13424,7 @@ window.saveMyPage = async function() {
         // 헤더 업데이트
         updateHeader();
         
+        window.hideLoading();
         window.showAlert('✅ 정보가 저장되었습니다!', 'success');
         
         // 비밀번호 필드 초기화
@@ -13421,6 +13433,7 @@ window.saveMyPage = async function() {
             togglePasswordFields();
         }
     } catch (error) {
+        window.hideLoading();
         console.error('정보 저장 실패:', error);
         window.showAlert('❌ 정보 저장에 실패했습니다: ' + error.message, 'error');
     }
