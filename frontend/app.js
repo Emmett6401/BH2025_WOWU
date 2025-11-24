@@ -3366,9 +3366,12 @@ async function loadClassNotes() {
         
         // 각 학생의 SSIRN메모장 가져오기 (병렬 처리)
         const notesPromises = studentsData.map(student => 
-            axios.get(`${API_BASE_URL}/api/class-notes/${student.id}`)
+            axios.get(`${API_BASE_URL}/api/class-notes?student_id=${student.id}`)
                 .then(r => ({ student, notes: r.data || [] }))
-                .catch(err => ({ student, notes: [] }))
+                .catch(err => {
+                    console.warn(`⚠️ 학생 ${student.name}(ID: ${student.id})의 메모 로드 실패:`, err.message);
+                    return { student, notes: [] };
+                })
         );
         
         const studentNotes = await Promise.all(notesPromises);
