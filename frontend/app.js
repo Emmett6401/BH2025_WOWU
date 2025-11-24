@@ -11986,6 +11986,18 @@ window.showMyPageModal = async function() {
                             </div>
                         </div>
                         
+                        <!-- 프로그레스바 -->
+                        <div id="mypage-ssirn-progress" class="mb-4 hidden">
+                            <div class="bg-gray-200 rounded-full h-2 overflow-hidden">
+                                <div id="mypage-ssirn-progress-bar" 
+                                     class="bg-gradient-to-r from-blue-500 to-indigo-500 h-full transition-all duration-300 ease-out"
+                                     style="width: 0%"></div>
+                            </div>
+                            <p id="mypage-ssirn-progress-text" class="text-sm text-gray-600 mt-2 text-center">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>메모를 불러오는 중...
+                            </p>
+                        </div>
+                        
                         <div id="mypage-ssirn-list" class="space-y-4"></div>
                         <div id="mypage-ssirn-empty" class="text-center py-12 text-gray-500">
                             <i class="fas fa-inbox text-6xl mb-4"></i>
@@ -12062,22 +12074,40 @@ window.switchMyPageTab = async function(tab) {
     
     // SSIRN메모장 탭 선택 시 데이터 로드
     if (tab === 'ssirn') {
-        window.showLoading('SSIRN메모장을 불러오는 중...');
         await loadMyPageSSIRN();
-        window.hideLoading();
     }
 };
 
 async function loadMyPageSSIRN() {
     const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
     
+    // 프로그레스바 표시
+    const progressContainer = document.getElementById('mypage-ssirn-progress');
+    const progressBar = document.getElementById('mypage-ssirn-progress-bar');
+    const progressText = document.getElementById('mypage-ssirn-progress-text');
+    const listDiv = document.getElementById('mypage-ssirn-list');
+    const emptyDiv = document.getElementById('mypage-ssirn-empty');
+    
+    if (progressContainer) {
+        progressContainer.classList.remove('hidden');
+        progressBar.style.width = '0%';
+    }
+    if (listDiv) listDiv.innerHTML = '';
+    if (emptyDiv) emptyDiv.classList.add('hidden');
+    
+    // 프로그레스바 애니메이션 시작
+    setTimeout(() => {
+        if (progressBar) progressBar.style.width = '30%';
+    }, 100);
+    
     try {
         const response = await axios.get(`${API_BASE_URL}/api/class-notes?instructor_code=${instructor.code}`);
         const notes = response.data;
         
+        // 프로그레스바 70%
+        if (progressBar) progressBar.style.width = '70%';
+        
         const countSpan = document.getElementById('mypage-ssirn-count');
-        const listDiv = document.getElementById('mypage-ssirn-list');
-        const emptyDiv = document.getElementById('mypage-ssirn-empty');
         
         if (countSpan) countSpan.textContent = notes.length;
         
@@ -12145,12 +12175,50 @@ async function loadMyPageSSIRN() {
                 `;
             }
         }
+        
+        // 프로그레스바 100% 완료
+        if (progressBar) {
+            progressBar.style.width = '100%';
+        }
+        if (progressText) {
+            progressText.innerHTML = '<i class="fas fa-check mr-2 text-green-500"></i>로드 완료!';
+        }
+        
+        // 0.5초 후 프로그레스바 숨기기
+        setTimeout(() => {
+            if (progressContainer) {
+                progressContainer.classList.add('hidden');
+            }
+        }, 500);
+        
     } catch (error) {
         console.error('SSIRN메모장 로드 실패:', error);
+        
+        // 프로그레스바 에러 표시
+        if (progressBar) {
+            progressBar.style.width = '100%';
+            progressBar.classList.remove('bg-gradient-to-r', 'from-blue-500', 'to-indigo-500');
+            progressBar.classList.add('bg-red-500');
+        }
+        if (progressText) {
+            progressText.innerHTML = '<i class="fas fa-times mr-2 text-red-500"></i>로드 실패';
+        }
+        
         const listDiv = document.getElementById('mypage-ssirn-list');
         if (listDiv) {
             listDiv.innerHTML = '<p class="text-red-500">메모를 불러오는데 실패했습니다.</p>';
         }
+        
+        // 2초 후 프로그레스바 숨기기
+        setTimeout(() => {
+            if (progressContainer) {
+                progressContainer.classList.add('hidden');
+            }
+            if (progressBar) {
+                progressBar.classList.remove('bg-red-500');
+                progressBar.classList.add('bg-gradient-to-r', 'from-blue-500', 'to-indigo-500');
+            }
+        }, 2000);
     }
 }
 
