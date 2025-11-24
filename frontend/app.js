@@ -10963,7 +10963,7 @@ function renderSystemSettings(settings) {
                     </label>
                     <input type="text" id="system-title" 
                            class="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500"
-                           placeholder="예: KDT교육관리시스템 v3.2">
+                           placeholder="예: 바이오헬스교육관리시스템">
                     <p class="text-sm text-gray-500 mt-1">헤더 상단에 표시되는 메인 제목입니다</p>
                 </div>
                 
@@ -11040,7 +11040,7 @@ function renderSystemSettings(settings) {
         const logoUrlInput = document.getElementById('logo-url');
         const logoImg = document.getElementById('current-logo');
         
-        if (titleInput) titleInput.value = settings.system_title || 'KDT교육관리시스템 v3.2';
+        if (titleInput) titleInput.value = settings.system_title || '바이오헬스교육관리시스템';
         if (subtitle1Input) subtitle1Input.value = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
         if (subtitle2Input) subtitle2Input.value = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
         if (logoUrlInput) logoUrlInput.value = settings.logo_url || '/woosong-logo.png';
@@ -11220,7 +11220,7 @@ async function updateHeader() {
         // 제목 업데이트
         const titleElement = document.getElementById('system-title-header');
         if (titleElement) {
-            titleElement.innerHTML = `<i class="fas fa-school mr-3"></i>${settings.system_title || 'KDT교육관리시스템 v3.2'}`;
+            titleElement.innerHTML = `<i class="fas fa-school mr-3"></i>${settings.system_title || '바이오헬스교육관리시스템'}`;
         }
         
         // 부제목 1 업데이트
@@ -11350,7 +11350,7 @@ window.resetSystemSettings = async function() {
     
     try {
         const formData = new FormData();
-        formData.append('system_title', 'KDT교육관리시스템 v3.2');
+        formData.append('system_title', '바이오헬스교육관리시스템');
         formData.append('system_subtitle1', '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단');
         formData.append('system_subtitle2', '바이오헬스아카데미 올인원테크 이노베이터');
         formData.append('logo_url', '/woosong-logo.png');
