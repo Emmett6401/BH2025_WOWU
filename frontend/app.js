@@ -12345,8 +12345,6 @@ window.saveInstructorNote = async function(event) {
     event.preventDefault();
     
     try {
-        window.showLoading('메모 저장 중...');
-        
         const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
         const noteDate = document.getElementById('instructor-note-date').value;
         const content = document.getElementById('instructor-note-content').value;
@@ -12356,6 +12354,8 @@ window.saveInstructorNote = async function(event) {
         
         // 사진 업로드
         if (photoInput.files.length > 0) {
+            window.showLoading('사진 업로드 중...');
+            
             for (let file of photoInput.files) {
                 const compressedFile = await window.compressImage(file);
                 const formData = new FormData();
@@ -12369,6 +12369,9 @@ window.saveInstructorNote = async function(event) {
             }
         }
         
+        // 메모 저장
+        window.showLoading('메모 저장 중...');
+        
         const noteData = {
             instructor_code: instructor.code,
             student_id: null, // 강사 본인 메모는 student_id가 null
@@ -12379,12 +12382,11 @@ window.saveInstructorNote = async function(event) {
         
         if (currentInstructorNoteId) {
             await axios.put(`${API_BASE_URL}/api/class-notes/${currentInstructorNoteId}`, noteData);
-            await window.showSuccess('메모가 수정되었습니다.', '수정 완료');
         } else {
             await axios.post(`${API_BASE_URL}/api/class-notes`, noteData);
-            await window.showSuccess('메모가 저장되었습니다.', '저장 완료');
         }
         
+        window.hideLoading();
         closeInstructorNoteModal();
         
         // MyPage 모달이 열려있으면 MyPage SSIRN메모장 새로고침, 아니면 메인 화면 새로고침
@@ -12395,7 +12397,12 @@ window.saveInstructorNote = async function(event) {
             loadInstructorNotes();
         }
         
-        window.hideLoading();
+        // 성공 메시지 (await 제거하여 블로킹 방지)
+        if (currentInstructorNoteId) {
+            window.showSuccess('메모가 수정되었습니다.', '수정 완료');
+        } else {
+            window.showSuccess('메모가 저장되었습니다.', '저장 완료');
+        }
     } catch (error) {
         window.hideLoading();
         console.error('메모 저장 실패:', error);
