@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'bhhs-backend',
       script: 'uvicorn',
-      args: 'main:app --host 0.0.0.0 --port 8000 --reload',
+      args: 'main:app --host 0.0.0.0 --port 8000 --reload --limit-max-requests 10000 --timeout-keep-alive 300',
       cwd: '/home/user/webapp/backend',
       env: {
         NODE_ENV: 'development',

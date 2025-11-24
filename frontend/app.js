@@ -273,6 +273,27 @@ window.showWarning = (message, title) => window.showAlert(message, 'warning', { 
 window.showInfo = (message, title) => window.showAlert(message, 'info', { title });
 window.showConfirm = (message, title) => window.showAlert(message, 'confirm', { title });
 
+// ==================== 필터 비활성화/활성화 유틸리티 ====================
+window.disableFilters = function() {
+    // 모든 select, input 필터 요소 비활성화
+    const filters = document.querySelectorAll('select[id*="filter"], input[id*="filter"], select[id*="sort"], input[id*="search"]');
+    filters.forEach(element => {
+        element.disabled = true;
+        element.style.opacity = '0.5';
+        element.style.cursor = 'not-allowed';
+    });
+};
+
+window.enableFilters = function() {
+    // 모든 select, input 필터 요소 활성화
+    const filters = document.querySelectorAll('select[id*="filter"], input[id*="filter"], select[id*="sort"], input[id*="search"]');
+    filters.forEach(element => {
+        element.disabled = false;
+        element.style.opacity = '1';
+        element.style.cursor = 'pointer';
+    });
+};
+
 // 이미지 자동 압축 함수
 window.compressImage = function(file, maxWidth = 1920, quality = 0.85) {
     return new Promise((resolve, reject) => {
@@ -4494,6 +4515,7 @@ window.showCounselingForm = function(counselingId = null) {
     
     formDiv.classList.remove('hidden');
     formDiv.scrollIntoView({ behavior: 'smooth' });
+    window.disableFilters(); // 필터 비활성화
     
     // 기존 사진 미리보기 표시
     if (existingCounseling && existingCounseling.photo_urls) {
@@ -4513,6 +4535,7 @@ window.hideCounselingForm = function() {
     if (formDiv) {
         formDiv.classList.add('hidden');
     }
+    window.enableFilters(); // 필터 활성화
 }
 
 window.saveCounseling = async function(counselingId, autoSave = false) {
@@ -12772,10 +12795,12 @@ window.showNoticeForm = function(noticeId = null) {
     
     formDiv.classList.remove('hidden');
     formDiv.scrollIntoView({ behavior: 'smooth' });
+    window.disableFilters(); // 필터 비활성화
 };
 
 window.hideNoticeForm = function() {
     document.getElementById('notice-form').classList.add('hidden');
+    window.enableFilters(); // 필터 활성화
 };
 
 window.saveNotice = async function() {

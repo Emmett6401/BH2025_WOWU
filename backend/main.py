@@ -4352,4 +4352,11 @@ async def delete_notice(notice_id: int):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # 파일 업로드 크기 제한 100MB로 증가
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=8000,
+        limit_max_requests=10000,
+        timeout_keep_alive=300
+    )
