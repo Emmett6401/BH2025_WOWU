@@ -11972,16 +11972,16 @@ window.showMyPageModal = async function() {
     
     document.body.appendChild(modal);
     
-    // 파일 미리보기 초기화
-    if (instructor.attachments) {
-        try {
-            const attachments = JSON.parse(instructor.attachments);
-            updateMyPageFilePreview(attachments);
-        } catch (e) {
-            console.error('첨부파일 로드 실패:', e);
+        // 파일 미리보기 초기화
+        if (instructor.attachments) {
+            try {
+                const attachments = JSON.parse(instructor.attachments);
+                updateMyPageFilePreview(attachments);
+            } catch (e) {
+                console.error('첨부파일 로드 실패:', e);
+            }
         }
-    }
-    
+        
         // 기본 탭 로드
         switchMyPageTab('profile');
         
