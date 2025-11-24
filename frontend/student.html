@@ -712,7 +712,8 @@
             if (!student) return;
             
             try {
-                const response = await axios.get(`${API_BASE_URL}/api/class-notes/${student.id}`);
+                // 학생 ID로 필터링하여 조회
+                const response = await axios.get(`${API_BASE_URL}/api/class-notes?student_id=${student.id}`);
                 allNotes = response.data || [];
                 renderNotesGrid(allNotes);
             } catch (error) {

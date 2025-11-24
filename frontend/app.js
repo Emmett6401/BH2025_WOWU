@@ -12986,9 +12986,21 @@ async function loadMyProfile() {
                         총 <span id="instructor-notes-count" class="font-bold text-blue-600">0</span>개의 메모
                     </div>
                     
-                    <!-- 메모 그리드 -->
-                    <div id="instructor-notes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- 메모 카드들이 여기에 동적으로 추가됩니다 -->
+                    <!-- 메모 테이블 -->
+                    <div class="overflow-x-auto">
+                        <table id="instructor-notes-table" class="min-w-full bg-white border border-gray-200 rounded-lg">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">날짜</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">내용</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">사진</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="instructor-notes-tbody" class="divide-y divide-gray-200">
+                                <!-- 메모 행들이 여기에 동적으로 추가됩니다 -->
+                            </tbody>
+                        </table>
                     </div>
                     
                     <!-- 빈 상태 -->
@@ -13111,11 +13123,12 @@ async function loadInstructorNotes() {
 }
 
 function renderInstructorNotes() {
-    const grid = document.getElementById('instructor-notes-grid');
+    const table = document.getElementById('instructor-notes-table');
+    const tbody = document.getElementById('instructor-notes-tbody');
     const empty = document.getElementById('instructor-notes-empty');
     const count = document.getElementById('instructor-notes-count');
     
-    if (!grid || !empty || !count) return;
+    if (!tbody || !empty || !count) return;
     
     const searchText = document.getElementById('instructor-note-search')?.value.toLowerCase() || '';
     const dateFilter = document.getElementById('instructor-note-date-filter')?.value || '';
@@ -13135,57 +13148,60 @@ function renderInstructorNotes() {
     count.textContent = filtered.length;
     
     if (filtered.length === 0) {
-        grid.classList.add('hidden');
+        table.classList.add('hidden');
         empty.classList.remove('hidden');
         return;
     }
     
-    grid.classList.remove('hidden');
+    table.classList.remove('hidden');
     empty.classList.add('hidden');
     
     // 최신순 정렬
     filtered.sort((a, b) => new Date(b.note_date) - new Date(a.note_date));
     
-    grid.innerHTML = filtered.map(note => {
+    tbody.innerHTML = filtered.map(note => {
         const date = new Date(note.note_date);
         const formattedDate = date.toLocaleDateString('ko-KR', { 
             year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
+            month: '2-digit', 
+            day: '2-digit' 
         });
         
-        // 마크다운 미리보기 (첫 100자)
-        const preview = note.content.substring(0, 100) + (note.content.length > 100 ? '...' : '');
+        // 내용 미리보기 (첫 80자)
+        const preview = note.content.substring(0, 80) + (note.content.length > 80 ? '...' : '');
+        
+        // 사진 개수
+        const photoCount = note.photo_urls ? JSON.parse(note.photo_urls).length : 0;
         
         return `
-            <div class="bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-lg transition-all cursor-pointer"
-                 onclick="viewInstructorNote(${note.id})">
-                <div class="flex justify-between items-start mb-3">
-                    <div class="flex items-center gap-2">
-                        <i class="fas fa-calendar-alt text-blue-500"></i>
-                        <span class="text-sm font-semibold text-gray-700">${formattedDate}</span>
-                    </div>
-                    <div class="flex gap-1">
-                        <button onclick="event.stopPropagation(); editInstructorNote(${note.id})" 
-                                class="text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors" 
-                                title="수정">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button onclick="event.stopPropagation(); deleteInstructorNote(${note.id})" 
-                                class="text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors" 
-                                title="삭제">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="text-gray-700 text-sm line-clamp-3 whitespace-pre-wrap">${preview}</div>
-                ${note.photo_urls && JSON.parse(note.photo_urls).length > 0 ? `
-                    <div class="mt-3 flex items-center text-xs text-gray-500">
-                        <i class="fas fa-image mr-1"></i>
-                        사진 ${JSON.parse(note.photo_urls).length}장
-                    </div>
-                ` : ''}
-            </div>
+            <tr class="hover:bg-gray-50 cursor-pointer" onclick="viewInstructorNote(${note.id})">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <i class="fas fa-calendar-alt text-blue-500 mr-2"></i>${formattedDate}
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-700">
+                    <div class="line-clamp-2">${preview}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                    ${photoCount > 0 ? `<i class="fas fa-image text-green-500 mr-1"></i>${photoCount}장` : '-'}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                    <button onclick="event.stopPropagation(); viewInstructorNote(${note.id})" 
+                            class="text-green-600 hover:text-green-900 mx-1" 
+                            title="보기">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button onclick="event.stopPropagation(); editInstructorNote(${note.id})" 
+                            class="text-blue-600 hover:text-blue-900 mx-1" 
+                            title="수정">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="event.stopPropagation(); deleteInstructorNote(${note.id})" 
+                            class="text-red-600 hover:text-red-900 mx-1" 
+                            title="삭제">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
         `;
     }).join('');
 }
