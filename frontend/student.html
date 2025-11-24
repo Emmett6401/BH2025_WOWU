@@ -637,6 +637,38 @@
             });
         };
         
+        // ==================== 로딩 모달 ====================
+        window.showLoading = function(message = '로딩 중...') {
+            let loadingModal = document.getElementById('loading-modal');
+            
+            if (!loadingModal) {
+                loadingModal = document.createElement('div');
+                loadingModal.id = 'loading-modal';
+                loadingModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]';
+                loadingModal.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4">
+                        <div class="flex flex-col items-center">
+                            <div class="relative">
+                                <div class="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                            </div>
+                            <p id="loading-message" class="mt-4 text-gray-700 font-semibold text-center"></p>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(loadingModal);
+            }
+            
+            document.getElementById('loading-message').textContent = message;
+            loadingModal.classList.remove('hidden');
+        };
+        
+        window.hideLoading = function() {
+            const loadingModal = document.getElementById('loading-modal');
+            if (loadingModal) {
+                loadingModal.classList.add('hidden');
+            }
+        };
+        
         // URL에서 파일명 추출 (타임스탬프 패턴 제거)
         window.getFilenameFromUrl = function(url) {
             if (!url) return 'unknown';
@@ -712,12 +744,20 @@
             if (!student) return;
             
             try {
+                // 프로그레스바 표시
+                window.showLoading('SSIRN 메모를 불러오는 중...');
+                
                 // 학생 ID로 필터링하여 조회
                 const response = await axios.get(`${API_BASE_URL}/api/class-notes?student_id=${student.id}`);
                 allNotes = response.data || [];
                 renderNotesGrid(allNotes);
+                
+                // 프로그레스바 숨김
+                window.hideLoading();
             } catch (error) {
                 console.error('메모 불러오기 실패:', error);
+                window.hideLoading();
+                window.showAlert('메모를 불러오는데 실패했습니다', 'error');
             }
         };
         
@@ -822,7 +862,11 @@
         // 메모 편집
         window.editNote = async function(noteId) {
             const note = allNotes.find(n => n.id === noteId);
-            if (!note) return;
+            if (!note) {
+                window.showAlert('메모를 찾을 수 없습니다. 목록을 새로고침합니다.', 'warning');
+                loadAllNotes();
+                return;
+            }
             
             document.getElementById('modal-title').textContent = '수업 메모 수정';
             document.getElementById('edit-note-id').value = note.id;
@@ -885,7 +929,7 @@
                         await createCounselingRequest(student, noteDate, content);
                     }
                     
-                    window.showAlert('✅ ' + response.data.message, 'success');
+                    window.showAlert('✅ SSIRN메모가 저장되었습니다', 'success');
                     closeNoteModal();
                     loadAllNotes();
                 }
@@ -972,7 +1016,11 @@
         // 상세보기 모달
         window.showNoteDetail = function(noteId) {
             const note = allNotes.find(n => n.id === noteId);
-            if (!note) return;
+            if (!note) {
+                window.showAlert('메모를 찾을 수 없습니다. 목록을 새로고침합니다.', 'warning');
+                loadAllNotes();
+                return;
+            }
             
             currentNoteId = noteId;
             
@@ -1064,8 +1112,14 @@
         // 학생용 공지사항 로드
         window.loadStudentNotices = async function() {
             try {
+                // 프로그레스바 표시
+                window.showLoading('공지사항을 불러오는 중...');
+                
                 const response = await axios.get(`${API_BASE_URL}/api/notices?active_only=true`);
                 const notices = response.data;
+                
+                // 프로그레스바 숨김
+                window.hideLoading();
                 
                 const listDiv = document.getElementById('student-notices-list');
                 const emptyDiv = document.getElementById('student-notices-empty');
@@ -1104,6 +1158,7 @@
                 }).join('');
             } catch (error) {
                 console.error('공지사항 로드 실패:', error);
+                window.hideLoading();
                 document.getElementById('student-notices-list').innerHTML = `
                     <div class="text-center py-8 text-red-600">
                         <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
