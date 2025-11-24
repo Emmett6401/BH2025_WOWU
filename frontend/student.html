@@ -805,18 +805,29 @@
         
         // 메모 그리드 렌더링
         window.renderNotesGrid = function(notes) {
+            console.log('🎨 renderNotesGrid 호출됨, 메모 개수:', notes.length);
+            
             const grid = document.getElementById('notes-grid');
             const empty = document.getElementById('notes-empty');
             const countSpan = document.getElementById('notes-count');
             
+            console.log('DOM 요소:', { grid, empty, countSpan });
+            
+            if (!grid || !empty || !countSpan) {
+                console.error('❌ DOM 요소를 찾을 수 없습니다!');
+                return;
+            }
+            
             countSpan.textContent = notes.length;
             
             if (notes.length === 0) {
+                console.log('⚠️ 메모가 없음 - 빈 상태 표시');
                 grid.innerHTML = '';
                 empty.classList.remove('hidden');
                 return;
             }
             
+            console.log('✅ 메모 있음 - 그리드 렌더링 시작');
             empty.classList.add('hidden');
             
             grid.innerHTML = notes.map(note => {
@@ -853,6 +864,9 @@
                     </div>
                 `;
             }).join('');
+            
+            console.log('✅ 그리드 HTML 생성 완료, 길이:', grid.innerHTML.length);
+            console.log('📊 렌더링된 메모:', notes.map(n => ({ id: n.id, date: n.note_date, preview: n.content.substring(0, 20) })));
         };
         
         // 메모 검색
