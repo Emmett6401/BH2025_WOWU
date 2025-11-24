@@ -12236,7 +12236,7 @@ window.showInstructorNewNoteModal = function() {
     const today = new Date().toISOString().split('T')[0];
     
     const modal = `
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="closeInstructorNoteModal(event)">
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4" onclick="closeInstructorNoteModal(event)">
             <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
                 <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl sticky top-0 z-10">
                     <div class="flex justify-between items-center">
@@ -12422,7 +12422,7 @@ window.viewInstructorNote = function(noteId) {
     const photoUrls = note.photo_urls ? JSON.parse(note.photo_urls) : [];
     
     const modal = `
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="closeInstructorNoteModal(event)">
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4" onclick="closeInstructorNoteModal(event)">
             <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
                 <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl sticky top-0 z-10">
                     <div class="flex justify-between items-start">
@@ -12482,7 +12482,7 @@ window.editInstructorNote = async function(noteId) {
         currentInstructorNoteId = noteId;
         
         const modal = `
-            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="closeInstructorNoteModal(event)">
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4" onclick="closeInstructorNoteModal(event)">
                 <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
                     <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl sticky top-0 z-10">
                         <div class="flex justify-between items-center">
