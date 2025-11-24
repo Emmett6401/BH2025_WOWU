@@ -12039,7 +12039,7 @@ async function loadMyPageSSIRN() {
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">날짜</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">내용</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">사진</th>
-                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">관리</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-40">관리</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200">
@@ -12064,19 +12064,21 @@ async function loadMyPageSSIRN() {
                                             <td class="px-6 py-4 text-center">
                                                 ${photoCount > 0 ? `<i class="fas fa-image text-green-500"></i> ${photoCount}장` : '-'}
                                             </td>
-                                            <td class="px-6 py-4 text-center">
-                                                <button onclick="event.stopPropagation(); viewInstructorNote(${note.id})" 
-                                                        class="text-blue-600 hover:text-blue-800 px-2">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button onclick="event.stopPropagation(); editInstructorNote(${note.id})" 
-                                                        class="text-green-600 hover:text-green-800 px-2">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button onclick="event.stopPropagation(); deleteInstructorNote(${note.id})" 
-                                                        class="text-red-600 hover:text-red-800 px-2">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
+                                            <td class="px-6 py-4">
+                                                <div class="flex justify-center items-center gap-2">
+                                                    <button onclick="event.stopPropagation(); viewInstructorNote(${note.id})" 
+                                                            class="text-blue-600 hover:text-blue-800 p-1" title="보기">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button onclick="event.stopPropagation(); editInstructorNote(${note.id})" 
+                                                            class="text-green-600 hover:text-green-800 p-1" title="수정">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button onclick="event.stopPropagation(); deleteInstructorNote(${note.id})" 
+                                                            class="text-red-600 hover:text-red-800 p-1" title="삭제">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     `;
@@ -12337,7 +12339,17 @@ window.updateInstructorNotePreview = function() {
 };
 
 window.closeInstructorNoteModal = function(event) {
+    // event가 없으면 X 버튼 클릭, event가 있으면 배경 클릭 체크
     if (event && event.target !== event.currentTarget) return;
+    
+    // z-60 레벨의 모달 먼저 제거 (메모 상세/편집/작성)
+    const noteModals = document.querySelectorAll('.fixed.inset-0.z-\\[60\\]');
+    if (noteModals.length > 0) {
+        noteModals.forEach(modal => modal.remove());
+        return;
+    }
+    
+    // z-50 레벨의 모달 제거 (기타)
     document.querySelector('.fixed.inset-0')?.remove();
 };
 
