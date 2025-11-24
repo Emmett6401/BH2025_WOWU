@@ -11676,9 +11676,11 @@ window.showMyPageModal = async function() {
         return;
     }
     
-    // 공지사항 데이터 미리 로드
-    let noticesHTML = '';
     try {
+        window.showLoading('MyPage를 불러오는 중...');
+        
+        // 공지사항 데이터 미리 로드
+        let noticesHTML = '';
         const noticesResponse = await axios.get(`${API_BASE_URL}/api/notices`);
         const notices = noticesResponse.data;
         
@@ -11980,8 +11982,15 @@ window.showMyPageModal = async function() {
         }
     }
     
-    // 기본 탭 로드
-    switchMyPageTab('profile');
+        // 기본 탭 로드
+        switchMyPageTab('profile');
+        
+        window.hideLoading();
+    } catch (error) {
+        window.hideLoading();
+        console.error('MyPage 로드 실패:', error);
+        window.showAlert('MyPage를 불러오는데 실패했습니다.', 'error');
+    }
 };
 
 window.closeMyPageModal = function() {
@@ -12007,7 +12016,9 @@ window.switchMyPageTab = async function(tab) {
     
     // SSIRN메모장 탭 선택 시 데이터 로드
     if (tab === 'ssirn') {
+        window.showLoading('SSIRN메모장을 불러오는 중...');
         await loadMyPageSSIRN();
+        window.hideLoading();
     }
 };
 
