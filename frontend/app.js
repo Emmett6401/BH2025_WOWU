@@ -12117,8 +12117,24 @@ async function loadMyPageSSIRN() {
                                             <td class="px-6 py-3">
                                                 <div class="truncate max-w-2xl">${preview}</div>
                                             </td>
-                                            <td class="px-6 py-3 text-center whitespace-nowrap">
-                                                ${photoCount > 0 ? `<i class="fas fa-image text-green-500"></i> ${photoCount}장` : '-'}
+                                            <td class="px-6 py-3 whitespace-nowrap" onclick="event.stopPropagation()">
+                                                ${photoCount > 0 ? (() => {
+                                                    const photos = JSON.parse(note.photo_urls);
+                                                    return `
+                                                        <div class="flex items-center gap-2">
+                                                            <div class="flex -space-x-2">
+                                                                ${photos.slice(0, 3).map((photo, idx) => `
+                                                                    <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(photo.url)}&size=60" 
+                                                                         alt="${photo.name || '사진'}"
+                                                                         class="w-10 h-10 rounded-lg border-2 border-white object-cover cursor-pointer hover:scale-110 transition-transform shadow-md"
+                                                                         onclick="showPhotoModal(${note.id}, ${idx})"
+                                                                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2760%27 height=%2760%27%3E%3Crect fill=%27%23ddd%27 width=%2760%27 height=%2760%27/%3E%3Ctext fill=%27%23999%27 font-size=%2712%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3E❌%3C/text%3E%3C/svg%3E'">
+                                                                `).join('')}
+                                                            </div>
+                                                            ${photoCount > 3 ? `<span class="text-xs text-gray-500">+${photoCount - 3}</span>` : ''}
+                                                        </div>
+                                                    `;
+                                                })() : '<span class="text-gray-400">-</span>'}
                                             </td>
                                         </tr>
                                     `;
@@ -12180,6 +12196,135 @@ window.filterMyPageSSIRN = function() {
         }
     }
 };
+
+// 사진 미리보기 모달
+window.showPhotoModal = async function(noteId, startIndex = 0) {
+    try {
+        // 메모 데이터 가져오기
+        const response = await axios.get(`${API_BASE_URL}/api/class-notes/${noteId}`);
+        const note = response.data;
+        
+        if (!note.photo_urls) {
+            window.showAlert('사진이 없습니다.', 'info');
+            return;
+        }
+        
+        const photos = JSON.parse(note.photo_urls);
+        if (photos.length === 0) {
+            window.showAlert('사진이 없습니다.', 'info');
+            return;
+        }
+        
+        window.currentPhotoIndex = startIndex;
+        window.currentPhotos = photos;
+        
+        const modal = document.createElement('div');
+        modal.id = 'photo-modal';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[70]';
+        modal.onclick = (e) => { if (e.target === modal) closePhotoModal(); };
+        
+        modal.innerHTML = `
+            <div class="relative w-full h-full flex items-center justify-center p-4">
+                <!-- 닫기 버튼 -->
+                <button onclick="closePhotoModal()" 
+                        class="absolute top-4 right-4 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-3 z-10">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+                
+                <!-- 이전 버튼 -->
+                ${photos.length > 1 ? `
+                    <button onclick="showPrevPhoto()" 
+                            class="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-4 z-10">
+                        <i class="fas fa-chevron-left text-2xl"></i>
+                    </button>
+                ` : ''}
+                
+                <!-- 사진 표시 영역 -->
+                <div class="flex flex-col items-center justify-center max-w-6xl max-h-full">
+                    <img id="modal-photo-img" 
+                         src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(photos[startIndex].url)}&size=1200" 
+                         alt="${photos[startIndex].name || '사진'}"
+                         class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23333%27 width=%27800%27 height=%27600%27/%3E%3Ctext fill=%27%23999%27 font-size=%2724%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3E이미지 로드 실패%3C/text%3E%3C/svg%3E'">
+                    
+                    <!-- 파일명 및 카운터 -->
+                    <div class="mt-4 text-center">
+                        <p id="modal-photo-name" class="text-white text-lg font-semibold">${photos[startIndex].name || '사진'}</p>
+                        <p id="modal-photo-counter" class="text-gray-400 text-sm mt-1">${startIndex + 1} / ${photos.length}</p>
+                    </div>
+                </div>
+                
+                <!-- 다음 버튼 -->
+                ${photos.length > 1 ? `
+                    <button onclick="showNextPhoto()" 
+                            class="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-4 z-10">
+                        <i class="fas fa-chevron-right text-2xl"></i>
+                    </button>
+                ` : ''}
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // ESC 키로 닫기
+        document.addEventListener('keydown', handlePhotoModalKeydown);
+    } catch (error) {
+        console.error('사진 모달 열기 실패:', error);
+        window.showAlert('사진을 불러오는데 실패했습니다.', 'error');
+    }
+};
+
+window.closePhotoModal = function() {
+    const modal = document.getElementById('photo-modal');
+    if (modal) {
+        modal.remove();
+        document.removeEventListener('keydown', handlePhotoModalKeydown);
+    }
+};
+
+window.showPrevPhoto = function() {
+    if (!window.currentPhotos || window.currentPhotos.length === 0) return;
+    
+    window.currentPhotoIndex = (window.currentPhotoIndex - 1 + window.currentPhotos.length) % window.currentPhotos.length;
+    updatePhotoModal();
+};
+
+window.showNextPhoto = function() {
+    if (!window.currentPhotos || window.currentPhotos.length === 0) return;
+    
+    window.currentPhotoIndex = (window.currentPhotoIndex + 1) % window.currentPhotos.length;
+    updatePhotoModal();
+};
+
+function updatePhotoModal() {
+    const photo = window.currentPhotos[window.currentPhotoIndex];
+    const imgElement = document.getElementById('modal-photo-img');
+    const nameElement = document.getElementById('modal-photo-name');
+    const counterElement = document.getElementById('modal-photo-counter');
+    
+    if (imgElement) {
+        imgElement.src = `${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(photo.url)}&size=1200`;
+        imgElement.alt = photo.name || '사진';
+    }
+    
+    if (nameElement) {
+        nameElement.textContent = photo.name || '사진';
+    }
+    
+    if (counterElement) {
+        counterElement.textContent = `${window.currentPhotoIndex + 1} / ${window.currentPhotos.length}`;
+    }
+}
+
+function handlePhotoModalKeydown(event) {
+    if (event.key === 'Escape') {
+        closePhotoModal();
+    } else if (event.key === 'ArrowLeft') {
+        showPrevPhoto();
+    } else if (event.key === 'ArrowRight') {
+        showNextPhoto();
+    }
+}
 
 async function loadInstructorNotes() {
     console.log('📝 loadInstructorNotes 함수 시작');
