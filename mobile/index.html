@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>바이오헬스교육관리 - 모바일</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* 모바일 최적화 */
+        body {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        
+        /* 애니메이션 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .slide-up {
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        /* 카드 호버 효과 */
+        .menu-card {
+            transition: all 0.3s ease;
+        }
+        
+        .menu-card:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    
+    <!-- 헤더 -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-heartbeat text-3xl text-blue-600"></i>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-800">바이오헬스교육관리</h1>
+                    <p class="text-xs text-gray-600" id="userInfo">로딩중...</p>
+                </div>
+            </div>
+            <button onclick="logout()" 
+                    class="text-red-500 hover:text-red-700 transition-colors px-3 py-2 rounded-lg hover:bg-red-50">
+                <i class="fas fa-sign-out-alt text-xl"></i>
+            </button>
+        </div>
+    </header>
+    
+    <!-- 메인 컨텐츠 -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <!-- 환영 메시지 -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                <span id="welcomeName">환영합니다</span> 👋
+            </h2>
+            <p class="text-gray-600" id="welcomeMessage">원하시는 메뉴를 선택하세요</p>
+        </div>
+        
+        <!-- 메뉴 그리드 -->
+        <div class="grid grid-cols-2 gap-4" id="menuGrid">
+            <!-- 메뉴 카드들이 여기에 동적으로 생성됩니다 -->
+        </div>
+    </main>
+    
+    <!-- 하단 정보 -->
+    <footer class="max-w-7xl mx-auto px-4 py-6 text-center text-sm text-gray-600">
+        <p><i class="fas fa-mobile-alt mr-1"></i>모바일 최적화 버전</p>
+    </footer>
+
+    <script>
+        // API Base URL
+        const API_BASE_URL = window.location.origin.replace('3000', '8000');
+        
+        // 메뉴 정의 (권한별)
+        const MENUS = {
+            // 공통 메뉴
+            common: [
+                {
+                    id: 'profile',
+                    title: '내 정보',
+                    icon: 'fa-user-circle',
+                    color: 'from-blue-500 to-blue-600',
+                    page: 'profile.html',
+                    description: '프로필 관리'
+                },
+                {
+                    id: 'ssirn',
+                    title: 'SSIRN메모장',
+                    icon: 'fa-book-open',
+                    color: 'from-green-500 to-green-600',
+                    page: 'ssirn.html',
+                    description: '메모 작성·조회'
+                },
+                {
+                    id: 'notices',
+                    title: '공지사항',
+                    icon: 'fa-bullhorn',
+                    color: 'from-purple-500 to-purple-600',
+                    page: 'notices.html',
+                    description: '공지 확인'
+                }
+            ],
+            
+            // 강사 전용 메뉴
+            instructor: [
+                {
+                    id: 'counseling',
+                    title: '상담관리',
+                    icon: 'fa-comments',
+                    color: 'from-orange-500 to-orange-600',
+                    page: 'counseling.html',
+                    description: '학생 상담'
+                },
+                {
+                    id: 'training',
+                    title: '훈련일지',
+                    icon: 'fa-clipboard-list',
+                    color: 'from-indigo-500 to-indigo-600',
+                    page: 'training.html',
+                    description: '일지 관리'
+                },
+                {
+                    id: 'team',
+                    title: '팀 활동일지',
+                    icon: 'fa-users',
+                    color: 'from-pink-500 to-pink-600',
+                    page: 'team.html',
+                    description: '팀 활동 기록'
+                }
+            ],
+            
+            // 학생 전용 메뉴
+            student: [
+                {
+                    id: 'counseling',
+                    title: '상담신청',
+                    icon: 'fa-comments',
+                    color: 'from-orange-500 to-orange-600',
+                    page: 'counseling.html',
+                    description: '상담 신청'
+                },
+                {
+                    id: 'training',
+                    title: '훈련일지',
+                    icon: 'fa-clipboard-list',
+                    color: 'from-indigo-500 to-indigo-600',
+                    page: 'training.html',
+                    description: '일지 작성'
+                },
+                {
+                    id: 'team',
+                    title: '팀 활동',
+                    icon: 'fa-users',
+                    color: 'from-pink-500 to-pink-600',
+                    page: 'team.html',
+                    description: '팀 프로젝트'
+                }
+            ]
+        };
+        
+        // 페이지 초기화
+        function initializePage() {
+            const user = JSON.parse(sessionStorage.getItem('user'));
+            const userType = sessionStorage.getItem('user_type');
+            
+            // 로그인 체크
+            if (!user || !userType) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // 사용자 정보 표시
+            const userName = user.name || '사용자';
+            const userRole = userType === 'instructor' ? '강사' : '학생';
+            
+            document.getElementById('userInfo').textContent = `${userName} (${userRole})`;
+            document.getElementById('welcomeName').textContent = `${userName}님`;
+            document.getElementById('welcomeMessage').textContent = 
+                userType === 'instructor' ? '강사 전용 메뉴입니다' : '학생 전용 메뉴입니다';
+            
+            // 메뉴 생성
+            renderMenus(userType);
+        }
+        
+        // 메뉴 렌더링
+        function renderMenus(userType) {
+            const menuGrid = document.getElementById('menuGrid');
+            
+            // 공통 메뉴 + 권한별 메뉴
+            const menus = [
+                ...MENUS.common,
+                ...(userType === 'instructor' ? MENUS.instructor : MENUS.student)
+            ];
+            
+            menuGrid.innerHTML = menus.map((menu, index) => `
+                <div class="menu-card bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer fade-in"
+                     style="animation-delay: ${index * 0.1}s"
+                     onclick="navigateToPage('${menu.page}')">
+                    <div class="bg-gradient-to-br ${menu.color} p-6 text-white">
+                        <i class="fas ${menu.icon} text-5xl mb-3"></i>
+                        <h3 class="text-xl font-bold">${menu.title}</h3>
+                    </div>
+                    <div class="p-4">
+                        <p class="text-sm text-gray-600">${menu.description}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // 페이지 이동
+        function navigateToPage(page) {
+            window.location.href = page;
+        }
+        
+        // 로그아웃
+        function logout() {
+            if (confirm('로그아웃 하시겠습니까?')) {
+                sessionStorage.clear();
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // 페이지 로드 시 초기화
+        window.addEventListener('DOMContentLoaded', initializePage);
+    </script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>로그인 - 바이오헬스교육관리</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <style>
+        /* 모바일 최적화 */
+        body {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        
+        /* 입력 필드 확대 방지 (iOS) */
+        input, textarea, select {
+            font-size: 16px !important;
+        }
+        
+        /* 애니메이션 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+    
+    <!-- 로그인 컨테이너 -->
+    <div class="w-full max-w-md fade-in">
+        <!-- 로고 및 타이틀 -->
+        <div class="text-center mb-8">
+            <div class="inline-block bg-white rounded-full p-4 shadow-lg mb-4">
+                <i class="fas fa-heartbeat text-5xl text-blue-600"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">바이오헬스교육관리</h1>
+            <p class="text-gray-600">모바일 통합 관리 시스템</p>
+        </div>
+        
+        <!-- 로그인 폼 -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+            <form id="loginForm" class="space-y-6">
+                <!-- 이름 입력 -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-user mr-2 text-blue-600"></i>이름
+                    </label>
+                    <input type="text" 
+                           id="username" 
+                           placeholder="이름을 입력하세요" 
+                           required
+                           class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none">
+                </div>
+                
+                <!-- 비밀번호 입력 -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-lock mr-2 text-blue-600"></i>비밀번호
+                    </label>
+                    <div class="relative">
+                        <input type="password" 
+                               id="password" 
+                               placeholder="비밀번호를 입력하세요" 
+                               required
+                               class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none pr-12">
+                        <button type="button" 
+                                onclick="togglePassword()"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                            <i id="passwordIcon" class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>기본 비밀번호: kdt2025
+                    </p>
+                </div>
+                
+                <!-- 로그인 버튼 -->
+                <button type="submit" 
+                        class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all active:scale-95">
+                    <i class="fas fa-sign-in-alt mr-2"></i>로그인
+                </button>
+            </form>
+        </div>
+        
+        <!-- 하단 정보 -->
+        <div class="text-center mt-6 text-sm text-gray-600">
+            <p><i class="fas fa-shield-alt mr-1"></i>안전한 접속이 보장됩니다</p>
+        </div>
+    </div>
+    
+    <!-- 로딩 오버레이 -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 text-center shadow-2xl">
+            <div class="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
+            <p class="text-gray-700 font-semibold">로그인 중...</p>
+        </div>
+    </div>
+
+    <script>
+        // API Base URL (기존 백엔드 사용)
+        const API_BASE_URL = window.location.origin.replace('3000', '8000');
+        
+        // 비밀번호 표시/숨김
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const passwordIcon = document.getElementById('passwordIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                passwordIcon.className = 'fas fa-eye-slash';
+            } else {
+                passwordInput.type = 'password';
+                passwordIcon.className = 'fas fa-eye';
+            }
+        }
+        
+        // 로그인 폼 제출
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                showAlert('이름과 비밀번호를 입력해주세요.', 'warning');
+                return;
+            }
+            
+            // 로딩 표시
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            
+            try {
+                // 통합 로그인 API 호출
+                const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+                    name: username,
+                    password: password
+                });
+                
+                const data = response.data;
+                
+                if (data.success) {
+                    // 사용자 정보 저장
+                    if (data.user_type === 'instructor') {
+                        sessionStorage.setItem('user', JSON.stringify(data.instructor));
+                        sessionStorage.setItem('user_type', 'instructor');
+                    } else {
+                        sessionStorage.setItem('user', JSON.stringify(data.student));
+                        sessionStorage.setItem('user_type', 'student');
+                    }
+                    
+                    // 성공 알림
+                    showAlert(data.message, 'success');
+                    
+                    // 메인 페이지로 이동
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                } else {
+                    showAlert(data.message || '로그인에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('로그인 오류:', error);
+                showAlert(error.response?.data?.detail || '로그인 중 오류가 발생했습니다.', 'error');
+            } finally {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+            }
+        });
+        
+        // 알림 표시
+        function showAlert(message, type = 'info') {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-yellow-500',
+                info: 'bg-blue-500'
+            };
+            
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-times-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+            
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `fixed top-4 left-1/2 -translate-x-1/2 ${colors[type]} text-white px-6 py-4 rounded-xl shadow-2xl z-[60] fade-in max-w-sm w-full mx-4`;
+            alertDiv.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <i class="fas ${icons[type]} text-2xl"></i>
+                    <p class="flex-1 font-semibold">${message}</p>
+                </div>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.style.opacity = '0';
+                alertDiv.style.transform = 'translate(-50%, -20px)';
+                alertDiv.style.transition = 'all 0.3s ease-out';
+                setTimeout(() => alertDiv.remove(), 300);
+            }, 3000);
+        }
+        
+        // 이미 로그인된 경우 메인 페이지로 리다이렉트
+        if (sessionStorage.getItem('user')) {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
