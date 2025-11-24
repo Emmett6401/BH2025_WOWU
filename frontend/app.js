@@ -11937,13 +11937,26 @@ window.showMyPageModal = async function() {
                         <p class="text-blue-100 mt-2 text-sm">무엇이든 남겨 두면 자동 기록 됩니다.</p>
                     </div>
                     <div class="p-6">
-                        <div class="flex justify-between items-center mb-6">
+                        <div class="flex justify-between items-center mb-4">
                             <p class="text-gray-600">총 <span id="mypage-ssirn-count" class="font-bold text-blue-600">0</span>개의 메모</p>
                             <button onclick="showInstructorNewNoteModal()" 
                                     class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold">
                                 <i class="fas fa-plus mr-2"></i>새 메모
                             </button>
                         </div>
+                        
+                        <!-- 검색창 -->
+                        <div class="mb-4">
+                            <div class="relative">
+                                <input type="text" 
+                                       id="mypage-ssirn-search" 
+                                       placeholder="메모 내용 검색..." 
+                                       class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                       onkeyup="filterMyPageSSIRN()">
+                                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            </div>
+                        </div>
+                        
                         <div id="mypage-ssirn-list" class="space-y-4"></div>
                         <div id="mypage-ssirn-empty" class="text-center py-12 text-gray-500">
                             <i class="fas fa-inbox text-6xl mb-4"></i>
@@ -12095,6 +12108,49 @@ async function loadMyPageSSIRN() {
         }
     }
 }
+
+// SSIRN 메모 검색 필터링
+window.filterMyPageSSIRN = function() {
+    const searchInput = document.getElementById('mypage-ssirn-search');
+    if (!searchInput) return;
+    
+    const searchText = searchInput.value.toLowerCase().trim();
+    const rows = document.querySelectorAll('#mypage-ssirn-list tbody tr');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        const content = row.textContent.toLowerCase();
+        if (content.includes(searchText)) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // 검색 결과 업데이트
+    const emptyDiv = document.getElementById('mypage-ssirn-empty');
+    const listDiv = document.getElementById('mypage-ssirn-list');
+    
+    if (visibleCount === 0 && searchText !== '') {
+        if (listDiv) listDiv.style.display = 'none';
+        if (emptyDiv) {
+            emptyDiv.classList.remove('hidden');
+            emptyDiv.innerHTML = `
+                <div class="text-center py-12 text-gray-500">
+                    <i class="fas fa-search text-6xl mb-4"></i>
+                    <p>검색 결과가 없습니다</p>
+                    <p class="text-sm mt-2">다른 검색어를 시도해보세요</p>
+                </div>
+            `;
+        }
+    } else {
+        if (listDiv) listDiv.style.display = '';
+        if (emptyDiv && visibleCount > 0) {
+            emptyDiv.classList.add('hidden');
+        }
+    }
+};
 
 async function loadInstructorNotes() {
     console.log('📝 loadInstructorNotes 함수 시작');
