@@ -11729,7 +11729,7 @@ window.showMyPageModal = async function() {
                     <i class="fas fa-user-circle text-4xl"></i>
                     <div>
                         <h3 class="text-2xl font-bold">My Page</h3>
-                        <p class="text-sm text-blue-100 mt-1">${instructor.name} (${instructor.code})</p>
+                        <p class="text-sm text-blue-100 mt-1">${instructor.name}${instructor.major ? ' · ' + instructor.major : ''}</p>
                     </div>
                 </div>
                 <button onclick="closeMyPageModal()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all">
