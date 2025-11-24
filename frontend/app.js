@@ -11934,7 +11934,7 @@ window.showMyPageModal = async function() {
                         <h2 class="text-2xl font-bold flex items-center">
                             <i class="fas fa-book-open mr-3"></i>나의 SSIRN메모장
                         </h2>
-                        <p class="text-blue-100 mt-2 text-sm">나의 수업 내용과 기억할 내용을 기록하세요</p>
+                        <p class="text-blue-100 mt-2 text-sm">무엇이든 남겨 두면 자동 기록 됩니다.</p>
                     </div>
                     <div class="p-6">
                         <div class="flex justify-between items-center mb-6">
@@ -12064,18 +12064,18 @@ async function loadMyPageSSIRN() {
                                         month: '2-digit', 
                                         day: '2-digit' 
                                     });
-                                    const preview = note.content.substring(0, 80) + (note.content.length > 80 ? '...' : '');
+                                    const preview = note.content.substring(0, 100) + (note.content.length > 100 ? '...' : '');
                                     const photoCount = note.photo_urls ? JSON.parse(note.photo_urls).length : 0;
                                     
                                     return `
                                         <tr class="hover:bg-blue-50 cursor-pointer transition-colors" onclick="editInstructorNoteInline(${note.id})">
-                                            <td class="px-6 py-4">
+                                            <td class="px-6 py-3 whitespace-nowrap">
                                                 <i class="fas fa-calendar-alt text-blue-500 mr-2"></i>${formattedDate}
                                             </td>
-                                            <td class="px-6 py-4">
-                                                <div class="line-clamp-2">${preview}</div>
+                                            <td class="px-6 py-3">
+                                                <div class="truncate max-w-2xl">${preview}</div>
                                             </td>
-                                            <td class="px-6 py-4 text-center">
+                                            <td class="px-6 py-3 text-center whitespace-nowrap">
                                                 ${photoCount > 0 ? `<i class="fas fa-image text-green-500"></i> ${photoCount}장` : '-'}
                                             </td>
                                         </tr>
