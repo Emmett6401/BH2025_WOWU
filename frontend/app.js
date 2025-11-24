@@ -12923,10 +12923,13 @@ let currentInstructorNoteId = null;
 let currentInstructorTab = 'notes'; // 기본 탭: SSIRN메모장
 
 async function loadMyProfile() {
+    console.log('🚀 loadMyProfile 함수 시작');
     try {
         window.showLoading('내 정보를 불러오는 중...');
+        console.log('✅ showLoading 호출됨');
         
         const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+        console.log('👤 강사 정보:', instructor);
         
         const app = document.getElementById('app');
     app.innerHTML = `
@@ -13100,35 +13103,53 @@ window.switchInstructorTab = function(tab) {
 };
 
 async function loadInstructorNotes() {
+    console.log('📝 loadInstructorNotes 함수 시작');
     try {
         window.showLoading('메모를 불러오는 중...');
         
         const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+        console.log('🔍 강사 정보:', instructor);
         console.log('🔍 강사 코드:', instructor.code);
         
         const response = await axios.get(`${API_BASE_URL}/api/class-notes`);
         console.log('📦 전체 메모:', response.data.length);
+        console.log('📦 메모 데이터 샘플:', response.data.slice(0, 3));
         
         // 본인의 메모만 필터링 (instructor_code가 본인 code인 것)
-        instructorNotes = response.data.filter(note => note.instructor_code === instructor.code);
-        console.log('✅ 내 메모:', instructorNotes.length);
+        instructorNotes = response.data.filter(note => {
+            console.log(`메모 ${note.id}: instructor_code=${note.instructor_code}, 내 코드=${instructor.code}, 일치=${note.instructor_code === instructor.code}`);
+            return note.instructor_code === instructor.code;
+        });
+        console.log('✅ 내 메모:', instructorNotes.length, instructorNotes);
         
         renderInstructorNotes();
+        console.log('✅ renderInstructorNotes 완료');
         window.hideLoading();
     } catch (error) {
         window.hideLoading();
-        console.error('강사 메모 로드 실패:', error);
+        console.error('❌ 강사 메모 로드 실패:', error);
         await window.showError('메모 목록을 불러오는데 실패했습니다.', '로드 실패');
     }
 }
 
 function renderInstructorNotes() {
+    console.log('🎨 renderInstructorNotes 함수 시작');
     const table = document.getElementById('instructor-notes-table');
     const tbody = document.getElementById('instructor-notes-tbody');
     const empty = document.getElementById('instructor-notes-empty');
     const count = document.getElementById('instructor-notes-count');
     
-    if (!tbody || !empty || !count) return;
+    console.log('📍 DOM 요소 확인:', {
+        table: !!table,
+        tbody: !!tbody,
+        empty: !!empty,
+        count: !!count
+    });
+    
+    if (!tbody || !empty || !count) {
+        console.error('❌ 필수 DOM 요소를 찾을 수 없습니다!');
+        return;
+    }
     
     const searchText = document.getElementById('instructor-note-search')?.value.toLowerCase() || '';
     const dateFilter = document.getElementById('instructor-note-date-filter')?.value || '';
