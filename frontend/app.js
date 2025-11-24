@@ -12695,15 +12695,16 @@ window.editInstructorNoteInline = async function(noteId) {
                                     </label>
                                     <div class="grid grid-cols-2 md:grid-cols-3 gap-3" id="existing-photos-container">
                                         ${photos.map((photo, idx) => `
-                                            <div class="relative group">
+                                            <div class="relative group" data-photo-idx="${idx}">
                                                 <img src="${photo.url}" alt="${photo.name}" 
                                                      class="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition"
-                                                     onclick="previewPhoto('${photo.url}', '${photo.name}')">
+                                                     data-photo-url="${photo.url.replace(/"/g, '&quot;')}" 
+                                                     data-photo-name="${photo.name.replace(/"/g, '&quot;')}">
                                                 <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-1 rounded-b-lg truncate">
                                                     ${photo.name}
                                                 </div>
-                                                <button type="button" onclick="removeExistingPhoto(${idx})"
-                                                        class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                                <button type="button" 
+                                                        class="photo-remove-btn absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
                                                     <i class="fas fa-times text-xs"></i>
                                                 </button>
                                             </div>
@@ -12746,6 +12747,25 @@ window.editInstructorNoteInline = async function(noteId) {
         `;
         
         document.body.insertAdjacentHTML('beforeend', modal);
+        
+        // 사진 클릭 이벤트 추가
+        document.querySelectorAll('#existing-photos-container img[data-photo-url]').forEach(img => {
+            img.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const url = this.getAttribute('data-photo-url');
+                const name = this.getAttribute('data-photo-name');
+                window.previewPhoto(url, name);
+            });
+        });
+        
+        // 사진 삭제 버튼 이벤트 추가
+        document.querySelectorAll('.photo-remove-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const idx = parseInt(this.closest('[data-photo-idx]').getAttribute('data-photo-idx'));
+                window.removeExistingPhoto(idx);
+            });
+        });
     } catch (error) {
         console.error('메모 로드 실패:', error);
         await window.showError('메모를 불러오는데 실패했습니다.', '로드 실패');
