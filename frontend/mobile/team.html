@@ -88,11 +88,47 @@
     <!-- Team Filter -->
     <div class="container mx-auto px-4 py-4">
         <div class="bg-white rounded-xl shadow-md p-4">
-            <label class="block text-xs font-semibold text-gray-600 mb-2">팀 선택</label>
-            <select id="projectFilter" onchange="filterActivities()" 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500">
-                <option value="">전체 팀</option>
-            </select>
+            <!-- Filter Toggle Button -->
+            <button onclick="toggleFilters()" class="w-full flex items-center justify-between bg-gray-100 hover:bg-gray-200 px-4 py-3 rounded-lg transition-all">
+                <span class="font-semibold text-gray-700">
+                    <i class="fas fa-filter mr-2 text-pink-500"></i>필터
+                </span>
+                <i class="fas fa-chevron-down text-gray-500" id="filterToggleIcon"></i>
+            </button>
+            
+            <!-- Filter Options (Hidden by default) -->
+            <div id="filterOptions" class="mt-3 space-y-3 hidden">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-2">과정 선택</label>
+                    <select id="courseFilter" onchange="handleCourseChange()" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500">
+                        <option value="">전체 과정</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-2">팀 선택</label>
+                    <select id="projectFilter" onchange="filterActivities()" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500">
+                        <option value="">전체 팀</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">년도</label>
+                        <select id="yearFilter" onchange="filterActivities()" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500">
+                            <option value="">전체</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">월</label>
+                        <select id="monthFilter" onchange="filterActivities()" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500">
+                            <option value="">전체</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -372,9 +408,11 @@
         let userType = null;
         let allActivities = [];
         let projects = [];
+        let courses = [];
         let instructors = [];
         let selectedPhotos = [];
         let existingPhotoUrls = [];
+        let filtersExpanded = false;
         
         // Convert FTP URL to HTTP proxy URL
         function convertFtpUrl(url) {
@@ -412,15 +450,17 @@
             try {
                 showLoading('데이터 로딩 중...', '팀 및 활동일지 정보를 불러오고 있습니다');
                 
-                const [projectsRes, logsRes, instructorsRes] = await Promise.all([
+                const [projectsRes, logsRes, instructorsRes, coursesRes] = await Promise.all([
                     axios.get(`${API_BASE_URL}/api/projects`),
                     axios.get(`${API_BASE_URL}/api/team-activity-logs`),
-                    axios.get(`${API_BASE_URL}/api/instructors`)
+                    axios.get(`${API_BASE_URL}/api/instructors`),
+                    axios.get(`${API_BASE_URL}/api/courses`)
                 ]);
                 
                 projects = projectsRes.data || [];
                 allActivities = logsRes.data || [];
                 instructors = instructorsRes.data || [];
+                courses = coursesRes.data || [];
                 
                 // Populate filters
                 populateFilters();
@@ -436,17 +476,79 @@
             }
         }
         
+        // Toggle filters
+        function toggleFilters() {
+            const filterOptions = document.getElementById('filterOptions');
+            const filterIcon = document.getElementById('filterToggleIcon');
+            
+            filtersExpanded = !filtersExpanded;
+            
+            if (filtersExpanded) {
+                filterOptions.classList.remove('hidden');
+                filterIcon.classList.remove('fa-chevron-down');
+                filterIcon.classList.add('fa-chevron-up');
+            } else {
+                filterOptions.classList.add('hidden');
+                filterIcon.classList.remove('fa-chevron-up');
+                filterIcon.classList.add('fa-chevron-down');
+            }
+        }
+        
         // Populate filters
         function populateFilters() {
+            const courseFilter = document.getElementById('courseFilter');
             const projectFilter = document.getElementById('projectFilter');
             const projectSelect = document.getElementById('projectSelect');
+            const yearFilter = document.getElementById('yearFilter');
+            const monthFilter = document.getElementById('monthFilter');
             
-            const projectOptions = projects.map(p => 
+            // Course filter - C-001을 기본값으로
+            courseFilter.innerHTML = '<option value="">전체 과정</option>' +
+                courses.map(c => `<option value="${c.code}" ${c.code === 'C-001' ? 'selected' : ''}>${c.name} (${c.code})</option>`).join('');
+            
+            // Project filter - 과정별로 필터링
+            updateProjectFilter();
+            
+            // Modal project select
+            const allProjectOptions = projects.map(p => 
+                `<option value="${p.id}">${p.name} (${p.code})</option>`
+            ).join('');
+            projectSelect.innerHTML = '<option value="">-- 팀 선택 --</option>' + allProjectOptions;
+            
+            // Year filter
+            const currentYear = new Date().getFullYear();
+            yearFilter.innerHTML = '<option value="" selected>전체</option>' +
+                `<option value="${currentYear}">${currentYear}</option>` +
+                `<option value="${currentYear - 1}">${currentYear - 1}</option>`;
+            
+            // Month filter
+            monthFilter.innerHTML = '<option value="" selected>전체</option>' +
+                Array.from({length: 12}, (_, i) => i + 1)
+                    .map(m => `<option value="${m}">${m}월</option>`).join('');
+        }
+        
+        // Handle course change
+        function handleCourseChange() {
+            updateProjectFilter();
+            filterActivities();
+        }
+        
+        // Update project filter based on course
+        function updateProjectFilter() {
+            const courseCode = document.getElementById('courseFilter').value;
+            const projectFilter = document.getElementById('projectFilter');
+            
+            let filteredProjects = projects;
+            if (courseCode) {
+                filteredProjects = projects.filter(p => p.course_code === courseCode);
+            }
+            
+            const projectOptions = filteredProjects.map(p => 
                 `<option value="${p.id}">${p.name} (${p.code})</option>`
             ).join('');
             
             projectFilter.innerHTML = '<option value="">전체 팀</option>' + projectOptions;
-            projectSelect.innerHTML = '<option value="">-- 팀 선택 --</option>' + projectOptions;
+            projectFilter.value = '';
         }
         
         // Filter activities
@@ -644,6 +746,59 @@
                              onclick="showPhotoModal('${convertedUrl}')">
                         <button type="button" onclick="removeExistingPhoto(${index})"
                                 class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            const newHtml = selectedPhotos.map((file, index) => {
+                const url = URL.createObjectURL(file);
+                return `
+                    <div class="relative">
+                        <img src="${url}" 
+                             class="w-full h-20 object-cover rounded-lg cursor-pointer" 
+                             onclick="showPhotoModal('${url}')">
+                        <button type="button" onclick="removeNewPhoto(${index})"
+                                class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = existingHtml + newHtml;
+        }
+
+        // Remove existing photo
+        function removeExistingPhoto(index) {
+            existingPhotoUrls.splice(index, 1);
+            renderPhotoPreview();
+        }
+
+        // Remove new photo
+        function removeNewPhoto(index) {
+            selectedPhotos.splice(index, 1);
+            renderPhotoPreview();
+        }
+
+        // Show photo modal
+        function showPhotoModal(url) {
+            document.getElementById('photoModalImg').src = url;
+            document.getElementById('photoModal').classList.remove('hidden');
+            document.getElementById('photoModal').classList.add('flex');
+        }
+
+        // Close photo modal
+        function closePhotoModal() {
+            document.getElementById('photoModal').classList.add('hidden');
+            document.getElementById('photoModal').classList.remove('flex');
+        }
+        
+        // Handle form submission
+        document.getElementById('activityForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+     ter justify-center text-xs hover:bg-red-600">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>

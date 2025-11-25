@@ -110,6 +110,15 @@
                         <option value="">전체 강사</option>
                     </select>
                 </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">작성 상태</label>
+                    <select id="statusFilter" onchange="filterTimetables()" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
+                        <option value="">전체</option>
+                        <option value="unwritten">미작성만 보기</option>
+                        <option value="written">작성완료만 보기</option>
+                    </select>
+                </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 mb-1">년도</label>
@@ -416,13 +425,13 @@
                 // Populate filters
                 populateFilters();
                 
-                hideLoading();
-                
-                // C-001이 선택되어 있으면 자동으로 필터링
+                // C-001이 선택되어 있으면 자동으로 필터링 (hideLoading은 renderTimetables에서 처리)
                 const courseFilter = document.getElementById('courseFilter');
                 if (courseFilter.value === 'C-001') {
                     await filterTimetables();
+                    hideLoading();
                 } else {
+                    hideLoading();
                     // Show empty state initially
                     document.getElementById('loadingState').classList.add('hidden');
                     document.getElementById('emptyState').classList.remove('hidden');
@@ -489,6 +498,7 @@
         async function filterTimetables() {
             const courseCode = document.getElementById('courseFilter').value;
             const instructorCode = document.getElementById('instructorFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
             const year = document.getElementById('yearFilter').value;
             const month = document.getElementById('monthFilter').value;
             
@@ -512,6 +522,13 @@
                 
                 if (instructorCode) {
                     filtered = filtered.filter(tt => tt.instructor_code === instructorCode);
+                }
+                
+                // Status filter (미작성/작성완료)
+                if (statusFilter === 'unwritten') {
+                    filtered = filtered.filter(tt => !tt.training_log_id);
+                } else if (statusFilter === 'written') {
+                    filtered = filtered.filter(tt => tt.training_log_id);
                 }
                 
                 if (year && month) {
@@ -677,6 +694,24 @@
                     document.getElementById('logId').value = '';
                     document.getElementById('timetableId').value = timetableId;
                     existingPhotoUrls = [];
+                }
+                
+                selectedPhotos = [];
+                renderPhotoPreview();
+                
+                hideLoading();
+                document.getElementById('logModal').classList.remove('hidden');
+                document.getElementById('logModal').classList.add('flex');
+            } catch (error) {
+                console.error('Failed to load log:', error);
+                hideLoading();
+                showToast('데이터 로딩 실패', 'error');
+            }
+        }
+        
+        // Close modal
+        function closeModal() {
+            document.getElementById('logModal            existingPhotoUrls = [];
                 }
                 
                 selectedPhotos = [];
