@@ -123,7 +123,7 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
                         <span><i class="fas fa-edit mr-2 text-green-500"></i>내용</span>
-                        <button type="button" id="voiceBtn" onclick="startVoiceRecognition()" 
+                        <button type="button" id="voiceBtn"
                                 class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-all shadow-md">
                             <i class="fas fa-microphone text-xl"></i>
                         </button>
@@ -403,6 +403,8 @@
         // Voice recognition - 한 번만 초기화
         let recognition = null;
         let isRecognizing = false;
+        let holdTimer = null;
+        let isHoldMode = false;
         
         function initRecognition() {
             if (recognition) return; // 이미 초기화되었으면 재사용
@@ -415,11 +417,11 @@
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
             recognition.lang = 'ko-KR';
-            recognition.continuous = false;
+            recognition.continuous = true; // 길게 누르기 위해 continuous 모드
             recognition.interimResults = false;
         }
 
-        function startVoiceRecognition() {
+        function startVoiceRecognition(isHold = false) {
             initRecognition(); // 음성 인식 초기화 (처음 한 번만)
             
             if (!recognition) return;
@@ -432,28 +434,33 @@
             voiceBtn.classList.add('bg-red-500', 'hover:bg-red-600');
             voiceBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
             isRecognizing = true;
+            isHoldMode = isHold;
 
             recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
+                const transcript = event.results[event.results.length - 1][0].transcript;
                 voiceRecordingCount++;
                 
                 // 번호 매기기로 정리
                 const prefix = textarea.value ? '\n' : '';
                 textarea.value += `${prefix}${voiceRecordingCount}. ${transcript}`;
+                
+                // 클릭 모드(길게 누르기 아님)일 때만 자동 중지
+                if (!isHoldMode) {
+                    stopVoiceRecognition();
+                }
             };
 
             recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
                 isRecognizing = false;
+                resetVoiceButton();
                 if (event.error !== 'no-speech' && event.error !== 'aborted') {
                     showToast('음성 인식 중 오류가 발생했습니다: ' + event.error, 'error');
                 }
             };
 
             recognition.onend = () => {
-                voiceBtn.innerHTML = '<i class="fas fa-microphone text-xl"></i>';
-                voiceBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
-                voiceBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+                resetVoiceButton();
                 isRecognizing = false;
             };
 
@@ -462,8 +469,99 @@
             } catch (error) {
                 console.error('Failed to start recognition:', error);
                 isRecognizing = false;
+                resetVoiceButton();
             }
         }
+        
+        function stopVoiceRecognition() {
+            if (recognition && isRecognizing) {
+                try {
+                    recognition.stop();
+                } catch (error) {
+                    console.error('Failed to stop recognition:', error);
+                }
+            }
+        }
+        
+        function resetVoiceButton() {
+            const voiceBtn = document.getElementById('voiceBtn');
+            voiceBtn.innerHTML = '<i class="fas fa-microphone text-xl"></i>';
+            voiceBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+            voiceBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+        }
+        
+        // 마이크 버튼 이벤트 설정
+        document.addEventListener('DOMContentLoaded', () => {
+            const voiceBtn = document.getElementById('voiceBtn');
+            if (!voiceBtn) return;
+            
+            // 길게 누르기 감지
+            voiceBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                holdTimer = setTimeout(() => {
+                    // 500ms 이상 누르면 길게 누르기 모드
+                    startVoiceRecognition(true);
+                }, 500);
+            });
+            
+            voiceBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                if (holdTimer) {
+                    clearTimeout(holdTimer);
+                    holdTimer = null;
+                }
+                
+                // 길게 누르기 모드였다면 중지
+                if (isHoldMode && isRecognizing) {
+                    stopVoiceRecognition();
+                } else if (!isRecognizing) {
+                    // 짧게 클릭 (길게 누르기가 시작되기 전)
+                    startVoiceRecognition(false);
+                }
+            });
+            
+            voiceBtn.addEventListener('touchcancel', (e) => {
+                if (holdTimer) {
+                    clearTimeout(holdTimer);
+                    holdTimer = null;
+                }
+                if (isHoldMode && isRecognizing) {
+                    stopVoiceRecognition();
+                }
+            });
+            
+            // 데스크톱 지원 (마우스)
+            voiceBtn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                holdTimer = setTimeout(() => {
+                    startVoiceRecognition(true);
+                }, 500);
+            });
+            
+            voiceBtn.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                if (holdTimer) {
+                    clearTimeout(holdTimer);
+                    holdTimer = null;
+                }
+                
+                if (isHoldMode && isRecognizing) {
+                    stopVoiceRecognition();
+                } else if (!isRecognizing) {
+                    startVoiceRecognition(false);
+                }
+            });
+            
+            voiceBtn.addEventListener('mouseleave', (e) => {
+                if (holdTimer) {
+                    clearTimeout(holdTimer);
+                    holdTimer = null;
+                }
+                if (isHoldMode && isRecognizing) {
+                    stopVoiceRecognition();
+                }
+            });
+        });
 
         // Handle media selection (photos and videos)
         function handleMediaSelect(event) {
