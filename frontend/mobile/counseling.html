@@ -517,6 +517,18 @@
 
             await initializeFilters();
             await loadCounselings();
+            
+            // Setup photo thumbnail click handler (event delegation)
+            document.addEventListener('click', function(e) {
+                const thumbnail = e.target.closest('.photo-thumbnail[data-photo-url]');
+                if (thumbnail) {
+                    e.stopPropagation();
+                    const photoUrl = thumbnail.dataset.photoUrl;
+                    if (photoUrl) {
+                        showPhotoModal(photoUrl);
+                    }
+                }
+            });
         }
 
         // Load students (for instructors)
@@ -594,13 +606,11 @@
 
                 const photos = counseling.photo_urls ? JSON.parse(counseling.photo_urls) : [];
                 const photoHtml = photos.length > 0 ? `
-                    <div class="flex space-x-2 mt-3 overflow-x-auto">
-                        ${photos.slice(0, 3).map((url, idx) => `
-                            <img src="${convertFtpUrl(url)}" 
-                                 class="photo-thumbnail cursor-pointer" 
-                                 data-photo-url="${convertFtpUrl(url).replace(/"/g, '&quot;')}"
-                                 onclick="event.stopPropagation(); showPhotoModal(this.dataset.photoUrl)">
-                        `).join('')}
+                    <div class="flex space-x-2 mt-3 overflow-x-auto" data-counseling-id="${counseling.id}">
+                        ${photos.slice(0, 3).map((url, idx) => {
+                            const safeUrl = convertFtpUrl(url).replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/`/g, '&#96;');
+                            return `<img src="${safeUrl}" class="photo-thumbnail cursor-pointer" data-photo-idx="${idx}" data-photo-url="${safeUrl}">`;
+                        }).join('')}
                         ${photos.length > 3 ? `<div class="photo-thumbnail bg-gray-200 flex items-center justify-center text-gray-600 font-semibold">+${photos.length - 3}</div>` : ''}
                     </div>
                 ` : '';
@@ -761,12 +771,13 @@
             
             const existingHtml = existingPhotoUrls.map((url, index) => {
                 const convertedUrl = convertFtpUrl(url);
+                const safeUrl = convertedUrl.replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/`/g, '&#96;');
                 return `
                     <div class="relative">
-                        <img src="${convertedUrl}" 
-                             class="w-full h-20 object-cover rounded-lg cursor-pointer" 
-                             data-photo-url="${convertedUrl.replace(/"/g, '&quot;')}"
-                             onclick="showPhotoModal(this.dataset.photoUrl)">
+                        <img src="${safeUrl}" 
+                             class="w-full h-20 object-cover rounded-lg cursor-pointer photo-thumbnail" 
+                             data-photo-url="${safeUrl}"
+                             data-photo-type="existing">
                         <button type="button" onclick="event.stopPropagation(); removeExistingPhoto(${index})"
                                 class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
                             <i class="fas fa-times"></i>
@@ -780,9 +791,9 @@
                 return `
                     <div class="relative">
                         <img src="${url}" 
-                             class="w-full h-20 object-cover rounded-lg cursor-pointer" 
+                             class="w-full h-20 object-cover rounded-lg cursor-pointer photo-thumbnail" 
                              data-photo-url="${url}"
-                             onclick="showPhotoModal(this.dataset.photoUrl)">
+                             data-photo-type="new">
                         <button type="button" onclick="event.stopPropagation(); removeNewPhoto(${index})"
                                 class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
                             <i class="fas fa-times"></i>
