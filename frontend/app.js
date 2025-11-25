@@ -1403,26 +1403,136 @@ function stopDashboardAutoRefresh() {
     }
 }
 
-// 대시보드 타이머 리셋 (클릭 시)
-function resetDashboardAutoRefresh() {
+// 대시보드 사용자 활동 감지 변수
+let lastActivityTime = Date.now();
+let activityCheckInterval = null;
+let countdownInterval = null;
+
+// 대시보드 타이머 리셋 (사용자 활동 감지 시)
+function resetDashboardAutoRefresh(eventType = '활동') {
     if (currentTab === 'dashboard' && dashboardRefreshInterval) {
-        console.log('👆 클릭 감지 - 자동 새로고침 타이머 리셋');
+        lastActivityTime = Date.now();
+        console.log(`👆 ${eventType} 감지 - 자동 새로고침 타이머 리셋`);
         stopDashboardAutoRefresh();
         startDashboardAutoRefresh();
     }
 }
 
-// 대시보드 클릭 이벤트 리스너 설정
-function setupDashboardClickListener() {
-    // 기존 리스너 제거 (중복 방지)
-    document.removeEventListener('click', resetDashboardAutoRefresh);
-    // 새 리스너 추가
-    document.addEventListener('click', resetDashboardAutoRefresh);
+// 클릭 핸들러
+function handleDashboardClick() {
+    resetDashboardAutoRefresh('클릭');
 }
 
-// 대시보드 클릭 이벤트 리스너 제거
-function removeDashboardClickListener() {
-    document.removeEventListener('click', resetDashboardAutoRefresh);
+// 키보드 핸들러
+function handleDashboardKeydown() {
+    resetDashboardAutoRefresh('키보드');
+}
+
+// 마우스 무브 핸들러 (쓰로틀링 적용 - 3초마다 한 번만)
+let mouseMoveThrottle = null;
+function handleDashboardMouseMove() {
+    if (!mouseMoveThrottle) {
+        resetDashboardAutoRefresh('마우스');
+        mouseMoveThrottle = setTimeout(() => {
+            mouseMoveThrottle = null;
+        }, 3000); // 3초 쓰로틀
+    }
+}
+
+// 남은 시간 업데이트 (헤더에 표시)
+function updateRefreshCountdown() {
+    if (currentTab !== 'dashboard' || !dashboardRefreshTime) {
+        return;
+    }
+    
+    const now = Date.now();
+    const remaining = dashboardRefreshTime - now;
+    
+    if (remaining > 0) {
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        
+        // 헤더의 시간 표시 업데이트
+        const countdownElement = document.getElementById('refresh-countdown');
+        const containerElement = document.getElementById('refreshCountdownContainer');
+        
+        if (countdownElement) {
+            countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // 컨테이너 표시
+        if (containerElement) {
+            containerElement.style.display = 'inline';
+        }
+    }
+}
+
+// 카운트다운 시작
+function startRefreshCountdown() {
+    // 기존 카운트다운 중지
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+    }
+    
+    // 1초마다 업데이트
+    countdownInterval = setInterval(updateRefreshCountdown, 1000);
+    updateRefreshCountdown(); // 즉시 한 번 실행
+}
+
+// 카운트다운 중지
+function stopRefreshCountdown() {
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+    }
+    
+    // 카운트다운 표시 숨김
+    const countdownElement = document.getElementById('refresh-countdown');
+    const containerElement = document.getElementById('refreshCountdownContainer');
+    
+    if (countdownElement) {
+        countdownElement.textContent = '--:--';
+    }
+    
+    if (containerElement) {
+        containerElement.style.display = 'none';
+    }
+}
+
+// 대시보드 활동 이벤트 리스너 설정
+function setupDashboardActivityListeners() {
+    // 기존 리스너 제거 (중복 방지)
+    document.removeEventListener('click', handleDashboardClick);
+    document.removeEventListener('keydown', handleDashboardKeydown);
+    document.removeEventListener('mousemove', handleDashboardMouseMove);
+    
+    // 새 리스너 추가
+    document.addEventListener('click', handleDashboardClick);
+    document.addEventListener('keydown', handleDashboardKeydown);
+    document.addEventListener('mousemove', handleDashboardMouseMove);
+    
+    // 카운트다운 시작
+    startRefreshCountdown();
+    
+    console.log('👀 대시보드 활동 감지 시작 (클릭, 키보드, 마우스)');
+}
+
+// 대시보드 활동 이벤트 리스너 제거
+function removeDashboardActivityListeners() {
+    document.removeEventListener('click', handleDashboardClick);
+    document.removeEventListener('keydown', handleDashboardKeydown);
+    document.removeEventListener('mousemove', handleDashboardMouseMove);
+    
+    // 카운트다운 중지
+    stopRefreshCountdown();
+    
+    // 쓰로틀 타이머 정리
+    if (mouseMoveThrottle) {
+        clearTimeout(mouseMoveThrottle);
+        mouseMoveThrottle = null;
+    }
+    
+    console.log('👀 대시보드 활동 감지 중지');
 }
 
 // ==================== 대시보드 ====================
@@ -2369,98 +2479,98 @@ window.showTab = function(tab, addToHistory = true) {
             
             // 대시보드 자동 새로고침 시작 (5분마다)
             startDashboardAutoRefresh();
-            // 클릭 이벤트 리스너 설정
-            setupDashboardClickListener();
+            // 활동 이벤트 리스너 설정 (클릭, 키보드, 마우스)
+            setupDashboardActivityListeners();
             break;
         case 'instructor-codes':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadInstructorCodes();
             break;
         case 'instructors':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadInstructors();
             break;
         case 'subjects':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadSubjects();
             break;
         case 'holidays':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadHolidays();
             break;
         case 'courses':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadCourses();
             break;
         case 'students':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadStudents();
             break;
         case 'class-notes':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadClassNotes();
             break;
         case 'counselings':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadCounselings();
             break;
         case 'projects':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadProjects();
             break;
         case 'team-activity-logs':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadTeamActivityLogs();
             break;
         case 'timetables':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadTimetables();
             break;
         case 'training-logs':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadTrainingLogs();
             break;
         case 'ai-report':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             renderAIReport();
             break;
         case 'ai-training-log':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadAITrainingLog();
             break;
         case 'ai-counseling':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadAICounseling();
             break;
         case 'system-settings':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadSystemSettings();
             break;
         case 'notices':
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             loadNotices();
             break;
         default:
             // 대시보드가 아닌 모든 탭에서는 자동 새로고침 중지
             stopDashboardAutoRefresh();
-            removeDashboardClickListener();
+            removeDashboardActivityListeners();
             break;
     }
 }
