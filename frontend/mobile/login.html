@@ -6,11 +6,15 @@
     <meta name="description" content="바이오헬스 교육 관리 모바일 앱 로그인">
     <meta name="theme-color" content="#3B82F6">
     
-    <!-- PWA 설정 -->
+    <!-- PWA 설정 - 주소창 숨김 -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="바이오헬스">
+    
+    <!-- Fullscreen mode for PWA -->
+    <meta name="display" content="standalone">
+    <meta name="apple-touch-fullscreen" content="yes">
     
     <title>로그인 - 바이오헬스교육관리시스템</title>
     
@@ -140,6 +144,17 @@
                     <i class="fas fa-sign-in-alt mr-2"></i>로그인
                 </button>
             </form>
+            
+            <!-- 홈화면 추가 버튼 (PWA) -->
+            <div id="installPrompt" class="hidden mt-4">
+                <button onclick="showInstallPrompt()" 
+                        class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all active:scale-95">
+                    <i class="fas fa-plus-circle mr-2"></i>홈화면에 추가
+                </button>
+                <p class="text-xs text-gray-500 text-center mt-2">
+                    <i class="fas fa-mobile-alt mr-1"></i>앱처럼 사용하기
+                </p>
+            </div>
         </div>
         
         <!-- 하단 정보 -->
@@ -159,6 +174,45 @@
     <script>
         // API Base URL (기존 백엔드 사용)
         const API_BASE_URL = window.location.origin.replace('3000', '8000');
+        
+        // PWA 설치 프롬프트
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // 브라우저 기본 설치 프롬프트 방지
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // 홈화면 추가 버튼 표시
+            document.getElementById('installPrompt').classList.remove('hidden');
+            console.log('📱 PWA 설치 가능');
+        });
+        
+        function showInstallPrompt() {
+            if (!deferredPrompt) {
+                // iOS Safari or already installed
+                if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
+                    showAlert('Safari 브라우저에서:\n1. 공유 버튼 탭\n2. "홈 화면에 추가" 선택', 'info');
+                } else {
+                    showAlert('이미 홈화면에 추가되었거나 지원하지 않는 브라우저입니다.', 'info');
+                }
+                return;
+            }
+            
+            // 설치 프롬프트 표시
+            deferredPrompt.prompt();
+            
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('✅ PWA 설치 승인');
+                    showAlert('홈화면에 추가되었습니다!', 'success');
+                    document.getElementById('installPrompt').classList.add('hidden');
+                } else {
+                    console.log('❌ PWA 설치 거부');
+                }
+                deferredPrompt = null;
+            });
+        }
         
         // 비밀번호 표시/숨김
         function togglePassword() {
