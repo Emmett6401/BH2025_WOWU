@@ -595,23 +595,44 @@
             // Sort by date
             timetables.sort((a, b) => new Date(a.class_date) - new Date(b.class_date));
             
-            container.innerHTML = timetables.map(tt => {
+            const today = new Date().toISOString().split('T')[0];
+            let todayCardId = null;
+            
+            container.innerHTML = timetables.map((tt, index) => {
                 const hasLog = tt.training_log_id != null;
                 const duration = calculateDuration(tt.start_time, tt.end_time);
                 const instructor = instructors.find(i => i.code === tt.instructor_code);
+                const isFuture = tt.class_date > today;
+                const isToday = tt.class_date === today;
+                
+                if (isToday && !todayCardId) {
+                    todayCardId = `timetable-card-${index}`;
+                }
                 
                 return `
-                    <div class="timetable-card bg-white rounded-xl shadow-md p-4 ${hasLog ? 'border-2 border-green-500' : ''}"
-                         onclick="showLogModal(${tt.id}, ${hasLog})">
+                    <div id="timetable-card-${index}" 
+                         class="timetable-card bg-white rounded-xl shadow-md p-4 ${hasLog ? 'border-2 border-green-500' : ''} ${isFuture ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}"
+                         ${isFuture ? '' : `onclick="showLogModal(${tt.id}, ${hasLog})"`}>
                         <div class="flex items-start justify-between mb-3">
                             <div class="flex-1">
                                 <div class="flex items-center mb-2">
-                                    <span class="px-2 py-1 rounded-full text-xs font-semibold ${hasLog ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}">
-                                        ${hasLog ? '작성완료' : '미작성'}
-                                    </span>
+                                    ${isFuture ? `
+                                        <span class="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">
+                                            <i class="fas fa-lock mr-1"></i>미래 날짜
+                                        </span>
+                                    ` : `
+                                        <span class="px-2 py-1 rounded-full text-xs font-semibold ${hasLog ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}">
+                                            ${hasLog ? '작성완료' : '미작성'}
+                                        </span>
+                                    `}
                                     ${tt.photo_urls && JSON.parse(tt.photo_urls || '[]').length > 0 ? `
                                         <span class="ml-2 px-2 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
                                             <i class="fas fa-camera mr-1"></i>${JSON.parse(tt.photo_urls).length}
+                                        </span>
+                                    ` : ''}
+                                    ${isToday ? `
+                                        <span class="ml-2 px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                                            <i class="fas fa-star mr-1"></i>오늘
                                         </span>
                                     ` : ''}
                                 </div>
@@ -637,6 +658,16 @@
                     </div>
                 `;
             }).join('');
+            
+            // Scroll to today's card
+            if (todayCardId) {
+                setTimeout(() => {
+                    const todayCard = document.getElementById(todayCardId);
+                    if (todayCard) {
+                        todayCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            }
         }
         
         // Show log modal
@@ -648,6 +679,14 @@
                 if (!tt) {
                     hideLoading();
                     showToast('시간표를 찾을 수 없습니다', 'error');
+                    return;
+                }
+                
+                // 미래 날짜 체크
+                const today = new Date().toISOString().split('T')[0];
+                if (tt.class_date > today) {
+                    hideLoading();
+                    showToast('미래 날짜는 작성할 수 없습니다', 'warning');
                     return;
                 }
                 
