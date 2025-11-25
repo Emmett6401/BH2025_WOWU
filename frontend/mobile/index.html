@@ -2,8 +2,27 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="description" content="바이오헬스 교육 관리 모바일 앱">
+    <meta name="theme-color" content="#3B82F6">
+    
+    <!-- PWA 설정 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="바이오헬스">
+    
     <title>바이오헬스교육관리 - 모바일</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/mobile/manifest.json">
+    
+    <!-- Favicon and Icons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/mobile/icon-180x180.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/mobile/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/mobile/icon-512x512.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
@@ -1089,6 +1108,45 @@
                 switchPage('menu');
             });
         });
+    </script>
+    
+    <!-- PWA Service Worker 등록 -->
+    <script>
+        // Service Worker 등록 (PWA)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/mobile/sw.js')
+                    .then((registration) => {
+                        console.log('✅ Service Worker registered:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.error('❌ Service Worker registration failed:', error);
+                    });
+            });
+        }
+        
+        // 홈 화면 추가 안내 (iOS)
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('💾 Install prompt available');
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // 설치 안내 표시 (선택사항)
+            // showInstallPromotion();
+        });
+        
+        // 설치 완료 감지
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA installed successfully');
+            deferredPrompt = null;
+        });
+        
+        // Standalone 모드 감지
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            console.log('📱 Running in standalone mode (PWA)');
+            document.body.classList.add('standalone-mode');
+        }
     </script>
 </body>
 </html>
