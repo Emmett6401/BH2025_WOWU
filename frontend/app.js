@@ -905,6 +905,9 @@ let instructorTypes = []; // 강사구분 목록
 let counselings = [];
 let courses = [];
 
+// 자동 새로고침 타이머
+let dashboardRefreshInterval = null;
+
 // 페이지네이션 상태
 let pagination = {
     timetables: { currentPage: 1, itemsPerPage: 50, totalItems: 0 },
@@ -1262,6 +1265,52 @@ window.hideLoading = function() {
         progressEl.style.width = '0%';
     }, 300);
 };
+
+// ==================== 화면보호기 (자동 새로고침용) ====================
+function showScreensaver() {
+    const screensaver = document.getElementById('screensaver');
+    if (screensaver) {
+        screensaver.classList.remove('hidden');
+        console.log('🌙 화면보호기 표시');
+    }
+}
+
+function hideScreensaver() {
+    const screensaver = document.getElementById('screensaver');
+    if (screensaver) {
+        screensaver.classList.add('hidden');
+        console.log('☀️ 화면보호기 숨김');
+    }
+}
+
+// ==================== 대시보드 자동 새로고침 ====================
+function startDashboardAutoRefresh() {
+    // 기존 타이머 제거
+    if (dashboardRefreshInterval) {
+        clearInterval(dashboardRefreshInterval);
+        dashboardRefreshInterval = null;
+    }
+    
+    console.log('⏰ 대시보드 자동 새로고침 시작 (5분 간격)');
+    
+    // 5분마다 새로고침
+    dashboardRefreshInterval = setInterval(async () => {
+        if (currentTab === 'dashboard') {
+            console.log('🔄 자동 새로고침 실행...');
+            showScreensaver();
+            await loadDashboard();
+            hideScreensaver();
+        }
+    }, 300000); // 5분 = 300,000ms
+}
+
+function stopDashboardAutoRefresh() {
+    if (dashboardRefreshInterval) {
+        clearInterval(dashboardRefreshInterval);
+        dashboardRefreshInterval = null;
+        console.log('⏰ 대시보드 자동 새로고침 중지');
+    }
+}
 
 // ==================== 대시보드 ====================
 async function loadDashboard() {
@@ -2201,57 +2250,81 @@ window.showTab = function(tab, addToHistory = true) {
             localStorage.removeItem('cache_training-logs');
             localStorage.removeItem('cache_team-activity-logs');
             loadDashboard();
+            
+            // 대시보드 자동 새로고침 시작 (5분마다)
+            startDashboardAutoRefresh();
             break;
         case 'instructor-codes':
+            stopDashboardAutoRefresh();
             loadInstructorCodes();
             break;
         case 'instructors':
+            stopDashboardAutoRefresh();
             loadInstructors();
             break;
         case 'subjects':
+            stopDashboardAutoRefresh();
             loadSubjects();
             break;
         case 'holidays':
+            stopDashboardAutoRefresh();
             loadHolidays();
             break;
         case 'courses':
+            stopDashboardAutoRefresh();
             loadCourses();
             break;
         case 'students':
+            stopDashboardAutoRefresh();
             loadStudents();
             break;
         case 'class-notes':
+            stopDashboardAutoRefresh();
             loadClassNotes();
             break;
         case 'counselings':
+            stopDashboardAutoRefresh();
             loadCounselings();
             break;
         case 'projects':
+            stopDashboardAutoRefresh();
             loadProjects();
             break;
         case 'team-activity-logs':
+            stopDashboardAutoRefresh();
             loadTeamActivityLogs();
             break;
         case 'timetables':
+            stopDashboardAutoRefresh();
             loadTimetables();
             break;
         case 'training-logs':
+            stopDashboardAutoRefresh();
             loadTrainingLogs();
             break;
         case 'ai-report':
+            stopDashboardAutoRefresh();
             renderAIReport();
             break;
         case 'ai-training-log':
+            stopDashboardAutoRefresh();
             loadAITrainingLog();
             break;
         case 'ai-counseling':
+            stopDashboardAutoRefresh();
             loadAICounseling();
             break;
         case 'system-settings':
+            stopDashboardAutoRefresh();
             loadSystemSettings();
             break;
         case 'notices':
+            stopDashboardAutoRefresh();
             loadNotices();
+            break;
+        default:
+            // 대시보드가 아닌 모든 탭에서는 자동 새로고침 중지
+            stopDashboardAutoRefresh();
             break;
     }
 }
