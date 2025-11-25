@@ -204,6 +204,14 @@
         let selectedPhotos = [];
         let existingPhotoUrls = [];
         let students = [];
+        
+        // Convert FTP URL to HTTP proxy URL
+        function convertFtpUrl(url) {
+            if (url && url.startsWith('ftp://')) {
+                return `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
+            }
+            return url;
+        }
 
         // Initialize
         async function init() {
@@ -299,7 +307,7 @@
                 const photoHtml = photos.length > 0 ? `
                     <div class="flex space-x-2 mt-3 overflow-x-auto">
                         ${photos.slice(0, 3).map(url => `
-                            <img src="${url}" class="photo-thumbnail cursor-pointer" onclick="showPhotoModal('${url}')">
+                            <img src="${convertFtpUrl(url)}" class="photo-thumbnail cursor-pointer" onclick="showPhotoModal('${convertFtpUrl(url)}')">
                         `).join('')}
                         ${photos.length > 3 ? `<div class="photo-thumbnail bg-gray-200 flex items-center justify-center text-gray-600 font-semibold">+${photos.length - 3}</div>` : ''}
                     </div>

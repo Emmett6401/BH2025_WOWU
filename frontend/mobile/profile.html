@@ -265,8 +265,13 @@
                 }
 
                 // Load profile photo (다양한 필드 체크)
-                const photoUrl = data.photo_url || data.profile_photo || null;
+                let photoUrl = data.photo_url || data.profile_photo || null;
                 if (photoUrl) {
+                    // FTP URL을 HTTP 프록시로 변환
+                    if (photoUrl.startsWith('ftp://')) {
+                        photoUrl = `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(photoUrl)}`;
+                    }
+                    
                     // 이미지 로드 테스트
                     const img = new Image();
                     img.onload = () => {
@@ -286,17 +291,25 @@
             }
         }
 
+        // Convert FTP URL to HTTP proxy URL
+        function convertFtpUrl(url) {
+            if (url && url.startsWith('ftp://')) {
+                return `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
+            }
+            return url;
+        }
+        
         // Load attachments
         function loadAttachments(data) {
             const attachmentsList = document.getElementById('attachmentsList');
             const attachments = [];
             
             // 프로필 사진
-            const photoUrl = data.photo_url || data.profile_photo || null;
+            let photoUrl = data.photo_url || data.profile_photo || null;
             if (photoUrl) {
                 attachments.push({ 
                     type: 'image', 
-                    url: photoUrl, 
+                    url: convertFtpUrl(photoUrl), 
                     name: '프로필 사진',
                     icon: 'fa-user-circle',
                     index: -1,
@@ -316,7 +329,7 @@
                             
                             attachments.push({
                                 type: isImage ? 'image' : 'file',
-                                url: url,
+                                url: convertFtpUrl(url),
                                 name: fileName.length > 30 ? fileName.substring(0, 27) + '...' : fileName,
                                 icon: isImage ? 'fa-image' : 'fa-file',
                                 index: index,
@@ -368,12 +381,23 @@
             const downloadLink = document.getElementById('attachmentDownloadLink');
             const title = document.getElementById('attachmentModalTitle');
             
-            // 파일명 추출
-            const fileName = url.split('/').pop().split('?')[0];
+            // 파일명 추출 (URL에서 원본 파일명 가져오기)
+            let fileName = 'Unknown File';
+            try {
+                if (url.includes('proxy-image?url=')) {
+                    const originalUrl = decodeURIComponent(url.split('proxy-image?url=')[1]);
+                    fileName = originalUrl.split('/').pop().split('?')[0];
+                } else {
+                    fileName = url.split('/').pop().split('?')[0];
+                }
+            } catch (e) {
+                console.error('Failed to extract filename:', e);
+            }
+            
             const ext = fileName.split('.').pop().toLowerCase();
             const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
             
-            title.textContent = fileName;
+            title.textContent = fileName.length > 50 ? fileName.substring(0, 47) + '...' : fileName;
             
             if (isImage) {
                 img.src = url;
