@@ -1285,7 +1285,7 @@ function updateClock() {
     
     const clockElement = document.getElementById('currentDateTime');
     if (clockElement) {
-        clockElement.innerHTML = `<i class="fas fa-calendar-day mr-2"></i>${dateTimeStr}`;
+        clockElement.innerHTML = `<i class="fas fa-calendar-day mr-1"></i>${dateTimeStr}`;
     }
 }
 
@@ -1293,7 +1293,7 @@ function updateCountdown() {
     const countdownElement = document.getElementById('refreshCountdown');
     if (!countdownElement || !dashboardRefreshTime) {
         if (countdownElement) {
-            countdownElement.innerHTML = '<i class="fas fa-sync-alt mr-1"></i>새로고침: --:--';
+            countdownElement.innerHTML = '<i class="fas fa-sync-alt mr-1"></i>--:--';
         }
         return;
     }
@@ -1302,14 +1302,14 @@ function updateCountdown() {
     const remaining = dashboardRefreshTime - now;
     
     if (remaining <= 0) {
-        countdownElement.innerHTML = '<i class="fas fa-sync-alt mr-1 animate-spin"></i>새로고침 중...';
+        countdownElement.innerHTML = '<i class="fas fa-sync-alt mr-1 animate-spin"></i>로딩...';
         return;
     }
     
     const minutes = Math.floor(remaining / 60000);
     const seconds = Math.floor((remaining % 60000) / 1000);
     
-    countdownElement.innerHTML = `<i class="fas fa-sync-alt mr-1"></i>새로고침: ${minutes}:${String(seconds).padStart(2, '0')}`;
+    countdownElement.innerHTML = `<i class="fas fa-sync-alt mr-1"></i>${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 function startClock() {
