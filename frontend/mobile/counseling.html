@@ -114,7 +114,7 @@
             <!-- Course Filter -->
             <div>
                 <label class="block text-xs font-semibold text-gray-600 mb-1">훈련과정</label>
-                <select id="filterCourse" onchange="updateStudentsByCourse(); filterCounselings();"
+                <select id="filterCourse" onchange="handleCourseChange();"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                     <option value="">전체 과정</option>
                 </select>
@@ -123,7 +123,7 @@
             <!-- Student Filter -->
             <div>
                 <label class="block text-xs font-semibold text-gray-600 mb-1">학생</label>
-                <select id="filterStudent" onchange="filterCounselings();"
+                <select id="filterStudent" onchange="applyFilters();"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                     <option value="">전체 학생</option>
                 </select>
@@ -132,7 +132,7 @@
             <!-- Instructor Filter -->
             <div>
                 <label class="block text-xs font-semibold text-gray-600 mb-1">강사</label>
-                <select id="filterInstructor" onchange="filterCounselings();"
+                <select id="filterInstructor" onchange="applyFilters();"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                     <option value="">전체 강사</option>
                 </select>
@@ -141,7 +141,7 @@
             <!-- Sort Filter -->
             <div>
                 <label class="block text-xs font-semibold text-gray-600 mb-1">정렬</label>
-                <select id="filterSort" onchange="filterCounselings();"
+                <select id="filterSort" onchange="applyFilters();"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                     <option value="date-desc">최신순</option>
                     <option value="date-asc">오래된순</option>
@@ -179,12 +179,12 @@
             <div class="grid grid-cols-2 gap-2">
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1">시작일</label>
-                    <input type="date" id="filterStartDate" onchange="filterCounselings();"
+                    <input type="date" id="filterStartDate" onchange="applyFilters();"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1">종료일</label>
-                    <input type="date" id="filterEndDate" onchange="filterCounselings();"
+                    <input type="date" id="filterEndDate" onchange="applyFilters();"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                 </div>
             </div>
@@ -553,7 +553,9 @@
                 }
 
                 allCounselings = response.data || [];
-                renderCounselings(allCounselings);
+                // Sort by date descending (최신순) by default
+                allCounselings.sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date));
+                applyFilters();
                 hideLoading();
             } catch (error) {
                 console.error('Failed to load counselings:', error);
@@ -574,14 +576,6 @@
             }
 
             emptyState.classList.add('hidden');
-            
-            // Sort by date descending (최신순) - 기본값
-            const sortType = document.getElementById('filterSort').value;
-            if (sortType === 'date-desc') {
-                counselings.sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date));
-            } else if (sortType === 'date-asc') {
-                counselings.sort((a, b) => new Date(a.consultation_date) - new Date(b.consultation_date));
-            }
 
             container.innerHTML = counselings.map(counseling => {
                 const statusColors = {
@@ -654,18 +648,14 @@
             // Update tab styles
             document.querySelectorAll('.status-tab').forEach(tab => {
                 if (tab.dataset.status === status) {
-                    tab.className = 'status-tab px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-orange-500 text-white shadow-md transition-all';
+                    tab.className = 'status-tab px-4 py-2 rounded-lg font-semibold whitespace-nowrap bg-orange-500 text-white shadow transition-all';
                 } else {
-                    tab.className = 'status-tab px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all';
+                    tab.className = 'status-tab px-4 py-2 rounded-lg font-semibold whitespace-nowrap bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all';
                 }
             });
 
-            if (status === 'all') {
-                renderCounselings(allCounselings);
-            } else {
-                const filtered = allCounselings.filter(c => c.status === status);
-                renderCounselings(filtered);
-            }
+            // Apply all filters including status
+            applyFilters();
         }
 
         // Show create modal
@@ -1011,8 +1001,8 @@
             }
         }
 
-        // Update students by course
-        function updateStudentsByCourse() {
+        // Handle course change
+        function handleCourseChange() {
             const courseCode = document.getElementById('filterCourse').value;
             const studentSelect = document.getElementById('filterStudent');
             
@@ -1026,10 +1016,16 @@
                 studentSelect.innerHTML = '<option value="">전체 학생</option>' +
                     filteredStudents.map(s => `<option value="${s.id}">${s.name} (${s.major || '-'})</option>`).join('');
             }
+            
+            // Reset student selection
+            studentSelect.value = '';
+            
+            // Apply filters
+            applyFilters();
         }
 
-        // Filter counselings
-        async function filterCounselings() {
+        // Apply filters (client-side only, no API call)
+        function applyFilters() {
             const courseCode = document.getElementById('filterCourse').value;
             const studentId = document.getElementById('filterStudent').value;
             const instructorCode = document.getElementById('filterInstructor').value;
@@ -1037,57 +1033,39 @@
             const endDate = document.getElementById('filterEndDate').value;
             const sortType = document.getElementById('filterSort').value;
             
-            try {
-                showLoading("필터링 중...", "");
-                
-                // Load all counselings first
-                let url = `${API_BASE_URL}/api/counselings?`;
-                if (userType === 'instructor') {
-                    url += `instructor_code=${currentUser.code}&`;
-                } else {
-                    url += `student_id=${currentUser.id}&`;
-                }
-                
-                const response = await axios.get(url);
-                let filtered = response.data || [];
-                
-                // Frontend filtering
-                if (studentId) {
-                    filtered = filtered.filter(c => c.student_id == studentId);
-                }
-                if (courseCode) {
-                    filtered = filtered.filter(c => c.course_code === courseCode);
-                }
-                if (instructorCode) {
-                    filtered = filtered.filter(c => c.instructor_code === instructorCode);
-                }
-                if (startDate) {
-                    filtered = filtered.filter(c => c.consultation_date >= startDate);
-                }
-                if (endDate) {
-                    filtered = filtered.filter(c => c.consultation_date <= endDate);
-                }
-                
-                // Apply status filter if set
-                if (currentFilter !== 'all') {
-                    filtered = filtered.filter(c => c.status === currentFilter);
-                }
-                
-                // Sorting
-                if (sortType === 'date-desc') {
-                    filtered.sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date));
-                } else if (sortType === 'date-asc') {
-                    filtered.sort((a, b) => new Date(a.consultation_date) - new Date(b.consultation_date));
-                }
-                
-                allCounselings = filtered;
-                renderCounselings(filtered);
-                hideLoading();
-            } catch (error) {
-                console.error('Filter error:', error);
-                hideLoading();
-                showToast('필터링 중 오류가 발생했습니다', 'error');
+            // Start with all counselings
+            let filtered = [...allCounselings];
+            
+            // Frontend filtering
+            if (studentId) {
+                filtered = filtered.filter(c => c.student_id == studentId);
             }
+            if (courseCode) {
+                filtered = filtered.filter(c => c.course_code === courseCode);
+            }
+            if (instructorCode) {
+                filtered = filtered.filter(c => c.instructor_code === instructorCode);
+            }
+            if (startDate) {
+                filtered = filtered.filter(c => c.consultation_date >= startDate);
+            }
+            if (endDate) {
+                filtered = filtered.filter(c => c.consultation_date <= endDate);
+            }
+            
+            // Apply status filter if set
+            if (currentFilter !== 'all') {
+                filtered = filtered.filter(c => c.status === currentFilter);
+            }
+            
+            // Sorting
+            if (sortType === 'date-desc') {
+                filtered.sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date));
+            } else if (sortType === 'date-asc') {
+                filtered.sort((a, b) => new Date(a.consultation_date) - new Date(b.consultation_date));
+            }
+            
+            renderCounselings(filtered);
         }
 
         // Refresh data for pull-to-refresh
