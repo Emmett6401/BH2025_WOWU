@@ -62,6 +62,41 @@
         }
     </style>
     
+    <!-- 디바이스 감지 및 리다이렉션 (최우선 실행) -->
+    <script>
+        (function() {
+            // 모바일 디바이스 감지 함수
+            function isMobileDevice() {
+                // 1. User Agent 체크
+                const ua = navigator.userAgent || navigator.vendor || window.opera;
+                const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
+                
+                // 2. 화면 크기 체크 (768px 이하)
+                const isSmallScreen = window.innerWidth <= 768;
+                
+                // 3. 터치 스크린 체크
+                const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+                
+                // User Agent가 모바일이거나, 작은 화면 + 터치인 경우
+                return mobileRegex.test(ua) || (isSmallScreen && isTouchDevice);
+            }
+            
+            // 이미 모바일 페이지에 있는지 체크 (무한 루프 방지)
+            const currentPath = window.location.pathname;
+            const isAlreadyOnMobile = currentPath.includes('/mobile/');
+            const isLoginPage = currentPath.includes('/login.html');
+            
+            // 모바일 디바이스이고, 아직 모바일 페이지가 아니고, 로그인 페이지도 아닌 경우
+            if (isMobileDevice() && !isAlreadyOnMobile && !isLoginPage) {
+                console.log('📱 모바일 디바이스 감지 - 모바일 로그인 페이지로 리다이렉트');
+                window.location.replace('/mobile/login.html');
+                return; // 이후 코드 실행 중단
+            }
+            
+            console.log('💻 데스크탑 디바이스 - 데스크탑 페이지 로드');
+        })();
+    </script>
+    
     <!-- 로그인 체크 (즉시 실행) - sessionStorage 사용 (브라우저 닫으면 세션 삭제) -->
     <script>
         (function() {
