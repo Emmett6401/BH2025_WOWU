@@ -412,6 +412,7 @@
         // Load initial data
         async function loadInitialData() {
             try {
+                console.log('[DEBUG] loadInitialData START');
                 showLoading('데이터 로딩 중...', '과정 및 강사 정보를 불러오고 있습니다');
                 
                 const [coursesRes, instructorsRes] = await Promise.all([
@@ -421,13 +422,18 @@
                 
                 courses = coursesRes.data || [];
                 instructors = instructorsRes.data || [];
+                console.log('[DEBUG] Loaded courses:', courses.length, 'instructors:', instructors.length);
                 
                 // Populate filters
+                console.log('[DEBUG] Calling populateFilters');
                 populateFilters();
                 
-                // C-001이 선택되어 있으면 자동으로 필터링 (hideLoading은 renderTimetables에서 처리)
+                // C-001이 선택되어 있으면 자동으로 필터링
                 const courseFilter = document.getElementById('courseFilter');
+                console.log('[DEBUG] courseFilter.value after populate:', courseFilter.value);
+                
                 if (courseFilter.value === 'C-001') {
+                    console.log('[DEBUG] Calling filterTimetables from loadInitialData');
                     await filterTimetables();
                     hideLoading();
                 } else {
@@ -436,6 +442,7 @@
                     document.getElementById('loadingState').classList.add('hidden');
                     document.getElementById('emptyState').classList.remove('hidden');
                 }
+                console.log('[DEBUG] loadInitialData END');
             } catch (error) {
                 console.error('Failed to load initial data:', error);
                 hideLoading();
@@ -463,6 +470,7 @@
         
         // Populate filters
         function populateFilters() {
+            console.log('[DEBUG] populateFilters START');
             const courseFilter = document.getElementById('courseFilter');
             const instructorFilter = document.getElementById('instructorFilter');
             const yearFilter = document.getElementById('yearFilter');
@@ -472,8 +480,10 @@
             courseFilter.innerHTML = '<option value="">-- 과정 선택 --</option>' +
                 courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
             
+            console.log('[DEBUG] Setting courseFilter.value to C-001');
             // C-001을 기본값으로 설정 (.value로 직접 설정하면 onchange 트리거 안됨)
             courseFilter.value = 'C-001';
+            console.log('[DEBUG] courseFilter.value set to:', courseFilter.value);
             
             // Instructor filter - 이름-역할-전공 형식
             instructorFilter.innerHTML = '<option value="">전체 강사</option>' +
@@ -503,14 +513,16 @@
         async function filterTimetables() {
             // 이미 실행 중이면 무시 (무한루프 방지)
             if (isFiltering) {
-                console.log('filterTimetables already running, skipping...');
+                console.log('[DEBUG] filterTimetables already running, skipping...');
                 return;
             }
             
+            console.log('[DEBUG] filterTimetables START');
             isFiltering = true;
             
             try {
                 const courseCode = document.getElementById('courseFilter').value;
+                console.log('[DEBUG] courseCode:', courseCode);
                 const instructorCode = document.getElementById('instructorFilter').value;
                 const statusFilter = document.getElementById('statusFilter').value;
                 const year = document.getElementById('yearFilter').value;
@@ -562,7 +574,9 @@
                     });
                 }
                 
+                console.log('[DEBUG] Calling renderTimetables with', filtered.length, 'items');
                 renderTimetables(filtered);
+                console.log('[DEBUG] filterTimetables END');
             } catch (error) {
                 console.error('Failed to load timetables:', error);
                 document.getElementById('loadingState').classList.add('hidden');
@@ -570,6 +584,7 @@
             } finally {
                 // 플래그 해제 (무한루프 방지)
                 isFiltering = false;
+                console.log('[DEBUG] isFiltering flag released');
             }
         }
         

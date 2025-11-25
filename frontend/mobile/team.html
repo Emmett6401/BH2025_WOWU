@@ -500,9 +500,12 @@
             const yearFilter = document.getElementById('yearFilter');
             const monthFilter = document.getElementById('monthFilter');
             
-            // Course filter - C-001을 기본값으로
+            // Course filter - selected 속성 사용하지 않음 (onchange 트리거 방지)
             courseFilter.innerHTML = '<option value="">전체 과정</option>' +
-                courses.map(c => `<option value="${c.code}" ${c.code === 'C-001' ? 'selected' : ''}>${c.name} (${c.code})</option>`).join('');
+                courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
+            
+            // C-001을 기본값으로 설정 (.value로 직접 설정하면 onchange 트리거 안됨)
+            courseFilter.value = 'C-001';
             
             // Project filter - 과정별로 필터링
             updateProjectFilter();
@@ -515,14 +518,16 @@
             
             // Year filter
             const currentYear = new Date().getFullYear();
-            yearFilter.innerHTML = '<option value="" selected>전체</option>' +
+            yearFilter.innerHTML = '<option value="">전체</option>' +
                 `<option value="${currentYear}">${currentYear}</option>` +
                 `<option value="${currentYear - 1}">${currentYear - 1}</option>`;
+            yearFilter.value = ''; // 전체 선택
             
             // Month filter
-            monthFilter.innerHTML = '<option value="" selected>전체</option>' +
+            monthFilter.innerHTML = '<option value="">전체</option>' +
                 Array.from({length: 12}, (_, i) => i + 1)
                     .map(m => `<option value="${m}">${m}월</option>`).join('');
+            monthFilter.value = ''; // 전체 선택
         }
         
         // Handle course change
