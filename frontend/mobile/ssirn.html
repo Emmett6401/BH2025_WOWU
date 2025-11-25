@@ -734,7 +734,7 @@
                     const formData = new FormData();
                     formData.append('file', file, file.name);
 
-                    axios.post(`${API_BASE_URL}/api/upload-image`, formData, {
+                    axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
                         headers: { 'Content-Type': 'multipart/form-data' }
                     })
                     .then(response => resolve(response.data.url))
@@ -775,7 +775,7 @@
                                     const formData = new FormData();
                                     formData.append('file', blob, file.name);
 
-                                    const response = await axios.post(`${API_BASE_URL}/api/upload-image`, formData, {
+                                    const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
                                         headers: { 'Content-Type': 'multipart/form-data' }
                                     });
 
