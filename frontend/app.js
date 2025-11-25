@@ -907,6 +907,9 @@ let courses = [];
 
 // 자동 새로고침 타이머
 let dashboardRefreshInterval = null;
+let dashboardRefreshTime = null; // 다음 새로고침 시간
+let clockInterval = null; // 시계 업데이트 인터벌
+let countdownInterval = null; // 카운트다운 인터벌
 
 // 페이지네이션 상태
 let pagination = {
@@ -1266,6 +1269,74 @@ window.hideLoading = function() {
     }, 300);
 };
 
+// ==================== 시계 및 카운트다운 ====================
+function updateClock() {
+    const now = new Date();
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const date = String(now.getDate()).padStart(2, '0');
+    const dayOfWeek = days[now.getDay()];
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    
+    const dateTimeStr = `${year}.${month}.${date} (${dayOfWeek}) ${hours}:${minutes}:${seconds}`;
+    
+    const clockElement = document.getElementById('currentDateTime');
+    if (clockElement) {
+        clockElement.innerHTML = `<i class="fas fa-calendar-day mr-2"></i>${dateTimeStr}`;
+    }
+}
+
+function updateCountdown() {
+    const countdownElement = document.getElementById('refreshCountdown');
+    if (!countdownElement || !dashboardRefreshTime) {
+        if (countdownElement) {
+            countdownElement.innerHTML = '<i class="fas fa-sync-alt mr-1"></i>새로고침: --:--';
+        }
+        return;
+    }
+    
+    const now = Date.now();
+    const remaining = dashboardRefreshTime - now;
+    
+    if (remaining <= 0) {
+        countdownElement.innerHTML = '<i class="fas fa-sync-alt mr-1 animate-spin"></i>새로고침 중...';
+        return;
+    }
+    
+    const minutes = Math.floor(remaining / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+    
+    countdownElement.innerHTML = `<i class="fas fa-sync-alt mr-1"></i>새로고침: ${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function startClock() {
+    // 기존 인터벌 제거
+    if (clockInterval) clearInterval(clockInterval);
+    if (countdownInterval) clearInterval(countdownInterval);
+    
+    // 즉시 업데이트
+    updateClock();
+    updateCountdown();
+    
+    // 1초마다 업데이트
+    clockInterval = setInterval(updateClock, 1000);
+    countdownInterval = setInterval(updateCountdown, 1000);
+}
+
+function stopClock() {
+    if (clockInterval) {
+        clearInterval(clockInterval);
+        clockInterval = null;
+    }
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+    }
+}
+
 // ==================== 화면보호기 (자동 새로고침용) ====================
 function showScreensaver() {
     const screensaver = document.getElementById('screensaver');
@@ -1293,6 +1364,9 @@ function startDashboardAutoRefresh() {
     
     console.log('⏰ 대시보드 자동 새로고침 시작 (5분 간격)');
     
+    // 다음 새로고침 시간 설정 (5분 후)
+    dashboardRefreshTime = Date.now() + 300000; // 5분 = 300,000ms
+    
     // 5분마다 새로고침
     dashboardRefreshInterval = setInterval(async () => {
         if (currentTab === 'dashboard') {
@@ -1300,6 +1374,9 @@ function startDashboardAutoRefresh() {
             showScreensaver();
             await loadDashboard();
             hideScreensaver();
+            
+            // 다음 새로고침 시간 재설정
+            dashboardRefreshTime = Date.now() + 300000;
         }
     }, 300000); // 5분 = 300,000ms
 }
@@ -1308,6 +1385,7 @@ function stopDashboardAutoRefresh() {
     if (dashboardRefreshInterval) {
         clearInterval(dashboardRefreshInterval);
         dashboardRefreshInterval = null;
+        dashboardRefreshTime = null;
         console.log('⏰ 대시보드 자동 새로고침 중지');
     }
 }
@@ -2187,6 +2265,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     console.log('✅ 로그인 확인 완료 - 앱 로드 시작');
+    
+    // 시계 시작 (날짜/시간 및 카운트다운)
+    startClock();
     
     // URL 파라미터에서 tab 값 읽기 (초기 화면 설정)
     const urlParams = new URLSearchParams(window.location.search);
