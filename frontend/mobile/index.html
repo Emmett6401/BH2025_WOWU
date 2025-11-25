@@ -125,121 +125,9 @@
             </header>
             
             <!-- 대시보드 컨텐츠 -->
-            <main class="max-w-7xl mx-auto px-4 py-6">
-                <!-- 환영 메시지 -->
-                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-2">
-                        <span id="welcomeName">환영합니다</span> 👋
-                    </h2>
-                    <p class="text-gray-600" id="welcomeMessage">오늘도 좋은 하루 되세요</p>
-                    <p class="text-sm text-gray-500 mt-2" id="currentDate"></p>
-                </div>
-                
-                <!-- 통계 카드 -->
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white fade-in">
-                        <i class="fas fa-book-open text-3xl mb-3"></i>
-                        <h3 class="text-lg font-semibold mb-1">SSIRN메모</h3>
-                        <p class="text-3xl font-bold" id="memoCount">-</p>
-                        <p class="text-xs mt-2 opacity-75" id="memoThisWeek">이번 주: -개</p>
-                    </div>
-                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg p-6 text-white fade-in" style="animation-delay: 0.1s">
-                        <i class="fas fa-clipboard-list text-3xl mb-3"></i>
-                        <h3 class="text-lg font-semibold mb-1">훈련일지</h3>
-                        <p class="text-3xl font-bold" id="trainingCount">-</p>
-                        <p class="text-xs mt-2 opacity-75" id="trainingThisWeek">이번 주: -개</p>
-                    </div>
-                    <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-lg p-6 text-white fade-in" style="animation-delay: 0.2s">
-                        <i class="fas fa-comments text-3xl mb-3"></i>
-                        <h3 class="text-lg font-semibold mb-1">상담</h3>
-                        <p class="text-3xl font-bold" id="counselingCount">-</p>
-                        <p class="text-xs mt-2 opacity-75" id="counselingPending">대기중: -건</p>
-                    </div>
-                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white fade-in" style="animation-delay: 0.3s">
-                        <i class="fas fa-users text-3xl mb-3"></i>
-                        <h3 class="text-lg font-semibold mb-1">팀 활동</h3>
-                        <p class="text-3xl font-bold" id="teamCount">-</p>
-                        <p class="text-xs mt-2 opacity-75" id="teamThisWeek">이번 주: -개</p>
-                    </div>
-                </div>
-                
-                <!-- 빠른 실행 버튼 -->
-                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in" style="animation-delay: 0.4s">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-bolt mr-2 text-yellow-500"></i>빠른 실행
-                    </h3>
-                    <div class="grid grid-cols-2 gap-3">
-                        <button onclick="navigateToPage('ssirn.html')" 
-                                class="flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors">
-                            <i class="fas fa-plus-circle text-2xl text-blue-600"></i>
-                            <span class="text-sm font-semibold text-gray-700">메모 작성</span>
-                        </button>
-                        <button onclick="navigateToPage('training.html')" 
-                                class="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition-colors">
-                            <i class="fas fa-clipboard-list text-2xl text-green-600"></i>
-                            <span class="text-sm font-semibold text-gray-700">훈련일지</span>
-                        </button>
-                        <button onclick="navigateToPage('counseling.html')" 
-                                class="flex items-center gap-3 p-4 bg-orange-50 hover:bg-orange-100 rounded-xl transition-colors">
-                            <i class="fas fa-calendar-check text-2xl text-orange-600"></i>
-                            <span class="text-sm font-semibold text-gray-700">상담예약</span>
-                        </button>
-                        <button onclick="navigateToPage('profile.html')" 
-                                class="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors">
-                            <i class="fas fa-user-cog text-2xl text-purple-600"></i>
-                            <span class="text-sm font-semibold text-gray-700">내 정보</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- 주간 활동 차트 -->
-                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in" style="animation-delay: 0.5s">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-chart-line mr-2 text-blue-600"></i>주간 활동 추이
-                    </h3>
-                    <canvas id="weeklyChart" style="max-height: 250px;"></canvas>
-                </div>
-                
-                <!-- 활동 분포 차트 -->
-                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in" style="animation-delay: 0.6s">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-chart-pie mr-2 text-green-600"></i>활동 분포
-                    </h3>
-                    <canvas id="distributionChart" style="max-height: 250px;"></canvas>
-                </div>
-                
-                <!-- 최근 활동 -->
-                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in" style="animation-delay: 0.7s">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-bold text-gray-800 flex items-center">
-                            <i class="fas fa-clock mr-2 text-blue-600"></i>최근 활동
-                        </h3>
-                        <div class="flex gap-2">
-                            <button onclick="filterActivities('all')" 
-                                    class="activity-filter-btn text-xs px-3 py-1 rounded-full bg-blue-600 text-white"
-                                    data-filter="all">
-                                전체
-                            </button>
-                            <button onclick="filterActivities('memo')" 
-                                    class="activity-filter-btn text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-700"
-                                    data-filter="memo">
-                                메모
-                            </button>
-                            <button onclick="filterActivities('training')" 
-                                    class="activity-filter-btn text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-700"
-                                    data-filter="training">
-                                훈련
-                            </button>
-                            <button onclick="filterActivities('counseling')" 
-                                    class="activity-filter-btn text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-700"
-                                    data-filter="counseling">
-                                상담
-                            </button>
-                        </div>
-                    </div>
-                    <div id="recentActivities" class="space-y-3">
-                        <p class="text-gray-500 text-center py-4">로딩중...</p>
-                    </div>
+            <main class="max-w-7xl mx-auto px-4 py-6 pb-20">
+                <div id="dashboardContent">
+                    <p class="text-center py-8 text-gray-500">로딩중...</p>
                 </div>
                 
                 <!-- 스와이프 힌트 (첫 방문 시만) -->
@@ -272,7 +160,7 @@
             </header>
             
             <!-- 메뉴 컨텐츠 -->
-            <main class="max-w-7xl mx-auto px-4 py-6">
+            <main class="max-w-7xl mx-auto px-4 py-6 pb-20">
                 <!-- 메뉴 그리드 -->
                 <div class="grid grid-cols-2 gap-4" id="menuGrid">
                     <!-- 메뉴 카드들이 여기에 동적으로 생성됩니다 -->
@@ -301,17 +189,10 @@
         let touchStartY = 0;
         let touchEndY = 0;
         
-        // 데이터 저장 변수
-        let allActivitiesData = {
-            memos: [],
-            training: [],
-            counseling: [],
-            team: []
-        };
-        
         // 차트 객체
-        let weeklyChart = null;
-        let distributionChart = null;
+        let careerChart = null;
+        let instructorChart = null;
+        let counselingTrendChart = null;
         
         // 메뉴 정의 (권한별)
         const MENUS = {
@@ -400,6 +281,16 @@
             ]
         };
         
+        // 날짜 포맷 함수
+        function formatDateWithDay(dateStr) {
+            const date = new Date(dateStr);
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            const dayOfWeek = days[date.getDay()];
+            return `${month}월 ${day}일 (${dayOfWeek})`;
+        }
+        
         // 스와이프 이벤트 핸들러
         function initSwipe() {
             const container = document.getElementById('swipeContainer');
@@ -459,179 +350,616 @@
         // 대시보드 데이터 로드
         async function loadDashboardData() {
             try {
-                // 현재 날짜 표시
-                const now = new Date();
-                document.getElementById('currentDate').textContent = 
-                    now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+                console.log('🚀 대시보드 로딩 시작...');
                 
-                // 통계 데이터 로드
-                const params = userType === 'instructor' 
-                    ? `instructor_code=${currentUser.code}` 
-                    : `student_id=${currentUser.id}`;
+                // 모든 데이터를 병렬로 가져오기
+                const [
+                    studentsData,
+                    instructorsData,
+                    coursesData,
+                    counselingsData,
+                    timetablesData,
+                    projectsData,
+                    trainingLogsData,
+                    teamActivityLogsData,
+                    noticesData
+                ] = await Promise.all([
+                    axios.get(`${API_BASE_URL}/api/students`).then(r => r.data),
+                    axios.get(`${API_BASE_URL}/api/instructors`).then(r => r.data),
+                    axios.get(`${API_BASE_URL}/api/courses`).then(r => r.data),
+                    axios.get(`${API_BASE_URL}/api/counselings`).then(r => r.data),
+                    axios.get(`${API_BASE_URL}/api/timetables`).then(r => r.data),
+                    axios.get(`${API_BASE_URL}/api/projects`).then(r => r.data),
+                    axios.get(`${API_BASE_URL}/api/training-logs`).then(r => r.data),
+                    axios.get(`${API_BASE_URL}/api/team-activity-logs`).then(r => r.data),
+                    axios.get(`${API_BASE_URL}/api/notices`).then(r => r.data)
+                ]);
                 
-                // 메모 개수
-                const memos = await axios.get(`${API_BASE_URL}/api/class-notes?${params}`);
-                allActivitiesData.memos = memos.data || [];
-                const memoThisWeek = getThisWeekCount(allActivitiesData.memos, 'note_date');
-                document.getElementById('memoCount').textContent = allActivitiesData.memos.length;
-                document.getElementById('memoThisWeek').textContent = `이번 주: ${memoThisWeek}개`;
+                console.log('✅ 데이터 로딩 완료:', {
+                    students: studentsData.length,
+                    instructors: instructorsData.length,
+                    courses: coursesData.length,
+                    counselings: counselingsData.length,
+                    notices: noticesData.length
+                });
                 
-                // 훈련일지 개수
-                const training = await axios.get(`${API_BASE_URL}/api/training-logs?${params}`);
-                allActivitiesData.training = training.data || [];
-                const trainingThisWeek = getThisWeekCount(allActivitiesData.training, 'training_date');
-                document.getElementById('trainingCount').textContent = allActivitiesData.training.length;
-                document.getElementById('trainingThisWeek').textContent = `이번 주: ${trainingThisWeek}개`;
+                // 오늘 날짜
+                const today = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
                 
-                // 상담 개수
-                const counseling = await axios.get(`${API_BASE_URL}/api/counselings?${params}`);
-                allActivitiesData.counseling = counseling.data || [];
-                const counselingPending = allActivitiesData.counseling.filter(c => c.status === '예약').length;
-                document.getElementById('counselingCount').textContent = allActivitiesData.counseling.length;
-                document.getElementById('counselingPending').textContent = `대기중: ${counselingPending}건`;
+                // 오늘 시간표
+                const todayTimetables = timetablesData.filter(t => t.class_date === today);
                 
-                // 팀 활동 개수
-                const team = await axios.get(`${API_BASE_URL}/api/team-activity-logs?${params}`);
-                allActivitiesData.team = team.data || [];
-                const teamThisWeek = getThisWeekCount(allActivitiesData.team, 'activity_date');
-                document.getElementById('teamCount').textContent = allActivitiesData.team.length;
-                document.getElementById('teamThisWeek').textContent = `이번 주: ${teamThisWeek}개`;
+                // 최근 상담 (최근 5건)
+                const recentCounselings = counselingsData
+                    .sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date))
+                    .slice(0, 5);
                 
-                // 차트 렌더링
-                renderWeeklyChart();
-                renderDistributionChart();
+                // 최근 훈련일지 (최근 5건)
+                const recentTrainingLogs = trainingLogsData
+                    .sort((a, b) => {
+                        const dateA = new Date(a['t.class_date'] || a.class_date || 0);
+                        const dateB = new Date(b['t.class_date'] || b.class_date || 0);
+                        return dateB - dateA;
+                    })
+                    .slice(0, 5);
                 
-                // 최근 활동 표시
-                displayRecentActivities('all');
+                // 최근 팀 활동일지 (최근 5건)
+                const recentTeamActivityLogs = teamActivityLogsData
+                    .sort((a, b) => new Date(b.activity_date) - new Date(a.activity_date))
+                    .slice(0, 5)
+                    .map(log => {
+                        const project = projectsData.find(p => p.id === log.project_id);
+                        return {
+                            ...log,
+                            project_name: project?.name || '프로젝트명 없음',
+                            project_code: project?.code || ''
+                        };
+                    });
+                
+                // 활성 공지사항 (게시 기간 내)
+                const activeNotices = noticesData
+                    .filter(n => {
+                        const now = new Date();
+                        const start = n.start_date ? new Date(n.start_date) : null;
+                        const end = n.end_date ? new Date(n.end_date) : null;
+                        
+                        if (!start && !end) return true;
+                        if (!start) return now <= end;
+                        if (!end) return now >= start;
+                        return now >= start && now <= end;
+                    })
+                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                    .slice(0, 5);
+                
+                // 추가 통계 계산
+                const todayCounselings = counselingsData.filter(c => c.consultation_date === today).length;
+                const thisWeekStart = new Date();
+                thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
+                const thisWeekStartStr = thisWeekStart.toISOString().split('T')[0];
+                const thisWeekCounselings = counselingsData.filter(c => c.consultation_date >= thisWeekStartStr).length;
+                
+                // 최근 7일 상담 추이
+                const last7Days = [];
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    const dateStr = d.toISOString().split('T')[0];
+                    last7Days.push({
+                        date: dateStr,
+                        count: counselingsData.filter(c => {
+                            const consultDate = c.consultation_date ? c.consultation_date.split('T')[0] : '';
+                            return consultDate === dateStr;
+                        }).length
+                    });
+                }
+                
+                // 진로 결정 현황 계산
+                const careerCounts = { study: 0, employed: 0, startup: 0, undecided: 0, other: 0 };
+                
+                studentsData.forEach(student => {
+                    const studentCounselings = counselingsData.filter(c => c.student_id === student.id);
+                    
+                    if (studentCounselings.length > 0) {
+                        studentCounselings.sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date));
+                        const lastCounseling = studentCounselings[0];
+                        
+                        if (lastCounseling.career_decision) {
+                            if (lastCounseling.career_decision === '1. 학업') careerCounts.study++;
+                            else if (lastCounseling.career_decision === '2. 취업') careerCounts.employed++;
+                            else if (lastCounseling.career_decision === '3. 창업') careerCounts.startup++;
+                            else if (lastCounseling.career_decision === '4. 미정') careerCounts.undecided++;
+                            else if (lastCounseling.career_decision === '5. 기타') careerCounts.other++;
+                        } else {
+                            careerCounts.undecided++;
+                        }
+                    } else {
+                        careerCounts.undecided++;
+                    }
+                });
+                
+                // 강사 유형별 통계
+                const instructorsByType = {};
+                instructorsData.forEach(i => {
+                    const typeName = i.instructor_type_name || '미분류';
+                    instructorsByType[typeName] = (instructorsByType[typeName] || 0) + 1;
+                });
+                
+                // 기본 과정
+                const mainCourse = coursesData.find(c => c.name === '2025-우송1반') || coursesData[0];
+                
+                // 대시보드 렌더링
+                renderDashboard({
+                    studentsData,
+                    instructorsData,
+                    coursesData,
+                    counselingsData,
+                    timetablesData,
+                    projectsData,
+                    trainingLogsData,
+                    teamActivityLogsData,
+                    noticesData,
+                    todayTimetables,
+                    recentCounselings,
+                    recentTrainingLogs,
+                    recentTeamActivityLogs,
+                    activeNotices,
+                    todayCounselings,
+                    thisWeekCounselings,
+                    last7Days,
+                    careerCounts,
+                    instructorsByType,
+                    mainCourse,
+                    today
+                });
                 
             } catch (error) {
                 console.error('Failed to load dashboard data:', error);
+                document.getElementById('dashboardContent').innerHTML = `
+                    <div class="text-center py-8 text-red-500">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-3"></i>
+                        <p>데이터 로드에 실패했습니다</p>
+                        <button onclick="loadDashboardData()" class="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg">
+                            다시 시도
+                        </button>
+                    </div>
+                `;
             }
         }
         
-        // 이번 주 데이터 개수 계산
-        function getThisWeekCount(data, dateField) {
-            const now = new Date();
-            const startOfWeek = new Date(now);
-            startOfWeek.setDate(now.getDate() - now.getDay()); // 일요일
-            startOfWeek.setHours(0, 0, 0, 0);
+        // 대시보드 렌더링
+        function renderDashboard(data) {
+            const {
+                studentsData,
+                instructorsData,
+                coursesData,
+                counselingsData,
+                projectsData,
+                todayTimetables,
+                recentCounselings,
+                recentTrainingLogs,
+                recentTeamActivityLogs,
+                activeNotices,
+                todayCounselings,
+                thisWeekCounselings,
+                last7Days,
+                careerCounts,
+                instructorsByType,
+                mainCourse,
+                today
+            } = data;
             
-            return data.filter(item => {
-                const itemDate = new Date(item[dateField]);
-                return itemDate >= startOfWeek;
-            }).length;
+            const container = document.getElementById('dashboardContent');
+            container.innerHTML = `
+                <!-- 상단 날짜 정보 -->
+                <div class="flex justify-between items-center mb-4">
+                    <div class="text-sm text-gray-600">
+                        <i class="fas fa-calendar-day mr-1"></i>${formatDateWithDay(today)}
+                    </div>
+                </div>
+                
+                <!-- 상단 통계 카드 (6개) -->
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <!-- 학생 -->
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-4 text-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fas fa-user-graduate text-2xl"></i>
+                            <p class="text-3xl font-bold">${studentsData.length}</p>
+                        </div>
+                        <p class="text-xs text-blue-100">전체 학생</p>
+                    </div>
+                    
+                    <!-- 강사 -->
+                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-4 text-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fas fa-chalkboard-teacher text-2xl"></i>
+                            <p class="text-3xl font-bold">${instructorsData.length}</p>
+                        </div>
+                        <p class="text-xs text-green-100">전체 강사</p>
+                    </div>
+                    
+                    <!-- 과정 -->
+                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-4 text-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fas fa-school text-2xl"></i>
+                            <p class="text-3xl font-bold">${coursesData.length}</p>
+                        </div>
+                        <p class="text-xs text-purple-100">운영 과정</p>
+                    </div>
+                    
+                    <!-- 오늘 수업 -->
+                    <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-4 text-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fas fa-calendar-day text-2xl"></i>
+                            <p class="text-3xl font-bold">${todayTimetables.length}</p>
+                        </div>
+                        <p class="text-xs text-indigo-100">오늘 수업</p>
+                    </div>
+                    
+                    <!-- 상담 -->
+                    <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-4 text-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fas fa-comments text-2xl"></i>
+                            <p class="text-3xl font-bold">${todayCounselings}</p>
+                        </div>
+                        <p class="text-xs text-orange-100">오늘 상담 (총 ${counselingsData.length})</p>
+                    </div>
+                    
+                    <!-- 팀 -->
+                    <div class="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl shadow-lg p-4 text-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fas fa-users text-2xl"></i>
+                            <p class="text-3xl font-bold">${projectsData.length}</p>
+                        </div>
+                        <p class="text-xs text-pink-100">활동팀</p>
+                    </div>
+                </div>
+                
+                <!-- 차트 섹션 (3개 차트) -->
+                <div class="grid grid-cols-1 gap-4 mb-4">
+                    <!-- 진로 결정 현황 -->
+                    <div class="bg-white rounded-xl shadow-lg p-4 fade-in">
+                        <h3 class="text-sm font-bold text-gray-800 mb-3 flex items-center">
+                            <i class="fas fa-chart-pie mr-2 text-blue-600"></i>진로 결정 현황
+                        </h3>
+                        <canvas id="careerChart" style="max-height: 200px;"></canvas>
+                        <div class="mt-3 grid grid-cols-5 gap-2 text-xs">
+                            <div class="text-center">
+                                <div class="w-3 h-3 bg-blue-500 rounded-full mx-auto mb-1"></div>
+                                <p class="font-bold text-blue-600">${careerCounts.study}</p>
+                                <p class="text-gray-600">학업</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="w-3 h-3 bg-green-500 rounded-full mx-auto mb-1"></div>
+                                <p class="font-bold text-green-600">${careerCounts.employed}</p>
+                                <p class="text-gray-600">취업</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="w-3 h-3 bg-yellow-500 rounded-full mx-auto mb-1"></div>
+                                <p class="font-bold text-yellow-600">${careerCounts.startup}</p>
+                                <p class="text-gray-600">창업</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="w-3 h-3 bg-gray-400 rounded-full mx-auto mb-1"></div>
+                                <p class="font-bold text-gray-600">${careerCounts.undecided}</p>
+                                <p class="text-gray-600">미정</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="w-3 h-3 bg-purple-500 rounded-full mx-auto mb-1"></div>
+                                <p class="font-bold text-purple-600">${careerCounts.other}</p>
+                                <p class="text-gray-600">기타</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 강사 유형별 분포 -->
+                    <div class="bg-white rounded-xl shadow-lg p-4 fade-in" style="animation-delay: 0.1s">
+                        <h3 class="text-sm font-bold text-gray-800 mb-3 flex items-center">
+                            <i class="fas fa-user-tie mr-2 text-green-600"></i>강사 유형별 분포
+                        </h3>
+                        <canvas id="instructorChart" style="max-height: 200px;"></canvas>
+                        <div class="mt-3 text-xs text-gray-600">
+                            ${Object.entries(instructorsByType).map(([type, count], idx) => `
+                                <div class="flex items-center justify-between py-1">
+                                    <span class="flex items-center">
+                                        <span class="w-3 h-3 rounded-full mr-2" style="background-color: ${['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'][idx % 4]}"></span>
+                                        ${type}
+                                    </span>
+                                    <span class="font-semibold">${count}명</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <!-- 최근 7일 상담 추이 -->
+                    <div class="bg-white rounded-xl shadow-lg p-4 fade-in" style="animation-delay: 0.2s">
+                        <h3 class="text-sm font-bold text-gray-800 mb-3 flex items-center">
+                            <i class="fas fa-chart-line mr-2 text-orange-600"></i>최근 7일 상담 추이
+                        </h3>
+                        <canvas id="counselingTrendChart" style="max-height: 200px;"></canvas>
+                        <div class="mt-3 flex justify-between text-xs text-gray-600">
+                            <div>
+                                <span class="text-gray-500">오늘:</span>
+                                <span class="font-bold text-orange-600">${todayCounselings}건</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">이번 주:</span>
+                                <span class="font-bold text-blue-600">${thisWeekCounselings}건</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 오늘 시간표 -->
+                <div class="bg-white rounded-xl shadow-lg p-4 mb-4 fade-in" style="animation-delay: 0.3s">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-bold text-gray-800">
+                            <i class="fas fa-calendar-day mr-2 text-blue-600"></i>오늘 시간표
+                        </h3>
+                    </div>
+                    <div class="space-y-2">
+                        ${todayTimetables.length > 0 ? todayTimetables.slice(0, 5).map(t => `
+                            <div class="border-l-4 ${
+                                t.type === 'lecture' ? 'border-blue-500' : 
+                                t.type === 'project' ? 'border-green-500' : 
+                                'border-purple-500'
+                            } bg-gray-50 rounded p-3">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <h4 class="font-bold text-gray-800 text-sm truncate">${t.subject_name || '과목명 없음'}</h4>
+                                            <span class="text-xs px-2 py-0.5 rounded flex-shrink-0 ${
+                                                t.type === 'lecture' ? 'bg-blue-100 text-blue-700' : 
+                                                t.type === 'project' ? 'bg-green-100 text-green-700' : 
+                                                'bg-purple-100 text-purple-700'
+                                            }">
+                                                ${t.type === 'lecture' ? '강의' : t.type === 'project' ? '프로젝트' : '실습'}
+                                            </span>
+                                        </div>
+                                        <p class="text-xs text-gray-600 truncate">
+                                            <i class="fas fa-chalkboard-teacher mr-1"></i>${t.instructor_name || '미정'}
+                                        </p>
+                                    </div>
+                                    <div class="text-right ml-2 flex-shrink-0">
+                                        <p class="text-xs font-bold text-blue-600">${t.start_time.substring(0,5)}</p>
+                                        <p class="text-xs text-gray-500">${t.end_time.substring(0,5)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('') : '<p class="text-center py-8 text-gray-500">오늘 예정된 수업이 없습니다</p>'}
+                    </div>
+                </div>
+                
+                <!-- 최근 상담 -->
+                <div class="bg-white rounded-xl shadow-lg p-4 mb-4 fade-in" style="animation-delay: 0.4s">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-bold text-gray-800">
+                            <i class="fas fa-comments mr-2 text-orange-600"></i>최근 상담
+                        </h3>
+                    </div>
+                    <div class="space-y-2">
+                        ${recentCounselings.length > 0 ? recentCounselings.map(c => `
+                            <div class="bg-orange-50 rounded-lg p-3">
+                                <div class="flex justify-between items-start mb-1">
+                                    <p class="text-sm font-bold text-gray-800">${c.student_name || '학생명 없음'}</p>
+                                    <span class="text-xs px-2 py-1 rounded-full ${
+                                        c.status === '예약' ? 'bg-orange-200 text-orange-800' :
+                                        c.status === '완료' ? 'bg-green-200 text-green-800' :
+                                        'bg-gray-200 text-gray-800'
+                                    }">${c.status || '미정'}</span>
+                                </div>
+                                <p class="text-xs text-gray-600 mb-2">${c.consultation_content?.substring(0, 50) || '내용 없음'}...</p>
+                                <div class="flex items-center gap-2 text-xs text-gray-500">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <span>${new Date(c.consultation_date).toLocaleDateString('ko-KR')}</span>
+                                </div>
+                            </div>
+                        `).join('') : '<p class="text-center py-8 text-gray-500">최근 상담 내역이 없습니다</p>'}
+                    </div>
+                </div>
+                
+                <!-- 최근 훈련일지 -->
+                <div class="bg-white rounded-xl shadow-lg p-4 mb-4 fade-in" style="animation-delay: 0.5s">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-bold text-gray-800">
+                            <i class="fas fa-clipboard-list mr-2 text-indigo-600"></i>최근 훈련일지
+                        </h3>
+                    </div>
+                    <div class="space-y-2">
+                        ${recentTrainingLogs.length > 0 ? recentTrainingLogs.map(t => `
+                            <div class="bg-indigo-50 rounded-lg p-3">
+                                <div class="flex justify-between items-start mb-1">
+                                    <p class="text-sm font-bold text-gray-800">${t.student_name || '학생명 없음'}</p>
+                                    <span class="text-xs text-gray-500">${t.training_type || '유형 없음'}</span>
+                                </div>
+                                <p class="text-xs text-gray-600 mb-2">${t.content?.substring(0, 50) || '내용 없음'}...</p>
+                                <div class="flex items-center gap-2 text-xs text-gray-500">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <span>${new Date(t['t.class_date'] || t.class_date).toLocaleDateString('ko-KR')}</span>
+                                </div>
+                            </div>
+                        `).join('') : '<p class="text-center py-8 text-gray-500">최근 훈련일지가 없습니다</p>'}
+                    </div>
+                </div>
+                
+                <!-- 최근 팀 활동일지 -->
+                <div class="bg-white rounded-xl shadow-lg p-4 mb-4 fade-in" style="animation-delay: 0.6s">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-bold text-gray-800">
+                            <i class="fas fa-users mr-2 text-pink-600"></i>최근 팀 활동일지
+                        </h3>
+                    </div>
+                    <div class="space-y-2">
+                        ${recentTeamActivityLogs.length > 0 ? recentTeamActivityLogs.map(t => `
+                            <div class="bg-pink-50 rounded-lg p-3">
+                                <div class="flex justify-between items-start mb-1">
+                                    <p class="text-sm font-bold text-gray-800">${t.project_name}</p>
+                                    <span class="text-xs text-gray-500">${t.activity_type || '유형 없음'}</span>
+                                </div>
+                                <p class="text-xs text-gray-600 mb-2">${t.activity_content?.substring(0, 50) || '내용 없음'}...</p>
+                                <div class="flex items-center gap-2 text-xs text-gray-500">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <span>${new Date(t.activity_date).toLocaleDateString('ko-KR')}</span>
+                                </div>
+                            </div>
+                        `).join('') : '<p class="text-center py-8 text-gray-500">최근 팀 활동일지가 없습니다</p>'}
+                    </div>
+                </div>
+                
+                <!-- 활성 공지사항 -->
+                <div class="bg-white rounded-xl shadow-lg p-4 mb-4 fade-in" style="animation-delay: 0.7s">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-bold text-gray-800">
+                            <i class="fas fa-bullhorn mr-2 text-purple-600"></i>공지사항
+                        </h3>
+                        <button onclick="navigateToPage('notices.html')" class="text-blue-600 text-xs font-semibold">
+                            전체 <i class="fas fa-arrow-right ml-1"></i>
+                        </button>
+                    </div>
+                    <div class="space-y-2">
+                        ${activeNotices.length > 0 ? activeNotices.map(n => {
+                            const categoryColors = {
+                                '일반': 'bg-blue-100 text-blue-700',
+                                '긴급': 'bg-red-100 text-red-700',
+                                '중요': 'bg-yellow-100 text-yellow-700'
+                            };
+                            const isNew = (new Date() - new Date(n.created_at)) < 24 * 60 * 60 * 1000;
+                            return `
+                            <div class="bg-purple-50 rounded-lg p-3" onclick="navigateToPage('notices.html')">
+                                <div class="flex items-start justify-between mb-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-2 py-1 rounded-full text-xs font-semibold ${categoryColors[n.category] || categoryColors['일반']}">
+                                            ${n.category}
+                                        </span>
+                                        ${isNew ? '<span class="px-2 py-1 bg-red-500 text-white rounded-full text-xs font-bold">NEW</span>' : ''}
+                                    </div>
+                                </div>
+                                <p class="text-sm font-bold text-gray-800 mb-1">${n.title}</p>
+                                <div class="flex items-center gap-2 text-xs text-gray-500">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <span>${new Date(n.created_at).toLocaleDateString('ko-KR')}</span>
+                                </div>
+                            </div>
+                        `}).join('') : '<p class="text-center py-8 text-gray-500">활성 공지사항이 없습니다</p>'}
+                    </div>
+                </div>
+            `;
+            
+            // 차트 렌더링
+            setTimeout(() => {
+                renderCareerChart(careerCounts);
+                renderInstructorChart(instructorsByType);
+                renderCounselingTrendChart(last7Days);
+            }, 100);
         }
         
-        // 주간 활동 차트 렌더링
-        function renderWeeklyChart() {
-            const ctx = document.getElementById('weeklyChart');
+        // 진로 결정 차트 렌더링
+        function renderCareerChart(careerCounts) {
+            const ctx = document.getElementById('careerChart');
+            if (!ctx) return;
             
-            // 최근 7일 라벨
-            const labels = [];
-            const now = new Date();
-            for (let i = 6; i >= 0; i--) {
-                const date = new Date(now);
-                date.setDate(now.getDate() - i);
-                labels.push(date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }));
-            }
+            if (careerChart) careerChart.destroy();
             
-            // 각 날짜별 데이터 집계
-            const memoData = new Array(7).fill(0);
-            const trainingData = new Array(7).fill(0);
-            const counselingData = new Array(7).fill(0);
-            const teamData = new Array(7).fill(0);
-            
-            // 메모 데이터
-            allActivitiesData.memos.forEach(item => {
-                const itemDate = new Date(item.note_date);
-                const daysDiff = Math.floor((now - itemDate) / (1000 * 60 * 60 * 24));
-                if (daysDiff >= 0 && daysDiff < 7) {
-                    memoData[6 - daysDiff]++;
-                }
-            });
-            
-            // 훈련일지 데이터
-            allActivitiesData.training.forEach(item => {
-                const itemDate = new Date(item.training_date);
-                const daysDiff = Math.floor((now - itemDate) / (1000 * 60 * 60 * 24));
-                if (daysDiff >= 0 && daysDiff < 7) {
-                    trainingData[6 - daysDiff]++;
-                }
-            });
-            
-            // 상담 데이터
-            allActivitiesData.counseling.forEach(item => {
-                const itemDate = new Date(item.consultation_date);
-                const daysDiff = Math.floor((now - itemDate) / (1000 * 60 * 60 * 24));
-                if (daysDiff >= 0 && daysDiff < 7) {
-                    counselingData[6 - daysDiff]++;
-                }
-            });
-            
-            // 팀 활동 데이터
-            allActivitiesData.team.forEach(item => {
-                const itemDate = new Date(item.activity_date);
-                const daysDiff = Math.floor((now - itemDate) / (1000 * 60 * 60 * 24));
-                if (daysDiff >= 0 && daysDiff < 7) {
-                    teamData[6 - daysDiff]++;
-                }
-            });
-            
-            // 차트 생성
-            if (weeklyChart) weeklyChart.destroy();
-            
-            weeklyChart = new Chart(ctx, {
-                type: 'line',
+            careerChart = new Chart(ctx, {
+                type: 'doughnut',
                 data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'SSIRN메모',
-                            data: memoData,
-                            borderColor: 'rgb(59, 130, 246)',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            tension: 0.3,
-                            fill: true
-                        },
-                        {
-                            label: '훈련일지',
-                            data: trainingData,
-                            borderColor: 'rgb(34, 197, 94)',
-                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                            tension: 0.3,
-                            fill: true
-                        },
-                        {
-                            label: '상담',
-                            data: counselingData,
-                            borderColor: 'rgb(249, 115, 22)',
-                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                            tension: 0.3,
-                            fill: true
-                        },
-                        {
-                            label: '팀 활동',
-                            data: teamData,
-                            borderColor: 'rgb(168, 85, 247)',
-                            backgroundColor: 'rgba(168, 85, 247, 0.1)',
-                            tension: 0.3,
-                            fill: true
-                        }
-                    ]
+                    labels: ['학업', '취업', '창업', '미정', '기타'],
+                    datasets: [{
+                        data: [
+                            careerCounts.study,
+                            careerCounts.employed,
+                            careerCounts.startup,
+                            careerCounts.undecided,
+                            careerCounts.other
+                        ],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(34, 197, 94, 0.8)',
+                            'rgba(234, 179, 8, 0.8)',
+                            'rgba(156, 163, 175, 0.8)',
+                            'rgba(168, 85, 247, 0.8)'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
                     plugins: {
                         legend: {
-                            display: true,
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 12,
-                                font: {
-                                    size: 10
-                                }
-                            }
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 강사 유형 차트 렌더링
+        function renderInstructorChart(instructorsByType) {
+            const ctx = document.getElementById('instructorChart');
+            if (!ctx) return;
+            
+            if (instructorChart) instructorChart.destroy();
+            
+            const labels = Object.keys(instructorsByType);
+            const data = Object.values(instructorsByType);
+            const colors = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
+            
+            instructorChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 상담 추이 차트 렌더링
+        function renderCounselingTrendChart(last7Days) {
+            const ctx = document.getElementById('counselingTrendChart');
+            if (!ctx) return;
+            
+            if (counselingTrendChart) counselingTrendChart.destroy();
+            
+            const labels = last7Days.map(d => {
+                const date = new Date(d.date);
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+            });
+            const data = last7Days.map(d => d.count);
+            
+            counselingTrendChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '상담 건수',
+                        data: data,
+                        borderColor: 'rgb(249, 115, 22)',
+                        backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
                         }
                     },
                     scales: {
@@ -644,170 +972,6 @@
                     }
                 }
             });
-        }
-        
-        // 활동 분포 차트 렌더링
-        function renderDistributionChart() {
-            const ctx = document.getElementById('distributionChart');
-            
-            const data = [
-                allActivitiesData.memos.length,
-                allActivitiesData.training.length,
-                allActivitiesData.counseling.length,
-                allActivitiesData.team.length
-            ];
-            
-            // 차트 생성
-            if (distributionChart) distributionChart.destroy();
-            
-            distributionChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['SSIRN메모', '훈련일지', '상담', '팀 활동'],
-                    datasets: [{
-                        data: data,
-                        backgroundColor: [
-                            'rgba(59, 130, 246, 0.8)',
-                            'rgba(34, 197, 94, 0.8)',
-                            'rgba(249, 115, 22, 0.8)',
-                            'rgba(168, 85, 247, 0.8)'
-                        ],
-                        borderWidth: 2,
-                        borderColor: '#fff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 12,
-                                font: {
-                                    size: 10
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // 최근 활동 표시
-        function displayRecentActivities(filter = 'all') {
-            const container = document.getElementById('recentActivities');
-            
-            let activities = [];
-            
-            // 필터링 적용
-            if (filter === 'all' || filter === 'memo') {
-                activities = activities.concat(
-                    (allActivitiesData.memos || []).map(m => ({
-                        type: 'memo',
-                        icon: 'fa-book-open',
-                        color: 'text-blue-600',
-                        bgColor: 'bg-blue-50',
-                        title: 'SSIRN메모',
-                        content: m.content?.substring(0, 40) || '내용 없음',
-                        date: m.note_date
-                    }))
-                );
-            }
-            
-            if (filter === 'all' || filter === 'training') {
-                activities = activities.concat(
-                    (allActivitiesData.training || []).map(t => ({
-                        type: 'training',
-                        icon: 'fa-clipboard-list',
-                        color: 'text-green-600',
-                        bgColor: 'bg-green-50',
-                        title: '훈련일지',
-                        content: t.content?.substring(0, 40) || '내용 없음',
-                        date: t.training_date
-                    }))
-                );
-            }
-            
-            if (filter === 'all' || filter === 'counseling') {
-                activities = activities.concat(
-                    (allActivitiesData.counseling || []).map(c => ({
-                        type: 'counseling',
-                        icon: 'fa-comments',
-                        color: 'text-orange-600',
-                        bgColor: 'bg-orange-50',
-                        title: '상담',
-                        content: c.consultation_content?.substring(0, 40) || '내용 없음',
-                        date: c.consultation_date,
-                        status: c.status
-                    }))
-                );
-            }
-            
-            if (filter === 'all' || filter === 'team') {
-                activities = activities.concat(
-                    (allActivitiesData.team || []).map(t => ({
-                        type: 'team',
-                        icon: 'fa-users',
-                        color: 'text-purple-600',
-                        bgColor: 'bg-purple-50',
-                        title: '팀 활동',
-                        content: t.activity_content?.substring(0, 40) || '내용 없음',
-                        date: t.activity_date
-                    }))
-                );
-            }
-            
-            // 날짜순 정렬
-            activities.sort((a, b) => new Date(b.date) - new Date(a.date));
-            
-            // 상위 10개만
-            const recentActivities = activities.slice(0, 10);
-            
-            if (recentActivities.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center py-4">최근 활동이 없습니다</p>';
-                return;
-            }
-            
-            container.innerHTML = recentActivities.map(activity => `
-                <div class="flex items-start gap-3 p-4 ${activity.bgColor} rounded-xl">
-                    <i class="fas ${activity.icon} ${activity.color} text-2xl mt-1"></i>
-                    <div class="flex-1">
-                        <div class="flex items-center justify-between mb-1">
-                            <p class="text-sm font-bold text-gray-800">${activity.title}</p>
-                            ${activity.status ? `<span class="text-xs px-2 py-1 rounded-full ${
-                                activity.status === '예약' ? 'bg-orange-200 text-orange-800' :
-                                activity.status === '완료' ? 'bg-green-200 text-green-800' :
-                                'bg-gray-200 text-gray-800'
-                            }">${activity.status}</span>` : ''}
-                        </div>
-                        <p class="text-xs text-gray-700 mb-2">${activity.content}</p>
-                        <div class="flex items-center gap-2 text-xs text-gray-500">
-                            <i class="fas fa-calendar-alt"></i>
-                            <span>${new Date(activity.date).toLocaleDateString('ko-KR')}</span>
-                            <span>${new Date(activity.date).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-        
-        // 활동 필터링
-        function filterActivities(filter) {
-            // 버튼 스타일 업데이트
-            document.querySelectorAll('.activity-filter-btn').forEach(btn => {
-                if (btn.dataset.filter === filter) {
-                    btn.classList.remove('bg-gray-200', 'text-gray-700');
-                    btn.classList.add('bg-blue-600', 'text-white');
-                } else {
-                    btn.classList.remove('bg-blue-600', 'text-white');
-                    btn.classList.add('bg-gray-200', 'text-gray-700');
-                }
-            });
-            
-            // 데이터 필터링 및 표시
-            displayRecentActivities(filter);
         }
         
         // 페이지 초기화
@@ -829,9 +993,6 @@
             const userRole = userType === 'instructor' ? '강사' : '학생';
             
             document.getElementById('userInfo').textContent = `${userName} (${userRole})`;
-            document.getElementById('welcomeName').textContent = `${userName}님`;
-            document.getElementById('welcomeMessage').textContent = 
-                userType === 'instructor' ? '오늘도 열정적인 교육 부탁드립니다' : '오늘도 열심히 공부하세요';
             
             // 스와이프 초기화
             initSwipe();
@@ -856,7 +1017,7 @@
             menuGrid.innerHTML = menus.map((menu, index) => `
                 <div class="menu-card bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer fade-in"
                      style="animation-delay: ${index * 0.1}s"
-                     onclick="navigateToPage('${menu.page}')">
+                     onclick="navigateToPageFromMenu('${menu.page}')">
                     <div class="bg-gradient-to-br ${menu.color} p-6 text-white">
                         <i class="fas ${menu.icon} text-5xl mb-3"></i>
                         <h3 class="text-xl font-bold">${menu.title}</h3>
@@ -868,8 +1029,17 @@
             `).join('');
         }
         
-        // 페이지 이동
+        // 페이지 이동 (대시보드에서)
         function navigateToPage(page) {
+            // History state 저장 (대시보드에서 왔음을 표시)
+            sessionStorage.setItem('fromPage', 'dashboard');
+            window.location.href = page;
+        }
+        
+        // 페이지 이동 (메뉴에서)
+        function navigateToPageFromMenu(page) {
+            // History state 저장 (메뉴에서 왔음을 표시)
+            sessionStorage.setItem('fromPage', 'menu');
             window.location.href = page;
         }
         
@@ -884,7 +1054,14 @@
         }
         
         // 페이지 로드 시 초기화
-        window.addEventListener('DOMContentLoaded', initializePage);
+        window.addEventListener('DOMContentLoaded', () => {
+            initializePage();
+            
+            // 메뉴로 전환 이벤트 리스너
+            window.addEventListener('switchToMenu', () => {
+                switchPage('menu');
+            });
+        });
     </script>
 </body>
 </html>

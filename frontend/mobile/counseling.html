@@ -878,7 +878,26 @@
 
         // Go back
         function goBack() {
-            window.location.href = 'index.html';
+            const fromPage = sessionStorage.getItem('fromPage');
+            if (fromPage === 'menu') {
+                // 메뉴에서 온 경우 메뉴 페이지로 이동
+                sessionStorage.removeItem('fromPage');
+                window.location.href = 'index.html#menu';
+                // 메뉴 페이지로 전환
+                setTimeout(() => {
+                    if (window.location.hash === '#menu') {
+                        window.location.href = 'index.html';
+                        setTimeout(() => {
+                            const event = new CustomEvent('switchToMenu');
+                            window.dispatchEvent(event);
+                        }, 100);
+                    }
+                }, 100);
+            } else {
+                // 대시보드 또는 기타 페이지에서 온 경우
+                sessionStorage.removeItem('fromPage');
+                window.location.href = 'index.html';
+            }
         }
 
         // Initialize
