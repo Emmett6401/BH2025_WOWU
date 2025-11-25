@@ -1355,6 +1355,12 @@ function hideScreensaver() {
 }
 
 // ==================== 대시보드 자동 새로고침 ====================
+function getRefreshInterval() {
+    // localStorage에서 설정된 새로고침 시간 가져오기 (기본값: 5분)
+    const savedInterval = localStorage.getItem('dashboard_refresh_interval');
+    return savedInterval ? parseInt(savedInterval) * 60000 : 300000; // 분 → 밀리초
+}
+
 function startDashboardAutoRefresh() {
     // 기존 타이머 제거
     if (dashboardRefreshInterval) {
@@ -1362,23 +1368,30 @@ function startDashboardAutoRefresh() {
         dashboardRefreshInterval = null;
     }
     
-    console.log('⏰ 대시보드 자동 새로고침 시작 (5분 간격)');
+    const intervalMs = getRefreshInterval();
+    const intervalMin = Math.floor(intervalMs / 60000);
     
-    // 다음 새로고침 시간 설정 (5분 후)
-    dashboardRefreshTime = Date.now() + 300000; // 5분 = 300,000ms
+    console.log(`⏰ 대시보드 자동 새로고침 시작 (${intervalMin}분 간격)`);
     
-    // 5분마다 새로고침
+    // 다음 새로고침 시간 설정
+    dashboardRefreshTime = Date.now() + intervalMs;
+    
+    // 설정된 시간마다 새로고침
     dashboardRefreshInterval = setInterval(async () => {
         if (currentTab === 'dashboard') {
             console.log('🔄 자동 새로고침 실행...');
             showScreensaver();
+            
+            // 10초 동안 화면보호기 표시
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            
             await loadDashboard();
             hideScreensaver();
             
             // 다음 새로고침 시간 재설정
-            dashboardRefreshTime = Date.now() + 300000;
+            dashboardRefreshTime = Date.now() + intervalMs;
         }
-    }, 300000); // 5분 = 300,000ms
+    }, intervalMs);
 }
 
 function stopDashboardAutoRefresh() {
@@ -11226,6 +11239,26 @@ function renderSystemSettings(settings) {
                     <input type="hidden" id="logo-url">
                 </div>
                 
+                <!-- 대시보드 자동 새로고침 시간 -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-sync-alt mr-2 text-orange-500"></i>대시보드 자동 새로고침 시간
+                    </label>
+                    <div class="flex items-center gap-3">
+                        <input type="number" id="refresh-interval" min="1" max="60" step="1"
+                               class="w-32 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="5">
+                        <span class="text-gray-700">분마다 자동 새로고침</span>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        대시보드가 자동으로 새로고침되는 시간 간격입니다 (1~60분, 기본값: 5분)
+                    </p>
+                    <p class="text-sm text-gray-400 mt-1">
+                        💡 새로고침 시 10초간 화면보호기(로고 애니메이션)가 표시됩니다
+                    </p>
+                </div>
+                
                 <!-- 저장 버튼 -->
                 <div class="flex gap-3 pt-4 border-t">
                     <button type="button" onclick="window.saveSystemSettings()" 
@@ -11248,11 +11281,19 @@ function renderSystemSettings(settings) {
         const subtitle2Input = document.getElementById('system-subtitle2');
         const logoUrlInput = document.getElementById('logo-url');
         const logoImg = document.getElementById('current-logo');
+        const refreshIntervalInput = document.getElementById('refresh-interval');
         
         if (titleInput) titleInput.value = settings.system_title || '바이오헬스교육관리시스템';
         if (subtitle1Input) subtitle1Input.value = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
         if (subtitle2Input) subtitle2Input.value = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
         if (logoUrlInput) logoUrlInput.value = settings.logo_url || '/woosong-logo.png';
+        
+        // 대시보드 자동 새로고침 시간 설정 로드
+        const savedInterval = localStorage.getItem('dashboard_refresh_interval') || '5';
+        if (refreshIntervalInput) {
+            refreshIntervalInput.value = savedInterval;
+            console.log('✅ 자동 새로고침 시간 로드:', savedInterval + '분');
+        }
         
         // 로고 이미지 표시
         if (logoImg && settings.logo_url) {
@@ -11271,7 +11312,8 @@ function renderSystemSettings(settings) {
             title: titleInput?.value,
             subtitle1: subtitle1Input?.value,
             subtitle2: subtitle2Input?.value,
-            logo: logoUrlInput?.value
+            logo: logoUrlInput?.value,
+            refreshInterval: refreshIntervalInput?.value + '분'
         });
     }, 0);
 }
@@ -11366,12 +11408,14 @@ window.saveSystemSettings = async function() {
     const subtitle1Element = document.getElementById('system-subtitle1');
     const subtitle2Element = document.getElementById('system-subtitle2');
     const logoElement = document.getElementById('logo-url');
+    const refreshIntervalElement = document.getElementById('refresh-interval');
     
     console.log('🔍 DOM 요소 확인:', {
         titleElement: titleElement ? '존재' : '없음',
         subtitle1Element: subtitle1Element ? '존재' : '없음',
         subtitle2Element: subtitle2Element ? '존재' : '없음',
-        logoElement: logoElement ? '존재' : '없음'
+        logoElement: logoElement ? '존재' : '없음',
+        refreshIntervalElement: refreshIntervalElement ? '존재' : '없음'
     });
     
     if (!titleElement || !subtitle1Element || !subtitle2Element || !logoElement) {
@@ -11385,11 +11429,25 @@ window.saveSystemSettings = async function() {
     const systemSubtitle2 = subtitle2Element.value;
     const logoUrl = logoElement.value;
     
+    // 대시보드 자동 새로고침 시간 저장
+    let refreshInterval = 5; // 기본값
+    if (refreshIntervalElement) {
+        const inputValue = parseInt(refreshIntervalElement.value);
+        if (inputValue >= 1 && inputValue <= 60) {
+            refreshInterval = inputValue;
+        } else {
+            window.showAlert('⚠️ 새로고침 시간은 1~60분 사이여야 합니다. 기본값 5분으로 설정됩니다.');
+            refreshInterval = 5;
+            refreshIntervalElement.value = 5;
+        }
+    }
+    
     console.log('📝 저장할 데이터:', {
         system_title: systemTitle,
         system_subtitle1: systemSubtitle1,
         system_subtitle2: systemSubtitle2,
-        logo_url: logoUrl
+        logo_url: logoUrl,
+        dashboard_refresh_interval: refreshInterval + '분'
     });
     
     const formData = new FormData();
@@ -11408,11 +11466,23 @@ window.saveSystemSettings = async function() {
         const verifyResponse = await axios.get(`${API_BASE_URL}/api/system-settings`);
         console.log('📊 DB에 저장된 데이터:', verifyResponse.data);
         
+        // 대시보드 자동 새로고침 시간 localStorage에 저장
+        const oldInterval = localStorage.getItem('dashboard_refresh_interval');
+        localStorage.setItem('dashboard_refresh_interval', refreshInterval.toString());
+        console.log('💾 자동 새로고침 시간 저장:', refreshInterval + '분');
+        
+        // 새로고침 간격이 변경된 경우 타이머 재시작
+        if (oldInterval !== refreshInterval.toString()) {
+            console.log('🔄 자동 새로고침 타이머 재시작...');
+            stopDashboardAutoRefresh();
+            startDashboardAutoRefresh();
+        }
+        
         // 헤더 즉시 업데이트
         console.log('🔄 헤더 업데이트 시작...');
         await updateHeader();
         
-        window.showAlert('✅ 시스템 설정이 저장되고 헤더가 업데이트되었습니다!');
+        window.showAlert(`✅ 시스템 설정이 저장되었습니다!\n\n대시보드 자동 새로고침: ${refreshInterval}분마다\n(10초간 화면보호기 표시)`);
     } catch (error) {
         console.error('❌ 시스템 설정 저장 실패:', error);
         console.error('❌ 에러 상세:', error.response?.data);
