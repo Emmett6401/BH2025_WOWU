@@ -746,10 +746,13 @@
             const notes = document.getElementById('trainingNotes').value;
 
             try {
-                // Upload new photos
-                const uploadedUrls = await Promise.all(
-                    selectedPhotos.map(file => uploadPhoto(file))
-                );
+                // Upload new photos only if there are any
+                let uploadedUrls = [];
+                if (selectedPhotos.length > 0) {
+                    uploadedUrls = await Promise.all(
+                        selectedPhotos.map(file => uploadPhoto(file))
+                    );
+                }
 
                 // Combine existing and new photo URLs
                 const allPhotoUrls = [...existingPhotoUrls, ...uploadedUrls];
@@ -786,13 +789,15 @@
                     showToast(trainingId ? '훈련일지가 수정되었습니다.' : '훈련일지가 저장되었습니다.', 'success');
                     closeModal();
                     await loadTrainings();
+                } else {
+                    hideLoading();
+                    showToast('저장에 실패했습니다', 'error');
                 }
             } catch (error) {
                 console.error('Save error:', error);
                 hideLoading();
                 showToast('저장 중 오류가 발생했습니다', 'error');
-            }
-        } finally {
+            } finally {
                 isSubmitting = false;
             }
         });

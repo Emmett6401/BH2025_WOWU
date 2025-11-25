@@ -714,10 +714,13 @@
             const achievement = document.getElementById('achievement').value;
 
             try {
-                // Upload new photos
-                const uploadedUrls = await Promise.all(
-                    selectedPhotos.map(file => uploadPhoto(file))
-                );
+                // Upload new photos only if there are any
+                let uploadedUrls = [];
+                if (selectedPhotos.length > 0) {
+                    uploadedUrls = await Promise.all(
+                        selectedPhotos.map(file => uploadPhoto(file))
+                    );
+                }
 
                 // Combine existing and new photo URLs
                 const allPhotoUrls = [...existingPhotoUrls, ...uploadedUrls];
@@ -751,16 +754,19 @@
                 }
 
                 if (response.data.success) {
+                    hideLoading();
                     showToast(activityId ? '팀 활동이 수정되었습니다.' : '팀 활동이 저장되었습니다.', 'success');
                     closeModal();
                     await loadTeamActivities();
+                } else {
+                    hideLoading();
+                    showToast('저장에 실패했습니다', 'error');
                 }
             } catch (error) {
                 console.error('Save error:', error);
                 hideLoading();
                 showToast('저장 중 오류가 발생했습니다', 'error');
-            }
-        } finally {
+            } finally {
                 isSubmitting = false;
             }
         });

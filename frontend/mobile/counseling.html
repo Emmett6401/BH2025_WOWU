@@ -882,10 +882,13 @@
             const counselingContent = document.getElementById('counselingContent').value;
 
             try {
-                // Upload new photos
-                const uploadedUrls = await Promise.all(
-                    selectedPhotos.map(file => uploadPhoto(file))
-                );
+                // Upload new photos only if there are any
+                let uploadedUrls = [];
+                if (selectedPhotos.length > 0) {
+                    uploadedUrls = await Promise.all(
+                        selectedPhotos.map(file => uploadPhoto(file))
+                    );
+                }
 
                 // Combine existing and new photo URLs
                 const allPhotoUrls = [...existingPhotoUrls, ...uploadedUrls];
@@ -922,9 +925,13 @@
                 }
 
                 if (response.data.success) {
+                    hideLoading();
                     showToast(counselingId ? '상담이 수정되었습니다.' : '상담이 등록되었습니다.', 'success');
                     closeModal();
                     await loadCounselings();
+                } else {
+                    hideLoading();
+                    showToast('저장에 실패했습니다', 'error');
                 }
             } catch (error) {
                 console.error('Save error:', error);
