@@ -754,10 +754,10 @@
                 }
 
                 if (response.data.success) {
-                    hideLoading();
-                    showToast(activityId ? '팀 활동이 수정되었습니다.' : '팀 활동이 저장되었습니다.', 'success');
                     closeModal();
                     await loadTeamActivities();
+                    hideLoading();
+                    showToast(activityId ? '팀 활동이 수정되었습니다.' : '팀 활동이 저장되었습니다.', 'success');
                 } else {
                     hideLoading();
                     showToast('저장에 실패했습니다', 'error');

@@ -926,10 +926,10 @@
 
                 // Backend returns {id: ...} on success
                 if (response.data && response.data.id) {
-                    hideLoading();
-                    showToast(counselingId ? '상담이 수정되었습니다.' : '상담이 등록되었습니다.', 'success');
                     closeModal();
                     await loadCounselings();
+                    hideLoading();
+                    showToast(counselingId ? '상담이 수정되었습니다.' : '상담이 등록되었습니다.', 'success');
                 } else {
                     hideLoading();
                     showToast('저장에 실패했습니다', 'error');

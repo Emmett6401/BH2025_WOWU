@@ -786,10 +786,10 @@
 
                 // Backend returns {id: ...} on success
                 if (response.data && response.data.id) {
-                    hideLoading();
-                    showToast(trainingId ? '훈련일지가 수정되었습니다.' : '훈련일지가 저장되었습니다.', 'success');
                     closeModal();
                     await loadTrainings();
+                    hideLoading();
+                    showToast(trainingId ? '훈련일지가 수정되었습니다.' : '훈련일지가 저장되었습니다.', 'success');
                 } else {
                     hideLoading();
                     showToast('저장에 실패했습니다', 'error');
