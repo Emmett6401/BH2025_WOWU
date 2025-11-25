@@ -99,29 +99,95 @@
         </div>
     </header>
 
-    <!-- Status Filter (Instructor only) -->
-    <div id="statusFilter" class="container mx-auto px-4 py-4 hidden">
-        <div class="flex space-x-2 overflow-x-auto">
-            <button onclick="filterByStatus('all')" 
-                    class="status-tab px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-orange-500 text-white shadow-md transition-all"
-                    data-status="all">
-                전체
-            </button>
-            <button onclick="filterByStatus('예정')" 
-                    class="status-tab px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
-                    data-status="예정">
-                예정
-            </button>
-            <button onclick="filterByStatus('완료')" 
-                    class="status-tab px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
-                    data-status="완료">
-                완료
-            </button>
-            <button onclick="filterByStatus('취소')" 
-                    class="status-tab px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
-                    data-status="취소">
-                취소
-            </button>
+    <!-- Filters Section -->
+    <div class="container mx-auto px-4 py-4 bg-white shadow-sm">
+        <!-- Filter Toggle Button -->
+        <button onclick="toggleFilters()" class="w-full flex items-center justify-between bg-gray-100 hover:bg-gray-200 px-4 py-3 rounded-lg transition-all">
+            <span class="font-semibold text-gray-700">
+                <i class="fas fa-filter mr-2 text-orange-500"></i>필터
+            </span>
+            <i class="fas fa-chevron-down text-gray-500" id="filterToggleIcon"></i>
+        </button>
+        
+        <!-- Filter Options (Hidden by default) -->
+        <div id="filterOptions" class="mt-3 space-y-3 hidden">
+            <!-- Course Filter -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">훈련과정</label>
+                <select id="filterCourse" onchange="updateStudentsByCourse(); filterCounselings();"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="">전체 과정</option>
+                </select>
+            </div>
+            
+            <!-- Student Filter -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">학생</label>
+                <select id="filterStudent" onchange="filterCounselings();"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="">전체 학생</option>
+                </select>
+            </div>
+            
+            <!-- Instructor Filter -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">강사</label>
+                <select id="filterInstructor" onchange="filterCounselings();"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="">전체 강사</option>
+                </select>
+            </div>
+            
+            <!-- Sort Filter -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">정렬</label>
+                <select id="filterSort" onchange="filterCounselings();"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="date-desc">최신순</option>
+                    <option value="date-asc">오래된순</option>
+                </select>
+            </div>
+            
+            <!-- Status Filter -->
+            <div id="statusFilterContainer" class="hidden">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">상태</label>
+                <div class="flex space-x-2 overflow-x-auto">
+                    <button onclick="filterByStatus('all')" 
+                            class="status-tab px-4 py-2 rounded-lg font-semibold whitespace-nowrap bg-orange-500 text-white shadow transition-all"
+                            data-status="all">
+                        전체
+                    </button>
+                    <button onclick="filterByStatus('예정')" 
+                            class="status-tab px-4 py-2 rounded-lg font-semibold whitespace-nowrap bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
+                            data-status="예정">
+                        예정
+                    </button>
+                    <button onclick="filterByStatus('완료')" 
+                            class="status-tab px-4 py-2 rounded-lg font-semibold whitespace-nowrap bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
+                            data-status="완료">
+                        완료
+                    </button>
+                    <button onclick="filterByStatus('취소')" 
+                            class="status-tab px-4 py-2 rounded-lg font-semibold whitespace-nowrap bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
+                            data-status="취소">
+                        취소
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Date Range Filter -->
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">시작일</label>
+                    <input type="date" id="filterStartDate" onchange="filterCounselings();"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">종료일</label>
+                    <input type="date" id="filterEndDate" onchange="filterCounselings();"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -404,6 +470,8 @@
         let existingPhotoUrls = [];
         let students = [];
         let instructors = [];
+        let courses = [];
+        let filtersExpanded = false;
         
         // Convert FTP URL to HTTP proxy URL
         function convertFtpUrl(url) {
@@ -435,15 +503,19 @@
                 document.getElementById('pageTitle').textContent = '상담관리';
                 document.getElementById('emptyMessage').textContent = '등록된 상담이 없습니다';
                 document.getElementById('emptyButtonText').textContent = '상담 등록하기';
-                document.getElementById('statusFilter').classList.remove('hidden');
+                document.getElementById('statusFilterContainer').classList.remove('hidden');
                 await loadStudents();
+                await loadCourses();
+                await loadInstructors();
             } else {
                 document.getElementById('pageTitle').textContent = '상담신청';
                 document.getElementById('emptyMessage').textContent = '신청한 상담이 없습니다';
                 document.getElementById('emptyButtonText').textContent = '상담 신청하기';
                 await loadInstructors();
+                await loadCourses();
             }
 
+            await initializeFilters();
             await loadCounselings();
         }
 
@@ -503,8 +575,13 @@
 
             emptyState.classList.add('hidden');
             
-            // Sort by date descending
-            counselings.sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date));
+            // Sort by date descending (최신순) - 기본값
+            const sortType = document.getElementById('filterSort').value;
+            if (sortType === 'date-desc') {
+                counselings.sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date));
+            } else if (sortType === 'date-asc') {
+                counselings.sort((a, b) => new Date(a.consultation_date) - new Date(b.consultation_date));
+            }
 
             container.innerHTML = counselings.map(counseling => {
                 const statusColors = {
@@ -684,8 +761,8 @@
             
             const existingHtml = existingPhotoUrls.map((url, index) => `
                 <div class="relative">
-                    <img src="${url}" class="w-full h-20 object-cover rounded-lg">
-                    <button type="button" onclick="removeExistingPhoto(${index})"
+                    <img src="${convertFtpUrl(url)}" class="w-full h-20 object-cover rounded-lg cursor-pointer" onclick="showPhotoModal('${convertFtpUrl(url)}')">
+                    <button type="button" onclick="event.stopPropagation(); removeExistingPhoto(${index})"
                             class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
                         <i class="fas fa-times"></i>
                     </button>
@@ -696,8 +773,8 @@
                 const url = URL.createObjectURL(file);
                 return `
                     <div class="relative">
-                        <img src="${url}" class="w-full h-20 object-cover rounded-lg">
-                        <button type="button" onclick="removeNewPhoto(${index})"
+                        <img src="${url}" class="w-full h-20 object-cover rounded-lg cursor-pointer" onclick="showPhotoModal('${url}')">
+                        <button type="button" onclick="event.stopPropagation(); removeNewPhoto(${index})"
                                 class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
                             <i class="fas fa-times"></i>
                         </button>
@@ -880,6 +957,131 @@
                 console.error('Delete error:', error);
                 hideLoading();
                 showToast('삭제 중 오류가 발생했습니다', 'error');
+            }
+        }
+
+        // Load courses
+        async function loadCourses() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/courses`);
+                courses = response.data || [];
+            } catch (error) {
+                console.error('Failed to load courses:', error);
+            }
+        }
+
+        // Initialize filters
+        async function initializeFilters() {
+            // Populate course filter
+            const courseSelect = document.getElementById('filterCourse');
+            courseSelect.innerHTML = '<option value="">전체 과정</option>' +
+                courses.map(c => `<option value="${c.code}">${c.name}</option>`).join('');
+            
+            // Populate student filter (all students initially)
+            const studentSelect = document.getElementById('filterStudent');
+            studentSelect.innerHTML = '<option value="">전체 학생</option>' +
+                students.map(s => `<option value="${s.id}">${s.name} (${s.major || '-'})</option>`).join('');
+            
+            // Populate instructor filter
+            const instructorSelect = document.getElementById('filterInstructor');
+            instructorSelect.innerHTML = '<option value="">전체 강사</option>' +
+                instructors.map(i => `<option value="${i.code}">${i.name}</option>`).join('');
+        }
+
+        // Toggle filters
+        function toggleFilters() {
+            const filterOptions = document.getElementById('filterOptions');
+            const filterIcon = document.getElementById('filterToggleIcon');
+            
+            filtersExpanded = !filtersExpanded;
+            
+            if (filtersExpanded) {
+                filterOptions.classList.remove('hidden');
+                filterIcon.classList.remove('fa-chevron-down');
+                filterIcon.classList.add('fa-chevron-up');
+            } else {
+                filterOptions.classList.add('hidden');
+                filterIcon.classList.remove('fa-chevron-up');
+                filterIcon.classList.add('fa-chevron-down');
+            }
+        }
+
+        // Update students by course
+        function updateStudentsByCourse() {
+            const courseCode = document.getElementById('filterCourse').value;
+            const studentSelect = document.getElementById('filterStudent');
+            
+            if (!courseCode) {
+                // Show all students
+                studentSelect.innerHTML = '<option value="">전체 학생</option>' +
+                    students.map(s => `<option value="${s.id}">${s.name} (${s.major || '-'})</option>`).join('');
+            } else {
+                // Filter students by course
+                const filteredStudents = students.filter(s => s.course_code === courseCode);
+                studentSelect.innerHTML = '<option value="">전체 학생</option>' +
+                    filteredStudents.map(s => `<option value="${s.id}">${s.name} (${s.major || '-'})</option>`).join('');
+            }
+        }
+
+        // Filter counselings
+        async function filterCounselings() {
+            const courseCode = document.getElementById('filterCourse').value;
+            const studentId = document.getElementById('filterStudent').value;
+            const instructorCode = document.getElementById('filterInstructor').value;
+            const startDate = document.getElementById('filterStartDate').value;
+            const endDate = document.getElementById('filterEndDate').value;
+            const sortType = document.getElementById('filterSort').value;
+            
+            try {
+                showLoading("필터링 중...", "");
+                
+                // Load all counselings first
+                let url = `${API_BASE_URL}/api/counselings?`;
+                if (userType === 'instructor') {
+                    url += `instructor_code=${currentUser.code}&`;
+                } else {
+                    url += `student_id=${currentUser.id}&`;
+                }
+                
+                const response = await axios.get(url);
+                let filtered = response.data || [];
+                
+                // Frontend filtering
+                if (studentId) {
+                    filtered = filtered.filter(c => c.student_id == studentId);
+                }
+                if (courseCode) {
+                    filtered = filtered.filter(c => c.course_code === courseCode);
+                }
+                if (instructorCode) {
+                    filtered = filtered.filter(c => c.instructor_code === instructorCode);
+                }
+                if (startDate) {
+                    filtered = filtered.filter(c => c.consultation_date >= startDate);
+                }
+                if (endDate) {
+                    filtered = filtered.filter(c => c.consultation_date <= endDate);
+                }
+                
+                // Apply status filter if set
+                if (currentFilter !== 'all') {
+                    filtered = filtered.filter(c => c.status === currentFilter);
+                }
+                
+                // Sorting
+                if (sortType === 'date-desc') {
+                    filtered.sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date));
+                } else if (sortType === 'date-asc') {
+                    filtered.sort((a, b) => new Date(a.consultation_date) - new Date(b.consultation_date));
+                }
+                
+                allCounselings = filtered;
+                renderCounselings(filtered);
+                hideLoading();
+            } catch (error) {
+                console.error('Filter error:', error);
+                hideLoading();
+                showToast('필터링 중 오류가 발생했습니다', 'error');
             }
         }
 
