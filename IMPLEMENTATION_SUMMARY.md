@@ -1,231 +1,325 @@
-# 팀 사진 업로드 및 훈련일지 썸네일 구현 완료 보고서
+# 자동 새로고침 기능 구현 완료 보고서
 
-## 📋 구현 개요
+## 📋 요청 사항
 
-사용자 요청사항:
-1. **훈련일지 사진 표시를 썸네일 구조로 변경**
-2. **팀(프로젝트)에 사진 업로드 기능 추가**
-   - FTP 경로: `/homes/ha/camFTP/BH2025/team`
-   - 그리드에 카메라 아이콘 표시
-   - 썸네일 구조로 사진 미리보기
+사용자님께서 요청하신 두 가지 기능:
 
-## ✅ 구현 완료 사항
-
-### 1. 훈련일지 사진 썸네일 구조 변경
-
-**변경 위치**: `/home/user/webapp/frontend/app.js` (Line ~5252)
-
-**변경 내용**:
-- 기존: 단순 목록 형태 (파일명 + 다운로드 링크)
-- 변경: 썸네일 구조 (16x16px 썸네일 + 다운로드 링크 + 삭제 버튼)
-
-**주요 기능**:
-```javascript
-function updateTrainingPhotoPreview(photoUrls) {
-    // 썸네일 이미지 (16x16px)
-    // 다운로드 링크
-    // 삭제 버튼
-    // 이미지 로드 실패 시 fallback SVG
-}
-```
-
-### 2. 팀(프로젝트) 사진 업로드 기능
-
-#### 2.1 백엔드 구현 (`/home/user/webapp/backend/main.py`)
-
-**추가된 내용**:
-
-1. **FTP 경로 추가**:
-```python
-FTP_PATHS = {
-    'guidance': '/homes/ha/camFTP/BH2025/guidance',
-    'train': '/homes/ha/camFTP/BH2025/train',
-    'student': '/homes/ha/camFTP/BH2025/student',
-    'teacher': '/homes/ha/camFTP/BH2025/teacher',
-    'team': '/homes/ha/camFTP/BH2025/team'  # ✅ 추가
-}
-```
-
-2. **Projects API 업데이트**:
-   - GET `/api/projects`: `ensure_photo_urls_column()` 호출로 컬럼 자동 생성
-   - POST `/api/projects`: `photo_urls` 필드 INSERT에 추가
-   - PUT `/api/projects/{code}`: `photo_urls` 필드 UPDATE에 추가
-
-#### 2.2 프론트엔드 구현 (`/home/user/webapp/frontend/app.js`)
-
-**추가된 기능들**:
-
-1. **팀 폼에 사진 업로드 UI 추가** (Line ~3975):
-   - 파일 선택 버튼
-   - 사진 촬영 버튼 (모바일/데스크탑 카메라)
-   - 업로드 진행률 표시
-   - 사진 미리보기 영역
-   - Hidden inputs (photo_urls, project_code)
-
-2. **사진 업로드 핸들러** (Line ~4220):
-```javascript
-window.handleProjectImageUpload = async function(event) {
-    // 파일 선택/촬영
-    // FTP 업로드 (category='team')
-    // 진행률 표시
-    // Auto-save
-    // 성공 메시지 (팀명 포함)
-}
-```
-
-3. **사진 삭제 핸들러** (Line ~4274):
-```javascript
-window.removeProjectPhoto = async function(index) {
-    // 사진 배열에서 제거
-    // Auto-save
-    // 성공 메시지 (팀명 포함)
-}
-```
-
-4. **사진 미리보기 업데이트** (Line ~4295):
-```javascript
-function updateProjectPhotoPreview(photoUrls) {
-    // 썸네일 이미지 (16x16px)
-    // 다운로드 링크
-    // 삭제 버튼
-}
-```
-
-5. **그리드에 카메라 아이콘 표시** (Line ~3844):
-```javascript
-${filteredProjects.map(p => {
-    const photoUrls = p.photo_urls ? JSON.parse(p.photo_urls) : [];
-    return `
-        ...
-        <td class="px-4 py-2 text-xs">
-            ${photoUrls.length > 0 ? `
-                <i class="fas fa-camera text-green-600 mr-2" 
-                   title="${photoUrls.length}개 사진"></i>
-            ` : ''}
-            ...
-        </td>
-    `;
-})}
-```
-
-6. **saveProject 함수 업데이트** (Line ~4108):
-   - `autoSave` 파라미터 추가
-   - `photo_urls` 필드 포함
-   - autoSave=true일 때 UI 새로고침 생략
-
-7. **showProjectForm 초기화** (Line ~3989):
-   - 기존 팀 편집 시 photo_urls 파싱 및 미리보기 표시
-
-## 🎯 구현 특징
-
-### 1. 일관된 사용자 경험
-- 상담, 학생, 강사, 훈련일지, 팀 모두 동일한 썸네일 구조 사용
-- 16x16px 썸네일 + 다운로드 링크 + 삭제 버튼
-
-### 2. 자동 저장 (Auto-save)
-- 사진 업로드/삭제 후 자동으로 레코드 저장
-- 사용자가 별도로 저장 버튼 클릭 불필요
-
-### 3. 상황별 맞춤 메시지
-- 성공 메시지에 팀명 포함: "사진 2개가 업로드되고 팀(AI 프로젝트팀)에 자동 저장되었습니다."
-- 어떤 레코드가 수정되었는지 명확히 표시
-
-### 4. 진행률 표시
-- 파일별 업로드 진행률 실시간 표시
-- 사용자에게 작업 진행 상황 명확히 전달
-
-### 5. 그리드 시각적 표시
-- 사진이 있는 팀: 녹색 카메라 아이콘 표시
-- 마우스 오버 시 툴팁으로 사진 개수 표시
-- 한눈에 사진 첨부 여부 확인 가능
-
-## 📝 Git 커밋 정보
-
-```
-Commit: 327ee86
-Message: feat: Add team photo upload and training log thumbnail view
-
-- Add team (project) photo upload functionality with FTP to /team directory
-- Implement handleProjectImageUpload, removeProjectPhoto, updateProjectPhotoPreview functions
-- Add camera icon in project grid to show photo count
-- Change training log photo preview from list to thumbnail structure (16x16px)
-- Add photo_urls column support for projects table in backend
-- Auto-save after photo upload/delete with contextual success messages
-- Use thumbnail display pattern consistent with counseling/student/instructor modules
-```
-
-## 🔗 서비스 URL
-
-**Frontend**: https://3000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai
-
-## 🧪 테스트 가이드
-
-### 1. 훈련일지 썸네일 테스트
-1. 메뉴에서 "훈련일지" 선택
-2. 기존 훈련일지 편집 또는 새로 추가
-3. 사진 업로드
-4. 사진 미리보기가 썸네일 구조로 표시되는지 확인
-5. 썸네일 클릭 시 다운로드 되는지 확인
-6. 삭제 버튼으로 사진 삭제 가능한지 확인
-
-### 2. 팀 사진 업로드 테스트
-1. 메뉴에서 "팀관리" 선택
-2. 새 팀 추가 또는 기존 팀 편집
-3. "사진 첨부" 섹션에서 파일 선택 또는 사진 촬영
-4. 진행률 표시 확인
-5. 업로드 후 자동 저장 메시지 확인 (팀명 포함)
-6. 썸네일 미리보기 확인
-7. 팀 목록 그리드에서 녹색 카메라 아이콘 확인
-8. 카메라 아이콘에 마우스 오버 시 사진 개수 툴팁 확인
-9. 사진 삭제 테스트
-10. 다른 팀 편집 시 기존 사진이 올바르게 로드되는지 확인
-
-### 3. FTP 업로드 확인
-- FTP 서버 접속: bitnmeta2.synology.me:2121
-- 경로 확인: `/homes/ha/camFTP/BH2025/team/`
-- 파일명 형식: `team_{timestamp}_{random}.jpg`
-
-## 📊 기술 스택
-
-- **Backend**: FastAPI (Python)
-- **Frontend**: Vanilla JavaScript
-- **Storage**: FTP (ftplib)
-- **Thumbnail**: Pillow (PIL)
-- **UI Framework**: TailwindCSS
-- **Icons**: Font Awesome
-
-## 🔍 주요 파일 변경 사항
-
-1. `/home/user/webapp/backend/main.py`: FTP 경로 추가, Projects API 업데이트
-2. `/home/user/webapp/frontend/app.js`: 
-   - 훈련일지 썸네일 함수 수정
-   - 팀 사진 업로드 UI 추가
-   - 팀 사진 핸들러 3개 추가
-   - 팀 그리드 카메라 아이콘 추가
-   - saveProject 함수 업데이트
-
-## ✨ 완료 상태
-
-- ✅ 훈련일지 사진 썸네일 구조 변경
-- ✅ 팀 FTP 경로 설정 (`/team`)
-- ✅ 팀 사진 업로드 UI 구현
-- ✅ 팀 사진 업로드 핸들러 구현
-- ✅ 팀 사진 삭제 핸들러 구현
-- ✅ 팀 사진 미리보기 함수 구현
-- ✅ 팀 그리드 카메라 아이콘 표시
-- ✅ 백엔드 API 업데이트
-- ✅ Git 커밋 완료
-- ✅ 서비스 재시작 완료
-
-## 📌 다음 단계 권장사항
-
-1. **사용자 테스트**: 실제 환경에서 팀 사진 업로드 테스트
-2. **모바일 테스트**: 스마트폰에서 카메라 촬영 기능 테스트
-3. **FTP 연결 확인**: 실제 FTP 서버에 파일이 올바르게 업로드되는지 확인
-4. **성능 모니터링**: 대용량 사진 업로드 시 성능 확인
-5. **에러 핸들링 검증**: 네트워크 오류, FTP 오류 시 사용자 메시지 확인
+1. **화면 새로고침 시 로고가 약 10초간 떠다니도록 변경**
+2. **시스템 등록에서 새로고침 시간을 지정할 수 있도록 구현**
 
 ---
 
-구현 완료 일시: 2025-11-14 17:15 KST
-구현자: Claude Code Assistant
+## ✅ 구현 완료 내역
+
+### 1. 화면보호기 지속 시간 확장 (10초)
+
+**파일**: `/home/user/webapp/frontend/app.js`
+
+**변경 위치**: `startDashboardAutoRefresh()` 함수 (라인 1357-1392)
+
+**구현 내용**:
+```javascript
+dashboardRefreshInterval = setInterval(async () => {
+    if (currentTab === 'dashboard') {
+        console.log('🔄 자동 새로고침 실행...');
+        showScreensaver();
+        
+        // 10초 동안 화면보호기 표시
+        await new Promise(resolve => setTimeout(resolve, 10000));
+        
+        await loadDashboard();
+        hideScreensaver();
+        
+        // 다음 새로고침 시간 재설정
+        dashboardRefreshTime = Date.now() + intervalMs;
+    }
+}, intervalMs);
+```
+
+**효과**:
+- ✅ 자동 새로고침 시 화면보호기가 정확히 10초 동안 표시됩니다
+- ✅ 로고의 떠다니는 애니메이션(float, bounce, rotate)이 10초간 실행됩니다
+- ✅ "데이터 새로고침 중..." 메시지가 함께 표시됩니다
+
+---
+
+### 2. 새로고침 시간 설정 기능
+
+#### 2-1. UI 추가 (시스템 설정 페이지)
+
+**파일**: `/home/user/webapp/frontend/app.js`
+
+**변경 위치**: `renderSystemSettings()` 함수 (라인 11239-11260)
+
+**추가된 HTML 폼**:
+```html
+<!-- 대시보드 자동 새로고침 시간 -->
+<div>
+    <label class="block text-gray-700 font-semibold mb-2">
+        <i class="fas fa-sync-alt mr-2 text-orange-500"></i>대시보드 자동 새로고침 시간
+    </label>
+    <div class="flex items-center gap-3">
+        <input type="number" id="refresh-interval" min="1" max="60" step="1"
+               class="w-32 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+               placeholder="5">
+        <span class="text-gray-700">분마다 자동 새로고침</span>
+    </div>
+    <p class="text-sm text-gray-500 mt-2">
+        <i class="fas fa-info-circle mr-1"></i>
+        대시보드가 자동으로 새로고침되는 시간 간격입니다 (1~60분, 기본값: 5분)
+    </p>
+    <p class="text-sm text-gray-400 mt-1">
+        💡 새로고침 시 10초간 화면보호기(로고 애니메이션)가 표시됩니다
+    </p>
+</div>
+```
+
+**기능**:
+- 1~60분 사이의 값을 입력할 수 있습니다
+- 숫자만 입력 가능 (number 타입)
+- 기본값은 5분입니다
+
+---
+
+#### 2-2. 설정 로드 기능
+
+**변경 위치**: `renderSystemSettings()` 함수 내부 setTimeout (라인 11277-11309)
+
+**추가된 코드**:
+```javascript
+// 대시보드 자동 새로고침 시간 설정 로드
+const savedInterval = localStorage.getItem('dashboard_refresh_interval') || '5';
+if (refreshIntervalInput) {
+    refreshIntervalInput.value = savedInterval;
+    console.log('✅ 자동 새로고침 시간 로드:', savedInterval + '분');
+}
+```
+
+**기능**:
+- localStorage에 저장된 새로고침 간격을 불러옵니다
+- 저장된 값이 없으면 기본값 5분을 사용합니다
+- 폼 필드에 현재 설정값을 자동으로 표시합니다
+
+---
+
+#### 2-3. 설정 저장 기능
+
+**변경 위치**: `saveSystemSettings()` 함수 (라인 11395-11454)
+
+**추가된 코드**:
+```javascript
+// 대시보드 자동 새로고침 시간 저장
+let refreshInterval = 5; // 기본값
+if (refreshIntervalElement) {
+    const inputValue = parseInt(refreshIntervalElement.value);
+    if (inputValue >= 1 && inputValue <= 60) {
+        refreshInterval = inputValue;
+    } else {
+        window.showAlert('⚠️ 새로고침 시간은 1~60분 사이여야 합니다. 기본값 5분으로 설정됩니다.');
+        refreshInterval = 5;
+        refreshIntervalElement.value = 5;
+    }
+}
+
+// localStorage에 저장
+const oldInterval = localStorage.getItem('dashboard_refresh_interval');
+localStorage.setItem('dashboard_refresh_interval', refreshInterval.toString());
+console.log('💾 자동 새로고침 시간 저장:', refreshInterval + '분');
+
+// 새로고침 간격이 변경된 경우 타이머 재시작
+if (oldInterval !== refreshInterval.toString()) {
+    console.log('🔄 자동 새로고침 타이머 재시작...');
+    stopDashboardAutoRefresh();
+    startDashboardAutoRefresh();
+}
+
+window.showAlert(`✅ 시스템 설정이 저장되었습니다!\n\n대시보드 자동 새로고침: ${refreshInterval}분마다\n(10초간 화면보호기 표시)`);
+```
+
+**기능**:
+- 입력값을 검증합니다 (1~60분 범위)
+- 유효하지 않은 값은 기본값 5분으로 설정됩니다
+- localStorage에 설정을 저장합니다
+- 설정이 변경되면 자동으로 타이머를 재시작합니다
+- 브라우저를 닫아도 설정이 유지됩니다
+
+---
+
+#### 2-4. 자동 새로고침 함수 수정
+
+**변경 위치**: `getRefreshInterval()` 함수 추가 및 `startDashboardAutoRefresh()` 수정
+
+**추가된 함수**:
+```javascript
+function getRefreshInterval() {
+    // localStorage에서 설정된 새로고침 시간 가져오기 (기본값: 5분)
+    const savedInterval = localStorage.getItem('dashboard_refresh_interval');
+    return savedInterval ? parseInt(savedInterval) * 60000 : 300000; // 분 → 밀리초
+}
+```
+
+**수정된 startDashboardAutoRefresh()**:
+```javascript
+const intervalMs = getRefreshInterval();
+const intervalMin = Math.floor(intervalMs / 60000);
+
+console.log(`⏰ 대시보드 자동 새로고침 시작 (${intervalMin}분 간격)`);
+
+// 다음 새로고침 시간 설정
+dashboardRefreshTime = Date.now() + intervalMs;
+
+// 설정된 시간마다 새로고침
+dashboardRefreshInterval = setInterval(async () => {
+    // ... 새로고침 로직
+}, intervalMs);
+```
+
+**기능**:
+- localStorage에서 설정된 간격을 읽어옵니다
+- 설정된 간격에 따라 자동 새로고침을 실행합니다
+- 헤더의 카운트다운 타이머도 설정된 간격에 맞춰 동작합니다
+
+---
+
+## 🎯 주요 특징
+
+### 1. 사용자 친화적
+- 직관적인 UI: 숫자만 입력하면 됩니다
+- 명확한 안내 문구: 범위와 기본값이 표시됩니다
+- 입력 검증: 잘못된 값 입력 시 경고 메시지
+
+### 2. 지속성
+- localStorage 사용으로 브라우저 종료 후에도 설정 유지
+- 페이지 새로고침 후에도 설정이 그대로 적용됨
+
+### 3. 실시간 반영
+- 설정 저장 즉시 타이머 재시작
+- 별도의 브라우저 새로고침 불필요
+
+### 4. 안정성
+- 입력값 검증 (1~60분)
+- 기본값 자동 설정 (잘못된 값 입력 시)
+- 에러 처리 및 사용자 피드백
+
+---
+
+## 📊 테스트 방법
+
+### 접속 정보
+- **URL**: https://3000-i3oloko346uog7d7oo8v5-de59bda9.sandbox.novita.ai
+- **계정**: 강사 계정으로 로그인
+
+### 테스트 절차
+
+1. **화면보호기 10초 확인**
+   - 대시보드 접속
+   - 설정된 시간 대기 (헤더 카운트다운 확인)
+   - 자동 새로고침 시 화면보호기가 10초간 표시되는지 확인
+
+2. **새로고침 시간 설정**
+   - 좌측 메뉴 > 관리자 > 시스템 등록
+   - "대시보드 자동 새로고침 시간" 필드에서 원하는 시간 입력 (예: 1분)
+   - 저장 버튼 클릭
+   - 성공 메시지 확인
+
+3. **설정 적용 확인**
+   - 헤더의 카운트다운이 설정한 시간으로 시작하는지 확인
+   - 설정한 시간 후 자동 새로고침 실행되는지 확인
+   - 10초간 화면보호기 표시되는지 확인
+
+4. **설정 지속성 확인**
+   - 브라우저 새로고침 (F5)
+   - 다시 로그인하여 시스템 설정 확인
+   - 이전에 설정한 값이 그대로 유지되는지 확인
+
+---
+
+## 📁 변경된 파일
+
+```
+/home/user/webapp/frontend/app.js
+```
+
+**변경 라인**:
+- 라인 1357-1392: 자동 새로고침 함수 (10초 지연 추가)
+- 라인 11239-11260: 시스템 설정 UI (새로고침 간격 입력 필드)
+- 라인 11277-11309: 설정 로드 로직
+- 라인 11395-11454: 설정 저장 로직
+
+---
+
+## 🚀 배포 정보
+
+### Git Commit
+```bash
+commit 468e2b6
+Author: user
+Date: 2025-11-25
+
+feat: Add configurable auto-refresh interval in system settings
+
+- Add refresh interval setting UI in system settings (1-60 minutes)
+- Extend screensaver duration to 10 seconds during auto-refresh
+- Save refresh interval to localStorage
+- Automatically restart refresh timer when interval changes
+- Load saved interval value when opening system settings
+- Add input validation (1-60 minutes range)
+- Update success message to show current refresh interval
+```
+
+### 브랜치 정보
+- **현재 브랜치**: mobile
+- **상태**: 커밋 완료
+
+---
+
+## 📝 사용 가이드
+
+### 관리자용
+
+1. **시스템 설정 접근**
+   - 좌측 메뉴 > 관리자 > 시스템 등록
+
+2. **새로고침 시간 설정**
+   - "대시보드 자동 새로고침 시간" 필드 찾기
+   - 원하는 시간(분) 입력 (1~60분)
+   - 저장 버튼 클릭
+
+3. **권장 설정값**
+   - 테스트 환경: 1~2분
+   - 일반 사무실: 5분 (기본값)
+   - 안정적 운영: 10~15분
+   - 대형 디스플레이: 3~5분
+
+### 사용자용
+
+- 별도 설정 불필요
+- 관리자가 설정한 간격에 따라 자동으로 새로고침됩니다
+- 새로고침 시 10초간 로고 애니메이션이 표시됩니다
+- 헤더에서 다음 새로고침까지 남은 시간을 확인할 수 있습니다
+
+---
+
+## ✨ 추가 개선 가능 항목 (향후 계획)
+
+1. **프리셋 버튼**: "1분", "5분", "10분", "30분" 빠른 선택
+2. **애니메이션 커스터마이징**: 화면보호기 스타일 선택
+3. **알림 옵션**: 새로고침 전 알림 설정
+4. **시간대 설정**: 특정 시간대에만 자동 새로고침 활성화
+5. **데이터 변경 감지**: 실제 데이터 변경 시에만 새로고침
+
+---
+
+## 📞 문의 및 피드백
+
+구현 완료된 기능을 테스트하신 후 피드백 부탁드립니다!
+
+- 화면보호기 10초 지속 시간이 적절한지
+- 설정 UI가 사용하기 편리한지
+- 추가로 필요한 기능이 있는지
+
+---
+
+**구현 완료 일시**: 2025-11-25
+**담당**: AI Assistant
+**상태**: ✅ 완료 및 테스트 준비 완료
