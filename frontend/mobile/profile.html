@@ -148,21 +148,39 @@
                 <div id="passwordChangeSection" class="space-y-3 hidden">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">현재 비밀번호</label>
-                        <input type="password" id="currentPassword"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="현재 비밀번호">
+                        <div class="relative">
+                            <input type="password" id="currentPassword"
+                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="현재 비밀번호">
+                            <button type="button" onclick="togglePasswordVisibility('currentPassword')"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                <i id="currentPasswordIcon" class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">새 비밀번호</label>
-                        <input type="password" id="newPassword"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="새 비밀번호">
+                        <div class="relative">
+                            <input type="password" id="newPassword"
+                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="새 비밀번호">
+                            <button type="button" onclick="togglePasswordVisibility('newPassword')"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                <i id="newPasswordIcon" class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">새 비밀번호 확인</label>
-                        <input type="password" id="confirmPassword"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="새 비밀번호 확인">
+                        <div class="relative">
+                            <input type="password" id="confirmPassword"
+                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="새 비밀번호 확인">
+                            <button type="button" onclick="togglePasswordVisibility('confirmPassword')"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                <i id="confirmPasswordIcon" class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -530,6 +548,22 @@
                 document.getElementById('currentPassword').value = '';
                 document.getElementById('newPassword').value = '';
                 document.getElementById('confirmPassword').value = '';
+            }
+        }
+        
+        // Toggle password visibility
+        function togglePasswordVisibility(fieldId) {
+            const input = document.getElementById(fieldId);
+            const icon = document.getElementById(fieldId + 'Icon');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
             }
         }
         
