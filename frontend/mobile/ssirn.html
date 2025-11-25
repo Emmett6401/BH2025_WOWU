@@ -26,6 +26,34 @@
             object-fit: cover;
             border-radius: 8px;
         }
+    
+        /* Toast animations */
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+        .toast-enter {
+            animation: slideInRight 0.3s ease-out forwards;
+        }
+        .toast-exit {
+            animation: slideOutRight 0.3s ease-in forwards;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -152,6 +180,12 @@
             <p id="loadingSubtext" class="text-sm text-gray-600">잠시만 기다려주세요</p>
         </div>
     </div>
+    <!-- Toast Message Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
+        <!-- Toasts will be added here dynamically -->
+    </div>
+
+
 
     <script>
         // Loading overlay functions
@@ -169,6 +203,47 @@
             overlay.classList.remove("flex");
         }
 
+        // Toast Message System
+        function showToast(message, type = 'success', duration = 3000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast-enter pointer-events-auto';
+            
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-yellow-500',
+                info: 'bg-blue-500'
+            };
+            
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+            
+            toast.innerHTML = `
+                <div class="${colors[type]} text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 min-w-[300px] max-w-[400px]">
+                    <i class="fas ${icons[type]} text-2xl"></i>
+                    <span class="flex-1 font-medium">${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200 ml-2">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Auto remove after duration
+            if (duration > 0) {
+                setTimeout(() => {
+                    toast.classList.remove('toast-enter');
+                    toast.classList.add('toast-exit');
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            }
+        }
         const API_BASE_URL = window.location.origin.replace('3000', '8000');
         let currentUser = null;
         let userType = null;
@@ -331,7 +406,7 @@
             if (recognition) return; // 이미 초기화되었으면 재사용
             
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert('이 브라우저는 음성 인식을 지원하지 않습니다.');
+                showToast('이 브라우저는 음성 인식을 지원하지 않습니다', 'warning');
                 return;
             }
 
@@ -366,7 +441,7 @@
             recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
                 if (event.error !== 'no-speech' && event.error !== 'aborted') {
-                    alert('음성 인식 중 오류가 발생했습니다: ' + event.error);
+                    showToast('음성 인식 중 오류가 발생했습니다: ' + event.error, 'error');
                 }
             };
 
@@ -385,7 +460,7 @@
             const totalMedia = selectedPhotos.length + existingPhotoUrls.length;
             
             if (totalMedia + files.length > 5) {
-                alert('최대 5개까지만 업로드할 수 있습니다.');
+                showToast('최대 5개까지만 업로드할 수 있습니다', 'warning');
                 return;
             }
 
@@ -529,14 +604,14 @@
 
                 if (response.data.success) {
                     hideLoading();
-                    alert(memoId ? '메모가 수정되었습니다.' : '메모가 저장되었습니다.');
+                    showToast(memoId ? '메모가 수정되었습니다.' : '메모가 저장되었습니다.', 'success');
                     closeModal();
                     await loadMemos();
                 }
             } catch (error) {
                 console.error('Save error:', error);
                 hideLoading();
-                alert('저장 중 오류가 발생했습니다.');
+                showToast('저장 중 오류가 발생했습니다', 'error');
             }
         });
 
@@ -618,13 +693,13 @@
                 const response = await axios.delete(`${API_BASE_URL}/api/class-notes/${memoId}`);
                 if (response.data.success) {
                     hideLoading();
-                    alert('메모가 삭제되었습니다.');
+                    showToast('메모가 삭제되었습니다', 'success');
                     await loadMemos();
                 }
             } catch (error) {
                 console.error('Delete error:', error);
                 hideLoading();
-                alert('삭제 중 오류가 발생했습니다.');
+                showToast('삭제 중 오류가 발생했습니다', 'error');
             }
         }
 
