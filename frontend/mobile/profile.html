@@ -375,12 +375,7 @@
                     startY = e.touches[0].pageY;
                     isPulling = true;
                 }
-            }
-        // Refresh data for pull-to-refresh
-        async function refreshData() {
-            await loadUserData();
-        }
-, { passive: true });
+            }, { passive: true });
             
             document.addEventListener('touchmove', (e) => {
                 if (!isPulling || isRefreshing) return;
@@ -424,6 +419,12 @@
                 currentY = 0;
             });
         }
+        
+        // Refresh data for pull-to-refresh
+        async function refreshData() {
+            await loadUserData();
+        }
+        
         let currentUser = null;
         let userType = null;
         let photoFile = null;
