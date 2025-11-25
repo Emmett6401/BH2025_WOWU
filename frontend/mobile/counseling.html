@@ -587,14 +587,19 @@
                 const typeColors = {
                     '정기': 'bg-purple-100 text-purple-700',
                     '긴급': 'bg-red-100 text-red-700',
-                    '학생요청': 'bg-yellow-100 text-yellow-700'
+                    '학생요청': 'bg-yellow-100 text-yellow-700',
+                    '수시': 'bg-teal-100 text-teal-700',
+                    '기타': 'bg-gray-100 text-gray-700'
                 };
 
                 const photos = counseling.photo_urls ? JSON.parse(counseling.photo_urls) : [];
                 const photoHtml = photos.length > 0 ? `
                     <div class="flex space-x-2 mt-3 overflow-x-auto">
-                        ${photos.slice(0, 3).map(url => `
-                            <img src="${convertFtpUrl(url)}" class="photo-thumbnail cursor-pointer" onclick="event.stopPropagation(); showPhotoModal('${convertFtpUrl(url)}')">
+                        ${photos.slice(0, 3).map((url, idx) => `
+                            <img src="${convertFtpUrl(url)}" 
+                                 class="photo-thumbnail cursor-pointer" 
+                                 data-photo-url="${convertFtpUrl(url).replace(/"/g, '&quot;')}"
+                                 onclick="event.stopPropagation(); showPhotoModal(this.dataset.photoUrl)">
                         `).join('')}
                         ${photos.length > 3 ? `<div class="photo-thumbnail bg-gray-200 flex items-center justify-center text-gray-600 font-semibold">+${photos.length - 3}</div>` : ''}
                     </div>
@@ -631,7 +636,7 @@
                         <div class="mb-2">
                             <span class="text-sm text-gray-600">
                                 <i class="fas fa-calendar mr-1"></i>
-                                ${counseling.consultation_date}
+                                ${counseling.consultation_date ? counseling.consultation_date.split('T')[0] : '날짜 없음'}
                             </span>
                         </div>
                         <p class="text-gray-800 whitespace-pre-wrap line-clamp-3">${counseling.content}</p>
@@ -754,21 +759,30 @@
         function renderPhotoPreview() {
             const container = document.getElementById('photoPreviewContainer');
             
-            const existingHtml = existingPhotoUrls.map((url, index) => `
-                <div class="relative">
-                    <img src="${convertFtpUrl(url)}" class="w-full h-20 object-cover rounded-lg cursor-pointer" onclick="showPhotoModal('${convertFtpUrl(url)}')">
-                    <button type="button" onclick="event.stopPropagation(); removeExistingPhoto(${index})"
-                            class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `).join('');
+            const existingHtml = existingPhotoUrls.map((url, index) => {
+                const convertedUrl = convertFtpUrl(url);
+                return `
+                    <div class="relative">
+                        <img src="${convertedUrl}" 
+                             class="w-full h-20 object-cover rounded-lg cursor-pointer" 
+                             data-photo-url="${convertedUrl.replace(/"/g, '&quot;')}"
+                             onclick="showPhotoModal(this.dataset.photoUrl)">
+                        <button type="button" onclick="event.stopPropagation(); removeExistingPhoto(${index})"
+                                class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
 
             const newHtml = selectedPhotos.map((file, index) => {
                 const url = URL.createObjectURL(file);
                 return `
                     <div class="relative">
-                        <img src="${url}" class="w-full h-20 object-cover rounded-lg cursor-pointer" onclick="showPhotoModal('${url}')">
+                        <img src="${url}" 
+                             class="w-full h-20 object-cover rounded-lg cursor-pointer" 
+                             data-photo-url="${url}"
+                             onclick="showPhotoModal(this.dataset.photoUrl)">
                         <button type="button" onclick="event.stopPropagation(); removeNewPhoto(${index})"
                                 class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
                             <i class="fas fa-times"></i>
@@ -800,7 +814,7 @@
 
         // Show photo modal
         function showPhotoModal(url) {
-            event.stopPropagation();
+            console.log('showPhotoModal called with url:', url);
             document.getElementById('photoModalImg').src = url;
             document.getElementById('photoModal').classList.remove('hidden');
             document.getElementById('photoModal').classList.add('flex');
