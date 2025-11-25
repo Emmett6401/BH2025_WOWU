@@ -459,6 +459,8 @@
         // Load user data
         async function loadUserData() {
             try {
+                showLoading("프로필 정보 불러오는 중...", "");
+                
                 let response;
                 if (userType === 'instructor') {
                     response = await axios.get(`${API_BASE_URL}/api/instructors/${currentUser.code}`);
@@ -467,6 +469,7 @@
                 }
 
                 const data = response.data;
+                hideLoading();
                 
                 // Fill form fields
                 document.getElementById('name').value = data.name || '';
