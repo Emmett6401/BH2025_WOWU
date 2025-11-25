@@ -639,10 +639,18 @@
                         </div>
                         <div class="mb-2">
                             <span class="text-sm font-semibold text-gray-700">
-                                <i class="fas fa-user mr-1"></i>
-                                ${userType === 'instructor' ? counseling.student_name : counseling.instructor_name || '미배정'}
+                                <i class="fas fa-user-graduate mr-1"></i>
+                                ${userType === 'instructor' ? counseling.student_name : counseling.student_name || '학생 미배정'}
                             </span>
                         </div>
+                        ${counseling.instructor_name ? `
+                            <div class="mb-2">
+                                <span class="text-sm font-semibold text-gray-600">
+                                    <i class="fas fa-user-tie mr-1"></i>
+                                    ${counseling.instructor_name}
+                                </span>
+                            </div>
+                        ` : ''}
                         <div class="mb-2">
                             <span class="text-sm text-gray-600">
                                 <i class="fas fa-calendar mr-1"></i>
