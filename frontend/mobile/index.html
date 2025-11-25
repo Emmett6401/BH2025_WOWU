@@ -383,8 +383,11 @@
                     notices: noticesData.length
                 });
                 
-                // 오늘 날짜
-                const today = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+                // 오늘 날짜 (로컬 시간대 사용)
+                const now = new Date();
+                const today = now.getFullYear() + '-' + 
+                              String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                              String(now.getDate()).padStart(2, '0');
                 
                 // 오늘 시간표
                 const todayTimetables = timetablesData.filter(t => t.class_date === today);
@@ -432,22 +435,33 @@
                     .slice(0, 5);
                 
                 // 추가 통계 계산
-                const todayCounselings = counselingsData.filter(c => c.consultation_date === today).length;
+                const todayCounselings = counselingsData.filter(c => {
+                    const consultDate = c.consultation_date ? c.consultation_date.split('T')[0].split(' ')[0] : '';
+                    return consultDate === today;
+                }).length;
+                
                 const thisWeekStart = new Date();
                 thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
-                const thisWeekStartStr = thisWeekStart.toISOString().split('T')[0];
-                const thisWeekCounselings = counselingsData.filter(c => c.consultation_date >= thisWeekStartStr).length;
+                const thisWeekStartStr = thisWeekStart.getFullYear() + '-' + 
+                                         String(thisWeekStart.getMonth() + 1).padStart(2, '0') + '-' + 
+                                         String(thisWeekStart.getDate()).padStart(2, '0');
+                const thisWeekCounselings = counselingsData.filter(c => {
+                    const consultDate = c.consultation_date ? c.consultation_date.split('T')[0].split(' ')[0] : '';
+                    return consultDate >= thisWeekStartStr;
+                }).length;
                 
                 // 최근 7일 상담 추이
                 const last7Days = [];
                 for (let i = 6; i >= 0; i--) {
                     const d = new Date();
                     d.setDate(d.getDate() - i);
-                    const dateStr = d.toISOString().split('T')[0];
+                    const dateStr = d.getFullYear() + '-' + 
+                                    String(d.getMonth() + 1).padStart(2, '0') + '-' + 
+                                    String(d.getDate()).padStart(2, '0');
                     last7Days.push({
                         date: dateStr,
                         count: counselingsData.filter(c => {
-                            const consultDate = c.consultation_date ? c.consultation_date.split('T')[0] : '';
+                            const consultDate = c.consultation_date ? c.consultation_date.split('T')[0].split(' ')[0] : '';
                             return consultDate === dateStr;
                         }).length
                     });
