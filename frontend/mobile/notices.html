@@ -131,19 +131,6 @@
             <form id="noticeForm" class="p-6 space-y-4">
                 <input type="hidden" id="noticeId">
                 
-                <!-- Category -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-tag mr-2 text-purple-500"></i>분류
-                    </label>
-                    <select id="noticeCategory" required
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                        <option value="일반">일반</option>
-                        <option value="긴급">긴급</option>
-                        <option value="중요">중요</option>
-                    </select>
-                </div>
-
                 <!-- Title -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
@@ -428,12 +415,6 @@
             notices.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
             container.innerHTML = notices.map(notice => {
-                const categoryColors = {
-                    '일반': 'bg-blue-100 text-blue-700',
-                    '긴급': 'bg-red-100 text-red-700',
-                    '중요': 'bg-yellow-100 text-yellow-700'
-                };
-                
                 const isNew = (new Date() - new Date(notice.created_at)) < 24 * 60 * 60 * 1000; // 24 hours
 
                 return `
@@ -441,16 +422,13 @@
                          onclick="showDetail(${notice.id})">
                         <div class="flex items-start justify-between mb-3">
                             <div class="flex items-center space-x-2">
-                                <span class="px-3 py-1 rounded-full text-xs font-semibold ${categoryColors[notice.category] || categoryColors['일반']}">
-                                    ${notice.category}
-                                </span>
-                                ${isNew ? '<span class="badge-new px-2 py-1 bg-red-500 text-white rounded-full text-xs font-bold">NEW</span>' : ''}
+                                ${isNew ? '<span class="badge-new px-2 py-1 bg-purple-500 text-white rounded-full text-xs font-bold">NEW</span>' : ''}
                             </div>
                         </div>
                         <h3 class="text-lg font-bold text-gray-800 mb-2">${notice.title}</h3>
                         <p class="text-gray-600 text-sm line-clamp-2 mb-3">${notice.content}</p>
                         <div class="flex items-center justify-between text-xs text-gray-500">
-                            <span><i class="fas fa-user mr-1"></i>${notice.instructor_name || '관리자'}</span>
+                            <span><i class="fas fa-user mr-1"></i>${notice.created_by || '관리자'}</span>
                             <span><i class="fas fa-calendar mr-1"></i>${new Date(notice.created_at).toLocaleDateString('ko-KR')}</span>
                         </div>
                     </div>
@@ -467,9 +445,9 @@
 
             currentNoticeId = noticeId;
 
-            document.getElementById('detailCategory').textContent = notice.category;
+            document.getElementById('detailCategory').textContent = '공지사항';
             document.getElementById('detailTitle').textContent = notice.title;
-            document.getElementById('detailAuthor').textContent = notice.instructor_name || '관리자';
+            document.getElementById('detailAuthor').textContent = notice.created_by || '관리자';
             document.getElementById('detailDate').textContent = new Date(notice.created_at).toLocaleString('ko-KR');
             document.getElementById('detailContent').textContent = notice.content;
 
@@ -507,7 +485,6 @@
 
             document.getElementById('modalTitle').textContent = '공지사항 수정';
             document.getElementById('noticeId').value = notice.id;
-            document.getElementById('noticeCategory').value = notice.category;
             document.getElementById('noticeTitle').value = notice.title;
             document.getElementById('noticeContent').value = notice.content;
             
@@ -558,13 +535,11 @@
             }
 
             const noticeId = document.getElementById('noticeId').value;
-            const category = document.getElementById('noticeCategory').value;
             const title = document.getElementById('noticeTitle').value;
             const content = document.getElementById('noticeContent').value;
 
             const noticeData = {
                 instructor_code: currentUser.code,
-                category: category,
                 title: title,
                 content: content
             };
@@ -587,8 +562,7 @@
             } catch (error) {
                 console.error('Save error:', error);
                 showToast('저장 중 오류가 발생했습니다', 'error');
-            }
-        } finally {
+            } finally {
                 isSubmitting = false;
             }
         });
