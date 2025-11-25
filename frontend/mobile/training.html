@@ -426,20 +426,27 @@
             courseFilter.innerHTML = '<option value="">-- 과정 선택 --</option>' +
                 courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
             
-            // Instructor filter
+            // Instructor filter - 이름-역할-전공 형식
             instructorFilter.innerHTML = '<option value="">전체 강사</option>' +
-                instructors.map(i => `<option value="${i.code}">${i.name}</option>`).join('');
+                instructors.map(i => {
+                    const role = i.role || '강사';
+                    const major = i.major || i.department || '-';
+                    return `<option value="${i.code}">${i.name} - ${role} - ${major}</option>`;
+                }).join('');
             
-            // Year filter
-            const currentYear = new Date().getFullYear();
+            // Year filter - 오늘 날짜로 초기화
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth() + 1;
+            
             yearFilter.innerHTML = '<option value="">전체</option>' +
-                `<option value="${currentYear}">${currentYear}</option>` +
+                `<option value="${currentYear}" selected>${currentYear}</option>` +
                 `<option value="${currentYear - 1}">${currentYear - 1}</option>`;
             
-            // Month filter
+            // Month filter - 오늘 월로 초기화
             monthFilter.innerHTML = '<option value="">전체</option>' +
                 Array.from({length: 12}, (_, i) => i + 1)
-                    .map(m => `<option value="${m}">${m}월</option>`).join('');
+                    .map(m => `<option value="${m}" ${m === currentMonth ? 'selected' : ''}>${m}월</option>`).join('');
         }
         
         // Filter timetables

@@ -776,19 +776,28 @@
                 document.getElementById('instructorSection').classList.add('hidden');
                 document.getElementById('statusSection').classList.add('hidden');
                 
-                // Populate students dropdown
+                // Populate students dropdown - 이름(코드)-과정-생년월일 형식
                 const studentSelect = document.getElementById('studentSelect');
                 studentSelect.innerHTML = '<option value="">학생을 선택하세요</option>' +
-                    students.map(s => `<option value="${s.id}">${s.name} (${s.major || '-'})</option>`).join('');
+                    students.map(s => {
+                        const course = courses.find(c => c.code === s.course_code);
+                        const courseName = course ? course.name : '-';
+                        const birthDate = s.birth_date ? s.birth_date.split('T')[0] : '-';
+                        return `<option value="${s.id}">${s.name}(${s.student_code || s.id}) - ${courseName} - ${birthDate}</option>`;
+                    }).join('');
             } else {
                 document.getElementById('studentSection').classList.add('hidden');
                 document.getElementById('instructorSection').classList.remove('hidden');
                 document.getElementById('statusSection').classList.add('hidden');
                 
-                // Populate instructors dropdown
+                // Populate instructors dropdown - 이름-역할-전공 형식
                 const instructorSelect = document.getElementById('instructorSelect');
                 instructorSelect.innerHTML = '<option value="">강사를 선택하세요</option>' +
-                    instructors.map(i => `<option value="${i.code}">${i.name} (${i.department || '-'})</option>`).join('');
+                    instructors.map(i => {
+                        const role = i.role || '강사';
+                        const major = i.major || i.department || '-';
+                        return `<option value="${i.code}">${i.name} - ${role} - ${major}</option>`;
+                    }).join('');
             }
 
             document.getElementById('counselingModal').classList.remove('hidden');
@@ -817,7 +826,12 @@
                 
                 const studentSelect = document.getElementById('studentSelect');
                 studentSelect.innerHTML = '<option value="">학생을 선택하세요</option>' +
-                    students.map(s => `<option value="${s.id}" ${s.id === counseling.student_id ? 'selected' : ''}>${s.name} (${s.major || '-'})</option>`).join('');
+                    students.map(s => {
+                        const course = courses.find(c => c.code === s.course_code);
+                        const courseName = course ? course.name : '-';
+                        const birthDate = s.birth_date ? s.birth_date.split('T')[0] : '-';
+                        return `<option value="${s.id}" ${s.id === counseling.student_id ? 'selected' : ''}>${s.name}(${s.student_code || s.id}) - ${courseName} - ${birthDate}</option>`;
+                    }).join('');
                 
                 document.getElementById('counselingStatus').value = counseling.status;
             } else {
@@ -827,7 +841,11 @@
                 
                 const instructorSelect = document.getElementById('instructorSelect');
                 instructorSelect.innerHTML = '<option value="">강사를 선택하세요</option>' +
-                    instructors.map(i => `<option value="${i.code}" ${i.code === counseling.instructor_code ? 'selected' : ''}>${i.name} (${i.department || '-'})</option>`).join('');
+                    instructors.map(i => {
+                        const role = i.role || '강사';
+                        const major = i.major || i.department || '-';
+                        return `<option value="${i.code}" ${i.code === counseling.instructor_code ? 'selected' : ''}>${i.name} - ${role} - ${major}</option>`;
+                    }).join('');
             }
             
             renderPhotoPreview();
@@ -1091,15 +1109,24 @@
             courseSelect.innerHTML = '<option value="">전체 과정</option>' +
                 courses.map(c => `<option value="${c.code}">${c.name}</option>`).join('');
             
-            // Populate student filter (all students initially)
+            // Populate student filter - 이름(코드)-과정-생년월일 형식
             const studentSelect = document.getElementById('filterStudent');
             studentSelect.innerHTML = '<option value="">전체 학생</option>' +
-                students.map(s => `<option value="${s.id}">${s.name} (${s.major || '-'})</option>`).join('');
+                students.map(s => {
+                    const course = courses.find(c => c.code === s.course_code);
+                    const courseName = course ? course.name : '-';
+                    const birthDate = s.birth_date ? s.birth_date.split('T')[0] : '-';
+                    return `<option value="${s.id}">${s.name}(${s.student_code || s.id}) - ${courseName} - ${birthDate}</option>`;
+                }).join('');
             
-            // Populate instructor filter
+            // Populate instructor filter - 이름-역할-전공 형식
             const instructorSelect = document.getElementById('filterInstructor');
             instructorSelect.innerHTML = '<option value="">전체 강사</option>' +
-                instructors.map(i => `<option value="${i.code}">${i.name}</option>`).join('');
+                instructors.map(i => {
+                    const role = i.role || '강사';
+                    const major = i.major || i.department || '-';
+                    return `<option value="${i.code}">${i.name} - ${role} - ${major}</option>`;
+                }).join('');
         }
 
         // Toggle filters
@@ -1126,14 +1153,24 @@
             const studentSelect = document.getElementById('filterStudent');
             
             if (!courseCode) {
-                // Show all students
+                // Show all students - 이름(코드)-과정-생년월일 형식
                 studentSelect.innerHTML = '<option value="">전체 학생</option>' +
-                    students.map(s => `<option value="${s.id}">${s.name} (${s.major || '-'})</option>`).join('');
+                    students.map(s => {
+                        const course = courses.find(c => c.code === s.course_code);
+                        const courseName = course ? course.name : '-';
+                        const birthDate = s.birth_date ? s.birth_date.split('T')[0] : '-';
+                        return `<option value="${s.id}">${s.name}(${s.student_code || s.id}) - ${courseName} - ${birthDate}</option>`;
+                    }).join('');
             } else {
-                // Filter students by course
+                // Filter students by course - 이름(코드)-과정-생년월일 형식
                 const filteredStudents = students.filter(s => s.course_code === courseCode);
+                const course = courses.find(c => c.code === courseCode);
+                const courseName = course ? course.name : '-';
                 studentSelect.innerHTML = '<option value="">전체 학생</option>' +
-                    filteredStudents.map(s => `<option value="${s.id}">${s.name} (${s.major || '-'})</option>`).join('');
+                    filteredStudents.map(s => {
+                        const birthDate = s.birth_date ? s.birth_date.split('T')[0] : '-';
+                        return `<option value="${s.id}">${s.name}(${s.student_code || s.id}) - ${courseName} - ${birthDate}</option>`;
+                    }).join('');
             }
             
             // Reset student selection

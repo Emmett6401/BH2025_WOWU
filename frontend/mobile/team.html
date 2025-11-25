@@ -501,7 +501,8 @@
                 const photos = activity.photo_urls ? JSON.parse(activity.photo_urls) : [];
                 
                 return `
-                    <div class="activity-card bg-white rounded-xl shadow-md p-4">
+                    <div class="activity-card bg-white rounded-xl shadow-md p-4 cursor-pointer hover:shadow-lg"
+                         onclick="editActivity(${activity.id})">
                         <div class="flex items-start justify-between mb-3">
                             <div class="flex-1">
                                 <div class="flex items-center mb-2 flex-wrap gap-2">
@@ -517,23 +518,19 @@
                                         </span>
                                     ` : ''}
                                 </div>
-                                <p class="text-sm text-gray-600 mb-1">
-                                    <i class="fas fa-calendar mr-1 text-pink-600"></i>${activity.activity_date}
-                                </p>
-                                ${instructor ? `
-                                    <p class="text-sm text-gray-600">
-                                        <i class="fas fa-user-tie mr-1 text-orange-600"></i>${instructor.name}
-                                    </p>
-                                ` : ''}
+                                <div class="flex items-center text-sm text-gray-600 mb-1">
+                                    <i class="fas fa-calendar mr-1 text-pink-600"></i>
+                                    <span class="mr-3">${activity.activity_date}</span>
+                                    ${instructor ? `
+                                        <i class="fas fa-user-tie mr-1 text-orange-600"></i>
+                                        <span>${instructor.name}</span>
+                                    ` : ''}
+                                </div>
                             </div>
-                            <div class="flex space-x-2">
-                                <button onclick="editActivity(${activity.id})" class="text-blue-600 hover:text-blue-800 p-2">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button onclick="deleteActivity(${activity.id})" class="text-red-600 hover:text-red-800 p-2">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
+                            <button onclick="event.stopPropagation(); deleteActivity(${activity.id})" 
+                                    class="text-red-600 hover:text-red-800 p-2">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                         <div class="border-t pt-3">
                             <p class="text-sm text-gray-800 mb-2 font-semibold">활동 내용</p>
@@ -546,7 +543,7 @@
                                 <div class="flex space-x-2 mt-3 overflow-x-auto">
                                     ${photos.slice(0, 3).map(url => {
                                         const safeUrl = convertFtpUrl(url);
-                                        return `<img src="${safeUrl}" class="photo-thumbnail cursor-pointer" onclick="showPhotoModal('${safeUrl}')">`;
+                                        return `<img src="${safeUrl}" class="photo-thumbnail cursor-pointer" onclick="event.stopPropagation(); showPhotoModal('${safeUrl}')">`;
                                     }).join('')}
                                     ${photos.length > 3 ? `<div class="photo-thumbnail bg-gray-200 flex items-center justify-center text-gray-600 font-semibold">+${photos.length - 3}</div>` : ''}
                                 </div>
