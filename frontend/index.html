@@ -565,6 +565,8 @@
             align-items: center;
             justify-content: center;
             pointer-events: none;  /* 클릭 이벤트 방지 */
+            perspective: 1200px;  /* 3D 원근감 효과 */
+            transform-style: preserve-3d;  /* 3D 변환 유지 */
         }
         
         /* 떠다니는 로고 애니메이션 */
@@ -573,45 +575,47 @@
             height: 15vmin;
             object-fit: contain;
             border-radius: 20%;  /* 모서리 라운드 처리 */
-            animation: floatWild 3s ease-in-out infinite;
+            animation: floatWild3D 3s ease-in-out infinite;
             filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.4));
             transition: all 0.3s ease;
+            transform-style: preserve-3d;  /* 3D 변환 유지 */
+            backface-visibility: visible;  /* 뒷면도 보이게 */
         }
         
-        /* 전체 화면을 활발하게 돌아다니는 애니메이션 - 쉭쉭!!! */
-        @keyframes floatWild {
+        /* 전체 화면을 활발하게 돌아다니는 3D 애니메이션 - 쉭쉭!!! */
+        @keyframes floatWild3D {
             0% {
-                transform: translate(0vw, 0vh) rotate(0deg) scale(1);
+                transform: translate(0vw, 0vh) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1);
             }
             10% {
-                transform: translate(25vw, -15vh) rotate(45deg) scale(1.1);
+                transform: translate(25vw, -15vh) rotateX(360deg) rotateY(45deg) rotateZ(45deg) scale(1.1);
             }
             20% {
-                transform: translate(35vw, 10vh) rotate(90deg) scale(0.9);
+                transform: translate(35vw, 10vh) rotateX(180deg) rotateY(90deg) rotateZ(90deg) scale(0.9);
             }
             30% {
-                transform: translate(20vw, 20vh) rotate(135deg) scale(1.15);
+                transform: translate(20vw, 20vh) rotateX(270deg) rotateY(135deg) rotateZ(135deg) scale(1.15);
             }
             40% {
-                transform: translate(-30vw, 15vh) rotate(180deg) scale(0.95);
+                transform: translate(-30vw, 15vh) rotateX(180deg) rotateY(180deg) rotateZ(180deg) scale(0.95);
             }
             50% {
-                transform: translate(-35vw, -10vh) rotate(225deg) scale(1.2);
+                transform: translate(-35vw, -10vh) rotateX(360deg) rotateY(225deg) rotateZ(225deg) scale(1.2);
             }
             60% {
-                transform: translate(-20vw, -20vh) rotate(270deg) scale(0.85);
+                transform: translate(-20vw, -20vh) rotateX(540deg) rotateY(270deg) rotateZ(270deg) scale(0.85);
             }
             70% {
-                transform: translate(10vw, -25vh) rotate(315deg) scale(1.1);
+                transform: translate(10vw, -25vh) rotateX(270deg) rotateY(315deg) rotateZ(315deg) scale(1.1);
             }
             80% {
-                transform: translate(30vw, -5vh) rotate(360deg) scale(0.9);
+                transform: translate(30vw, -5vh) rotateX(360deg) rotateY(360deg) rotateZ(360deg) scale(0.9);
             }
             90% {
-                transform: translate(-10vw, 5vh) rotate(405deg) scale(1.05);
+                transform: translate(-10vw, 5vh) rotateX(180deg) rotateY(405deg) rotateZ(405deg) scale(1.05);
             }
             100% {
-                transform: translate(0vw, 0vh) rotate(450deg) scale(1);
+                transform: translate(0vw, 0vh) rotateX(720deg) rotateY(450deg) rotateZ(450deg) scale(1);
             }
         }
     </style>
