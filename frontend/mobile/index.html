@@ -1123,7 +1123,18 @@
         
         // 페이지 로드 시 초기화
         window.addEventListener('DOMContentLoaded', () => {
-            initializePage();
+            // 프로필에서 돌아온 경우 메뉴로 전환
+            const returnToMenu = sessionStorage.getItem('returnToMenu');
+            if (returnToMenu === 'true') {
+                sessionStorage.removeItem('returnToMenu');
+                // 초기화 후 메뉴로 전환
+                initializePage();
+                setTimeout(() => {
+                    switchPage('menu');
+                }, 100);
+            } else {
+                initializePage();
+            }
             
             // 메뉴로 전환 이벤트 리스너
             window.addEventListener('switchToMenu', () => {

@@ -914,20 +914,9 @@
 
         // Go back to main menu
         function goBack() {
-            const fromPage = sessionStorage.getItem('fromPage');
-            sessionStorage.removeItem('fromPage');
-            
-            if (fromPage === 'menu') {
-                // 메뉴에서 온 경우 메뉴로 복귀
-                window.location.href = 'index.html';
-                setTimeout(() => {
-                    const event = new CustomEvent('switchToMenu');
-                    window.dispatchEvent(event);
-                }, 100);
-            } else {
-                // 대시보드에서 온 경우
-                window.location.href = 'index.html';
-            }
+            // 항상 메뉴로 돌아가기
+            sessionStorage.setItem('returnToMenu', 'true');
+            window.location.href = 'index.html';
         }
 
         // Initialize on load
