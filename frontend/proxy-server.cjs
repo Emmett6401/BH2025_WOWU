@@ -47,8 +47,18 @@ const server = http.createServer((req, res) => {
     // 정적 파일 서빙 - 쿼리 스트링 제거
     const urlPath = req.url.split('?')[0]; // 쿼리 스트링 제거
     let filePath = path.join(__dirname, urlPath);
+    
+    // 루트 경로는 데스크탑 index.html로
     if (urlPath === '/') {
         filePath = path.join(__dirname, 'index.html');
+    }
+    // /mobile/ 경로는 mobile/index.html로
+    else if (urlPath === '/mobile' || urlPath === '/mobile/') {
+        filePath = path.join(__dirname, 'mobile', 'index.html');
+    }
+    // 디렉토리 경로에 index.html 자동 추가
+    else if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+        filePath = path.join(filePath, 'index.html');
     }
 
     const extname = String(path.extname(filePath)).toLowerCase();
