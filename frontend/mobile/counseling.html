@@ -728,7 +728,7 @@
 
             document.getElementById('modalTitle').textContent = userType === 'instructor' ? '상담 수정' : '상담 신청 수정';
             document.getElementById('counselingId').value = counseling.id;
-            document.getElementById('counselingDate').value = counseling.consultation_date;
+            document.getElementById('counselingDate').value = counseling.consultation_date.split('T')[0];
             document.getElementById('counselingType').value = counseling.consultation_type;
             document.getElementById('counselingContent').value = counseling.content;
             
