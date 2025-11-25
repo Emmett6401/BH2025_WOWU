@@ -35,31 +35,31 @@
         }
     
         /* Toast animations */
-        @keyframes slideInRight {
+        @keyframes fadeInScale {
             from {
-                transform: translateX(400px);
+                transform: scale(0.7);
                 opacity: 0;
             }
             to {
-                transform: translateX(0);
+                transform: scale(1);
                 opacity: 1;
             }
         }
-        @keyframes slideOutRight {
+        @keyframes fadeOutScale {
             from {
-                transform: translateX(0);
+                transform: scale(1);
                 opacity: 1;
             }
             to {
-                transform: translateX(400px);
+                transform: scale(0.7);
                 opacity: 0;
             }
         }
         .toast-enter {
-            animation: slideInRight 0.3s ease-out forwards;
+            animation: fadeInScale 0.3s ease-out forwards;
         }
         .toast-exit {
-            animation: slideOutRight 0.3s ease-in forwards;
+            animation: fadeOutScale 0.2s ease-in forwards;
         }
     </style>
 </head>
@@ -265,7 +265,7 @@
         </div>
     </div>
     <!-- Toast Message Container -->
-    <div id="toastContainer" class="fixed top-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
+    <div id="toastContainer" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[200] flex flex-col gap-3 pointer-events-none">
         <!-- Toasts will be added here dynamically -->
     </div>
 
@@ -309,7 +309,7 @@
             };
             
             toast.innerHTML = `
-                <div class="${colors[type]} text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 min-w-[300px] max-w-[400px]">
+                <div class="${colors[type]} text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 min-w-[280px] max-w-[90vw]">
                     <i class="fas ${icons[type]} text-2xl"></i>
                     <span class="flex-1 font-medium">${message}</span>
                     <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200 ml-2">
