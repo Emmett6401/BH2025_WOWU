@@ -1,11 +1,8 @@
 // Service Worker for Mobile PWA
-const CACHE_NAME = 'biohealth-mobile-v1';
+const CACHE_NAME = 'biohealth-mobile-v2';
 const urlsToCache = [
-  '/mobile/',
   '/mobile/index.html',
-  '/mobile/login.html',
-  '/mobile/manifest.json',
-  '/woosong-logo.png'
+  '/mobile/login.html'
 ];
 
 // Install event - cache resources
@@ -13,11 +10,28 @@ self.addEventListener('install', (event) => {
   console.log('[SW] Installing Service Worker...');
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
+      .then(async (cache) => {
         console.log('[SW] Caching app shell');
-        return cache.addAll(urlsToCache);
+        // Cache files individually to avoid failing on missing files
+        const cachePromises = urlsToCache.map(async (url) => {
+          try {
+            const response = await fetch(url);
+            if (response.ok) {
+              await cache.put(url, response);
+              console.log('[SW] Cached:', url);
+            } else {
+              console.warn('[SW] Failed to cache (not found):', url);
+            }
+          } catch (error) {
+            console.warn('[SW] Failed to cache:', url, error);
+          }
+        });
+        await Promise.all(cachePromises);
       })
       .then(() => self.skipWaiting())
+      .catch((error) => {
+        console.error('[SW] Cache installation failed:', error);
+      })
   );
 });
 
