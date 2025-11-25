@@ -639,12 +639,12 @@
                                 const formData = new FormData();
                                 formData.append('file', blob, file.name);
 
-                                const response = await axios.post(`${API_BASE_URL}/api/upload-photo`, formData, {
+                                const response = await axios.post(`${API_BASE_URL}/api/upload-image`, formData, {
                                     headers: { 'Content-Type': 'multipart/form-data' }
                                 });
 
                                 resolve(response.data.url);
-                            }, 'image/jpeg', 0.8);
+                            }, 'image/jpeg', 0.6);
                         };
                         img.src = e.target.result;
                     } catch (error) {

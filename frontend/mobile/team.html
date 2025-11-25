@@ -164,12 +164,12 @@
                         <i class="fas fa-camera mr-2 text-pink-500"></i>사진 첨부
                     </label>
                     <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                        <input type="file" id="photoInput" accept="image/*" multiple class="hidden" onchange="handlePhotoSelect(event)">
+                        <input type="file" id="photoInput" accept="image/*" capture="environment" multiple class="hidden" onchange="handlePhotoSelect(event)">
                         <button type="button" onclick="document.getElementById('photoInput').click()"
                                 class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-all">
-                            <i class="fas fa-camera mr-2"></i>사진 선택
+                            <i class="fas fa-camera mr-2"></i>사진 촬영/선택
                         </button>
-                        <p class="text-xs text-gray-500 mt-2">최대 5장까지 업로드 가능</p>
+                        <p class="text-xs text-gray-500 mt-2">최대 5장까지 업로드 가능 (고압축)</p>
                     </div>
                     <div id="photoPreviewContainer" class="mt-3 grid grid-cols-4 gap-2"></div>
                 </div>
@@ -207,6 +207,7 @@
         
         // Convert FTP URL to HTTP proxy URL
         function convertFtpUrl(url) {
+            if (!url || typeof url !== 'string') return url;
             if (url && url.startsWith('ftp://')) {
                 return `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
             }
@@ -559,12 +560,12 @@
                                 const formData = new FormData();
                                 formData.append('file', blob, file.name);
 
-                                const response = await axios.post(`${API_BASE_URL}/api/upload-photo`, formData, {
+                                const response = await axios.post(`${API_BASE_URL}/api/upload-image`, formData, {
                                     headers: { 'Content-Type': 'multipart/form-data' }
                                 });
 
                                 resolve(response.data.url);
-                            }, 'image/jpeg', 0.8);
+                            }, 'image/jpeg', 0.6);
                         };
                         img.src = e.target.result;
                     } catch (error) {
