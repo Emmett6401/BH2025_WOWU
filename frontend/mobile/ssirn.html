@@ -175,6 +175,7 @@
         let allMemos = [];
         let selectedPhotos = [];
         let existingPhotoUrls = [];
+        let voiceRecordingCount = 0; // 음성 녹음 횟수 카운터
         
         // Convert FTP URL to HTTP proxy URL
         function convertFtpUrl(url) {
@@ -197,7 +198,11 @@
             }
 
             currentUser = JSON.parse(userStr);
+            
+            // 초기 로딩 표시
+            showLoading('메모 불러오는 중...', '');
             await loadMemos();
+            hideLoading();
         }
 
         // Load memos
@@ -214,6 +219,7 @@
                 renderMemos(allMemos);
             } catch (error) {
                 console.error('Failed to load memos:', error);
+                hideLoading();
                 document.getElementById('emptyState').classList.remove('hidden');
             }
         }
@@ -291,6 +297,7 @@
             document.getElementById('memoDate').value = new Date().toISOString().split('T')[0];
             selectedPhotos = [];
             existingPhotoUrls = [];
+            voiceRecordingCount = 0; // 녹음 카운터 초기화
             document.getElementById('mediaPreviewContainer').innerHTML = '';
             document.getElementById('memoModal').classList.remove('hidden');
             document.getElementById('memoModal').classList.add('flex');
@@ -308,6 +315,7 @@
             
             selectedPhotos = [];
             existingPhotoUrls = memo.photo_urls ? JSON.parse(memo.photo_urls) : [];
+            voiceRecordingCount = 0; // 녹음 카운터 초기화
             
             renderMediaPreview();
             
@@ -315,9 +323,11 @@
             document.getElementById('memoModal').classList.add('flex');
         }
 
-        // Voice recognition
+        // Voice recognition - 한 번만 초기화
         let recognition = null;
-        function startVoiceRecognition() {
+        function initRecognition() {
+            if (recognition) return; // 이미 초기화되었으면 재사용
+            
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                 alert('이 브라우저는 음성 인식을 지원하지 않습니다.');
                 return;
@@ -328,6 +338,12 @@
             recognition.lang = 'ko-KR';
             recognition.continuous = false;
             recognition.interimResults = false;
+        }
+
+        function startVoiceRecognition() {
+            initRecognition(); // 음성 인식 초기화 (처음 한 번만)
+            
+            if (!recognition) return;
 
             const voiceBtn = document.getElementById('voiceBtn');
             const textarea = document.getElementById('memoContent');
@@ -338,12 +354,18 @@
 
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
-                textarea.value += (textarea.value ? ' ' : '') + transcript;
+                voiceRecordingCount++;
+                
+                // 번호 매기기로 정리
+                const prefix = textarea.value ? '\n' : '';
+                textarea.value += `${prefix}${voiceRecordingCount}. ${transcript}`;
             };
 
             recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
-                alert('음성 인식 중 오류가 발생했습니다: ' + event.error);
+                if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                    alert('음성 인식 중 오류가 발생했습니다: ' + event.error);
+                }
             };
 
             recognition.onend = () => {
@@ -432,13 +454,32 @@
             document.getElementById('photoModalImg').src = url;
             document.getElementById('photoModal').classList.remove('hidden');
             document.getElementById('photoModal').classList.add('flex');
+            
+            // History API를 사용하여 뒤로가기 감지
+            history.pushState({ photoModal: true }, '');
         }
 
         // Close photo modal
         function closePhotoModal() {
             document.getElementById('photoModal').classList.add('hidden');
             document.getElementById('photoModal').classList.remove('flex');
+            
+            // History에서 모달 상태 제거
+            if (window.history.state && window.history.state.photoModal) {
+                history.back();
+            }
         }
+        
+        // 뒤로가기 버튼 이벤트 처리
+        window.addEventListener('popstate', (event) => {
+            const photoModal = document.getElementById('photoModal');
+            if (!photoModal.classList.contains('hidden')) {
+                // 사진 모달이 열려있으면 닫기
+                event.preventDefault();
+                photoModal.classList.add('hidden');
+                photoModal.classList.remove('flex');
+            }
+        });
 
         // Handle form submission
         document.getElementById('memoForm').addEventListener('submit', async (e) => {
