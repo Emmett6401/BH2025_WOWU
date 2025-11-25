@@ -328,13 +328,25 @@
                     </div>
                 ` : '';
 
+                // 날짜/시간 포맷팅
+                const formatDateTime = (dateStr) => {
+                    if (!dateStr) return '';
+                    const date = new Date(dateStr);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    return `${year}-${month}-${day} ${hours}:${minutes}`;
+                };
+
                 return `
                     <div class="memo-card bg-white rounded-2xl shadow-md p-5 cursor-pointer hover:shadow-lg"
                          onclick="editMemo(${memo.id})">
                         <div class="flex items-start justify-between mb-3">
                             <div class="flex items-center space-x-2">
-                                <i class="fas fa-calendar-alt text-green-500"></i>
-                                <span class="text-sm font-semibold text-gray-600">${memo.note_date}</span>
+                                <i class="fas fa-clock text-green-500"></i>
+                                <span class="text-sm font-semibold text-gray-600">${formatDateTime(memo.note_date)}</span>
                             </div>
                             <button onclick="event.stopPropagation(); deleteMemo(${memo.id})" 
                                     class="text-red-500 hover:text-red-700 p-2">
@@ -343,9 +355,6 @@
                         </div>
                         <p class="text-gray-800 whitespace-pre-wrap">${memo.content}</p>
                         ${photoHtml}
-                        <div class="mt-3 text-xs text-gray-400">
-                            <i class="fas fa-clock mr-1"></i>${new Date(memo.created_at).toLocaleString('ko-KR')}
-                        </div>
                     </div>
                 `;
             }).join('');
@@ -679,7 +688,14 @@
             showLoading('메모 저장 중...', '미디어를 업로드하고 있습니다');
 
             const memoId = document.getElementById('memoId').value;
-            const noteDate = document.getElementById('memoDate').value;
+            // 자동으로 현재 날짜/시간 생성 (YYYY-MM-DD HH:mm:ss 형식)
+            const now = new Date();
+            const noteDate = now.getFullYear() + '-' + 
+                           String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                           String(now.getDate()).padStart(2, '0') + ' ' + 
+                           String(now.getHours()).padStart(2, '0') + ':' + 
+                           String(now.getMinutes()).padStart(2, '0') + ':' + 
+                           String(now.getSeconds()).padStart(2, '0');
             const content = document.getElementById('memoContent').value;
 
             try {
