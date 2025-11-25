@@ -119,15 +119,12 @@
         <div class="bg-white rounded-xl shadow-md p-4">
             <div class="flex items-center space-x-3">
                 <i class="fas fa-calendar-alt text-indigo-500"></i>
-                <select id="monthFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                <select id="monthFilter" onchange="filterTrainings()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
                         <option value="all">전체</option>
                         <option value="current">이번 달</option>
                     </select>
-                        <select id="typeFilter" onchange="filterTraining()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                            <option value="all">모든 유형</option>
-                            <option value="individual">개인</option>
-                            <option value="team">팀</option>
-                            <option value="project">프로젝트</option>
+                        <select id="instructorFilter" onchange="filterTrainings()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                            <option value="all">모든 강사</option>
                         </select>
             </div>
         </div>
@@ -524,8 +521,7 @@
                 const response = await axios.get(`${API_BASE_URL}/api/students`);
                 students = response.data || [];
             } catch (error) {
-                console.error
-                hideLoading();('Failed to load students:', error);
+                console.error('Failed to load students:', error);
             }
         }
 
@@ -541,8 +537,24 @@
                 }
 
                 allTrainings = response.data || [];
+                
+                // Populate instructor filter
+                const instructorFilter = document.getElementById('instructorFilter');
+                const instructors = [...new Set(allTrainings.map(t => t.instructor_code).filter(Boolean))];
+                const instructorNames = {};
+                
+                // Get instructor names
+                allTrainings.forEach(t => {
+                    if (t.instructor_code && t.instructor_name) {
+                        instructorNames[t.instructor_code] = t.instructor_name;
+                    }
+                });
+                
+                instructorFilter.innerHTML = '<option value="all">모든 강사</option>' +
+                    instructors.map(code => `<option value="${code}">${instructorNames[code] || code}</option>`).join('');
+                
                 hideLoading();
-                filterByMonth();
+                filterTrainings();
             } catch (error) {
                 console.error('Failed to load trainings:', error);
                 hideLoading();
@@ -550,17 +562,29 @@
             }
         }
 
-        // Filter by month
-        function filterByMonth() {
+        // Filter trainings
+        function filterTrainings() {
             const selectedMonth = document.getElementById('monthFilter').value;
-            if (!selectedMonth) {
-                renderTrainings(allTrainings);
-                return;
+            const selectedInstructor = document.getElementById('instructorFilter').value;
+            
+            let filtered = allTrainings;
+            
+            // Filter by month
+            if (selectedMonth === 'current') {
+                const now = new Date();
+                const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                filtered = filtered.filter(training => 
+                    training.training_date && training.training_date.startsWith(currentMonth)
+                );
             }
-
-            const filtered = allTrainings.filter(training => 
-                training.training_date && training.training_date.startsWith(selectedMonth)
-            );
+            
+            // Filter by instructor
+            if (selectedInstructor !== 'all') {
+                filtered = filtered.filter(training => 
+                    training.instructor_code === selectedInstructor
+                );
+            }
+            
             renderTrainings(filtered);
         }
 
