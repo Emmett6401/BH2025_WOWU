@@ -1406,7 +1406,6 @@ function stopDashboardAutoRefresh() {
 // 대시보드 사용자 활동 감지 변수
 let lastActivityTime = Date.now();
 let activityCheckInterval = null;
-let countdownInterval = null;
 
 // 대시보드 타이머 리셋 (사용자 활동 감지 시)
 function resetDashboardAutoRefresh(eventType = '활동') {
