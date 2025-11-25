@@ -182,53 +182,10 @@
         });
         
         function showInstallPrompt() {
-            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-            
-            // iOS Safari
-            if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
-                showAlert(
-                    '📱 홈화면에 추가하기 (iOS)\n\n' +
-                    '1. 하단 "공유" 버튼 (⬆️) 탭\n' +
-                    '2. "홈 화면에 추가" 선택\n' +
-                    '3. "추가" 버튼 탭\n\n' +
-                    '✨ 앱처럼 사용할 수 있습니다!',
-                    'info'
-                );
-            }
-            // Android Chrome
-            else if (/android/i.test(userAgent)) {
-                showAlert(
-                    '📱 홈화면에 추가하기 (Android)\n\n' +
-                    '1. 우측 상단 메뉴 (⋮) 탭\n' +
-                    '2. "홈 화면에 추가" 선택\n' +
-                    '3. "추가" 버튼 탭\n\n' +
-                    '✨ 앱처럼 사용할 수 있습니다!',
-                    'info'
-                );
-            }
-            // Samsung Internet
-            else if (/samsungbrowser/i.test(userAgent)) {
-                showAlert(
-                    '📱 홈화면에 추가하기 (삼성 인터넷)\n\n' +
-                    '1. 하단 메뉴 버튼 탭\n' +
-                    '2. "페이지 추가" 선택\n' +
-                    '3. "홈 화면" 선택\n\n' +
-                    '✨ 앱처럼 사용할 수 있습니다!',
-                    'info'
-                );
-            }
-            // 기타 브라우저
-            else {
-                showAlert(
-                    '📱 홈화면에 추가하기\n\n' +
-                    '브라우저 메뉴에서\n' +
-                    '"홈 화면에 추가" 또는\n' +
-                    '"바로가기 추가" 옵션을 찾아\n' +
-                    '추가해주세요.\n\n' +
-                    '✨ 앱처럼 편리하게 사용하세요!',
-                    'info'
-                );
-            }
+            showAlert(
+                '브라우저 메뉴에서\n"홈 화면에 추가"를 선택하세요.\n\n앱처럼 빠르게 접속할 수 있습니다! 📱',
+                'info'
+            );
         }
         
         // 비밀번호 표시/숨김
