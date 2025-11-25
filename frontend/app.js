@@ -1303,8 +1303,11 @@ async function loadDashboard() {
             .sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date))
             .slice(0, 5);
         
-        // 오늘 시간표 (추가 정보와 함께) - 한국 시간 기준
-        const today = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+        // 오늘 시간표 (로컬 시간 기준)
+        const now = new Date();
+        const today = now.getFullYear() + '-' + 
+                      String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                      String(now.getDate()).padStart(2, '0');
         const todayTimetables = timetablesData
             .filter(t => t.class_date === today)
             .map(t => {
@@ -1365,15 +1368,26 @@ async function loadDashboard() {
                 };
             });
         
-        // 추가 통계 계산 - 한국 시간 기준
-        const todayDate = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+        // 추가 통계 계산 - 로컬 시간 기준
+        const todayDate = today; // 위에서 계산한 today 사용
         const thisWeekStart = new Date();
         thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
-        const thisWeekStartStr = thisWeekStart.toISOString().split('T')[0];
+        const thisWeekStartStr = thisWeekStart.getFullYear() + '-' + 
+                                 String(thisWeekStart.getMonth() + 1).padStart(2, '0') + '-' + 
+                                 String(thisWeekStart.getDate()).padStart(2, '0');
         
-        const todayCounselings = counselingsData.filter(c => c.consultation_date === todayDate).length;
-        const thisWeekCounselings = counselingsData.filter(c => c.consultation_date >= thisWeekStartStr).length;
-        const todayTrainingLogs = trainingLogsData.filter(t => (t['t.class_date'] || t.class_date) === todayDate).length;
+        const todayCounselings = counselingsData.filter(c => {
+            const consultDate = c.consultation_date ? c.consultation_date.split('T')[0].split(' ')[0] : '';
+            return consultDate === todayDate;
+        }).length;
+        const thisWeekCounselings = counselingsData.filter(c => {
+            const consultDate = c.consultation_date ? c.consultation_date.split('T')[0].split(' ')[0] : '';
+            return consultDate >= thisWeekStartStr;
+        }).length;
+        const todayTrainingLogs = trainingLogsData.filter(t => {
+            const logDate = (t['t.class_date'] || t.class_date || '').split('T')[0].split(' ')[0];
+            return logDate === todayDate;
+        }).length;
         
         // 과정별 학생 수 계산
         const studentsByCourse = {};
@@ -1386,12 +1400,14 @@ async function loadDashboard() {
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = d.getFullYear() + '-' + 
+                            String(d.getMonth() + 1).padStart(2, '0') + '-' + 
+                            String(d.getDate()).padStart(2, '0');
             last7Days.push({
                 date: dateStr,
                 count: counselingsData.filter(c => {
                     // consultation_date는 "2025-11-17T00:00:00" 형식이므로 날짜 부분만 추출하여 비교
-                    const consultDate = c.consultation_date ? c.consultation_date.split('T')[0] : '';
+                    const consultDate = c.consultation_date ? c.consultation_date.split('T')[0].split(' ')[0] : '';
                     return consultDate === dateStr;
                 }).length
             });
@@ -8068,7 +8084,7 @@ window.showTeamActivityLogForm = function(logId = null) {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label class="block text-gray-700 mb-2">활동일자 *</label>
-                            <input type="date" id="log-date" value="${log?.activity_date || new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0]}" required class="w-full border rounded px-3 py-2">
+                            <input type="date" id="log-date" value="${log?.activity_date || (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })()}" required class="w-full border rounded px-3 py-2">
                         </div>
                         <div>
                             <label class="block text-gray-700 mb-2">활동유형</label>
@@ -8415,8 +8431,11 @@ function renderTimetableList() {
         return;
     }
     
-    // 오늘 날짜 계산 (한국 시간 기준)
-    const today = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+    // 오늘 날짜 계산 (로컬 시간 기준)
+    const now = new Date();
+    const today = now.getFullYear() + '-' + 
+                  String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                  String(now.getDate()).padStart(2, '0');
     
     tbody.innerHTML = paginatedData.map(tt => {
         const duration = calculateDuration(tt.start_time, tt.end_time);
@@ -8577,8 +8596,11 @@ function renderTimetables() {
                                 </td>
                             </tr>
                         ` : timetables.slice(0, 100).map(tt => {
-                            // 오늘 날짜 계산 (한국 시간 기준)
-                            const today = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+                            // 오늘 날짜 계산 (로컬 시간 기준)
+                            const now = new Date();
+                            const today = now.getFullYear() + '-' + 
+                                          String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                                          String(now.getDate()).padStart(2, '0');
                             const isToday = tt.class_date === today;
                             return `
                             <tr class="border-t hover:bg-gray-50 ${isToday ? 'bg-yellow-100 border-l-4 border-yellow-500' : ''}" ${isToday ? 'id="today-timetable-row"' : ''}>
