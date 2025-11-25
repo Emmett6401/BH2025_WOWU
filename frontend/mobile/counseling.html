@@ -637,24 +637,27 @@
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
-                        <div class="mb-2">
-                            <span class="text-sm font-semibold text-gray-700">
-                                <i class="fas fa-user-graduate mr-1"></i>
-                                ${userType === 'instructor' ? counseling.student_name : counseling.student_name || '학생 미배정'}
-                            </span>
-                        </div>
-                        ${counseling.instructor_name ? `
-                            <div class="mb-2">
-                                <span class="text-sm font-semibold text-gray-600">
-                                    <i class="fas fa-user-tie mr-1"></i>
-                                    ${counseling.instructor_name}
+                        <div class="mb-2 flex items-center justify-between text-xs text-gray-600">
+                            <div class="flex items-center space-x-3">
+                                <span class="flex items-center">
+                                    <i class="fas fa-user-graduate mr-1 text-blue-600"></i>
+                                    <span class="font-semibold text-gray-700">${counseling.student_name || '학생 미배정'}</span>
                                 </span>
+                                ${counseling.instructor_name ? `
+                                    <span class="flex items-center">
+                                        <i class="fas fa-user-tie mr-1 text-orange-600"></i>
+                                        <span class="font-semibold text-gray-700">${counseling.instructor_name}</span>
+                                    </span>
+                                ` : ''}
                             </div>
-                        ` : ''}
-                        <div class="mb-2">
-                            <span class="text-sm text-gray-600">
+                            <span class="flex items-center text-gray-500">
                                 <i class="fas fa-calendar mr-1"></i>
-                                ${counseling.consultation_date ? counseling.consultation_date.split('T')[0] : '날짜 없음'}
+                                ${counseling.consultation_date ? (() => {
+                                    const dateTime = counseling.consultation_date.split('T');
+                                    const date = dateTime[0];
+                                    const time = dateTime[1] ? dateTime[1].substring(0, 5) : '';
+                                    return time && time !== '00:00' ? `${date} ${time}` : date;
+                                })() : '날짜 없음'}
                             </span>
                         </div>
                         <p class="text-gray-800 whitespace-pre-wrap line-clamp-3">${counseling.content}</p>
