@@ -78,6 +78,21 @@
         @keyframes ptr-spin {
             to { transform: rotate(360deg); }
         }
+        
+        /* Confirm Dialog Animation */
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        .animate-scale-in {
+            animation: scaleIn 0.2s ease-out;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -333,6 +348,28 @@
         <img id="photoModalImg" src="" alt="Photo" class="max-w-full max-h-full object-contain">
     </div>
 
+    <!-- Confirm Dialog -->
+    <div id="confirmDialog" class="fixed inset-0 bg-black bg-opacity-50 z-[70] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden animate-scale-in">
+            <div class="bg-gradient-to-r from-orange-500 to-red-600 p-6 text-center">
+                <i class="fas fa-exclamation-circle text-white text-5xl mb-3"></i>
+                <h3 class="text-xl font-bold text-white" id="confirmTitle">확인</h3>
+            </div>
+            <div class="p-6">
+                <p class="text-gray-700 text-center mb-6" id="confirmMessage">이 작업을 진행하시겠습니까?</p>
+                <div class="flex gap-3">
+                    <button onclick="resolveConfirm(false)" 
+                            class="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl transition-all">
+                        취소
+                    </button>
+                    <button onclick="resolveConfirm(true)" 
+                            class="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-semibold rounded-xl transition-all shadow-lg">
+                        확인
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden items-center justify-center">
@@ -407,6 +444,31 @@
                 }, duration);
             }
         }
+        
+        // Custom Confirm Dialog
+        let confirmResolve = null;
+        
+        function showConfirm(message, title = '확인') {
+            return new Promise((resolve) => {
+                confirmResolve = resolve;
+                document.getElementById('confirmTitle').textContent = title;
+                document.getElementById('confirmMessage').textContent = message;
+                const dialog = document.getElementById('confirmDialog');
+                dialog.classList.remove('hidden');
+                dialog.classList.add('flex');
+            });
+        }
+        
+        function resolveConfirm(result) {
+            const dialog = document.getElementById('confirmDialog');
+            dialog.classList.add('hidden');
+            dialog.classList.remove('flex');
+            if (confirmResolve) {
+                confirmResolve(result);
+                confirmResolve = null;
+            }
+        }
+        
         const API_BASE_URL = window.location.origin.replace('3000', '8000');
         
         // Pull to Refresh variables
@@ -667,8 +729,8 @@
                                 ${counseling.consultation_date ? (() => {
                                     const dateTime = counseling.consultation_date.split('T');
                                     const date = dateTime[0];
-                                    const time = dateTime[1] ? dateTime[1].substring(0, 5) : '';
-                                    return time && time !== '00:00' ? `${date} ${time}` : date;
+                                    const time = dateTime[1] ? dateTime[1].substring(0, 5) : '00:00';
+                                    return `${date} ${time}`;
                                 })() : '날짜 없음'}
                             </span>
                         </div>
@@ -996,14 +1058,15 @@
 
         // Delete counseling
         async function deleteCounseling(counselingId) {
-            if (!confirm('이 상담을 삭제하시겠습니까?')) return;
+            const confirmed = await showConfirm('이 상담을 삭제하시겠습니까?', '상담 삭제');
+            if (!confirmed) return;
 
             try {
+                showLoading('삭제 중...', '상담 기록을 삭제하고 있습니다');
                 const response = await axios.delete(`${API_BASE_URL}/api/counselings/${counselingId}`);
-                if (response.data.success) {
-                    showToast('상담이 삭제되었습니다', 'success');
-                    await loadCounselings();
-                }
+                await loadCounselings();
+                hideLoading();
+                showToast('상담이 삭제되었습니다', 'success');
             } catch (error) {
                 console.error('Delete error:', error);
                 hideLoading();
