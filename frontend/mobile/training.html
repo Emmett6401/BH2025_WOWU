@@ -376,7 +376,7 @@
         let selectedPhotos = [];
         let existingPhotoUrls = [];
         let filtersExpanded = false;
-        let filtersExpanded = false;
+        let isFiltering = false; // 중복 실행 방지 플래그
         
         // Convert FTP URL to HTTP proxy URL
         function convertFtpUrl(url) {
@@ -468,9 +468,12 @@
             const yearFilter = document.getElementById('yearFilter');
             const monthFilter = document.getElementById('monthFilter');
             
-            // Course filter - C-001을 기본값으로
+            // Course filter - selected 속성 사용하지 않음 (onchange 트리거 방지)
             courseFilter.innerHTML = '<option value="">-- 과정 선택 --</option>' +
-                courses.map(c => `<option value="${c.code}" ${c.code === 'C-001' ? 'selected' : ''}>${c.name} (${c.code})</option>`).join('');
+                courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
+            
+            // C-001을 기본값으로 설정 (.value로 직접 설정하면 onchange 트리거 안됨)
+            courseFilter.value = 'C-001';
             
             // Instructor filter - 이름-역할-전공 형식
             instructorFilter.innerHTML = '<option value="">전체 강사</option>' +
@@ -484,32 +487,42 @@
             const today = new Date();
             const currentYear = today.getFullYear();
             
-            yearFilter.innerHTML = '<option value="" selected>전체</option>' +
+            yearFilter.innerHTML = '<option value="">전체</option>' +
                 `<option value="${currentYear}">${currentYear}</option>` +
                 `<option value="${currentYear - 1}">${currentYear - 1}</option>`;
+            yearFilter.value = ''; // 전체 선택
             
             // Month filter - 전체로 초기화
-            monthFilter.innerHTML = '<option value="" selected>전체</option>' +
+            monthFilter.innerHTML = '<option value="">전체</option>' +
                 Array.from({length: 12}, (_, i) => i + 1)
                     .map(m => `<option value="${m}">${m}월</option>`).join('');
+            monthFilter.value = ''; // 전체 선택
         }
         
         // Filter timetables
         async function filterTimetables() {
-            const courseCode = document.getElementById('courseFilter').value;
-            const instructorCode = document.getElementById('instructorFilter').value;
-            const statusFilter = document.getElementById('statusFilter').value;
-            const year = document.getElementById('yearFilter').value;
-            const month = document.getElementById('monthFilter').value;
-            
-            if (!courseCode) {
-                document.getElementById('loadingState').classList.add('hidden');
-                document.getElementById('timetableList').classList.add('hidden');
-                document.getElementById('emptyState').classList.remove('hidden');
+            // 이미 실행 중이면 무시 (무한루프 방지)
+            if (isFiltering) {
+                console.log('filterTimetables already running, skipping...');
                 return;
             }
             
+            isFiltering = true;
+            
             try {
+                const courseCode = document.getElementById('courseFilter').value;
+                const instructorCode = document.getElementById('instructorFilter').value;
+                const statusFilter = document.getElementById('statusFilter').value;
+                const year = document.getElementById('yearFilter').value;
+                const month = document.getElementById('monthFilter').value;
+                
+                if (!courseCode) {
+                    document.getElementById('loadingState').classList.add('hidden');
+                    document.getElementById('timetableList').classList.add('hidden');
+                    document.getElementById('emptyState').classList.remove('hidden');
+                    return;
+                }
+                
                 // 캐시된 데이터가 있고 같은 과정이면 API 호출 없이 필터링
                 const needsApiCall = allTimetables.length === 0 || 
                                      (allTimetables[0] && allTimetables[0].course_code !== courseCode);
@@ -554,6 +567,9 @@
                 console.error('Failed to load timetables:', error);
                 document.getElementById('loadingState').classList.add('hidden');
                 showToast('시간표 조회 실패', 'error');
+            } finally {
+                // 플래그 해제 (무한루프 방지)
+                isFiltering = false;
             }
         }
         

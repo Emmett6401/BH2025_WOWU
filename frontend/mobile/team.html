@@ -796,42 +796,60 @@
         // Handle form submission
         document.getElementById('activityForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-     ter justify-center text-xs hover:bg-red-600">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                `;
-            }).join('');
-
-            const newHtml = selectedPhotos.map((file, index) => {
-                const url = URL.createObjectURL(file);
-                return `
-                    <div class="relative">
-                        <img src="${url}" 
-                             class="w-full h-20 object-cover rounded-lg cursor-pointer" 
-                             onclick="showPhotoModal('${url}')">
-                        <button type="button" onclick="removeNewPhoto(${index})"
-                                class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                `;
-            }).join('');
-
-            container.innerHTML = existingHtml + newHtml;
-        }
-
-        // Remove existing photo
-        function removeExistingPhoto(index) {
-            existingPhotoUrls.splice(index, 1);
-            renderPhotoPreview();
-        }
-
-        // Remove new photo
-        function removeNewPhoto(index) {
-            selectedPhotos.splice(index, 1);
-            renderPhotoPreview();
-        }
+            
+            const activityId = document.getElementById('activityId').value;
+            const projectId = document.getElementById('projectSelect').value;
+            const activityDate = document.getElementById('activityDate').value;
+            const activityType = document.getElementById('activityType').value;
+            const content = document.getElementById('activityContent').value;
+            const achievements = document.getElementById('activityAchievements').value;
+            const nextPlan = document.getElementById('activityNextPlan').value;
+            const notes = document.getElementById('activityNotes').value;
+            
+            try {
+                showLoading('저장 중...', '활동일지를 저장하고 있습니다');
+                
+                // Upload new photos
+                let uploadedUrls = [];
+                if (selectedPhotos.length > 0) {
+                    uploadedUrls = await Promise.all(
+                        selectedPhotos.map(file => uploadPhoto(file))
+                    );
+                }
+                
+                // Combine existing and new photo URLs
+                const allPhotoUrls = [...existingPhotoUrls, ...uploadedUrls];
+                
+                const activityData = {
+                    project_id: projectId,
+                    instructor_code: userType === 'instructor' ? currentUser.code : null,
+                    activity_date: activityDate,
+                    activity_type: activityType,
+                    content: content,
+                    achievements: achievements || null,
+                    next_plan: nextPlan || null,
+                    notes: notes || null,
+                    photo_urls: JSON.stringify(allPhotoUrls)
+                };
+                
+                if (activityId) {
+                    // Update
+                    await axios.put(`${API_BASE_URL}/api/team-activity-logs/${activityId}`, activityData);
+                } else {
+                    // Create
+                    await axios.post(`${API_BASE_URL}/api/team-activity-logs`, activityData);
+                }
+                
+                closeModal();
+                await loadData();
+                hideLoading();
+                showToast(activityId ? '활동일지가 수정되었습니다' : '활동일지가 저장되었습니다', 'success');
+            } catch (error) {
+                console.error('Save error:', error);
+                hideLoading();
+                showToast('저장 중 오류가 발생했습니다', 'error');
+            }
+        });
 
         // Show photo modal
         function showPhotoModal(url) {
