@@ -197,7 +197,33 @@
         <img id="photoModalImg" src="" alt="Photo" class="max-w-full max-h-full object-contain">
     </div>
 
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm mx-4 text-center">
+            <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
+            <p id="loadingText" class="text-lg font-semibold text-gray-800 mb-2">처리 중...</p>
+            <p id="loadingSubtext" class="text-sm text-gray-600">잠시만 기다려주세요</p>
+        </div>
+    </div>
+
     <script>
+
+        // Loading overlay functions
+        function showLoading(text = "처리 중...", subtext = "잠시만 기다려주세요") {
+            document.getElementById("loadingText").textContent = text;
+            document.getElementById("loadingSubtext").textContent = subtext;
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.classList.remove("hidden");
+            overlay.classList.add("flex");
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.classList.add("hidden");
+            overlay.classList.remove("flex");
+        }
+
         const API_BASE_URL = window.location.origin.replace('3000', '8000');
         let currentUser = null;
         let userType = null;
@@ -246,9 +272,9 @@
             try {
                 let response;
                 if (userType === 'instructor') {
-                    response = await axios.get(`${API_BASE_URL}/api/team-activities?instructor_code=${currentUser.code}`);
+                    response = await axios.get(`${API_BASE_URL}/api/team-activity-logs?instructor_code=${currentUser.code}`);
                 } else {
-                    response = await axios.get(`${API_BASE_URL}/api/team-activities?student_id=${currentUser.id}`);
+                    response = await axios.get(`${API_BASE_URL}/api/team-activity-logs?student_id=${currentUser.id}`);
                 }
 
                 allTeamActivities = response.data || [];
@@ -268,7 +294,7 @@
             }
 
             const filtered = allTeamActivities.filter(activity => 
-                activity.activity_date.startsWith(selectedMonth)
+                activity.activity_date && activity.activity_date.startsWith(selectedMonth)
             );
             renderTeamActivities(filtered);
         }
@@ -508,10 +534,10 @@
                 let response;
                 if (activityId) {
                     // Update
-                    response = await axios.put(`${API_BASE_URL}/api/team-activities/${activityId}`, activityData);
+                    response = await axios.put(`${API_BASE_URL}/api/team-activity-logs/${activityId}`, activityData);
                 } else {
                     // Create
-                    response = await axios.post(`${API_BASE_URL}/api/team-activities`, activityData);
+                    response = await axios.post(`${API_BASE_URL}/api/team-activity-logs`, activityData);
                 }
 
                 if (response.data.success) {
@@ -521,6 +547,7 @@
                 }
             } catch (error) {
                 console.error('Save error:', error);
+                hideLoading();
                 alert('저장 중 오류가 발생했습니다.');
             }
         });
@@ -581,13 +608,14 @@
             if (!confirm('이 팀 활동을 삭제하시겠습니까?')) return;
 
             try {
-                const response = await axios.delete(`${API_BASE_URL}/api/team-activities/${activityId}`);
+                const response = await axios.delete(`${API_BASE_URL}/api/team-activity-logs/${activityId}`);
                 if (response.data.success) {
                     alert('팀 활동이 삭제되었습니다.');
                     await loadTeamActivities();
                 }
             } catch (error) {
                 console.error('Delete error:', error);
+                hideLoading();
                 alert('삭제 중 오류가 발생했습니다.');
             }
         }

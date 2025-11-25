@@ -204,7 +204,33 @@
         <img id="photoModalImg" src="" alt="Photo" class="max-w-full max-h-full object-contain">
     </div>
 
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm mx-4 text-center">
+            <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
+            <p id="loadingText" class="text-lg font-semibold text-gray-800 mb-2">처리 중...</p>
+            <p id="loadingSubtext" class="text-sm text-gray-600">잠시만 기다려주세요</p>
+        </div>
+    </div>
+
     <script>
+
+        // Loading overlay functions
+        function showLoading(text = "처리 중...", subtext = "잠시만 기다려주세요") {
+            document.getElementById("loadingText").textContent = text;
+            document.getElementById("loadingSubtext").textContent = subtext;
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.classList.remove("hidden");
+            overlay.classList.add("flex");
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.classList.add("hidden");
+            overlay.classList.remove("flex");
+        }
+
         const API_BASE_URL = window.location.origin.replace('3000', '8000');
         let currentUser = null;
         let userType = null;
@@ -277,6 +303,7 @@
         // Load counselings
         async function loadCounselings() {
             try {
+                showLoading("상담 기록 불러오는 중...", "");
                 let response;
                 if (userType === 'instructor') {
                     response = await axios.get(`${API_BASE_URL}/api/counselings?instructor_code=${currentUser.code}`);
@@ -288,6 +315,7 @@
                 renderCounselings(allCounselings);
             } catch (error) {
                 console.error('Failed to load counselings:', error);
+                hideLoading();
                 document.getElementById('emptyState').classList.remove('hidden');
             }
         }
@@ -546,6 +574,8 @@
         document.getElementById('counselingForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            showLoading('상담 기록 저장 중...', '사진을 업로드하고 있습니다');
+
             const counselingId = document.getElementById('counselingId').value;
             const counselingDate = document.getElementById('counselingDate').value;
             const counselingType = document.getElementById('counselingType').value;
@@ -598,6 +628,7 @@
                 }
             } catch (error) {
                 console.error('Save error:', error);
+                hideLoading();
                 alert('저장 중 오류가 발생했습니다.');
             }
         });
@@ -665,6 +696,7 @@
                 }
             } catch (error) {
                 console.error('Delete error:', error);
+                hideLoading();
                 alert('삭제 중 오류가 발생했습니다.');
             }
         }

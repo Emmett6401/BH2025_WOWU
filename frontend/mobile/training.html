@@ -196,7 +196,33 @@
         <img id="photoModalImg" src="" alt="Photo" class="max-w-full max-h-full object-contain">
     </div>
 
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm mx-4 text-center">
+            <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
+            <p id="loadingText" class="text-lg font-semibold text-gray-800 mb-2">처리 중...</p>
+            <p id="loadingSubtext" class="text-sm text-gray-600">잠시만 기다려주세요</p>
+        </div>
+    </div>
+
     <script>
+
+        // Loading overlay functions
+        function showLoading(text = "처리 중...", subtext = "잠시만 기다려주세요") {
+            document.getElementById("loadingText").textContent = text;
+            document.getElementById("loadingSubtext").textContent = subtext;
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.classList.remove("hidden");
+            overlay.classList.add("flex");
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.classList.add("hidden");
+            overlay.classList.remove("flex");
+        }
+
         const API_BASE_URL = window.location.origin.replace('3000', '8000');
         let currentUser = null;
         let userType = null;
@@ -252,6 +278,7 @@
         // Load trainings
         async function loadTrainings() {
             try {
+                showLoading("훈련일지 불러오는 중...", "");
                 let response;
                 if (userType === 'instructor') {
                     response = await axios.get(`${API_BASE_URL}/api/training-logs?instructor_code=${currentUser.code}`);
@@ -260,9 +287,11 @@
                 }
 
                 allTrainings = response.data || [];
+                hideLoading();
                 filterByMonth();
             } catch (error) {
                 console.error('Failed to load trainings:', error);
+                hideLoading();
                 document.getElementById('emptyState').classList.remove('hidden');
             }
         }
@@ -276,7 +305,7 @@
             }
 
             const filtered = allTrainings.filter(training => 
-                training.training_date.startsWith(selectedMonth)
+                training.training_date && training.training_date.startsWith(selectedMonth)
             );
             renderTrainings(filtered);
         }
@@ -498,6 +527,8 @@
         document.getElementById('trainingForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            showLoading('훈련일지 저장 중...', '사진을 업로드하고 있습니다');
+
             const trainingId = document.getElementById('trainingId').value;
             const trainingDate = document.getElementById('trainingDate').value;
             const trainingType = document.getElementById('trainingType').value;
@@ -543,12 +574,14 @@
                 }
 
                 if (response.data.success) {
+                    hideLoading();
                     alert(trainingId ? '훈련일지가 수정되었습니다.' : '훈련일지가 저장되었습니다.');
                     closeModal();
                     await loadTrainings();
                 }
             } catch (error) {
                 console.error('Save error:', error);
+                hideLoading();
                 alert('저장 중 오류가 발생했습니다.');
             }
         });
@@ -608,14 +641,17 @@
         async function deleteTraining(trainingId) {
             if (!confirm('이 훈련일지를 삭제하시겠습니까?')) return;
 
+            showLoading('훈련일지 삭제 중...', '');
             try {
                 const response = await axios.delete(`${API_BASE_URL}/api/training-logs/${trainingId}`);
                 if (response.data.success) {
+                    hideLoading();
                     alert('훈련일지가 삭제되었습니다.');
                     await loadTrainings();
                 }
             } catch (error) {
                 console.error('Delete error:', error);
+                hideLoading();
                 alert('삭제 중 오류가 발생했습니다.');
             }
         }
