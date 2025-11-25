@@ -419,24 +419,10 @@
             recognition.lang = 'ko-KR';
             recognition.continuous = true; // 길게 누르기 위해 continuous 모드
             recognition.interimResults = false;
-        }
-
-        function startVoiceRecognition(isHold = false) {
-            initRecognition(); // 음성 인식 초기화 (처음 한 번만)
             
-            if (!recognition) return;
-            if (isRecognizing) return; // 이미 녹음 중이면 무시
-
-            const voiceBtn = document.getElementById('voiceBtn');
-            const textarea = document.getElementById('memoContent');
-
-            voiceBtn.innerHTML = '<i class="fas fa-circle text-xl animate-pulse"></i>';
-            voiceBtn.classList.add('bg-red-500', 'hover:bg-red-600');
-            voiceBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
-            isRecognizing = true;
-            isHoldMode = isHold;
-
+            // 이벤트 핸들러를 한 번만 등록 (권한 재요청 방지)
             recognition.onresult = (event) => {
+                const textarea = document.getElementById('memoContent');
                 const transcript = event.results[event.results.length - 1][0].transcript;
                 voiceRecordingCount++;
                 
@@ -463,6 +449,21 @@
                 resetVoiceButton();
                 isRecognizing = false;
             };
+        }
+
+        function startVoiceRecognition(isHold = false) {
+            initRecognition(); // 음성 인식 초기화 (처음 한 번만)
+            
+            if (!recognition) return;
+            if (isRecognizing) return; // 이미 녹음 중이면 무시
+
+            const voiceBtn = document.getElementById('voiceBtn');
+
+            voiceBtn.innerHTML = '<i class="fas fa-circle text-xl animate-pulse"></i>';
+            voiceBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+            voiceBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+            isRecognizing = true;
+            isHoldMode = isHold;
 
             try {
                 recognition.start();
