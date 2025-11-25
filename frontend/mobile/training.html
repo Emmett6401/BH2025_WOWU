@@ -510,12 +510,18 @@
             }
             
             try {
-                document.getElementById('emptyState').classList.add('hidden');
-                document.getElementById('timetableList').classList.add('hidden');
-                document.getElementById('loadingState').classList.remove('hidden');
+                // 캐시된 데이터가 있고 같은 과정이면 API 호출 없이 필터링
+                const needsApiCall = allTimetables.length === 0 || 
+                                     (allTimetables[0] && allTimetables[0].course_code !== courseCode);
                 
-                const response = await axios.get(`${API_BASE_URL}/api/timetables?course_code=${courseCode}`);
-                allTimetables = response.data || [];
+                if (needsApiCall) {
+                    document.getElementById('emptyState').classList.add('hidden');
+                    document.getElementById('timetableList').classList.add('hidden');
+                    document.getElementById('loadingState').classList.remove('hidden');
+                    
+                    const response = await axios.get(`${API_BASE_URL}/api/timetables?course_code=${courseCode}`);
+                    allTimetables = response.data || [];
+                }
                 
                 // Apply filters
                 let filtered = allTimetables;

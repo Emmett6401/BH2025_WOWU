@@ -450,17 +450,15 @@
             try {
                 showLoading('데이터 로딩 중...', '팀 및 활동일지 정보를 불러오고 있습니다');
                 
-                const [projectsRes, logsRes, instructorsRes, coursesRes] = await Promise.all([
+                const [projectsRes, logsRes, instructorsRes] = await Promise.all([
                     axios.get(`${API_BASE_URL}/api/projects`),
                     axios.get(`${API_BASE_URL}/api/team-activity-logs`),
-                    axios.get(`${API_BASE_URL}/api/instructors`),
-                    axios.get(`${API_BASE_URL}/api/courses`)
+                    axios.get(`${API_BASE_URL}/api/instructors`)
                 ]);
                 
                 projects = projectsRes.data || [];
                 allActivities = logsRes.data || [];
                 instructors = instructorsRes.data || [];
-                courses = coursesRes.data || [];
                 
                 // Populate filters
                 populateFilters();
