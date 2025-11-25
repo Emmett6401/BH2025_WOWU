@@ -145,14 +145,14 @@
                 </button>
             </form>
             
-            <!-- 홈화면 추가 버튼 (PWA) -->
+            <!-- 홈화면 추가 가이드 버튼 -->
             <div id="installPrompt" class="hidden mt-4">
                 <button onclick="showInstallPrompt()" 
                         class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all active:scale-95">
-                    <i class="fas fa-plus-circle mr-2"></i>홈화면에 추가
+                    <i class="fas fa-home mr-2"></i>홈화면에 바로가기 추가
                 </button>
                 <p class="text-xs text-gray-500 text-center mt-2">
-                    <i class="fas fa-mobile-alt mr-1"></i>앱처럼 사용하기
+                    <i class="fas fa-mobile-alt mr-1"></i>앱처럼 빠르게 접속하기
                 </p>
             </div>
         </div>
@@ -175,43 +175,60 @@
         // API Base URL (기존 백엔드 사용)
         const API_BASE_URL = window.location.origin.replace('3000', '8000');
         
-        // PWA 설치 프롬프트
-        let deferredPrompt;
-        
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // 브라우저 기본 설치 프롬프트 방지
-            e.preventDefault();
-            deferredPrompt = e;
-            
-            // 홈화면 추가 버튼 표시
+        // 홈화면 추가 가이드 (HTTP 환경용 - PWA 설치 불가)
+        // 페이지 로드 시 항상 버튼 표시
+        window.addEventListener('load', () => {
             document.getElementById('installPrompt').classList.remove('hidden');
-            console.log('📱 PWA 설치 가능');
         });
         
         function showInstallPrompt() {
-            if (!deferredPrompt) {
-                // iOS Safari or already installed
-                if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
-                    showAlert('Safari 브라우저에서:\n1. 공유 버튼 탭\n2. "홈 화면에 추가" 선택', 'info');
-                } else {
-                    showAlert('이미 홈화면에 추가되었거나 지원하지 않는 브라우저입니다.', 'info');
-                }
-                return;
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            
+            // iOS Safari
+            if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+                showAlert(
+                    '📱 홈화면에 추가하기 (iOS)\n\n' +
+                    '1. 하단 "공유" 버튼 (⬆️) 탭\n' +
+                    '2. "홈 화면에 추가" 선택\n' +
+                    '3. "추가" 버튼 탭\n\n' +
+                    '✨ 앱처럼 사용할 수 있습니다!',
+                    'info'
+                );
             }
-            
-            // 설치 프롬프트 표시
-            deferredPrompt.prompt();
-            
-            deferredPrompt.userChoice.then((choiceResult) => {
-                if (choiceResult.outcome === 'accepted') {
-                    console.log('✅ PWA 설치 승인');
-                    showAlert('홈화면에 추가되었습니다!', 'success');
-                    document.getElementById('installPrompt').classList.add('hidden');
-                } else {
-                    console.log('❌ PWA 설치 거부');
-                }
-                deferredPrompt = null;
-            });
+            // Android Chrome
+            else if (/android/i.test(userAgent)) {
+                showAlert(
+                    '📱 홈화면에 추가하기 (Android)\n\n' +
+                    '1. 우측 상단 메뉴 (⋮) 탭\n' +
+                    '2. "홈 화면에 추가" 선택\n' +
+                    '3. "추가" 버튼 탭\n\n' +
+                    '✨ 앱처럼 사용할 수 있습니다!',
+                    'info'
+                );
+            }
+            // Samsung Internet
+            else if (/samsungbrowser/i.test(userAgent)) {
+                showAlert(
+                    '📱 홈화면에 추가하기 (삼성 인터넷)\n\n' +
+                    '1. 하단 메뉴 버튼 탭\n' +
+                    '2. "페이지 추가" 선택\n' +
+                    '3. "홈 화면" 선택\n\n' +
+                    '✨ 앱처럼 사용할 수 있습니다!',
+                    'info'
+                );
+            }
+            // 기타 브라우저
+            else {
+                showAlert(
+                    '📱 홈화면에 추가하기\n\n' +
+                    '브라우저 메뉴에서\n' +
+                    '"홈 화면에 추가" 또는\n' +
+                    '"바로가기 추가" 옵션을 찾아\n' +
+                    '추가해주세요.\n\n' +
+                    '✨ 앱처럼 편리하게 사용하세요!',
+                    'info'
+                );
+            }
         }
         
         // 비밀번호 표시/숨김
