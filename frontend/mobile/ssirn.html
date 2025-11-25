@@ -402,6 +402,8 @@
 
         // Voice recognition - 한 번만 초기화
         let recognition = null;
+        let isRecognizing = false;
+        
         function initRecognition() {
             if (recognition) return; // 이미 초기화되었으면 재사용
             
@@ -421,6 +423,7 @@
             initRecognition(); // 음성 인식 초기화 (처음 한 번만)
             
             if (!recognition) return;
+            if (isRecognizing) return; // 이미 녹음 중이면 무시
 
             const voiceBtn = document.getElementById('voiceBtn');
             const textarea = document.getElementById('memoContent');
@@ -428,6 +431,7 @@
             voiceBtn.innerHTML = '<i class="fas fa-circle text-xl animate-pulse"></i>';
             voiceBtn.classList.add('bg-red-500', 'hover:bg-red-600');
             voiceBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+            isRecognizing = true;
 
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
@@ -440,6 +444,7 @@
 
             recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
+                isRecognizing = false;
                 if (event.error !== 'no-speech' && event.error !== 'aborted') {
                     showToast('음성 인식 중 오류가 발생했습니다: ' + event.error, 'error');
                 }
@@ -449,9 +454,15 @@
                 voiceBtn.innerHTML = '<i class="fas fa-microphone text-xl"></i>';
                 voiceBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
                 voiceBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+                isRecognizing = false;
             };
 
-            recognition.start();
+            try {
+                recognition.start();
+            } catch (error) {
+                console.error('Failed to start recognition:', error);
+                isRecognizing = false;
+            }
         }
 
         // Handle media selection (photos and videos)
