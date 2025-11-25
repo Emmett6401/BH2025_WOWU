@@ -3,7 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>내 정보 - 바이오헬스교육관리</title>
+    <title>내 정보 - 바이오헬스교육관리시스템</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Favicon and Icons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="72x72" href="/icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="96x96" href="/icon-96x96.png">
+    <link rel="apple-touch-icon" sizes="128x128" href="/icon-128x128.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192x192.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
@@ -82,11 +95,11 @@
 
             <div id="deptSection" class="bg-white rounded-2xl shadow-md p-6 hidden">
                 <label class="block text-sm font-semibold text-gray-700 mb-2">
-                    <i class="fas fa-building mr-2 text-blue-500"></i>부서
+                    <i class="fas fa-graduation-cap mr-2 text-blue-500"></i>전공
                 </label>
                 <input type="text" id="department"
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                       placeholder="부서를 입력하세요">
+                       placeholder="전공을 입력하세요">
             </div>
 
             <!-- Phone -->
@@ -109,13 +122,30 @@
                        placeholder="이메일을 입력하세요">
             </div>
 
-            <!-- Password Change Section -->
+            <!-- Attachments Section -->
             <div class="bg-white rounded-2xl shadow-md p-6">
                 <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-lock mr-2 text-blue-500"></i>
-                    비밀번호 변경
+                    <i class="fas fa-paperclip mr-2 text-blue-500"></i>
+                    첨부 파일
                 </h3>
-                <div class="space-y-3">
+                <div id="attachmentsList" class="space-y-2">
+                    <p class="text-sm text-gray-500">첨부된 파일이 없습니다.</p>
+                </div>
+            </div>
+
+            <!-- Password Change Section -->
+            <div class="bg-white rounded-2xl shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-lock mr-2 text-blue-500"></i>
+                        비밀번호 변경
+                    </h3>
+                    <button type="button" onclick="togglePasswordChange()" 
+                            class="text-sm text-blue-600 hover:text-blue-700 font-semibold">
+                        <span id="passwordToggleText">변경하기</span>
+                    </button>
+                </div>
+                <div id="passwordChangeSection" class="space-y-3 hidden">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">현재 비밀번호</label>
                         <input type="password" id="currentPassword"
@@ -203,12 +233,70 @@
                 if (data.photo_url) {
                     document.getElementById('profilePhotoPreview').src = data.photo_url;
                 }
+                
+                // Load attachments (if any)
+                loadAttachments(data);
             } catch (error) {
                 console.error('Failed to load user data:', error);
                 alert('사용자 정보를 불러오는데 실패했습니다.');
             }
         }
 
+        // Load attachments
+        function loadAttachments(data) {
+            const attachmentsList = document.getElementById('attachmentsList');
+            const attachments = [];
+            
+            // Collect all possible attachment URLs
+            if (data.photo_url) {
+                attachments.push({ type: 'image', url: data.photo_url, name: '프로필 사진' });
+            }
+            
+            if (attachments.length === 0) {
+                attachmentsList.innerHTML = '<p class="text-sm text-gray-500">첨부된 파일이 없습니다.</p>';
+                return;
+            }
+            
+            attachmentsList.innerHTML = attachments.map((attachment, index) => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all">
+                    <div class="flex items-center gap-3 flex-1">
+                        <i class="fas ${attachment.type === 'image' ? 'fa-image' : 'fa-file'} text-blue-500 text-xl"></i>
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold text-gray-800">${attachment.name}</p>
+                            <p class="text-xs text-gray-500">${attachment.type === 'image' ? '이미지 파일' : '파일'}</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="viewAttachment('${attachment.url}')" 
+                            class="text-blue-600 hover:text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-50 transition-all">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        // View attachment
+        function viewAttachment(url) {
+            window.open(url, '_blank');
+        }
+        
+        // Toggle password change section
+        function togglePasswordChange() {
+            const section = document.getElementById('passwordChangeSection');
+            const toggleText = document.getElementById('passwordToggleText');
+            
+            if (section.classList.contains('hidden')) {
+                section.classList.remove('hidden');
+                toggleText.textContent = '취소';
+            } else {
+                section.classList.add('hidden');
+                toggleText.textContent = '변경하기';
+                // Clear password fields
+                document.getElementById('currentPassword').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmPassword').value = '';
+            }
+        }
+        
         // Preview photo before upload
         function previewPhoto(event) {
             const file = event.target.files[0];
@@ -231,12 +319,13 @@
         document.getElementById('profileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Validate password change if any password field is filled
+            // Validate password change only if password change section is visible
+            const passwordChangeSection = document.getElementById('passwordChangeSection');
             const currentPassword = document.getElementById('currentPassword').value;
             const newPassword = document.getElementById('newPassword').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
 
-            if (currentPassword || newPassword || confirmPassword) {
+            if (!passwordChangeSection.classList.contains('hidden') && (currentPassword || newPassword || confirmPassword)) {
                 if (!currentPassword || !newPassword || !confirmPassword) {
                     alert('비밀번호 변경을 위해 모든 비밀번호 필드를 입력해주세요.');
                     return;
@@ -274,8 +363,8 @@
                     updateData.photo_url = photoUrl;
                 }
 
-                // Update password if provided
-                if (newPassword) {
+                // Update password only if password change section is visible and fields are filled
+                if (!passwordChangeSection.classList.contains('hidden') && newPassword) {
                     updateData.current_password = currentPassword;
                     updateData.new_password = newPassword;
                 }
@@ -291,17 +380,26 @@
                 if (response.data.success) {
                     alert('정보가 성공적으로 저장되었습니다!');
                     
-                    // Update sessionStorage
+                    // Update sessionStorage and localStorage
                     const updatedUser = { ...currentUser, ...updateData };
                     sessionStorage.setItem('user', JSON.stringify(updatedUser));
+                    if (localStorage.getItem('user')) {
+                        localStorage.setItem('user', JSON.stringify(updatedUser));
+                    }
                     
-                    // Clear password fields
+                    // Clear password fields and hide section
                     document.getElementById('currentPassword').value = '';
                     document.getElementById('newPassword').value = '';
                     document.getElementById('confirmPassword').value = '';
+                    if (!passwordChangeSection.classList.contains('hidden')) {
+                        togglePasswordChange();
+                    }
                     
                     // Reset photo file
                     photoFile = null;
+                    
+                    // Reload data to show updated attachments
+                    await loadUserData();
                 } else {
                     alert(response.data.message || '저장에 실패했습니다.');
                 }
