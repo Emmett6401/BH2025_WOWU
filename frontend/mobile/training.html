@@ -784,7 +784,8 @@
                     response = await axios.post(`${API_BASE_URL}/api/training-logs`, trainingData);
                 }
 
-                if (response.data.success) {
+                // Backend returns {id: ...} on success
+                if (response.data && response.data.id) {
                     hideLoading();
                     showToast(trainingId ? '훈련일지가 수정되었습니다.' : '훈련일지가 저장되었습니다.', 'success');
                     closeModal();

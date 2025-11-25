@@ -924,7 +924,8 @@
                     response = await axios.post(`${API_BASE_URL}/api/counselings`, counselingData);
                 }
 
-                if (response.data.success) {
+                // Backend returns {id: ...} on success
+                if (response.data && response.data.id) {
                     hideLoading();
                     showToast(counselingId ? '상담이 수정되었습니다.' : '상담이 등록되었습니다.', 'success');
                     closeModal();
