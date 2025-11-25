@@ -230,7 +230,11 @@
         // 로그아웃
         function logout() {
             if (confirm('로그아웃 하시겠습니까?')) {
+                // sessionStorage만 클리어 (localStorage의 username은 유지)
                 sessionStorage.clear();
+                // localStorage의 user 정보도 삭제 (username은 유지)
+                localStorage.removeItem('user');
+                localStorage.removeItem('user_type');
                 window.location.href = 'login.html';
             }
         }

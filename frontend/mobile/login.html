@@ -246,22 +246,19 @@
         
         // 페이지 로드 시 초기화
         window.addEventListener('DOMContentLoaded', () => {
-            // 이미 로그인된 경우 메인 페이지로 리다이렉트
-            if (sessionStorage.getItem('user') || localStorage.getItem('user')) {
-                // localStorage에 있으면 sessionStorage로 복사
-                if (!sessionStorage.getItem('user') && localStorage.getItem('user')) {
-                    sessionStorage.setItem('user', localStorage.getItem('user'));
-                    sessionStorage.setItem('user_type', localStorage.getItem('user_type'));
-                }
+            // 현재 세션에 로그인 정보가 있으면 메인 페이지로 리다이렉트
+            if (sessionStorage.getItem('user')) {
                 window.location.href = 'index.html';
                 return;
             }
             
-            // 저장된 사용자명 자동 입력
+            // 저장된 사용자명 자동 입력 (자동 로그인은 하지 않음)
             const savedUsername = localStorage.getItem('username');
             if (savedUsername) {
                 document.getElementById('username').value = savedUsername;
                 document.getElementById('rememberMe').checked = true;
+                // 비밀번호 필드에 포커스
+                document.getElementById('password').focus();
             }
         });
     </script>

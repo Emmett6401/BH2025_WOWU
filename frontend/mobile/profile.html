@@ -58,7 +58,7 @@
             <div class="flex flex-col items-center">
                 <div class="relative mb-4">
                     <img id="profilePhotoPreview" 
-                         src="https://via.placeholder.com/120/4F46E5/FFFFFF?text=No+Photo" 
+                         src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect fill='%234F46E5' width='120' height='120'/%3E%3Ctext fill='white' font-size='16' font-family='Arial' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3ENo Photo%3C/text%3E%3C/svg%3E" 
                          alt="Profile Photo" 
                          class="profile-photo-preview border-4 border-blue-500 shadow-lg">
                     <button onclick="document.getElementById('photoInput').click()" 
@@ -247,9 +247,37 @@
             const attachmentsList = document.getElementById('attachmentsList');
             const attachments = [];
             
-            // Collect all possible attachment URLs
+            // 프로필 사진
             if (data.photo_url) {
-                attachments.push({ type: 'image', url: data.photo_url, name: '프로필 사진' });
+                attachments.push({ 
+                    type: 'image', 
+                    url: data.photo_url, 
+                    name: '프로필 사진',
+                    icon: 'fa-user-circle'
+                });
+            }
+            
+            // attachments 필드 (JSON 형식)
+            if (data.attachments) {
+                try {
+                    const attachmentUrls = JSON.parse(data.attachments);
+                    if (Array.isArray(attachmentUrls)) {
+                        attachmentUrls.forEach((url, index) => {
+                            const fileName = url.split('/').pop().split('?')[0];
+                            const ext = fileName.split('.').pop().toLowerCase();
+                            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
+                            
+                            attachments.push({
+                                type: isImage ? 'image' : 'file',
+                                url: url,
+                                name: fileName.length > 30 ? fileName.substring(0, 27) + '...' : fileName,
+                                icon: isImage ? 'fa-image' : 'fa-file'
+                            });
+                        });
+                    }
+                } catch (e) {
+                    console.error('Failed to parse attachments:', e);
+                }
             }
             
             if (attachments.length === 0) {
@@ -259,15 +287,15 @@
             
             attachmentsList.innerHTML = attachments.map((attachment, index) => `
                 <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all">
-                    <div class="flex items-center gap-3 flex-1">
-                        <i class="fas ${attachment.type === 'image' ? 'fa-image' : 'fa-file'} text-blue-500 text-xl"></i>
-                        <div class="flex-1">
-                            <p class="text-sm font-semibold text-gray-800">${attachment.name}</p>
+                    <div class="flex items-center gap-3 flex-1 overflow-hidden">
+                        <i class="fas ${attachment.icon} text-blue-500 text-xl flex-shrink-0"></i>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-gray-800 truncate">${attachment.name}</p>
                             <p class="text-xs text-gray-500">${attachment.type === 'image' ? '이미지 파일' : '파일'}</p>
                         </div>
                     </div>
                     <button type="button" onclick="viewAttachment('${attachment.url}')" 
-                            class="text-blue-600 hover:text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-50 transition-all">
+                            class="text-blue-600 hover:text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-50 transition-all flex-shrink-0">
                         <i class="fas fa-eye"></i>
                     </button>
                 </div>
