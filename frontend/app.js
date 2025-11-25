@@ -1403,6 +1403,28 @@ function stopDashboardAutoRefresh() {
     }
 }
 
+// 대시보드 타이머 리셋 (클릭 시)
+function resetDashboardAutoRefresh() {
+    if (currentTab === 'dashboard' && dashboardRefreshInterval) {
+        console.log('👆 클릭 감지 - 자동 새로고침 타이머 리셋');
+        stopDashboardAutoRefresh();
+        startDashboardAutoRefresh();
+    }
+}
+
+// 대시보드 클릭 이벤트 리스너 설정
+function setupDashboardClickListener() {
+    // 기존 리스너 제거 (중복 방지)
+    document.removeEventListener('click', resetDashboardAutoRefresh);
+    // 새 리스너 추가
+    document.addEventListener('click', resetDashboardAutoRefresh);
+}
+
+// 대시보드 클릭 이벤트 리스너 제거
+function removeDashboardClickListener() {
+    document.removeEventListener('click', resetDashboardAutoRefresh);
+}
+
 // ==================== 대시보드 ====================
 async function loadDashboard() {
     window.showLoading('대시보드 데이터를 불러오는 중...');
@@ -2347,78 +2369,98 @@ window.showTab = function(tab, addToHistory = true) {
             
             // 대시보드 자동 새로고침 시작 (5분마다)
             startDashboardAutoRefresh();
+            // 클릭 이벤트 리스너 설정
+            setupDashboardClickListener();
             break;
         case 'instructor-codes':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadInstructorCodes();
             break;
         case 'instructors':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadInstructors();
             break;
         case 'subjects':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadSubjects();
             break;
         case 'holidays':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadHolidays();
             break;
         case 'courses':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadCourses();
             break;
         case 'students':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadStudents();
             break;
         case 'class-notes':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadClassNotes();
             break;
         case 'counselings':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadCounselings();
             break;
         case 'projects':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadProjects();
             break;
         case 'team-activity-logs':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadTeamActivityLogs();
             break;
         case 'timetables':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadTimetables();
             break;
         case 'training-logs':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadTrainingLogs();
             break;
         case 'ai-report':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             renderAIReport();
             break;
         case 'ai-training-log':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadAITrainingLog();
             break;
         case 'ai-counseling':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadAICounseling();
             break;
         case 'system-settings':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadSystemSettings();
             break;
         case 'notices':
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             loadNotices();
             break;
         default:
             // 대시보드가 아닌 모든 탭에서는 자동 새로고침 중지
             stopDashboardAutoRefresh();
+            removeDashboardClickListener();
             break;
     }
 }
