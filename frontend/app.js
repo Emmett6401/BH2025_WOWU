@@ -7110,13 +7110,6 @@ function renderCourses() {
     const selectedCourse = courses.find(c => c.code === selectedCourseCode);
     
     app.innerHTML = `
-        <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 mb-6 rounded-t-lg">
-            <h1 class="text-2xl font-bold">
-                <i class="fas fa-school mr-2"></i>바이오헬스 훈련컨텍 이노베이터
-            </h1>
-            <p class="text-blue-100 mt-1">for KDT - 교육 관리 시스템</p>
-        </div>
-        
         <div class="bg-white rounded-lg shadow-md">
             <!-- 과정 선택 탭 -->
             <div class="bg-gray-100 px-4 py-2 flex space-x-2 overflow-x-auto border-b">
