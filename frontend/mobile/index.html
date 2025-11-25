@@ -782,9 +782,18 @@
                         ${recentTrainingLogs.length > 0 ? recentTrainingLogs.map(t => `
                             <div class="bg-indigo-50 rounded-lg p-3">
                                 <div class="flex justify-between items-start mb-1">
-                                    <p class="text-sm font-bold text-gray-800">${t.student_name || '학생명 없음'}</p>
-                                    <span class="text-xs text-gray-500">${t.training_type || '유형 없음'}</span>
+                                    <p class="text-sm font-bold text-gray-800">${t.subject_name || '과목명 없음'}</p>
+                                    <span class="text-xs px-2 py-1 rounded-full ${
+                                        t.type === 'lecture' ? 'bg-blue-100 text-blue-700' : 
+                                        t.type === 'project' ? 'bg-green-100 text-green-700' : 
+                                        'bg-purple-100 text-purple-700'
+                                    }">
+                                        ${t.type === 'lecture' ? '강의' : t.type === 'project' ? '프로젝트' : '실습'}
+                                    </span>
                                 </div>
+                                <p class="text-xs text-gray-600 mb-2">
+                                    <i class="fas fa-chalkboard-teacher mr-1"></i>${t.instructor_name || '강사명 없음'}
+                                </p>
                                 <p class="text-xs text-gray-600 mb-2">${t.content?.substring(0, 50) || '내용 없음'}...</p>
                                 <div class="flex items-center gap-2 text-xs text-gray-500">
                                     <i class="fas fa-calendar-alt"></i>

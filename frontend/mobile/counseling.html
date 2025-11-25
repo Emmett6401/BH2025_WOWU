@@ -745,9 +745,19 @@
             document.getElementById('photoModal').classList.remove('flex');
         }
 
+        // 중복 제출 방지 플래그
+        let isSubmitting = false;
+        
         // Handle form submission
         document.getElementById('counselingForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            // 중복 제출 방지
+            if (isSubmitting) {
+                console.log('이미 저장 중입니다...');
+                return;
+            }
+            isSubmitting = true;
 
             showLoading('상담 기록 저장 중...', '사진을 업로드하고 있습니다');
 
@@ -805,6 +815,8 @@
                 console.error('Save error:', error);
                 hideLoading();
                 showToast('저장 중 오류가 발생했습니다', 'error');
+            } finally {
+                isSubmitting = false;
             }
         });
 
