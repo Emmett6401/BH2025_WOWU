@@ -14,10 +14,10 @@
         input, textarea, select {
             font-size: 16px !important;
         }
-        .training-card {
+        .timetable-card {
             transition: all 0.3s ease;
         }
-        .training-card:active {
+        .timetable-card:active {
             transform: scale(0.98);
         }
         .photo-thumbnail {
@@ -55,30 +55,6 @@
             animation: fadeOutScale 0.2s ease-in forwards;
         }
         
-        /* Pull to Refresh */
-        .ptr-indicator {
-            position: fixed;
-            top: 60px;
-            left: 50%;
-            transform: translateX(-50%) scale(0);
-            transition: transform 0.3s ease;
-            z-index: 40;
-        }
-        .ptr-indicator.active {
-            transform: translateX(-50%) scale(1);
-        }
-        .ptr-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #e5e7eb;
-            border-top-color: #10b981;
-            border-radius: 50%;
-            animation: ptr-spin 0.8s linear infinite;
-        }
-        @keyframes ptr-spin {
-            to { transform: rotate(360deg); }
-        }
-        
         /* Confirm Dialog Animation */
         @keyframes scaleIn {
             from {
@@ -97,148 +73,121 @@
 </head>
 <body class="bg-gray-50">
     <!-- Header -->
-        <!-- Pull to Refresh Indicator -->
-    <div id="ptrIndicator" class="ptr-indicator">
-        <div class="ptr-spinner"></div>
-    </div>
-
-<header class="bg-gradient-to-r from-indigo-500 to-blue-600 text-white sticky top-0 z-50 shadow-lg">
+    <header class="bg-gradient-to-r from-indigo-500 to-blue-600 text-white sticky top-0 z-50 shadow-lg">
         <div class="container mx-auto px-4 py-4 flex items-center justify-between">
             <button onclick="goBack()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-all">
                 <i class="fas fa-arrow-left text-xl"></i>
             </button>
-            <h1 class="text-xl font-bold">훈련일지</h1>
-            <button onclick="showCreateModal()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-all">
-                <i class="fas fa-plus text-xl"></i>
-            </button>
+            <h1 class="text-xl font-bold">훈련일지 관리</h1>
+            <div class="w-10"></div>
         </div>
     </header>
 
-    <!-- Date Filter -->
+    <!-- Filters Section -->
     <div class="container mx-auto px-4 py-4">
-        <div class="bg-white rounded-xl shadow-md p-4">
-            <div class="flex items-center space-x-3">
-                <i class="fas fa-calendar-alt text-indigo-500"></i>
-                <select id="monthFilter" onchange="filterTrainings()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                        <option value="all">전체</option>
-                        <option value="current">이번 달</option>
+        <div class="bg-white rounded-xl shadow-md p-4 space-y-3">
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">과정 선택</label>
+                <select id="courseFilter" onchange="filterTimetables()" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
+                    <option value="">-- 과정 선택 --</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">강사 선택</label>
+                <select id="instructorFilter" onchange="filterTimetables()" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
+                    <option value="">전체 강사</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">년도</label>
+                    <select id="yearFilter" onchange="filterTimetables()" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
+                        <option value="">전체</option>
                     </select>
-                        <select id="instructorFilter" onchange="filterTrainings()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                            <option value="all">모든 강사</option>
-                        </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">월</label>
+                    <select id="monthFilter" onchange="filterTimetables()" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
+                        <option value="">전체</option>
+                    </select>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Training Logs List -->
+    <!-- Timetable List -->
     <main class="container mx-auto px-4 pb-20">
         <!-- Loading State -->
         <div id="loadingState" class="text-center py-20">
             <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mb-4"></div>
-            <p class="text-gray-500 font-semibold">훈련일지를 불러오는 중...</p>
+            <p class="text-gray-500 font-semibold">시간표를 불러오는 중...</p>
         </div>
         
-        <div id="trainingList" class="space-y-4 hidden">
-            <!-- Training logs will be loaded here -->
+        <div id="timetableList" class="space-y-3 hidden">
+            <!-- Timetable items will be loaded here -->
         </div>
+        
         <div id="emptyState" class="text-center py-20 hidden">
             <i class="fas fa-clipboard-list text-6xl text-gray-300 mb-4"></i>
-            <p class="text-gray-500">등록된 훈련일지가 없습니다</p>
-            <button onclick="showCreateModal()" 
-                    class="mt-4 bg-gradient-to-r from-indigo-500 to-blue-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all">
-                <i class="fas fa-plus mr-2"></i>첫 훈련일지 작성하기
-            </button>
+            <p class="text-gray-500">과정을 선택하여 시간표를 조회하세요</p>
         </div>
     </main>
 
-    <!-- Create/Edit Modal -->
-    <div id="trainingModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+    <!-- Training Log Modal -->
+    <div id="logModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div class="sticky top-0 bg-gradient-to-r from-indigo-500 to-blue-600 text-white p-6 rounded-t-2xl">
                 <div class="flex items-center justify-between">
-                    <h2 class="text-2xl font-bold" id="modalTitle">훈련일지 작성</h2>
+                    <h2 class="text-xl font-bold" id="modalTitle">훈련일지 작성</h2>
                     <button onclick="closeModal()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
             </div>
             
-            <form id="trainingForm" class="p-6 space-y-4">
-                <input type="hidden" id="trainingId">
+            <form id="logForm" class="p-6 space-y-4">
+                <input type="hidden" id="logId">
+                <input type="hidden" id="timetableId">
                 
-                <!-- Student Selection (Instructor only) -->
-                <div id="studentSection" class="hidden">
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-user-graduate mr-2 text-indigo-500"></i>학생 선택
-                    </label>
-                    <select id="studentSelect" required
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                        <option value="">학생을 선택하세요</option>
-                    </select>
+                <!-- Timetable Info -->
+                <div class="bg-indigo-50 rounded-lg p-4">
+                    <p class="text-sm text-indigo-800" id="timetableInfo"></p>
                 </div>
-
-                <!-- Date -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-calendar mr-2 text-indigo-500"></i>훈련 날짜
-                    </label>
-                    <input type="date" id="trainingDate" required
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                </div>
-
-                <!-- Training Type -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-dumbbell mr-2 text-indigo-500"></i>훈련 종류
-                    </label>
-                    <input type="text" id="trainingType" required
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                           placeholder="예: 근력운동, 유산소운동, 스트레칭 등">
-                </div>
-
-                <!-- Duration -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-clock mr-2 text-indigo-500"></i>훈련 시간 (분)
-                    </label>
-                    <input type="number" id="trainingDuration" required min="1"
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                           placeholder="훈련 시간을 분 단위로 입력하세요">
-                </div>
-
-                <!-- Intensity -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-tachometer-alt mr-2 text-indigo-500"></i>강도
-                    </label>
-                    <select id="trainingIntensity" required
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                        <option value="낮음">낮음</option>
-                        <option value="중간">중간</option>
-                        <option value="높음">높음</option>
-                    </select>
-                </div>
-
+                
                 <!-- Content -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-edit mr-2 text-indigo-500"></i>훈련 내용
+                        <i class="fas fa-edit mr-2 text-indigo-500"></i>수업 내용
                     </label>
-                    <textarea id="trainingContent" rows="6" required
+                    <textarea id="logContent" rows="4" required
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                              placeholder="훈련 내용을 상세히 입력하세요..."></textarea>
+                              placeholder="수업 내용을 입력하세요..."></textarea>
                 </div>
-
+                
+                <!-- Homework -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-tasks mr-2 text-indigo-500"></i>과제
+                    </label>
+                    <textarea id="logHomework" rows="3"
+                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                              placeholder="과제 내용을 입력하세요..."></textarea>
+                </div>
+                
                 <!-- Notes -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-sticky-note mr-2 text-indigo-500"></i>특이사항 (선택)
+                        <i class="fas fa-sticky-note mr-2 text-indigo-500"></i>비고
                     </label>
-                    <textarea id="trainingNotes" rows="3"
+                    <textarea id="logNotes" rows="2"
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                              placeholder="특이사항이나 추가 메모를 입력하세요..."></textarea>
+                              placeholder="비고 사항을 입력하세요..."></textarea>
                 </div>
-
+                
                 <!-- Photo Upload -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
@@ -250,11 +199,11 @@
                                 class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-all">
                             <i class="fas fa-camera mr-2"></i>사진 촬영/선택
                         </button>
-                        <p class="text-xs text-gray-500 mt-2">최대 5장까지 업로드 가능 (고압축)</p>
+                        <p class="text-xs text-gray-500 mt-2">최대 5장까지 업로드 가능</p>
                     </div>
-                    <div id="photoPreviewContainer" class="mt-3 grid grid-cols-4 gap-2"></div>
+                    <div id="photoPreviewContainer" class="grid grid-cols-3 gap-2 mt-3"></div>
                 </div>
-
+                
                 <!-- Buttons -->
                 <div class="flex space-x-3 pt-4">
                     <button type="button" onclick="closeModal()"
@@ -270,7 +219,7 @@
         </div>
     </div>
 
-    <!-- Photo Preview Modal -->
+    <!-- Photo Modal -->
     <div id="photoModal" class="fixed inset-0 bg-black bg-opacity-90 z-[60] hidden items-center justify-center p-4">
         <button onclick="closePhotoModal()" class="absolute top-4 right-4 text-white text-3xl hover:text-gray-300">
             <i class="fas fa-times"></i>
@@ -309,15 +258,13 @@
             <p id="loadingSubtext" class="text-sm text-gray-600">잠시만 기다려주세요</p>
         </div>
     </div>
+    
     <!-- Toast Message Container -->
     <div id="toastContainer" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[200] flex flex-col gap-3 pointer-events-none">
         <!-- Toasts will be added here dynamically -->
     </div>
 
-
-
     <script>
-
         // Loading overlay functions
         function showLoading(text = "처리 중...", subtext = "잠시만 기다려주세요") {
             document.getElementById("loadingText").textContent = text;
@@ -401,71 +348,13 @@
         
         const API_BASE_URL = window.location.origin.replace('3000', '8000');
         
-        // Pull to Refresh variables
-        let startY = 0;
-        let currentY = 0;
-        let isPulling = false;
-        let isRefreshing = false;
-        
-        // Initialize Pull to Refresh
-        function initPullToRefresh() {
-            const ptrIndicator = document.getElementById('ptrIndicator');
-            
-            document.addEventListener('touchstart', (e) => {
-                if (window.scrollY === 0 && !isRefreshing) {
-                    startY = e.touches[0].pageY;
-                    isPulling = true;
-                }
-            }, { passive: true });
-            
-            document.addEventListener('touchmove', (e) => {
-                if (!isPulling || isRefreshing) return;
-                
-                currentY = e.touches[0].pageY;
-                const pullDistance = currentY - startY;
-                
-                if (pullDistance > 0 && window.scrollY === 0) {
-                    if (pullDistance > 80) {
-                        ptrIndicator.classList.add('active');
-                    } else {
-                        ptrIndicator.classList.remove('active');
-                    }
-                }
-            }, { passive: true });
-            
-            document.addEventListener('touchend', async (e) => {
-                if (!isPulling || isRefreshing) return;
-                
-                const pullDistance = currentY - startY;
-                
-                if (pullDistance > 80 && window.scrollY === 0) {
-                    isRefreshing = true;
-                    ptrIndicator.classList.add('active');
-                    
-                    // Refresh data - call the main load function
-                    await refreshData();
-                    showToast('데이터를 새로고침했습니다', 'success', 2000);
-                    
-                    // Hide indicator after short delay
-                    setTimeout(() => {
-                        ptrIndicator.classList.remove('active');
-                        isRefreshing = false;
-                    }, 500);
-                } else {
-                    ptrIndicator.classList.remove('active');
-                }
-                
-                isPulling = false;
-                startY = 0;
-                currentY = 0;
-            });
-        }
         let currentUser = null;
         let userType = null;
-        let allTrainings = [];
+        let allTimetables = [];
+        let courses = [];
+        let instructors = [];
         let selectedPhotos = [];
         let existingPhotoUrls = [];
-        let students = [];
         
         // Convert FTP URL to HTTP proxy URL
         function convertFtpUrl(url) {
@@ -482,255 +371,259 @@
             window.location.href = 'index.html';
         }
         
-        // Refresh data for pull-to-refresh
-        async function refreshData() {
-            await loadTrainings();
-        }
-
         // Initialize
         async function init() {
             const userStr = sessionStorage.getItem('user');
             userType = sessionStorage.getItem('user_type');
             
             if (!userStr || !userType) {
-                alert('로그인이 필요합니다.');
-                window.location.href = 'login.html';
+                showToast('로그인이 필요합니다', 'error');
+                setTimeout(() => window.location.href = 'login.html', 1500);
                 return;
             }
 
             currentUser = JSON.parse(userStr);
             
-            // Pull to Refresh 초기화
-            initPullToRefresh();
-            
-            // Set default month filter to current month
-            const now = new Date();
-            document.getElementById('monthFilter').value = 'all';
-            
-            // Load students if instructor
-            if (userType === 'instructor') {
-                await loadStudents();
-            }
-
-            await loadTrainings();
+            await loadInitialData();
         }
-
-        // Load students (for instructors)
-        async function loadStudents() {
+        
+        // Load initial data
+        async function loadInitialData() {
             try {
-                const response = await axios.get(`${API_BASE_URL}/api/students`);
-                students = response.data || [];
-            } catch (error) {
-                console.error('Failed to load students:', error);
-            }
-        }
-
-        // Load trainings
-        async function loadTrainings() {
-            try {
-                showLoading("훈련일지 불러오는 중...", "");
-                let response;
-                if (userType === 'instructor') {
-                    response = await axios.get(`${API_BASE_URL}/api/training-logs?instructor_code=${currentUser.code}`);
-                } else {
-                    response = await axios.get(`${API_BASE_URL}/api/training-logs?student_id=${currentUser.id}`);
-                }
-
-                allTrainings = response.data || [];
+                showLoading('데이터 로딩 중...', '과정 및 강사 정보를 불러오고 있습니다');
                 
-                // Populate instructor filter
-                const instructorFilter = document.getElementById('instructorFilter');
-                const instructors = [...new Set(allTrainings.map(t => t.instructor_code).filter(Boolean))];
-                const instructorNames = {};
+                const [coursesRes, instructorsRes] = await Promise.all([
+                    axios.get(`${API_BASE_URL}/api/courses`),
+                    axios.get(`${API_BASE_URL}/api/instructors`)
+                ]);
                 
-                // Get instructor names
-                allTrainings.forEach(t => {
-                    if (t.instructor_code && t.instructor_name) {
-                        instructorNames[t.instructor_code] = t.instructor_name;
-                    }
-                });
+                courses = coursesRes.data || [];
+                instructors = instructorsRes.data || [];
                 
-                instructorFilter.innerHTML = '<option value="all">모든 강사</option>' +
-                    instructors.map(code => `<option value="${code}">${instructorNames[code] || code}</option>`).join('');
+                // Populate filters
+                populateFilters();
                 
                 hideLoading();
-                filterTrainings();
-            } catch (error) {
-                console.error('Failed to load trainings:', error);
-                hideLoading();
+                
+                // Show empty state initially
+                document.getElementById('loadingState').classList.add('hidden');
                 document.getElementById('emptyState').classList.remove('hidden');
+            } catch (error) {
+                console.error('Failed to load initial data:', error);
+                hideLoading();
+                showToast('데이터 로딩 실패', 'error');
             }
         }
-
-        // Filter trainings
-        function filterTrainings() {
-            const selectedMonth = document.getElementById('monthFilter').value;
-            const selectedInstructor = document.getElementById('instructorFilter').value;
+        
+        // Populate filters
+        function populateFilters() {
+            const courseFilter = document.getElementById('courseFilter');
+            const instructorFilter = document.getElementById('instructorFilter');
+            const yearFilter = document.getElementById('yearFilter');
+            const monthFilter = document.getElementById('monthFilter');
             
-            let filtered = allTrainings;
+            // Course filter
+            courseFilter.innerHTML = '<option value="">-- 과정 선택 --</option>' +
+                courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
             
-            // Filter by month
-            if (selectedMonth === 'current') {
-                const now = new Date();
-                const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-                filtered = filtered.filter(training => 
-                    training.training_date && training.training_date.startsWith(currentMonth)
-                );
-            }
+            // Instructor filter
+            instructorFilter.innerHTML = '<option value="">전체 강사</option>' +
+                instructors.map(i => `<option value="${i.code}">${i.name}</option>`).join('');
             
-            // Filter by instructor
-            if (selectedInstructor !== 'all') {
-                filtered = filtered.filter(training => 
-                    training.instructor_code === selectedInstructor
-                );
-            }
+            // Year filter
+            const currentYear = new Date().getFullYear();
+            yearFilter.innerHTML = '<option value="">전체</option>' +
+                `<option value="${currentYear}">${currentYear}</option>` +
+                `<option value="${currentYear - 1}">${currentYear - 1}</option>`;
             
-            renderTrainings(filtered);
+            // Month filter
+            monthFilter.innerHTML = '<option value="">전체</option>' +
+                Array.from({length: 12}, (_, i) => i + 1)
+                    .map(m => `<option value="${m}">${m}월</option>`).join('');
         }
-
-        // Render trainings
-        function renderTrainings(trainings) {
-            const container = document.getElementById('trainingList');
-            const emptyState = document.getElementById('emptyState');
-            const loadingState = document.getElementById('loadingState');
+        
+        // Filter timetables
+        async function filterTimetables() {
+            const courseCode = document.getElementById('courseFilter').value;
+            const instructorCode = document.getElementById('instructorFilter').value;
+            const year = document.getElementById('yearFilter').value;
+            const month = document.getElementById('monthFilter').value;
             
-            // Hide loading state
-            loadingState.classList.add('hidden');
-            container.classList.remove('hidden');
-
-            if (!trainings || trainings.length === 0) {
-                container.innerHTML = '';
-                container.classList.add('hidden');
-                emptyState.classList.remove('hidden');
+            if (!courseCode) {
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('timetableList').classList.add('hidden');
+                document.getElementById('emptyState').classList.remove('hidden');
                 return;
             }
-
-            emptyState.classList.add('hidden');
             
-            // Sort by date descending
-            trainings.sort((a, b) => new Date(b.training_date) - new Date(a.training_date));
-
-            container.innerHTML = trainings.map(training => {
-                const intensityColors = {
-                    '낮음': 'bg-green-100 text-green-700',
-                    '중간': 'bg-yellow-100 text-yellow-700',
-                    '높음': 'bg-red-100 text-red-700'
-                };
-
-                const photos = training.photo_urls ? JSON.parse(training.photo_urls) : [];
-                const photoHtml = photos.length > 0 ? `
-                    <div class="flex space-x-2 mt-3 overflow-x-auto">
-                        ${photos.slice(0, 3).map(url => `
-                            <img src="${convertFtpUrl(url)}" class="photo-thumbnail cursor-pointer" onclick="showPhotoModal('${convertFtpUrl(url)}')">
-                        `).join('')}
-                        ${photos.length > 3 ? `<div class="photo-thumbnail bg-gray-200 flex items-center justify-center text-gray-600 font-semibold">+${photos.length - 3}</div>` : ''}
-                    </div>
-                ` : '';
-
+            try {
+                document.getElementById('emptyState').classList.add('hidden');
+                document.getElementById('timetableList').classList.add('hidden');
+                document.getElementById('loadingState').classList.remove('hidden');
+                
+                const response = await axios.get(`${API_BASE_URL}/api/timetables?course_code=${courseCode}`);
+                allTimetables = response.data || [];
+                
+                // Apply filters
+                let filtered = allTimetables;
+                
+                if (instructorCode) {
+                    filtered = filtered.filter(tt => tt.instructor_code === instructorCode);
+                }
+                
+                if (year && month) {
+                    filtered = filtered.filter(tt => {
+                        const date = new Date(tt.class_date);
+                        return date.getFullYear() === parseInt(year) && date.getMonth() + 1 === parseInt(month);
+                    });
+                } else if (year) {
+                    filtered = filtered.filter(tt => {
+                        const date = new Date(tt.class_date);
+                        return date.getFullYear() === parseInt(year);
+                    });
+                }
+                
+                renderTimetables(filtered);
+            } catch (error) {
+                console.error('Failed to load timetables:', error);
+                document.getElementById('loadingState').classList.add('hidden');
+                showToast('시간표 조회 실패', 'error');
+            }
+        }
+        
+        // Calculate duration
+        function calculateDuration(startTime, endTime) {
+            if (!startTime || !endTime) return 0;
+            const start = new Date(`2000-01-01 ${startTime}`);
+            const end = new Date(`2000-01-01 ${endTime}`);
+            return (end - start) / (1000 * 60 * 60);
+        }
+        
+        // Render timetables
+        function renderTimetables(timetables) {
+            const container = document.getElementById('timetableList');
+            const loadingState = document.getElementById('loadingState');
+            const emptyState = document.getElementById('emptyState');
+            
+            loadingState.classList.add('hidden');
+            
+            if (!timetables || timetables.length === 0) {
+                container.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.innerHTML = `
+                    <i class="fas fa-clipboard-list text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500">조회된 시간표가 없습니다</p>
+                `;
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            container.classList.remove('hidden');
+            
+            // Sort by date
+            timetables.sort((a, b) => new Date(a.class_date) - new Date(b.class_date));
+            
+            container.innerHTML = timetables.map(tt => {
+                const hasLog = tt.training_log_id != null;
+                const duration = calculateDuration(tt.start_time, tt.end_time);
+                const instructor = instructors.find(i => i.code === tt.instructor_code);
+                
                 return `
-                    <div class="training-card bg-white rounded-2xl shadow-md p-5 cursor-pointer hover:shadow-lg"
-                         onclick="editTraining(${training.id})">
+                    <div class="timetable-card bg-white rounded-xl shadow-md p-4 ${hasLog ? 'border-2 border-green-500' : ''}"
+                         onclick="showLogModal(${tt.id}, ${hasLog})">
                         <div class="flex items-start justify-between mb-3">
-                            <div class="flex items-center space-x-2 flex-wrap gap-2">
-                                <span class="px-3 py-1 rounded-full text-xs font-semibold ${intensityColors[training.intensity] || intensityColors['중간']}">
-                                    ${training.intensity}
-                                </span>
-                                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
-                                    ${training.duration}분
-                                </span>
+                            <div class="flex-1">
+                                <div class="flex items-center mb-2">
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold ${hasLog ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}">
+                                        ${hasLog ? '작성완료' : '미작성'}
+                                    </span>
+                                    ${tt.photo_urls && JSON.parse(tt.photo_urls || '[]').length > 0 ? `
+                                        <span class="ml-2 px-2 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
+                                            <i class="fas fa-camera mr-1"></i>${JSON.parse(tt.photo_urls).length}
+                                        </span>
+                                    ` : ''}
+                                </div>
+                                <p class="text-sm text-gray-600">
+                                    <i class="fas fa-calendar mr-1 text-indigo-600"></i>${tt.class_date}
+                                </p>
+                                <p class="text-sm text-gray-600">
+                                    <i class="fas fa-clock mr-1 text-indigo-600"></i>${tt.start_time} - ${tt.end_time} (${duration}시간)
+                                </p>
                             </div>
-                            <button onclick="event.stopPropagation(); deleteTraining(${training.id})" 
-                                    class="text-red-500 hover:text-red-700 p-2">
-                                <i class="fas fa-trash"></i>
-                            </button>
                         </div>
-                        <div class="mb-2">
-                            <h3 class="text-lg font-bold text-gray-800 flex items-center">
-                                <i class="fas fa-dumbbell mr-2 text-indigo-500"></i>
-                                ${training.training_type}
-                            </h3>
+                        <div class="border-t pt-3">
+                            <p class="font-semibold text-gray-800 mb-1">${tt.subject_name || tt.subject_code}</p>
+                            <p class="text-sm text-gray-600">
+                                <i class="fas fa-user-tie mr-1 text-orange-600"></i>${instructor?.name || tt.instructor_code}
+                            </p>
+                            ${tt.training_log_content ? `
+                                <p class="text-sm text-gray-600 mt-2 line-clamp-2">
+                                    <i class="fas fa-file-alt mr-1 text-green-600"></i>${tt.training_log_content}
+                                </p>
+                            ` : ''}
                         </div>
-                        ${userType === 'instructor' ? `
-                            <div class="mb-2">
-                                <span class="text-sm font-semibold text-gray-700">
-                                    <i class="fas fa-user mr-1"></i>
-                                    ${training.student_name}
-                                </span>
-                            </div>
-                        ` : ''}
-                        <div class="mb-2">
-                            <span class="text-sm text-gray-600">
-                                <i class="fas fa-calendar mr-1"></i>
-                                ${training.training_date}
-                            </span>
-                        </div>
-                        <p class="text-gray-800 whitespace-pre-wrap line-clamp-3 mb-2">${training.content}</p>
-                        ${training.notes ? `<p class="text-sm text-gray-600 italic line-clamp-2"><i class="fas fa-sticky-note mr-1"></i>${training.notes}</p>` : ''}
-                        ${photoHtml}
                     </div>
                 `;
             }).join('');
         }
-
-        // Show create modal
-        function showCreateModal() {
-            document.getElementById('modalTitle').textContent = '훈련일지 작성';
-            document.getElementById('trainingForm').reset();
-            document.getElementById('trainingId').value = '';
-            document.getElementById('trainingDate').value = new Date().toISOString().split('T')[0];
-            document.getElementById('trainingIntensity').value = '중간';
-            
-            selectedPhotos = [];
-            existingPhotoUrls = [];
-            document.getElementById('photoPreviewContainer').innerHTML = '';
-
-            // Show student section for instructors
-            if (userType === 'instructor') {
-                document.getElementById('studentSection').classList.remove('hidden');
-                const studentSelect = document.getElementById('studentSelect');
-                studentSelect.innerHTML = '<option value="">학생을 선택하세요</option>' +
-                    students.map(s => `<option value="${s.id}">${s.name} (${s.major || '-'})</option>`).join('');
-            } else {
-                document.getElementById('studentSection').classList.add('hidden');
+        
+        // Show log modal
+        async function showLogModal(timetableId, hasLog) {
+            try {
+                showLoading('데이터 로딩 중...', '');
+                
+                const tt = allTimetables.find(t => t.id === timetableId);
+                if (!tt) {
+                    hideLoading();
+                    showToast('시간표를 찾을 수 없습니다', 'error');
+                    return;
+                }
+                
+                const instructor = instructors.find(i => i.code === tt.instructor_code);
+                
+                document.getElementById('modalTitle').textContent = hasLog ? '훈련일지 수정' : '훈련일지 작성';
+                document.getElementById('timetableId').value = timetableId;
+                document.getElementById('timetableInfo').textContent = 
+                    `${tt.class_date} | ${tt.subject_name || tt.subject_code} | ${instructor?.name || ''} | ${tt.start_time}-${tt.end_time}`;
+                
+                if (hasLog && tt.training_log_id) {
+                    // Load existing log
+                    const logRes = await axios.get(`${API_BASE_URL}/api/training-logs/${tt.training_log_id}`);
+                    const log = logRes.data;
+                    
+                    document.getElementById('logId').value = log.id;
+                    document.getElementById('logContent').value = log.content || '';
+                    document.getElementById('logHomework').value = log.homework || '';
+                    document.getElementById('logNotes').value = log.notes || '';
+                    
+                    existingPhotoUrls = log.photo_urls ? JSON.parse(log.photo_urls) : [];
+                } else {
+                    // Clear form
+                    document.getElementById('logForm').reset();
+                    document.getElementById('logId').value = '';
+                    document.getElementById('timetableId').value = timetableId;
+                    existingPhotoUrls = [];
+                }
+                
+                selectedPhotos = [];
+                renderPhotoPreview();
+                
+                hideLoading();
+                document.getElementById('logModal').classList.remove('hidden');
+                document.getElementById('logModal').classList.add('flex');
+            } catch (error) {
+                console.error('Failed to load log:', error);
+                hideLoading();
+                showToast('데이터 로딩 실패', 'error');
             }
-
-            document.getElementById('trainingModal').classList.remove('hidden');
-            document.getElementById('trainingModal').classList.add('flex');
         }
-
-        // Edit training
-        function editTraining(trainingId) {
-            const training = allTrainings.find(t => t.id === trainingId);
-            if (!training) return;
-
-            document.getElementById('modalTitle').textContent = '훈련일지 수정';
-            document.getElementById('trainingId').value = training.id;
-            document.getElementById('trainingDate').value = training.training_date;
-            document.getElementById('trainingType').value = training.training_type;
-            document.getElementById('trainingDuration').value = training.duration;
-            document.getElementById('trainingIntensity').value = training.intensity;
-            document.getElementById('trainingContent').value = training.content;
-            document.getElementById('trainingNotes').value = training.notes || '';
-            
-            selectedPhotos = [];
-            existingPhotoUrls = training.photo_urls ? JSON.parse(training.photo_urls) : [];
-            
-            // Show student section for instructors
-            if (userType === 'instructor') {
-                document.getElementById('studentSection').classList.remove('hidden');
-                const studentSelect = document.getElementById('studentSelect');
-                studentSelect.innerHTML = '<option value="">학생을 선택하세요</option>' +
-                    students.map(s => `<option value="${s.id}" ${s.id === training.student_id ? 'selected' : ''}>${s.name} (${s.major || '-'})</option>`).join('');
-            } else {
-                document.getElementById('studentSection').classList.add('hidden');
-            }
-            
-            renderPhotoPreview();
-            
-            document.getElementById('trainingModal').classList.remove('hidden');
-            document.getElementById('trainingModal').classList.add('flex');
+        
+        // Close modal
+        function closeModal() {
+            document.getElementById('logModal').classList.add('hidden');
+            document.getElementById('logModal').classList.remove('flex');
         }
-
+        
         // Handle photo selection
         function handlePhotoSelect(event) {
             const files = Array.from(event.target.files);
@@ -749,21 +642,28 @@
         function renderPhotoPreview() {
             const container = document.getElementById('photoPreviewContainer');
             
-            const existingHtml = existingPhotoUrls.map((url, index) => `
-                <div class="relative">
-                    <img src="${url}" class="w-full h-20 object-cover rounded-lg">
-                    <button type="button" onclick="removeExistingPhoto(${index})"
-                            class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `).join('');
+            const existingHtml = existingPhotoUrls.map((url, index) => {
+                const convertedUrl = convertFtpUrl(url);
+                return `
+                    <div class="relative">
+                        <img src="${convertedUrl}" 
+                             class="w-full h-20 object-cover rounded-lg cursor-pointer" 
+                             onclick="showPhotoModal('${convertedUrl}')">
+                        <button type="button" onclick="removeExistingPhoto(${index})"
+                                class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
 
             const newHtml = selectedPhotos.map((file, index) => {
                 const url = URL.createObjectURL(file);
                 return `
                     <div class="relative">
-                        <img src="${url}" class="w-full h-20 object-cover rounded-lg">
+                        <img src="${url}" 
+                             class="w-full h-20 object-cover rounded-lg cursor-pointer" 
+                             onclick="showPhotoModal('${url}')">
                         <button type="button" onclick="removeNewPhoto(${index})"
                                 class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
                             <i class="fas fa-times"></i>
@@ -787,15 +687,8 @@
             renderPhotoPreview();
         }
 
-        // Close modal
-        function closeModal() {
-            document.getElementById('trainingModal').classList.add('hidden');
-            document.getElementById('trainingModal').classList.remove('flex');
-        }
-
         // Show photo modal
         function showPhotoModal(url) {
-            event.stopPropagation();
             document.getElementById('photoModalImg').src = url;
             document.getElementById('photoModal').classList.remove('hidden');
             document.getElementById('photoModal').classList.add('flex');
@@ -806,89 +699,63 @@
             document.getElementById('photoModal').classList.add('hidden');
             document.getElementById('photoModal').classList.remove('flex');
         }
-
-        // Handle form submission
-        // 중복 제출 방지 플래그
-        let isSubmitting = false;
         
-        document.getElementById('trainingForm').addEventListener('submit', async (e) => {
+        // Handle form submission
+        document.getElementById('logForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-
-            // 중복 제출 방지
-            if (isSubmitting) {
-                console.log('이미 저장 중입니다...');
-                return;
-            }
-            isSubmitting = true;
-
-            showLoading('훈련일지 저장 중...', '사진을 업로드하고 있습니다');
-
-            const trainingId = document.getElementById('trainingId').value;
-            const trainingDate = document.getElementById('trainingDate').value;
-            const trainingType = document.getElementById('trainingType').value;
-            const duration = parseInt(document.getElementById('trainingDuration').value);
-            const intensity = document.getElementById('trainingIntensity').value;
-            const content = document.getElementById('trainingContent').value;
-            const notes = document.getElementById('trainingNotes').value;
-
+            
+            const logId = document.getElementById('logId').value;
+            const timetableId = document.getElementById('timetableId').value;
+            const content = document.getElementById('logContent').value;
+            const homework = document.getElementById('logHomework').value;
+            const notes = document.getElementById('logNotes').value;
+            
             try {
-                // Upload new photos only if there are any
+                showLoading('저장 중...', '훈련일지를 저장하고 있습니다');
+                
+                // Upload new photos
                 let uploadedUrls = [];
                 if (selectedPhotos.length > 0) {
                     uploadedUrls = await Promise.all(
                         selectedPhotos.map(file => uploadPhoto(file))
                     );
                 }
-
+                
                 // Combine existing and new photo URLs
                 const allPhotoUrls = [...existingPhotoUrls, ...uploadedUrls];
-
-                const trainingData = {
-                    training_date: trainingDate,
-                    training_type: trainingType,
-                    duration: duration,
-                    intensity: intensity,
+                
+                const tt = allTimetables.find(t => t.id === parseInt(timetableId));
+                
+                const logData = {
+                    timetable_id: timetableId,
+                    course_code: tt.course_code,
+                    instructor_code: tt.instructor_code,
+                    class_date: tt.class_date,
                     content: content,
-                    notes: notes || null,
+                    homework: homework,
+                    notes: notes,
                     photo_urls: JSON.stringify(allPhotoUrls)
                 };
-
-                if (userType === 'instructor') {
-                    trainingData.student_id = parseInt(document.getElementById('studentSelect').value);
-                    trainingData.instructor_code = currentUser.code;
-                } else {
-                    trainingData.student_id = currentUser.id;
-                    trainingData.instructor_code = null;
-                }
-
-                let response;
-                if (trainingId) {
+                
+                if (logId) {
                     // Update
-                    response = await axios.put(`${API_BASE_URL}/api/training-logs/${trainingId}`, trainingData);
+                    await axios.put(`${API_BASE_URL}/api/training-logs/${logId}`, logData);
                 } else {
                     // Create
-                    response = await axios.post(`${API_BASE_URL}/api/training-logs`, trainingData);
+                    await axios.post(`${API_BASE_URL}/api/training-logs`, logData);
                 }
-
-                // Backend returns {id: ...} on success
-                if (response.data && response.data.id) {
-                    closeModal();
-                    await loadTrainings();
-                    hideLoading();
-                    showToast(trainingId ? '훈련일지가 수정되었습니다.' : '훈련일지가 저장되었습니다.', 'success');
-                } else {
-                    hideLoading();
-                    showToast('저장에 실패했습니다', 'error');
-                }
+                
+                closeModal();
+                await filterTimetables();
+                hideLoading();
+                showToast(logId ? '훈련일지가 수정되었습니다' : '훈련일지가 저장되었습니다', 'success');
             } catch (error) {
                 console.error('Save error:', error);
                 hideLoading();
                 showToast('저장 중 오류가 발생했습니다', 'error');
-            } finally {
-                isSubmitting = false;
             }
         });
-
+        
         // Upload photo
         async function uploadPhoto(file) {
             return new Promise((resolve, reject) => {
@@ -923,13 +790,14 @@
                             canvas.toBlob(async (blob) => {
                                 const formData = new FormData();
                                 formData.append('file', blob, file.name);
+                                formData.append('category', 'training');
 
-                                const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=train`, formData, {
+                                const response = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
                                     headers: { 'Content-Type': 'multipart/form-data' }
                                 });
 
                                 resolve(response.data.url);
-                            }, 'image/jpeg', 0.6);
+                            }, 'image/jpeg', 0.7);
                         };
                         img.src = e.target.result;
                     } catch (error) {
@@ -939,53 +807,9 @@
                 reader.readAsDataURL(file);
             });
         }
-
-        // Delete training
-        async function deleteTraining(trainingId) {
-            const confirmed = await showConfirm('이 훈련일지를 삭제하시겠습니까?', '훈련일지 삭제');
-            if (!confirmed) return;
-
-            showLoading('삭제 중...', '훈련일지를 삭제하고 있습니다');
-            try {
-                const response = await axios.delete(`${API_BASE_URL}/api/training-logs/${trainingId}`);
-                if (response.data.success) {
-                    hideLoading();
-                    showToast('훈련일지가 삭제되었습니다', 'success');
-                    await loadTrainings();
-                }
-            } catch (error) {
-                console.error('Delete error:', error);
-                hideLoading();
-                showToast('삭제 중 오류가 발생했습니다', 'error');
-            }
-        }
-
-        // Go back
-        function goBack() {
-            const fromPage = sessionStorage.getItem('fromPage');
-            if (fromPage === 'menu') {
-                // 메뉴에서 온 경우 메뉴 페이지로 이동
-                sessionStorage.removeItem('fromPage');
-                window.location.href = 'index.html#menu';
-                // 메뉴 페이지로 전환
-                setTimeout(() => {
-                    if (window.location.hash === '#menu') {
-                        window.location.href = 'index.html';
-                        setTimeout(() => {
-                            const event = new CustomEvent('switchToMenu');
-                            window.dispatchEvent(event);
-                        }, 100);
-                    }
-                }, 100);
-            } else {
-                // 대시보드 또는 기타 페이지에서 온 경우
-                sessionStorage.removeItem('fromPage');
-                window.location.href = 'index.html';
-            }
-        }
-
-        // Initialize
-        init();
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
