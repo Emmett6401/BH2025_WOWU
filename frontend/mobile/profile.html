@@ -269,7 +269,6 @@
         // Load user data
         async function loadUserData() {
             try {
-                showLoading("프로필 정보 불러오는 중...", "");
                 let response;
                 if (userType === 'instructor') {
                     response = await axios.get(`${API_BASE_URL}/api/instructors/${currentUser.code}`);
@@ -294,6 +293,9 @@
                 // Load profile photo (다양한 필드 체크)
                 let photoUrl = data.photo_url || data.profile_photo || null;
                 if (photoUrl) {
+                    // 프로필 사진 로딩 시작
+                    showLoading("프로필 사진 불러오는 중...", "");
+                    
                     // FTP URL을 HTTP 프록시로 변환
                     if (photoUrl.startsWith('ftp://')) {
                         photoUrl = `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(photoUrl)}`;
@@ -303,9 +305,11 @@
                     const img = new Image();
                     img.onload = () => {
                         document.getElementById('profilePhotoPreview').src = photoUrl;
+                        hideLoading();
                     };
                     img.onerror = () => {
                         console.error('Failed to load profile photo:', photoUrl);
+                        hideLoading();
                     };
                     img.src = photoUrl;
                 }
@@ -427,9 +431,24 @@
             title.textContent = fileName.length > 50 ? fileName.substring(0, 47) + '...' : fileName;
             
             if (isImage) {
-                img.src = url;
-                img.classList.remove('hidden');
-                fileDiv.classList.add('hidden');
+                // 이미지 로딩 시작
+                showLoading("이미지 불러오는 중...", "");
+                
+                // 이미지 로드 테스트
+                const testImg = new Image();
+                testImg.onload = () => {
+                    img.src = url;
+                    img.classList.remove('hidden');
+                    fileDiv.classList.add('hidden');
+                    hideLoading();
+                };
+                testImg.onerror = () => {
+                    console.error('Failed to load image:', url);
+                    hideLoading();
+                    alert('이미지를 불러올 수 없습니다.');
+                    return;
+                };
+                testImg.src = url;
             } else {
                 img.classList.add('hidden');
                 fileDiv.classList.remove('hidden');
