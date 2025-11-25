@@ -181,12 +181,14 @@
                         storage.setItem('user_type', 'instructor');
                         if (rememberMe) {
                             localStorage.setItem('username', username);
+                            localStorage.setItem('password', password);
                         }
                     } else {
                         storage.setItem('user', JSON.stringify(data.student));
                         storage.setItem('user_type', 'student');
                         if (rememberMe) {
                             localStorage.setItem('username', username);
+                            localStorage.setItem('password', password);
                         }
                     }
                     
@@ -255,12 +257,21 @@
                 return;
             }
             
-            // 저장된 사용자명 자동 입력 (자동 로그인은 하지 않음)
+            // 저장된 로그인 정보 자동 입력
             const savedUsername = localStorage.getItem('username');
+            const savedPassword = localStorage.getItem('password');
+            
             if (savedUsername) {
                 document.getElementById('username').value = savedUsername;
                 document.getElementById('rememberMe').checked = true;
-                // 비밀번호 필드에 포커스
+            }
+            
+            if (savedPassword) {
+                document.getElementById('password').value = savedPassword;
+            }
+            
+            // 비밀번호 필드에 포커스 (사용자명이 저장되어 있으면)
+            if (savedUsername && !savedPassword) {
                 document.getElementById('password').focus();
             }
         });

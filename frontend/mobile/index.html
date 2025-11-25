@@ -420,19 +420,24 @@
                     });
                 
                 // 활성 공지사항 (게시 기간 내)
+                const now = new Date();
                 const activeNotices = noticesData
                     .filter(n => {
-                        const now = new Date();
-                        const start = n.start_date ? new Date(n.start_date) : null;
-                        const end = n.end_date ? new Date(n.end_date) : null;
+                        const startDate = n.start_date ? new Date(n.start_date) : null;
+                        const endDate = n.end_date ? new Date(n.end_date) : null;
                         
-                        if (!start && !end) return true;
-                        if (!start) return now <= end;
-                        if (!end) return now >= start;
-                        return now >= start && now <= end;
+                        if (!startDate && !endDate) return true;
+                        if (!startDate) return now <= endDate;
+                        if (!endDate) return now >= startDate;
+                        return now >= startDate && now <= endDate;
                     })
                     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
                     .slice(0, 5);
+                
+                console.log('📢 대시보드 공지사항:', {
+                    전체: noticesData.length,
+                    활성: activeNotices.length
+                });
                 
                 // 추가 통계 계산
                 const todayCounselings = counselingsData.filter(c => {

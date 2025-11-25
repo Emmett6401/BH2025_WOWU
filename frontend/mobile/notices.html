@@ -103,31 +103,7 @@
         </div>
     </header>
 
-    <!-- Filter Tabs -->
-    <div class="container mx-auto px-4 py-4">
-        <div class="flex space-x-2 overflow-x-auto">
-            <button onclick="filterNotices('all')" 
-                    class="filter-tab px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-purple-500 text-white shadow-md transition-all"
-                    data-filter="all">
-                전체
-            </button>
-            <button onclick="filterNotices('일반')" 
-                    class="filter-tab px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
-                    data-filter="일반">
-                일반
-            </button>
-            <button onclick="filterNotices('긴급')" 
-                    class="filter-tab px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
-                    data-filter="긴급">
-                긴급
-            </button>
-            <button onclick="filterNotices('중요')" 
-                    class="filter-tab px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
-                    data-filter="중요">
-                중요
-            </button>
-        </div>
-    </div>
+    <!-- Filter Tabs - 제거됨 (데스크탑처럼 전체만 표시) -->
 
     <!-- Notices List -->
     <main class="container mx-auto px-4 pb-20">
@@ -277,12 +253,7 @@
                     startY = e.touches[0].pageY;
                     isPulling = true;
                 }
-            }
-        // Refresh data for pull-to-refresh
-        async function refreshData() {
-            await loadNotices();
-        }
-, { passive: true });
+            }, { passive: true });
             
             document.addEventListener('touchmove', (e) => {
                 if (!isPulling || isRefreshing) return;
@@ -309,7 +280,7 @@
                     ptrIndicator.classList.add('active');
                     
                     // Refresh data - call the main load function
-                    await refreshData();
+                    await loadNotices();
                     showToast('데이터를 새로고침했습니다', 'success', 2000);
                     
                     // Hide indicator after short delay
@@ -411,14 +382,31 @@
         // Load notices
         async function loadNotices() {
             try {
-            showLoading("공지사항 불러오는 중...", "");
+                showLoading("공지사항 불러오는 중...", "");
                 const response = await axios.get(`${API_BASE_URL}/api/notices`);
                 allNotices = response.data || [];
-            renderNotices(allNotices);
-            hideLoading();
+                
+                console.log('✅ 공지사항 로드 완료:', allNotices.length, '건');
+                
+                // 활성 공지사항 필터링 (게시 기간 내)
+                const now = new Date();
+                const activeNotices = allNotices.filter(n => {
+                    const startDate = n.start_date ? new Date(n.start_date) : null;
+                    const endDate = n.end_date ? new Date(n.end_date) : null;
+                    
+                    if (!startDate && !endDate) return true;
+                    if (!startDate) return now <= endDate;
+                    if (!endDate) return now >= startDate;
+                    return now >= startDate && now <= endDate;
+                });
+                
+                console.log('✅ 활성 공지사항:', activeNotices.length, '건');
+                
+                renderNotices(activeNotices);
+                hideLoading();
             } catch (error) {
                 console.error('Failed to load notices:', error);
-            hideLoading();
+                hideLoading();
                 document.getElementById('emptyState').classList.remove('hidden');
             }
         }
@@ -470,26 +458,7 @@
             }).join('');
         }
 
-        // Filter notices
-        function filterNotices(category) {
-            currentFilter = category;
-            
-            // Update tab styles
-            document.querySelectorAll('.filter-tab').forEach(tab => {
-                if (tab.dataset.filter === category) {
-                    tab.className = 'filter-tab px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-purple-500 text-white shadow-md transition-all';
-                } else {
-                    tab.className = 'filter-tab px-4 py-2 rounded-xl font-semibold whitespace-nowrap bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all';
-                }
-            });
-
-            if (category === 'all') {
-                renderNotices(allNotices);
-            } else {
-                const filtered = allNotices.filter(notice => notice.category === category);
-                renderNotices(filtered);
-            }
-        }
+        // Filter notices - 제거됨 (필터 기능 불필요)
 
         // Show detail modal
         function showDetail(noticeId) {
