@@ -4044,6 +4044,17 @@ def ensure_class_notes_table(cursor):
         except Exception:
             pass
         
+        # note_date를 DATE에서 DATETIME으로 변경 (시간 정보 저장)
+        try:
+            cursor.execute("""
+                ALTER TABLE class_notes 
+                MODIFY COLUMN note_date DATETIME NOT NULL
+            """)
+            print("✅ note_date를 DATETIME으로 변경됨")
+        except Exception as e:
+            # 이미 DATETIME이거나 변경 불가능하면 무시
+            pass
+        
         print("✅ class_notes 테이블 확인/생성 완료")
     except Exception as e:
         print(f"⚠️ class_notes 테이블 생성 실패: {e}")
