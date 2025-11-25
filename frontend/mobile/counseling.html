@@ -193,7 +193,13 @@
 
     <!-- Counseling List -->
     <main class="container mx-auto px-4 pb-20">
-        <div id="counselingList" class="space-y-4">
+        <!-- Loading State -->
+        <div id="loadingState" class="text-center py-20">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+            <p class="text-gray-500 font-semibold">상담 내역을 불러오는 중...</p>
+        </div>
+        
+        <div id="counselingList" class="space-y-4 hidden">
             <!-- Counseling items will be loaded here -->
         </div>
         <div id="emptyState" class="text-center py-20 hidden">
@@ -580,9 +586,15 @@
         function renderCounselings(counselings) {
             const container = document.getElementById('counselingList');
             const emptyState = document.getElementById('emptyState');
+            const loadingState = document.getElementById('loadingState');
+            
+            // Hide loading state
+            loadingState.classList.add('hidden');
+            container.classList.remove('hidden');
 
             if (!counselings || counselings.length === 0) {
                 container.innerHTML = '';
+                container.classList.add('hidden');
                 emptyState.classList.remove('hidden');
                 return;
             }

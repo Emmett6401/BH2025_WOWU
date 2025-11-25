@@ -121,7 +121,13 @@
 
     <!-- Team Activities List -->
     <main class="container mx-auto px-4 pb-20">
-        <div id="teamList" class="space-y-4">
+        <!-- Loading State -->
+        <div id="loadingState" class="text-center py-20">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mb-4"></div>
+            <p class="text-gray-500 font-semibold">팀 활동을 불러오는 중...</p>
+        </div>
+        
+        <div id="teamList" class="space-y-4 hidden">
             <!-- Team activities will be loaded here -->
         </div>
         <div id="emptyState" class="text-center py-20 hidden">
@@ -353,12 +359,7 @@
                     startY = e.touches[0].pageY;
                     isPulling = true;
                 }
-            }
-        // Refresh data for pull-to-refresh
-        async function refreshData() {
-            await loadTeamActivities();
-        }
-, { passive: true });
+            }, { passive: true });
             
             document.addEventListener('touchmove', (e) => {
                 if (!isPulling || isRefreshing) return;
@@ -415,6 +416,17 @@
                 return `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
             }
             return url;
+        }
+        
+        // Back button handler
+        function goBack() {
+            sessionStorage.setItem('returnToMenu', 'true');
+            window.location.href = 'index.html';
+        }
+        
+        // Refresh data for pull-to-refresh
+        async function refreshData() {
+            await loadTeamActivities();
         }
 
         // Initialize
@@ -485,9 +497,15 @@
         function renderTeamActivities(activities) {
             const container = document.getElementById('teamList');
             const emptyState = document.getElementById('emptyState');
+            const loadingState = document.getElementById('loadingState');
+            
+            // Hide loading state
+            loadingState.classList.add('hidden');
+            container.classList.remove('hidden');
 
             if (!activities || activities.length === 0) {
                 container.innerHTML = '';
+                container.classList.add('hidden');
                 emptyState.classList.remove('hidden');
                 return;
             }
