@@ -104,9 +104,17 @@
         <div class="bg-white rounded-xl shadow-md p-4">
             <div class="flex items-center space-x-3">
                 <i class="fas fa-calendar-alt text-pink-500"></i>
-                <input type="month" id="monthFilter" 
-                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
-                       onchange="filterByMonth()">
+                <select id="monthFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500">
+                        <option value="all">전체</option>
+                        <option value="current">이번 달</option>
+                    </select>
+                        <select id="typeFilter" onchange="filterActivities()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500">
+                            <option value="all">모든 활동</option>
+                            <option value="meeting">회의</option>
+                            <option value="development">개발</option>
+                            <option value="presentation">발표</option>
+                            <option value="other">기타</option>
+                        </select>
             </div>
         </div>
     </div>
@@ -434,13 +442,14 @@
             
             // Set default month filter to current month
             const now = new Date();
-            document.getElementById('monthFilter').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('monthFilter').value = 'all';
 
             await loadTeamActivities();
         }
 
         // Load team activities
         async function loadTeamActivities() {
+            showLoading("팀 활동일지 불러오는 중...", "");
             try {
                 let response;
                 if (userType === 'instructor') {
@@ -452,7 +461,8 @@
                 allTeamActivities = response.data || [];
                 filterByMonth();
             } catch (error) {
-                console.error('Failed to load team activities:', error);
+                console.error
+                hideLoading();('Failed to load team activities:', error);
                 document.getElementById('emptyState').classList.remove('hidden');
             }
         }

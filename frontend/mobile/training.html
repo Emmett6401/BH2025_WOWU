@@ -104,9 +104,16 @@
         <div class="bg-white rounded-xl shadow-md p-4">
             <div class="flex items-center space-x-3">
                 <i class="fas fa-calendar-alt text-indigo-500"></i>
-                <input type="month" id="monthFilter" 
-                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                       onchange="filterByMonth()">
+                <select id="monthFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                        <option value="all">전체</option>
+                        <option value="current">이번 달</option>
+                    </select>
+                        <select id="typeFilter" onchange="filterTraining()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                            <option value="all">모든 유형</option>
+                            <option value="individual">개인</option>
+                            <option value="team">팀</option>
+                            <option value="project">프로젝트</option>
+                        </select>
             </div>
         </div>
     </div>
@@ -427,7 +434,7 @@
             
             // Set default month filter to current month
             const now = new Date();
-            document.getElementById('monthFilter').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('monthFilter').value = 'all';
             
             // Load students if instructor
             if (userType === 'instructor') {
@@ -443,7 +450,8 @@
                 const response = await axios.get(`${API_BASE_URL}/api/students`);
                 students = response.data || [];
             } catch (error) {
-                console.error('Failed to load students:', error);
+                console.error
+                hideLoading();('Failed to load students:', error);
             }
         }
 

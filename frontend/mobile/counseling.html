@@ -458,7 +458,8 @@
                 const response = await axios.get(`${API_BASE_URL}/api/students`);
                 students = response.data || [];
             } catch (error) {
-                console.error('Failed to load students:', error);
+                console.error
+                hideLoading();('Failed to load students:', error);
             }
         }
 
@@ -474,6 +475,7 @@
 
         // Load counselings
         async function loadCounselings() {
+            showLoading("상담 목록 불러오는 중...", "");
             try {
                 showLoading("상담 기록 불러오는 중...", "");
                 let response;
@@ -485,6 +487,7 @@
 
                 allCounselings = response.data || [];
                 renderCounselings(allCounselings);
+                hideLoading();
             } catch (error) {
                 console.error('Failed to load counselings:', error);
                 hideLoading();
