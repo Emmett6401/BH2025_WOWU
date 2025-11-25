@@ -1104,10 +1104,10 @@
 
         // Initialize filters
         async function initializeFilters() {
-            // Populate course filter
+            // Populate course filter - C-001을 기본값으로
             const courseSelect = document.getElementById('filterCourse');
             courseSelect.innerHTML = '<option value="">전체 과정</option>' +
-                courses.map(c => `<option value="${c.code}">${c.name}</option>`).join('');
+                courses.map(c => `<option value="${c.code}" ${c.code === 'C-001' ? 'selected' : ''}>${c.name}</option>`).join('');
             
             // Populate student filter - 이름(코드)-과정-생년월일 형식
             const studentSelect = document.getElementById('filterStudent');
@@ -1119,14 +1119,21 @@
                     return `<option value="${s.id}">${s.name}(${s.student_code || s.id}) - ${courseName} - ${birthDate}</option>`;
                 }).join('');
             
-            // Populate instructor filter - 이름-역할-전공 형식
+            // Populate instructor filter - 이름-역할-전공 형식, 현재 접속한 강사를 기본값으로
             const instructorSelect = document.getElementById('filterInstructor');
+            const currentInstructorCode = userType === 'instructor' ? currentUser.code : '';
             instructorSelect.innerHTML = '<option value="">전체 강사</option>' +
                 instructors.map(i => {
                     const role = i.role || '강사';
                     const major = i.major || i.department || '-';
-                    return `<option value="${i.code}">${i.name} - ${role} - ${major}</option>`;
+                    const selected = currentInstructorCode && i.code === currentInstructorCode ? 'selected' : '';
+                    return `<option value="${i.code}" ${selected}>${i.name} - ${role} - ${major}</option>`;
                 }).join('');
+            
+            // C-001과 현재 강사가 선택되어 있으면 필터 적용
+            if (courseSelect.value === 'C-001') {
+                handleCourseChange();
+            }
         }
 
         // Toggle filters
