@@ -1,5 +1,5 @@
 // Service Worker for Mobile PWA
-const CACHE_NAME = 'biohealth-mobile-v2';
+const CACHE_NAME = 'biohealth-mobile-v3';
 const urlsToCache = [
   '/mobile/index.html',
   '/mobile/login.html'
@@ -52,13 +52,39 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - Network-First strategy for HTML, Cache-First for others
 self.addEventListener('fetch', (event) => {
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) {
     return;
   }
 
+  const url = new URL(event.request.url);
+  const isHtmlFile = url.pathname.endsWith('.html') || url.pathname.endsWith('/');
+
+  // Network-First strategy for HTML files (always get latest)
+  if (isHtmlFile) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // Cache the new version
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Fallback to cache if network fails
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // Cache-First strategy for static assets
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
