@@ -376,10 +376,11 @@
         async function loadMemos() {
             try {
                 let response;
+                const timestamp = new Date().getTime(); // 캐시 방지
                 if (userType === 'instructor') {
-                    response = await axios.get(`${API_BASE_URL}/api/class-notes?instructor_code=${currentUser.code}`);
+                    response = await axios.get(`${API_BASE_URL}/api/class-notes?instructor_code=${currentUser.code}&_t=${timestamp}`);
                 } else {
-                    response = await axios.get(`${API_BASE_URL}/api/class-notes?student_id=${currentUser.id}`);
+                    response = await axios.get(`${API_BASE_URL}/api/class-notes?student_id=${currentUser.id}&_t=${timestamp}`);
                 }
 
                 allMemos = response.data || [];

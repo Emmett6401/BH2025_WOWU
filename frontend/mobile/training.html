@@ -523,7 +523,8 @@
                     document.getElementById('timetableList').classList.add('hidden');
                     document.getElementById('loadingState').classList.remove('hidden');
                     
-                    const response = await axios.get(`${API_BASE_URL}/api/timetables?course_code=${courseCode}`);
+                    const timestamp = new Date().getTime(); // 캐시 방지
+                    const response = await axios.get(`${API_BASE_URL}/api/timetables?course_code=${courseCode}&_t=${timestamp}`);
                     allTimetables = response.data || [];
                 }
                 
@@ -856,6 +857,7 @@
                 }
                 
                 closeModal();
+                allTimetables = []; // 캐시 초기화 - 강제로 API 재호출
                 await filterTimetables();
                 hideLoading();
                 showToast(logId ? '훈련일지가 수정되었습니다' : '훈련일지가 저장되었습니다', 'success');

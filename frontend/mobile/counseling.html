@@ -626,10 +626,11 @@
             try {
                 showLoading("상담 기록 불러오는 중...", "");
                 let response;
+                const timestamp = new Date().getTime(); // 캐시 방지
                 if (userType === 'instructor') {
-                    response = await axios.get(`${API_BASE_URL}/api/counselings?instructor_code=${currentUser.code}`);
+                    response = await axios.get(`${API_BASE_URL}/api/counselings?instructor_code=${currentUser.code}&_t=${timestamp}`);
                 } else {
-                    response = await axios.get(`${API_BASE_URL}/api/counselings?student_id=${currentUser.id}`);
+                    response = await axios.get(`${API_BASE_URL}/api/counselings?student_id=${currentUser.id}&_t=${timestamp}`);
                 }
 
                 allCounselings = response.data || [];
