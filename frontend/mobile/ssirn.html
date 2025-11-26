@@ -510,8 +510,21 @@
         function initRecognition() {
             if (recognition) return; // 이미 초기화되었으면 재사용
             
+            // HTTPS 체크 (localhost 제외)
+            const isSecureContext = window.isSecureContext || 
+                                   location.protocol === 'https:' || 
+                                   location.hostname === 'localhost' || 
+                                   location.hostname === '127.0.0.1';
+            
+            if (!isSecureContext) {
+                showToast('음성 인식은 보안 연결(HTTPS)에서만 사용 가능합니다', 'warning');
+                disableVoiceButton();
+                return;
+            }
+            
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                 showToast('이 브라우저는 음성 인식을 지원하지 않습니다', 'warning');
+                disableVoiceButton();
                 return;
             }
 
@@ -592,10 +605,32 @@
             voiceBtn.classList.add('bg-green-500', 'hover:bg-green-600');
         }
         
+        function disableVoiceButton() {
+            const voiceBtn = document.getElementById('voiceBtn');
+            if (!voiceBtn) return;
+            
+            voiceBtn.innerHTML = '<i class="fas fa-microphone-slash text-xl"></i>';
+            voiceBtn.classList.remove('bg-green-500', 'hover:bg-green-600', 'bg-red-500', 'hover:bg-red-600');
+            voiceBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+            voiceBtn.disabled = true;
+            voiceBtn.title = 'HTTPS 연결에서만 사용 가능';
+        }
+        
         // 마이크 버튼 이벤트 설정
         document.addEventListener('DOMContentLoaded', () => {
             const voiceBtn = document.getElementById('voiceBtn');
             if (!voiceBtn) return;
+            
+            // HTTPS 체크 - 페이지 로드 시
+            const isSecureContext = window.isSecureContext || 
+                                   location.protocol === 'https:' || 
+                                   location.hostname === 'localhost' || 
+                                   location.hostname === '127.0.0.1';
+            
+            if (!isSecureContext) {
+                disableVoiceButton();
+                return;
+            }
             
             // 길게 누르기 감지
             voiceBtn.addEventListener('touchstart', (e) => {
