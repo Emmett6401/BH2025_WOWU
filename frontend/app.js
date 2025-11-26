@@ -9296,7 +9296,7 @@ function renderTrainingLogsSelection(courses) {
                 </p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                 <div>
                     <label class="block text-gray-700 mb-2">과정 선택</label>
                     <select id="log-course" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
@@ -9335,6 +9335,14 @@ function renderTrainingLogsSelection(courses) {
                         ).join('')}
                     </select>
                 </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">작성 상태</label>
+                    <select id="log-status" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
+                        <option value="" selected>전체</option>
+                        <option value="unwritten">미작성</option>
+                        <option value="written">작성완료</option>
+                    </select>
+                </div>
             </div>
             
             <div id="training-logs-list">
@@ -9354,6 +9362,7 @@ window.filterTrainingLogs = async function() {
     const instructorCode = document.getElementById('log-instructor').value;
     const year = document.getElementById('log-year').value;
     const month = document.getElementById('log-month').value;
+    const status = document.getElementById('log-status').value;
     
     if (!courseCode) {
         document.getElementById('training-logs-list').innerHTML = `
@@ -9390,6 +9399,23 @@ window.filterTrainingLogs = async function() {
             });
         }
         
+        // 작성 상태 필터 (오늘 이전 날짜만 미작성 판정)
+        if (status) {
+            const today = new Date().toISOString().split('T')[0];
+            filteredTimetables = filteredTimetables.filter(tt => {
+                const hasLog = tt.training_log_id != null;
+                const isBeforeToday = tt.class_date < today;
+                
+                if (status === 'written') {
+                    return hasLog;
+                } else if (status === 'unwritten') {
+                    // 미작성: 훈련일지 없고 + 오늘 이전 날짜만
+                    return !hasLog && isBeforeToday;
+                }
+                return true;
+            });
+        }
+        
         renderTrainingLogsTable(filteredTimetables);
     } catch (error) {
         console.error('훈련일지 조회 실패:', error);
@@ -9401,6 +9427,8 @@ window.filterTrainingLogs = async function() {
 
 function renderTrainingLogsTable(timetables) {
     const listDiv = document.getElementById('training-logs-list');
+    const today = new Date().toISOString().split('T')[0];
+    let todayRowId = null;
     
     if (timetables.length === 0) {
         listDiv.innerHTML = `
@@ -9459,6 +9487,13 @@ function renderTrainingLogsTable(timetables) {
                     ${timetables.map((tt, index) => {
                         const hasLog = tt.training_log_id != null;
                         const logContent = tt.training_content ? tt.training_content.substring(0, 30) + '...' : '';
+                        const isToday = tt.class_date === today;
+                        const isOverdue = tt.class_date < today && !hasLog;
+                        
+                        // 오늘 날짜 행 ID 저장 (첫 번째 오늘 날짜만)
+                        if (isToday && !todayRowId) {
+                            todayRowId = `log-row-${index}`;
+                        }
                         
                         // 날짜에서 요일 계산
                         const classDate = new Date(tt.class_date);
@@ -9485,7 +9520,7 @@ function renderTrainingLogsTable(timetables) {
                         }
                         
                         return `
-                            <tr class="border-b hover:bg-gray-50">
+                            <tr id="log-row-${index}" class="border-b hover:bg-gray-50 ${isToday ? 'bg-yellow-100' : ''}">
                                 <td class="px-2 py-2 text-center text-xs">
                                     ${hasLog && tt.training_log_photo_urls && JSON.parse(tt.training_log_photo_urls || '[]').length > 0 ? `
                                         <button onclick='window.showPhotoViewer(${JSON.stringify(tt.training_log_photo_urls)}, 0)' 
@@ -9519,9 +9554,13 @@ function renderTrainingLogsTable(timetables) {
                                             <i class="fas fa-check-circle mr-1"></i>작성완료
                                         </span>
                                         <div class="text-gray-500 text-xs mt-1">${logContent}</div>
+                                    ` : isOverdue ? `
+                                        <span class="text-red-600 font-semibold">
+                                            <i class="fas fa-exclamation-circle mr-1"></i>미작성
+                                        </span>
                                     ` : `
                                         <span class="text-gray-400">
-                                            <i class="fas fa-times-circle mr-1"></i>미작성
+                                            <i class="fas fa-minus-circle mr-1"></i>미작성
                                         </span>
                                     `}
                                 </td>
@@ -9556,6 +9595,16 @@ function renderTrainingLogsTable(timetables) {
             </table>
         </div>
     `;
+    
+    // 오늘 날짜로 자동 스크롤
+    if (todayRowId) {
+        setTimeout(() => {
+            const todayRow = document.getElementById(todayRowId);
+            if (todayRow) {
+                todayRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 100);
+    }
 }
 
 window.showTrainingLogForm = async function(timetableId) {
