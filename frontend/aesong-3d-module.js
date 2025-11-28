@@ -245,82 +245,74 @@ export function toggleVoiceRecording() {
     }
 }
 
-// TTS 음성 출력
-function speakText(text) {
-    if (!synthesis) {
-        console.error('TTS not supported');
-        return;
-    }
-    
-    // 기존 음성 중지
-    synthesis.cancel();
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ko-KR';
-    utterance.rate = 1.0;
-    
-    // 음성 목록 가져오기
-    const voices = synthesis.getVoices();
-    
-    console.log('사용 가능한 음성 목록:', voices.map(v => `${v.name} (${v.lang})`));
-    
-    // 캐릭터에 따라 음성 설정
-    if (currentCharacterName === '데이빗') {
-        // 데이빗: 남성 목소리 (자연스러운 낮은 톤)
-        utterance.pitch = 0.75; // 자연스러운 낮은 톤
-        utterance.rate = 0.95; // 약간 느린 속도
-        
-        // 한국어 음성 필터링
-        const koreanVoices = voices.filter(v => v.lang.includes('ko'));
-        console.log('한국어 음성:', koreanVoices.map(v => v.name));
-        
-        // Microsoft Heami 제외 (여성 목소리)
-        const nonHeamiVoice = koreanVoices.find(voice => !voice.name.includes('Heami'));
-        
-        if (nonHeamiVoice) {
-            utterance.voice = nonHeamiVoice;
-            console.log(`데이빗 음성 선택: ${nonHeamiVoice.name} (자연스러운 남성 톤)`);
-        } else if (koreanVoices.length > 0) {
-            utterance.voice = koreanVoices[0];
-            console.log(`데이빗 음성 선택: ${koreanVoices[0].name} (자연스러운 남성 톤)`);
-        } else {
-            console.log(`데이빗 음성: 기본 음성`);
-        }
-    } else {
-        // 애송이: 여성 목소리
-        utterance.pitch = 1.2; // 자연스러운 여성 톤
-        utterance.rate = 1.05; // 약간 빠른 속도
-        
-        // 한국어 음성 필터링
-        const koreanVoices = voices.filter(v => v.lang.includes('ko'));
-        
-        // Microsoft Heami 우선 (여성 목소리)
-        let femaleVoice = koreanVoices.find(voice => voice.name.includes('Heami'));
-        
-        if (femaleVoice) {
-            utterance.voice = femaleVoice;
-            console.log(`애송이 음성 선택: ${femaleVoice.name} (자연스러운 여성 톤)`);
-        } else if (koreanVoices.length > 0) {
-            utterance.voice = koreanVoices[0];
-            console.log(`애송이 음성 선택: ${koreanVoices[0].name}`);
-        } else {
-            console.log(`애송이 음성: 기본 음성`);
-        }
-    }
-    
-    utterance.onstart = function() {
-        // 받침 있으면 '이', 없으면 '가'
+// TTS 음성 출력 (Google Cloud TTS API 사용)
+async function speakText(text) {
+    try {
+        // 말하는 중 상태 표시
         const lastChar = currentCharacterName.charAt(currentCharacterName.length - 1);
         const hasJongseong = (lastChar.charCodeAt(0) - 0xAC00) % 28 > 0;
         const particle = hasJongseong ? '이' : '가';
         updateStatusText(`${currentCharacterName}${particle} 말하는 중...`);
-    };
-    
-    utterance.onend = function() {
+        
+        // Google TTS API 호출
+        const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000';
+        const response = await fetch(`${API_BASE_URL}/api/tts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text,
+                character: currentCharacterName
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('TTS API 호출 실패');
+        }
+        
+        const data = await response.json();
+        const audioContent = data.audioContent;
+        
+        console.log(`${currentCharacterName} Google TTS 음성 생성 완료: ${data.voice}`);
+        
+        // Base64 디코딩 및 오디오 재생
+        const audioBlob = base64ToBlob(audioContent, 'audio/mp3');
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        
+        audio.onplay = function() {
+            console.log(`${currentCharacterName} 음성 재생 시작`);
+        };
+        
+        audio.onended = function() {
+            console.log(`${currentCharacterName} 음성 재생 완료`);
+            updateStatusText('마이크 버튼을 눌러서 말해보세요');
+            URL.revokeObjectURL(audioUrl); // 메모리 해제
+        };
+        
+        audio.onerror = function() {
+            console.error('오디오 재생 오류');
+            updateStatusText('마이크 버튼을 눌러서 말해보세요');
+        };
+        
+        await audio.play();
+        
+    } catch (error) {
+        console.error('TTS 오류:', error);
         updateStatusText('마이크 버튼을 눌러서 말해보세요');
-    };
-    
-    synthesis.speak(utterance);
+    }
+}
+
+// Base64를 Blob으로 변환
+function base64ToBlob(base64, mimeType) {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: mimeType });
 }
 
 // 상태 텍스트 업데이트

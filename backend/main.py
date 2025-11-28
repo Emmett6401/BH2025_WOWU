@@ -4599,6 +4599,69 @@ async def aesong_chat(data: dict):
             "error": str(e)
         }
 
+# ==================== Google Cloud TTS API ====================
+@app.post("/api/tts")
+async def text_to_speech(data: dict):
+    """Google Cloud TTS - 텍스트를 음성으로 변환"""
+    text = data.get('text', '')
+    character = data.get('character', '애송이')
+    
+    if not text:
+        raise HTTPException(status_code=400, detail="텍스트가 필요합니다")
+    
+    # Google Cloud TTS API 키 확인
+    api_key = os.getenv('GOOGLE_CLOUD_TTS_API_KEY', '')
+    
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Google Cloud TTS API 키가 설정되지 않았습니다")
+    
+    try:
+        # 캐릭터별 음성 설정
+        if character == '데이빗':
+            voice_name = "ko-KR-Wavenet-C"  # 남성 음성
+            pitch = -2.0  # 낮은 톤
+            speaking_rate = 0.95  # 느린 속도
+        else:
+            voice_name = "ko-KR-Wavenet-A"  # 여성 음성
+            pitch = 2.0  # 높은 톤
+            speaking_rate = 1.05  # 약간 빠른 속도
+        
+        # Google Cloud TTS API 요청
+        url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={api_key}"
+        
+        payload = {
+            "input": {
+                "text": text
+            },
+            "voice": {
+                "languageCode": "ko-KR",
+                "name": voice_name
+            },
+            "audioConfig": {
+                "audioEncoding": "MP3",
+                "pitch": pitch,
+                "speakingRate": speaking_rate
+            }
+        }
+        
+        response = requests.post(url, json=payload, timeout=10)
+        
+        if response.status_code != 200:
+            raise Exception(f"Google TTS API 오류: {response.text}")
+        
+        # Base64 인코딩된 오디오 데이터 반환
+        audio_content = response.json().get('audioContent', '')
+        
+        return {
+            "audioContent": audio_content,
+            "character": character,
+            "voice": voice_name
+        }
+        
+    except Exception as e:
+        print(f"TTS 오류: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"TTS 생성 실패: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     # 파일 업로드 크기 제한 100MB로 증가
