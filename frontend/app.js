@@ -993,10 +993,11 @@ window.hideAlert = function() {
 // 확인 모달용 콜백 저장
 let confirmCallback = null;
 
-window.showConfirm = function(message, title = '확인') {
+window.showConfirm = function(message, title = '삭제 확인') {
     return new Promise((resolve) => {
         const confirmModal = document.getElementById('custom-confirm');
         const confirmMessage = document.getElementById('confirm-message');
+        const confirmTitle = document.getElementById('confirm-title');
         
         if (!confirmModal || !confirmMessage) {
             // Fallback to native confirm if modal not found
@@ -1005,6 +1006,9 @@ window.showConfirm = function(message, title = '확인') {
             return;
         }
         
+        if (confirmTitle) {
+            confirmTitle.textContent = title;
+        }
         confirmMessage.textContent = message;
         confirmModal.classList.remove('hidden');
         confirmCallback = resolve;
