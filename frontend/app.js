@@ -10373,16 +10373,15 @@ function renderAITrainingLog() {
                     <div>
                         <label class="block text-gray-700 mb-2">강사 선택</label>
                         <select id="ai-instructor" class="w-full border rounded px-3 py-2">
-                            <option value="">-- 전체 강사 --</option>
+                            <option value="" selected>-- 전체 강사 --</option>
                             ${(() => {
                                 const loggedInInstructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
                                 return instructors.map(i => {
                                     const typeInfo = instructorTypes.find(t => t.code === i.instructor_type);
                                     const typeName = typeInfo ? typeInfo.name : '';
                                     const typeType = typeInfo ? typeInfo.type : '';
-                                    const isSelected = i.code === loggedInInstructor.code;
-                                    const displayMark = isSelected ? ' (나)' : '';
-                                    return `<option value="${i.code}" ${isSelected ? 'selected' : ''}>${i.name}${displayMark} - ${i.code} - ${typeName} - ${typeType}</option>`;
+                                    const displayMark = i.code === loggedInInstructor.code ? ' (나)' : '';
+                                    return `<option value="${i.code}">${i.name}${displayMark} - ${i.code} - ${typeName} - ${typeType}</option>`;
                                 }).join('');
                             })()}
                         </select>
