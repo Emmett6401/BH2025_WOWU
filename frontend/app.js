@@ -2574,6 +2574,11 @@ window.showTab = function(tab, addToHistory = true) {
             removeDashboardActivityListeners();
             loadAICounseling();
             break;
+        case 'aesong-3d-chat':
+            stopDashboardAutoRefresh();
+            removeDashboardActivityListeners();
+            renderAesong3DChat();
+            break;
         case 'system-settings':
             stopDashboardAutoRefresh();
             removeDashboardActivityListeners();
@@ -14336,6 +14341,443 @@ window.togglePasswordVisibility = function(inputId) {
         icon.classList.add('fa-eye');
     }
 };
+
+// ==================== 애송이 3D 채팅 ====================
+function renderAesong3DChat() {
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <style>
+            /* 3D 채팅 전용 스타일 */
+            #aesong-3d-container {
+                position: relative;
+                width: 100%;
+                height: 600px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 20px;
+                overflow: hidden;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            }
+            
+            #aesong-canvas {
+                width: 100%;
+                height: 100%;
+                display: block;
+            }
+            
+            .chat-controls {
+                position: absolute;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                gap: 10px;
+                z-index: 10;
+            }
+            
+            .voice-btn {
+                width: 70px;
+                height: 70px;
+                border-radius: 50%;
+                border: none;
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+                color: white;
+                font-size: 28px;
+                cursor: pointer;
+                box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+                transition: all 0.3s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .voice-btn:hover {
+                transform: scale(1.1);
+                box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+            }
+            
+            .voice-btn.recording {
+                background: linear-gradient(135deg, #ee5a6f 0%, #c44569 100%);
+                animation: pulse 1.5s ease-in-out infinite;
+            }
+            
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.1); }
+            }
+            
+            .status-text {
+                position: absolute;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(255,255,255,0.95);
+                padding: 12px 24px;
+                border-radius: 25px;
+                font-weight: 600;
+                color: #667eea;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                z-index: 10;
+            }
+            
+            .chat-history {
+                position: absolute;
+                left: 20px;
+                top: 80px;
+                bottom: 120px;
+                width: 350px;
+                background: rgba(255,255,255,0.95);
+                border-radius: 15px;
+                padding: 15px;
+                overflow-y: auto;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                z-index: 10;
+            }
+            
+            .chat-message {
+                margin-bottom: 12px;
+                padding: 10px 15px;
+                border-radius: 12px;
+                animation: slideIn 0.3s ease;
+            }
+            
+            .chat-message.user {
+                background: #667eea;
+                color: white;
+                margin-left: 20px;
+            }
+            
+            .chat-message.aesong {
+                background: #f7f7f7;
+                color: #333;
+                margin-right: 20px;
+            }
+            
+            @keyframes slideIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        </style>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-robot text-purple-600 mr-2"></i>
+                    🐶 애송이 만나기
+                </h2>
+                <button onclick="showTab('dashboard')" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition">
+                    <i class="fas fa-arrow-left mr-2"></i>돌아가기
+                </button>
+            </div>
+            
+            <div id="aesong-3d-container">
+                <canvas id="aesong-canvas"></canvas>
+                
+                <div class="status-text" id="status-text">
+                    🎤 마이크 버튼을 눌러서 말해보세요!
+                </div>
+                
+                <div class="chat-history" id="chat-history">
+                    <div class="text-center text-gray-500 text-sm mb-3">
+                        💬 대화 내역
+                    </div>
+                </div>
+                
+                <div class="chat-controls">
+                    <button class="voice-btn" id="voice-btn" onclick="toggleVoiceRecording()">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-info-circle text-blue-500 text-xl"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-blue-800">사용 방법</h3>
+                        <div class="mt-2 text-sm text-blue-700">
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>마이크 버튼을 클릭하여 음성 녹음을 시작하세요</li>
+                                <li>말씀하신 후 다시 버튼을 클릭하여 녹음을 중지하세요</li>
+                                <li>애송이가 음성으로 답변해드립니다!</li>
+                                <li>3D 애송이 캐릭터를 마우스로 회전할 수 있어요</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Three.js 3D 씬 초기화
+    setTimeout(() => {
+        initAesong3DScene();
+    }, 100);
+}
+
+// Three.js 3D 씬 초기화 함수
+let aesongScene, aesongCamera, aesongRenderer, aesongModel, aesongAnimationId;
+let isRecording = false;
+let recognition = null;
+let synthesis = window.speechSynthesis;
+
+function initAesong3DScene() {
+    const container = document.getElementById('aesong-3d-container');
+    const canvas = document.getElementById('aesong-canvas');
+    
+    if (!canvas) {
+        console.error('Canvas not found!');
+        return;
+    }
+    
+    // Three.js 씬 설정
+    aesongScene = new THREE.Scene();
+    aesongScene.background = new THREE.Color(0x667eea);
+    
+    // 카메라 설정
+    aesongCamera = new THREE.PerspectiveCamera(
+        50,
+        container.clientWidth / container.clientHeight,
+        0.1,
+        1000
+    );
+    aesongCamera.position.set(0, 1, 3);
+    
+    // 렌더러 설정
+    aesongRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+    aesongRenderer.setSize(container.clientWidth, container.clientHeight);
+    aesongRenderer.setPixelRatio(window.devicePixelRatio);
+    aesongRenderer.shadowMap.enabled = true;
+    
+    // 조명 설정
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    aesongScene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(5, 10, 5);
+    directionalLight.castShadow = true;
+    aesongScene.add(directionalLight);
+    
+    const pointLight1 = new THREE.PointLight(0xff69b4, 1, 100);
+    pointLight1.position.set(-3, 3, 3);
+    aesongScene.add(pointLight1);
+    
+    const pointLight2 = new THREE.PointLight(0x87ceeb, 1, 100);
+    pointLight2.position.set(3, 3, -3);
+    aesongScene.add(pointLight2);
+    
+    // GLB 모델 로드
+    const loader = new THREE.GLTFLoader();
+    loader.load(
+        '/aesong-bunny.glb',
+        function(gltf) {
+            aesongModel = gltf.scene;
+            aesongModel.position.set(0, -1, 0);
+            aesongModel.scale.set(1.5, 1.5, 1.5);
+            aesongScene.add(aesongModel);
+            
+            console.log('✅ 애송이 3D 모델 로드 완료!');
+            updateStatusText('✅ 애송이가 준비되었어요!');
+            
+            // 애니메이션 시작
+            if (gltf.animations && gltf.animations.length > 0) {
+                const mixer = new THREE.AnimationMixer(aesongModel);
+                gltf.animations.forEach((clip) => {
+                    mixer.clipAction(clip).play();
+                });
+                
+                function animateModel() {
+                    requestAnimationFrame(animateModel);
+                    mixer.update(0.01);
+                }
+                animateModel();
+            }
+        },
+        function(xhr) {
+            const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
+            updateStatusText(`📦 애송이 로딩 중... ${percent}%`);
+        },
+        function(error) {
+            console.error('❌ GLB 모델 로드 실패:', error);
+            updateStatusText('❌ 애송이를 불러오는데 실패했어요');
+        }
+    );
+    
+    // 마우스 컨트롤
+    let isDragging = false;
+    let previousMousePosition = { x: 0, y: 0 };
+    
+    canvas.addEventListener('mousedown', () => { isDragging = true; });
+    canvas.addEventListener('mouseup', () => { isDragging = false; });
+    canvas.addEventListener('mouseleave', () => { isDragging = false; });
+    
+    canvas.addEventListener('mousemove', (e) => {
+        if (isDragging && aesongModel) {
+            const deltaX = e.offsetX - previousMousePosition.x;
+            aesongModel.rotation.y += deltaX * 0.01;
+        }
+        previousMousePosition = { x: e.offsetX, y: e.offsetY };
+    });
+    
+    // 애니메이션 루프
+    function animate() {
+        aesongAnimationId = requestAnimationFrame(animate);
+        
+        // 자동 회전 (드래그 중이 아닐 때)
+        if (aesongModel && !isDragging) {
+            aesongModel.rotation.y += 0.005;
+        }
+        
+        aesongRenderer.render(aesongScene, aesongCamera);
+    }
+    animate();
+    
+    // 리사이즈 핸들러
+    window.addEventListener('resize', () => {
+        if (aesongCamera && aesongRenderer && container) {
+            aesongCamera.aspect = container.clientWidth / container.clientHeight;
+            aesongCamera.updateProjectionMatrix();
+            aesongRenderer.setSize(container.clientWidth, container.clientHeight);
+        }
+    });
+    
+    // 음성 인식 초기화
+    initSpeechRecognition();
+}
+
+// 음성 인식 초기화
+function initSpeechRecognition() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        updateStatusText('❌ 이 브라우저는 음성 인식을 지원하지 않습니다');
+        return;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.lang = 'ko-KR';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    
+    recognition.onresult = async function(event) {
+        const transcript = event.results[0][0].transcript;
+        console.log('인식된 텍스트:', transcript);
+        
+        addChatMessage('user', transcript);
+        updateStatusText('🤔 애송이가 생각 중...');
+        
+        // 서버에 메시지 전송
+        try {
+            const response = await axios.post(`${API_BASE_URL}/api/aesong-chat`, {
+                message: transcript
+            });
+            
+            const aiResponse = response.data.response;
+            addChatMessage('aesong', aiResponse);
+            
+            // TTS로 음성 출력
+            speakText(aiResponse);
+            
+        } catch (error) {
+            console.error('채팅 오류:', error);
+            updateStatusText('❌ 애송이와 연결할 수 없어요');
+            addChatMessage('aesong', '죄송해요, 지금은 대답하기 어려워요 😢');
+        }
+    };
+    
+    recognition.onerror = function(event) {
+        console.error('음성 인식 오류:', event.error);
+        updateStatusText('❌ 음성 인식 오류: ' + event.error);
+        isRecording = false;
+        document.getElementById('voice-btn').classList.remove('recording');
+    };
+    
+    recognition.onend = function() {
+        isRecording = false;
+        document.getElementById('voice-btn').classList.remove('recording');
+        if (document.getElementById('status-text').textContent.includes('말씀하세요')) {
+            updateStatusText('🎤 마이크 버튼을 눌러서 말해보세요!');
+        }
+    };
+}
+
+// 음성 녹음 토글
+window.toggleVoiceRecording = function() {
+    if (!recognition) {
+        window.showAlert('음성 인식이 지원되지 않습니다', 'error');
+        return;
+    }
+    
+    if (isRecording) {
+        recognition.stop();
+        isRecording = false;
+        document.getElementById('voice-btn').classList.remove('recording');
+        updateStatusText('⏹️ 녹음 중지');
+    } else {
+        recognition.start();
+        isRecording = true;
+        document.getElementById('voice-btn').classList.add('recording');
+        updateStatusText('🎤 말씀하세요...');
+    }
+}
+
+// TTS 음성 출력
+function speakText(text) {
+    if (!synthesis) {
+        console.error('TTS not supported');
+        return;
+    }
+    
+    // 기존 음성 중지
+    synthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ko-KR';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.2; // 약간 높은 톤
+    
+    utterance.onstart = function() {
+        updateStatusText('🔊 애송이가 말하는 중...');
+    };
+    
+    utterance.onend = function() {
+        updateStatusText('🎤 마이크 버튼을 눌러서 말해보세요!');
+    };
+    
+    synthesis.speak(utterance);
+}
+
+// 상태 텍스트 업데이트
+function updateStatusText(text) {
+    const statusElement = document.getElementById('status-text');
+    if (statusElement) {
+        statusElement.textContent = text;
+    }
+}
+
+// 채팅 메시지 추가
+function addChatMessage(sender, message) {
+    const chatHistory = document.getElementById('chat-history');
+    if (!chatHistory) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = \`chat-message \${sender}\`;
+    messageDiv.innerHTML = \`
+        <div style="font-size: 11px; opacity: 0.7; margin-bottom: 4px;">
+            \${sender === 'user' ? '👤 나' : '🐶 애송이'}
+        </div>
+        <div>\${message}</div>
+    \`;
+    
+    chatHistory.appendChild(messageDiv);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+}
 
 // ==================== 페이지 로드 시 헤더 업데이트 및 권한 체크 ====================
 // 페이지가 완전히 로드된 후 헤더 업데이트 및 메뉴 권한 체크 실행
