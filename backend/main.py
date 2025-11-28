@@ -4438,6 +4438,52 @@ async def delete_notice(notice_id: int):
     finally:
         conn.close()
 
+@app.post("/api/aesong-chat")
+async def aesong_chat(data: dict):
+    """애송이 챗봇 - GROQ API 프록시"""
+    groq_api_key = os.getenv('GROQ_API_KEY')
+    
+    if not groq_api_key:
+        # GROQ_API_KEY가 없으면 기본 응답 반환
+        return {
+            "response": "안녕하세요! 현재 AI 기능이 설정되지 않았어요 😢\n관리자에게 GROQ_API_KEY 설정을 요청해주세요!"
+        }
+    
+    try:
+        # GROQ API 호출
+        response = requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={
+                'Authorization': f'Bearer {groq_api_key}',
+                'Content-Type': 'application/json'
+            },
+            json={
+                'model': 'llama-3.1-70b-versatile',
+                'messages': data.get('messages', []),
+                'temperature': 0.7,
+                'max_tokens': 500
+            },
+            timeout=30
+        )
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail="GROQ API 오류")
+        
+        groq_data = response.json()
+        ai_response = groq_data['choices'][0]['message']['content']
+        
+        return {"response": ai_response}
+        
+    except requests.exceptions.Timeout:
+        return {
+            "response": "아이고! 응답 시간이 초과됐어요 ⏰\n잠시 후 다시 시도해주세요!"
+        }
+    except Exception as e:
+        print(f"애송이 챗봇 오류: {e}")
+        return {
+            "response": "앗! 일시적인 문제가 발생했어요 😢\n잠시 후 다시 물어봐주세요!"
+        }
+
 if __name__ == "__main__":
     import uvicorn
     # 파일 업로드 크기 제한 100MB로 증가
