@@ -123,7 +123,7 @@ export function initAesong3DScene() {
 // 음성 인식 초기화
 function initSpeechRecognition() {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        updateStatusText('❌ 이 브라우저는 음성 인식을 지원하지 않습니다');
+        updateStatusText('이 브라우저는 음성 인식을 지원하지 않습니다');
         return;
     }
     
@@ -137,7 +137,7 @@ function initSpeechRecognition() {
         const transcript = event.results[0][0].transcript;
         console.log('인식된 텍스트:', transcript);
         
-        updateStatusText(`🤔 ${currentCharacterName}가 생각 중...`);
+        updateStatusText(`${currentCharacterName}가 생각 중...`);
         
         // 서버에 메시지 전송
         try {
@@ -156,21 +156,21 @@ function initSpeechRecognition() {
             const data = await response.json();
             const aiResponse = data.response;
             
-            console.log(`💬 ${currentCharacterName}: ${aiResponse}`);
+            console.log(`${currentCharacterName}: ${aiResponse}`);
             
             // TTS로 음성 출력
             speakText(aiResponse);
             
         } catch (error) {
             console.error('채팅 오류:', error);
-            updateStatusText(`❌ ${currentCharacterName}와 연결할 수 없어요`);
+            updateStatusText(`${currentCharacterName}와 연결할 수 없어요`);
             speakText(`죄송해요, 지금은 대답하기 어려워요`);
         }
     };
     
     recognition.onerror = function(event) {
         console.error('음성 인식 오류:', event.error);
-        updateStatusText('❌ 음성 인식 오류: ' + event.error);
+        updateStatusText('음성 인식 오류: ' + event.error);
         isRecording = false;
         const btn = document.getElementById('voice-btn');
         if (btn) btn.classList.remove('recording');
@@ -182,7 +182,7 @@ function initSpeechRecognition() {
         if (btn) btn.classList.remove('recording');
         const statusText = document.getElementById('status-text');
         if (statusText && statusText.textContent.includes('말씀하세요')) {
-            updateStatusText('🎤 마이크 버튼을 눌러서 말해보세요!');
+            updateStatusText('마이크 버튼을 눌러서 말해보세요');
         }
     };
 }
@@ -204,12 +204,12 @@ export function toggleVoiceRecording() {
         recognition.stop();
         isRecording = false;
         if (btn) btn.classList.remove('recording');
-        updateStatusText('⏹️ 녹음 중지');
+        updateStatusText('녹음 중지');
     } else {
         recognition.start();
         isRecording = true;
         if (btn) btn.classList.add('recording');
-        updateStatusText('🎤 말씀하세요...');
+        updateStatusText('말씀하세요...');
     }
 }
 
@@ -227,28 +227,47 @@ function speakText(text) {
     utterance.lang = 'ko-KR';
     utterance.rate = 1.0;
     
+    // 음성 목록 가져오기 (비동기 처리)
+    let voices = synthesis.getVoices();
+    
+    // 음성 목록이 비어있으면 이벤트 대기
+    if (voices.length === 0) {
+        synthesis.addEventListener('voiceschanged', function() {
+            voices = synthesis.getVoices();
+            console.log('사용 가능한 음성 목록:', voices.map(v => v.name));
+        });
+    }
+    
     // 캐릭터에 따라 음성 설정
     if (currentCharacterName === '데이빗') {
-        utterance.pitch = 0.8; // 남성 낮은 톤
-        // 남성 음성 선택 시도
-        const voices = synthesis.getVoices();
+        utterance.pitch = 0.7; // 더 낮은 남성 톤
+        utterance.rate = 0.95; // 약간 느린 속도
+        
+        // 남성 음성 선택 (우선순위: Google 남성 > 기타 남성)
         const maleVoice = voices.find(voice => 
             voice.lang.startsWith('ko') && 
-            (voice.name.includes('Male') || voice.name.includes('남성'))
+            (voice.name.includes('Male') || 
+             voice.name.includes('남성') ||
+             voice.name.includes('남'))
         );
+        
         if (maleVoice) {
             utterance.voice = maleVoice;
+            console.log(`데이빗 음성: ${maleVoice.name}`);
+        } else {
+            console.warn('남성 음성을 찾을 수 없습니다. 기본 음성 사용');
         }
     } else {
-        utterance.pitch = 1.2; // 애송이 - 약간 높은 톤 (여성/귀여운 톤)
+        utterance.pitch = 1.3; // 애송이 - 높은 톤 (여성/귀여운 톤)
+        utterance.rate = 1.05; // 약간 빠른 속도
     }
     
     utterance.onstart = function() {
-        updateStatusText(`🔊 ${currentCharacterName}가 말하는 중...`);
+        updateStatusText(`${currentCharacterName}가 말하는 중...`);
     };
     
     utterance.onend = function() {
-        updateStatusText('🎤 마이크 버튼을 눌러서 말해보세요!');
+        updateStatusText('마이크 버튼을 눌러서 말해보세요');
     };
     
     synthesis.speak(utterance);
@@ -265,7 +284,7 @@ function updateStatusText(text) {
 // 채팅 메시지 추가 (대화창 제거로 비활성화)
 function addChatMessage(sender, message) {
     // 콘솔에만 로그 출력
-    console.log(`💬 ${sender}: ${message}`);
+    console.log(`${sender}: ${message}`);
 }
 
 // 캐릭터 로드 함수
@@ -299,7 +318,7 @@ function loadCharacter(characterType) {
         scale = 1.5; // 적당한 크기
         positionY = -0.8; // 키가 크니까 아래로 (얼굴이 보이도록)
     } else {
-        console.error('❌ 알 수 없는 캐릭터 타입:', characterType);
+        console.error('알 수 없는 캐릭터 타입:', characterType);
         return;
     }
     
@@ -322,8 +341,8 @@ function loadCharacter(characterType) {
             
             aesongScene.add(aesongModel);
             
-            console.log(`✅ ${modelName} 3D 모델 로드 완료!`);
-            updateStatusText(`✅ ${modelName}가 준비되었어요!`);
+            console.log(`${modelName} 3D 모델 로드 완료!`);
+            updateStatusText(`${modelName} 준비 완료`);
             
             // 애니메이션 설정
             if (gltf.animations && gltf.animations.length > 0) {
@@ -337,19 +356,19 @@ function loadCharacter(characterType) {
         },
         function(xhr) {
             const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
-            console.log(`📦 ${modelName} 로딩: ${percent}%`);
-            updateStatusText(`📦 ${modelName} 로딩 중... ${percent}%`);
+            console.log(`${modelName} 로딩: ${percent}%`);
+            updateStatusText(`${modelName} 로딩 중... ${percent}%`);
         },
         function(error) {
-            console.error(`❌ ${modelName} 모델 로드 실패:`, error);
-            updateStatusText(`❌ ${modelName}를 불러오는데 실패했어요`);
+            console.error(`${modelName} 모델 로드 실패:`, error);
+            updateStatusText(`${modelName}를 불러오는데 실패했습니다`);
         }
     );
 }
 
 // 캐릭터 전환 함수
 export function switchCharacter(characterType) {
-    console.log('🔄 캐릭터 전환:', characterType);
+    console.log('캐릭터 전환:', characterType);
     
     // UI 업데이트
     document.querySelectorAll('.character-option').forEach(option => {

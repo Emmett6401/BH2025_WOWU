@@ -4514,7 +4514,7 @@ async def aesong_chat(data: dict):
     if not groq_api_key:
         # API 키가 없으면 기본 응답
         return {
-            "response": "안녕하세요! 저는 애송이입니다. 🐶 무엇을 도와드릴까요?",
+            "response": "안녕하세요! 저는 애송이입니다. 무엇을 도와드릴까요?",
             "model": "default"
         }
     
@@ -4531,7 +4531,7 @@ async def aesong_chat(data: dict):
 특징:
 - 항상 밝고 긍정적인 톤으로 대화합니다
 - 친근하고 귀여운 말투를 사용합니다 (예: ~해요, ~이에요)
-- 이모지를 적절히 사용합니다 🐶
+- 이모티콘을 사용하지 마세요 (절대 금지)
 - 학생들의 고민과 질문에 공감하며 답변합니다
 - 짧고 명확하게 답변합니다 (2-3문장)
 
@@ -4572,7 +4572,7 @@ async def aesong_chat(data: dict):
         print(f"애송이 챗봇 오류: {str(e)}")
         # 오류 시 기본 응답
         return {
-            "response": "앗! 지금은 답변하기 어려워요 😢 잠시 후 다시 말씀해주세요!",
+            "response": "죄송합니다. 지금은 답변하기 어려워요. 잠시 후 다시 말씀해주세요.",
             "model": "error",
             "error": str(e)
         }
