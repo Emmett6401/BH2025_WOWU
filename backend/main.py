@@ -44,12 +44,12 @@ app.add_middleware(
 
 # 데이터베이스 연결 설정 (환경 변수에서 로드)
 DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'bitnmeta2.synology.me'),
+    'host': os.getenv('DB_HOST', 'www.kdt2025.com'),
     'user': os.getenv('DB_USER', 'iyrc'),
-    'passwd': os.getenv('DB_PASSWORD', 'Dodan1004!'),
+    'passwd': os.getenv('DB_PASSWORD', 'dodan1004~!@'),
     'db': os.getenv('DB_NAME', 'bh2025'),
     'charset': 'utf8',
-    'port': int(os.getenv('DB_PORT', '3307'))
+    'port': int(os.getenv('DB_PORT', '3306'))
 }
 
 def get_db_connection():
@@ -3475,18 +3475,38 @@ async def login(credentials: dict):
                 elif isinstance(value, bytes):
                     instructor[key] = None
             
-            # permissions JSON 파싱
+            # permissions 처리 (JSON 또는 menu_permissions 배열)
+            import json
+            permissions_dict = {}
+            
+            # 1. permissions 컬럼 확인 (JSON 문자열)
             if instructor.get('permissions'):
                 try:
-                    import json
-                    instructor['permissions'] = json.loads(instructor['permissions'])
+                    permissions_dict = json.loads(instructor['permissions'])
                 except:
-                    instructor['permissions'] = {}
-            else:
-                instructor['permissions'] = {}
+                    pass
+            
+            # 2. menu_permissions 배열 확인
+            if not permissions_dict:
+                cursor.execute("""
+                    SELECT menu_permissions FROM instructor_codes WHERE code = %s
+                """, (instructor.get('instructor_type'),))
+                result = cursor.fetchone()
+                if result and result.get('menu_permissions'):
+                    try:
+                        menu_list = json.loads(result['menu_permissions'])
+                        permissions_dict = {menu: True for menu in menu_list}
+                    except:
+                        pass
+            
+            # 3. 권한이 없으면 빈 객체
+            if not permissions_dict:
+                permissions_dict = {}
             
             # aesong-3d-chat 권한 자동 추가 (모든 강사에게)
-            instructor['permissions']['aesong-3d-chat'] = True
+            permissions_dict['aesong-3d-chat'] = True
+            
+            instructor['permissions'] = permissions_dict
             
             print(f"✅ 강사 로그인 성공: {instructor['name']}")
             return {
