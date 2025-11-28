@@ -14459,50 +14459,6 @@ function renderAesong3DChat() {
                 box-shadow: 0 4px 15px rgba(0,0,0,0.2);
                 z-index: 10;
             }
-            
-            .chat-history {
-                position: absolute;
-                left: 20px;
-                top: 80px;
-                bottom: 120px;
-                width: 350px;
-                background: rgba(255,255,255,0.95);
-                border-radius: 15px;
-                padding: 15px;
-                overflow-y: auto;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-                z-index: 10;
-            }
-            
-            .chat-message {
-                margin-bottom: 12px;
-                padding: 10px 15px;
-                border-radius: 12px;
-                animation: slideIn 0.3s ease;
-            }
-            
-            .chat-message.user {
-                background: #667eea;
-                color: white;
-                margin-left: 20px;
-            }
-            
-            .chat-message.aesong {
-                background: #f7f7f7;
-                color: #333;
-                margin-right: 20px;
-            }
-            
-            @keyframes slideIn {
-                from {
-                    opacity: 0;
-                    transform: translateY(10px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
         </style>
         
         <div class="bg-white rounded-lg shadow-md p-6">
@@ -14546,12 +14502,6 @@ function renderAesong3DChat() {
                 
                 <div class="status-text" id="status-text">
                     🎤 마이크 버튼을 눌러서 말해보세요!
-                </div>
-                
-                <div class="chat-history" id="chat-history">
-                    <div class="text-center text-gray-500 text-sm mb-3">
-                        💬 대화 내역
-                    </div>
                 </div>
                 
                 <div class="chat-controls">

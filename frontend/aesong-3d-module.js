@@ -7,6 +7,7 @@ let isRecording = false;
 let recognition = null;
 let synthesis = window.speechSynthesis;
 let currentCharacter = 'aesong'; // 기본 캐릭터 (애송이)
+let currentCharacterName = '애송이'; // 현재 캐릭터 이름
 let isDragging = false;
 let previousMousePosition = { x: 0, y: 0 };
 
@@ -136,8 +137,7 @@ function initSpeechRecognition() {
         const transcript = event.results[0][0].transcript;
         console.log('인식된 텍스트:', transcript);
         
-        addChatMessage('user', transcript);
-        updateStatusText('🤔 애송이가 생각 중...');
+        updateStatusText(`🤔 ${currentCharacterName}가 생각 중...`);
         
         // 서버에 메시지 전송
         try {
@@ -147,21 +147,24 @@ function initSpeechRecognition() {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ message: transcript })
+                body: JSON.stringify({ 
+                    message: transcript,
+                    character: currentCharacterName // 캐릭터 이름 전달
+                })
             });
             
             const data = await response.json();
             const aiResponse = data.response;
             
-            addChatMessage('aesong', aiResponse);
+            console.log(`💬 ${currentCharacterName}: ${aiResponse}`);
             
             // TTS로 음성 출력
             speakText(aiResponse);
             
         } catch (error) {
             console.error('채팅 오류:', error);
-            updateStatusText('❌ 애송이와 연결할 수 없어요');
-            addChatMessage('aesong', '죄송해요, 지금은 대답하기 어려워요 😢');
+            updateStatusText(`❌ ${currentCharacterName}와 연결할 수 없어요`);
+            speakText(`죄송해요, 지금은 대답하기 어려워요`);
         }
     };
     
@@ -226,7 +229,7 @@ function speakText(text) {
     utterance.pitch = 1.2; // 약간 높은 톤
     
     utterance.onstart = function() {
-        updateStatusText('🔊 애송이가 말하는 중...');
+        updateStatusText(`🔊 ${currentCharacterName}가 말하는 중...`);
     };
     
     utterance.onend = function() {
@@ -244,22 +247,10 @@ function updateStatusText(text) {
     }
 }
 
-// 채팅 메시지 추가
+// 채팅 메시지 추가 (대화창 제거로 비활성화)
 function addChatMessage(sender, message) {
-    const chatHistory = document.getElementById('chat-history');
-    if (!chatHistory) return;
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `chat-message ${sender}`;
-    messageDiv.innerHTML = `
-        <div style="font-size: 11px; opacity: 0.7; margin-bottom: 4px;">
-            ${sender === 'user' ? '👤 나' : '🐶 애송이'}
-        </div>
-        <div>${message}</div>
-    `;
-    
-    chatHistory.appendChild(messageDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
+    // 콘솔에만 로그 출력
+    console.log(`💬 ${sender}: ${message}`);
 }
 
 // 캐릭터 로드 함수
@@ -291,11 +282,14 @@ function loadCharacter(characterType) {
         modelPath = '/David.glb';
         modelName = '데이빗';
         scale = 1.5; // 적당한 크기
-        positionY = -0.2; // 가운데 위치
+        positionY = -0.8; // 키가 크니까 아래로 (얼굴이 보이도록)
     } else {
         console.error('❌ 알 수 없는 캐릭터 타입:', characterType);
         return;
     }
+    
+    // 현재 캐릭터 이름 저장
+    currentCharacterName = modelName;
     
     updateStatusText(`📦 ${modelName} 로딩 중...`);
     
