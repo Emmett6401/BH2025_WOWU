@@ -25,7 +25,7 @@ class AesongChatbot {
         }
         
         this.apiUrl = baseUrl + '/api/aesong-chat';
-        this.aesongImageUrl = 'https://www.genspark.ai/api/files/s/0GNDPa0z';
+        this.aesongImageUrl = 'https://www.genspark.ai/api/files/s/VbB8BdAr';
         
         console.log('🐶 애송이 챗봇 API URL:', this.apiUrl);
         
