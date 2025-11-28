@@ -15,8 +15,11 @@ from ftplib import FTP
 import uuid
 import base64
 from PIL import Image
+from pathlib import Path
 
-load_dotenv()
+# .env 파일을 상위 디렉토리에서 로드
+env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 app = FastAPI(
     title="학급 관리 시스템 API",
@@ -4659,7 +4662,10 @@ async def text_to_speech(data: dict):
         }
         
     except Exception as e:
-        print(f"TTS 오류: {str(e)}")
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"TTS 오류 상세: {str(e)}")
+        print(f"TTS 오류 스택: {error_trace}")
         raise HTTPException(status_code=500, detail=f"TTS 생성 실패: {str(e)}")
 
 if __name__ == "__main__":
