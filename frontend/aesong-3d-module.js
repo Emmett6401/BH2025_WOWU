@@ -266,78 +266,47 @@ function speakText(text) {
     
     // 캐릭터에 따라 음성 설정
     if (currentCharacterName === '데이빗') {
-        // 데이빗: 남성 목소리
-        utterance.pitch = 0.8; // 자연스러운 남성 톤
-        utterance.rate = 0.95; // 약간 느린 속도
+        // 데이빗: 남성 목소리 (매우 낮은 톤으로 강제 설정)
+        utterance.pitch = 0.3; // 극저음 (여성 음성을 남성처럼 변환)
+        utterance.rate = 0.85; // 느린 속도 (낮은 목소리 효과)
         
         // 한국어 음성 필터링
         const koreanVoices = voices.filter(v => v.lang.includes('ko'));
         console.log('한국어 음성:', koreanVoices.map(v => v.name));
         
-        // 우선순위 1: Google Wavenet-C (남성 음성)
-        let maleVoice = koreanVoices.find(voice => 
-            voice.name.includes('Wavenet-C') || 
-            voice.name.includes('ko-KR-Wavenet-C')
-        );
+        // Microsoft Heami 제외 (여성 목소리)
+        const nonHeamiVoice = koreanVoices.find(voice => !voice.name.includes('Heami'));
         
-        if (maleVoice) {
-            utterance.voice = maleVoice;
-            console.log(`데이빗 음성 선택: ${maleVoice.name} (Google Wavenet-C 남성)`);
+        if (nonHeamiVoice) {
+            utterance.voice = nonHeamiVoice;
+            console.log(`데이빗 음성 선택: ${nonHeamiVoice.name} (극저음 pitch 0.3으로 남성화)`);
+        } else if (koreanVoices.length > 0) {
+            // Heami도 사용 (pitch로 보정)
+            utterance.voice = koreanVoices[0];
+            console.log(`데이빗 음성 선택: ${koreanVoices[0].name} (극저음 pitch 0.3으로 남성화)`);
         } else {
-            // 우선순위 2: Hyunsu (남성 음성)
-            maleVoice = koreanVoices.find(voice => voice.name.includes('Hyunsu'));
-            
-            if (maleVoice) {
-                utterance.voice = maleVoice;
-                console.log(`데이빗 음성 선택: ${maleVoice.name} (Hyunsu 남성)`);
-            } else {
-                // 우선순위 3: 여성 이름 제외
-                const femaleNames = ['Heami', 'Yuna', 'Seoyeon', 'Sora', 'Female', '여성', '여'];
-                maleVoice = koreanVoices.find(voice => {
-                    const voiceName = voice.name;
-                    return !femaleNames.some(keyword => voiceName.includes(keyword));
-                });
-                
-                if (maleVoice) {
-                    utterance.voice = maleVoice;
-                    console.log(`데이빗 음성 선택: ${maleVoice.name}`);
-                } else {
-                    // 남성 음성이 없으면 매우 낮은 pitch로 보정
-                    utterance.pitch = 0.5;
-                    console.log(`데이빗 음성 (pitch 조정): 기본 음성`);
-                }
-            }
+            console.log(`데이빗 음성: 기본 음성 (극저음 pitch 0.3)`);
         }
     } else {
         // 애송이: 여성 목소리
-        utterance.pitch = 1.2; // 자연스러운 여성 톤
-        utterance.rate = 1.05; // 약간 빠른 속도
+        utterance.pitch = 1.5; // 높고 귀여운 여성 톤
+        utterance.rate = 1.15; // 빠른 속도 (경쾌한 느낌)
         
         // 한국어 음성 필터링
         const koreanVoices = voices.filter(v => v.lang.includes('ko'));
         
-        // 우선순위 1: Google Neural2-A (여성 음성)
-        let femaleVoice = koreanVoices.find(voice => 
-            voice.name.includes('Neural2-A') || 
-            voice.name.includes('ko-KR-Neural2-A')
-        );
+        // Microsoft Heami 우선 (여성 목소리)
+        let femaleVoice = koreanVoices.find(voice => voice.name.includes('Heami'));
         
         if (femaleVoice) {
             utterance.voice = femaleVoice;
-            console.log(`애송이 음성 선택: ${femaleVoice.name} (Google Neural2-A 여성)`);
+            console.log(`애송이 음성 선택: ${femaleVoice.name} (높은 톤 여성)`);
+        } else if (koreanVoices.length > 0) {
+            // 다른 한국어 음성 사용
+            utterance.voice = koreanVoices[0];
+            console.log(`애송이 음성 선택: ${koreanVoices[0].name}`);
         } else {
-            // 우선순위 2: 여성 키워드 포함된 음성
-            femaleVoice = koreanVoices.find(voice => 
-                voice.name.includes('Female') || 
-                voice.name.includes('여성')
-            );
-            
-            if (femaleVoice) {
-                utterance.voice = femaleVoice;
-                console.log(`애송이 음성 선택: ${femaleVoice.name}`);
-            } else {
-                console.log(`애송이 음성 (기본): 기본 음성`);
-            }
+            console.log(`애송이 음성: 기본 음성`);
         }
     }
     
