@@ -1349,6 +1349,13 @@ function showScreensaver() {
     if (screensaver) {
         screensaver.classList.remove('hidden');
         console.log('🌙 화면보호기 표시');
+        
+        // 3D 화면보호기 초기화
+        if (typeof window.init3DScreensaver === 'function') {
+            setTimeout(() => {
+                window.init3DScreensaver();
+            }, 100);
+        }
     }
 }
 
@@ -1357,6 +1364,11 @@ function hideScreensaver() {
     if (screensaver) {
         screensaver.classList.add('hidden');
         console.log('☀️ 화면보호기 숨김');
+        
+        // 3D 화면보호기 정지
+        if (typeof window.stop3DScreensaver === 'function') {
+            window.stop3DScreensaver();
+        }
     }
 }
 

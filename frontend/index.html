@@ -612,7 +612,7 @@
     <!-- 화면보호기 오버레이 (자동 새로고침 시 표시) -->
     <div id="screensaver" class="screensaver hidden">
         <div class="screensaver-blur"></div>
-        <img src="/aesong-character.png" alt="애송이" class="aesong-moving">
+        <canvas id="threejs-canvas"></canvas>
     </div>
     
     <style>
@@ -645,24 +645,19 @@
             z-index: 1;
         }
         
-        /* 애송이 움직이는 애니메이션 (3D 효과) */
-        .aesong-moving {
+        /* Three.js 캔버스 */
+        #threejs-canvas {
             position: absolute;
-            width: auto;
-            height: auto;
-            max-width: none;
-            object-fit: none;
-            transform: scale(0.5);
-            animation: aesongMove3D 15s ease-in-out infinite, aesongGlow 3s ease-in-out infinite;
-            filter: drop-shadow(0 15px 30px rgba(255, 105, 180, 0.4));
-            transform-style: preserve-3d;
-            pointer-events: none;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: 2;
-            perspective: 1000px;
+            pointer-events: none;
         }
         
-        /* 애송이가 3D로 회전하며 화면을 돌아다니는 애니메이션 */
-        @keyframes aesongMove3D {
+        /* 사용하지 않는 키프레임 제거 */
+        @keyframes unused {
             0% {
                 transform: translate(-50vw, -50vh) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(0.5);
                 opacity: 1;
@@ -759,6 +754,13 @@
             }
         }
     </style>
+    
+    <!-- Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
+    
+    <!-- 3D 화면보호기 -->
+    <script src="screensaver-3d.js"></script>
     
     <!-- 애송이 챗봇 -->
     <script src="aesong-chatbot.js"></script>
