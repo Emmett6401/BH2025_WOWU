@@ -7,10 +7,23 @@ class AesongChatbot {
     constructor() {
         this.chatHistory = [];
         this.isOpen = false;
-        // API_BASE_URL 설정 (빈 문자열이면 상대 경로, 아니면 절대 경로)
-        const baseUrl = window.API_BASE_URL && window.API_BASE_URL !== '' 
-            ? window.API_BASE_URL 
-            : (window.location.protocol + '//' + window.location.hostname + ':8000');
+        
+        // API_BASE_URL 설정
+        let baseUrl;
+        if (window.API_BASE_URL && window.API_BASE_URL !== '') {
+            baseUrl = window.API_BASE_URL;
+        } else {
+            // 샌드박스 환경 감지: 3000-xxx.sandbox.novita.ai → 8000-xxx.sandbox.novita.ai
+            const hostname = window.location.hostname;
+            if (hostname.includes('sandbox.novita.ai') || hostname.includes('-')) {
+                // 샌드박스 환경: 포트 번호를 서브도메인에서 교체
+                baseUrl = window.location.protocol + '//' + hostname.replace(/^3000-/, '8000-');
+            } else {
+                // 로컬 환경: :8000 포트 사용
+                baseUrl = window.location.protocol + '//' + window.location.hostname + ':8000';
+            }
+        }
+        
         this.apiUrl = baseUrl + '/api/aesong-chat';
         this.aesongImageUrl = 'https://www.genspark.ai/api/files/s/0GNDPa0z';
         
