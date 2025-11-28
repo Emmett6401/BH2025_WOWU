@@ -10,6 +10,7 @@ let currentCharacter = 'aesong'; // 기본 캐릭터 (애송이)
 let currentCharacterName = '애송이'; // 현재 캐릭터 이름
 let isDragging = false;
 let previousMousePosition = { x: 0, y: 0 };
+let userRotation = { x: 0, y: 0, z: 0 }; // 사용자가 설정한 회전 값 저장
 
 // Three.js 3D 씬 초기화
 export function initAesong3DScene() {
@@ -71,7 +72,16 @@ export function initAesong3DScene() {
     canvas.addEventListener('mousemove', (e) => {
         if (isDragging && aesongModel) {
             const deltaX = e.offsetX - previousMousePosition.x;
-            aesongModel.rotation.y += deltaX * 0.01;
+            const deltaY = e.offsetY - previousMousePosition.y;
+            
+            // 좌우 회전 (Y축)
+            userRotation.y += deltaX * 0.01;
+            
+            // 상하 회전 (X축)
+            userRotation.x += deltaY * 0.01;
+            
+            // X축 회전 제한 (-1 ~ 1 라디안, 약 ±57도)
+            userRotation.x = Math.max(-1, Math.min(1, userRotation.x));
         }
         previousMousePosition = { x: e.offsetX, y: e.offsetY };
     });
@@ -88,18 +98,32 @@ export function initAesong3DScene() {
             aesongMixer.update(delta);
         }
         
-        // 자연스러운 대화 동작 (고개 좌우로 살짝 움직임)
-        if (aesongModel && !isDragging) {
+        // 자연스러운 대화 동작 (사용자 회전 + 자연스러운 움직임)
+        if (aesongModel) {
             const time = Date.now() * 0.001; // 시간 기반 애니메이션
             
-            // 좌우로 살짝 고개 돌리기 (±15도)
-            aesongModel.rotation.y = Math.sin(time * 0.5) * 0.15;
+            // 사용자가 설정한 회전 + 자연스러운 미세 움직임
+            // 좌우 고개 움직임 (±5도 범위로 축소)
+            const naturalYaw = Math.sin(time * 0.5) * 0.08;
             
-            // 위아래로 살짝 고개 끄덕이기 (±5도)
-            aesongModel.rotation.x = Math.sin(time * 0.7) * 0.08;
+            // 위아래 고개 끄덕임 (±3도)
+            const naturalPitch = Math.sin(time * 0.7) * 0.05;
             
-            // 좌우로 살짝 기울이기 (±3도) - 더 자연스럽게
-            aesongModel.rotation.z = Math.sin(time * 0.3) * 0.05;
+            // 상하 위치 움직임 (호흡하는 느낌, ±0.02 단위)
+            const naturalBob = Math.sin(time * 0.6) * 0.02;
+            
+            // 좌우 기울임 (±2도)
+            const naturalRoll = Math.sin(time * 0.3) * 0.03;
+            
+            // 최종 회전 적용 (사용자 회전 + 자연스러운 움직임)
+            aesongModel.rotation.y = userRotation.y + naturalYaw;
+            aesongModel.rotation.x = userRotation.x + naturalPitch;
+            aesongModel.rotation.z = userRotation.z + naturalRoll;
+            
+            // 상하 위치 변화 (호흡 효과)
+            if (aesongModel.userData.originalY !== undefined) {
+                aesongModel.position.y = aesongModel.userData.originalY + naturalBob;
+            }
         }
         
         aesongRenderer.render(aesongScene, aesongCamera);
@@ -242,21 +266,21 @@ function speakText(text) {
         const koreanVoices = voices.filter(v => v.lang.includes('ko'));
         console.log('한국어 음성:', koreanVoices.map(v => v.name));
         
-        // 여성 키워드 제외
-        const nonFemaleVoice = koreanVoices.find(voice => 
-            !voice.name.includes('Female') && 
-            !voice.name.includes('여성') &&
-            !voice.name.includes('여')
-        );
+        // 여성 이름 및 키워드 제외 (Heami, Yuna 등은 여성)
+        const femaleNames = ['Heami', 'Yuna', 'Seoyeon', 'Sora', 'Female', '여성', '여'];
+        const nonFemaleVoice = koreanVoices.find(voice => {
+            const voiceName = voice.name;
+            // 여성 키워드가 하나라도 포함되면 제외
+            return !femaleNames.some(keyword => voiceName.includes(keyword));
+        });
         
         if (nonFemaleVoice) {
             utterance.voice = nonFemaleVoice;
             console.log(`데이빗 음성 선택: ${nonFemaleVoice.name}`);
-        } else if (koreanVoices.length > 0) {
-            // 한국어 음성 중 첫 번째 사용 (낮은 pitch로 보정)
-            utterance.voice = koreanVoices[0];
-            utterance.pitch = 0.5; // 더 낮게
-            console.log(`데이빗 음성 (pitch 조정): ${koreanVoices[0].name}`);
+        } else {
+            // 남성 음성이 없으면 매우 낮은 pitch로 보정
+            utterance.pitch = 0.4; // 극도로 낮게
+            console.log(`데이빗 음성 (극저음 pitch 조정): 기본 음성`);
         }
     } else {
         // 애송이: 여성 목소리
@@ -364,9 +388,15 @@ function loadCharacter(characterType) {
             aesongModel.position.set(0, positionY, 0);
             aesongModel.scale.set(scale, scale, scale);
             
+            // 원래 Y 위치 저장 (상하 움직임용)
+            aesongModel.userData.originalY = positionY;
+            
+            // 사용자 회전 초기화
+            userRotation = { x: 0, y: 0, z: 0 };
+            
             // 데이빗은 정면을 보도록 머리를 위로 살짝 들어 올림
             if (characterType === 'david') {
-                aesongModel.rotation.x = -0.2; // 머리를 위로 (음수값 = 위로)
+                userRotation.x = -0.2; // 머리를 위로 (음수값 = 위로)
             }
             
             aesongScene.add(aesongModel);
