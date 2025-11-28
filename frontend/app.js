@@ -14558,7 +14558,7 @@ function renderAesong3DChat() {
                         </div>
                         <div>
                             <div class="text-sm font-semibold">PM 정운표</div>
-                            <div class="text-xs text-gray-500">중간 사이즈 (8.1MB)</div>
+                            <div class="text-xs text-gray-500">작은 사이즈 (1.5MB)</div>
                         </div>
                     </div>
                 </div>
