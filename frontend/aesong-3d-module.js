@@ -161,7 +161,11 @@ function initSpeechRecognition() {
         const transcript = event.results[0][0].transcript;
         console.log('인식된 텍스트:', transcript);
         
-        updateStatusText(`${currentCharacterName}가 생각 중...`);
+        // 받침 있으면 '이', 없으면 '가'
+        const lastChar = currentCharacterName.charAt(currentCharacterName.length - 1);
+        const hasJongseong = (lastChar.charCodeAt(0) - 0xAC00) % 28 > 0;
+        const particle = hasJongseong ? '이' : '가';
+        updateStatusText(`${currentCharacterName}${particle} 생각 중...`);
         
         // 서버에 메시지 전송
         try {
@@ -187,7 +191,11 @@ function initSpeechRecognition() {
             
         } catch (error) {
             console.error('채팅 오류:', error);
-            updateStatusText(`${currentCharacterName}와 연결할 수 없어요`);
+            // 받침 있으면 '과', 없으면 '와'
+            const lastChar = currentCharacterName.charAt(currentCharacterName.length - 1);
+            const hasJongseong = (lastChar.charCodeAt(0) - 0xAC00) % 28 > 0;
+            const particle = hasJongseong ? '과' : '와';
+            updateStatusText(`${currentCharacterName}${particle} 연결할 수 없어요`);
             speakText(`죄송해요, 지금은 대답하기 어려워요`);
         }
     };
@@ -266,27 +274,38 @@ function speakText(text) {
         const koreanVoices = voices.filter(v => v.lang.includes('ko'));
         console.log('한국어 음성:', koreanVoices.map(v => v.name));
         
-        // 우선순위 1: Hyunsu (남성 음성)
-        let maleVoice = koreanVoices.find(voice => voice.name.includes('Hyunsu'));
+        // 우선순위 1: Google Wavenet-C (남성 음성)
+        let maleVoice = koreanVoices.find(voice => 
+            voice.name.includes('Wavenet-C') || 
+            voice.name.includes('ko-KR-Wavenet-C')
+        );
         
         if (maleVoice) {
             utterance.voice = maleVoice;
-            console.log(`데이빗 음성 선택: ${maleVoice.name} (Hyunsu 남성)`);
+            console.log(`데이빗 음성 선택: ${maleVoice.name} (Google Wavenet-C 남성)`);
         } else {
-            // 우선순위 2: 여성 이름 제외
-            const femaleNames = ['Heami', 'Yuna', 'Seoyeon', 'Sora', 'Female', '여성', '여'];
-            maleVoice = koreanVoices.find(voice => {
-                const voiceName = voice.name;
-                return !femaleNames.some(keyword => voiceName.includes(keyword));
-            });
+            // 우선순위 2: Hyunsu (남성 음성)
+            maleVoice = koreanVoices.find(voice => voice.name.includes('Hyunsu'));
             
             if (maleVoice) {
                 utterance.voice = maleVoice;
-                console.log(`데이빗 음성 선택: ${maleVoice.name}`);
+                console.log(`데이빗 음성 선택: ${maleVoice.name} (Hyunsu 남성)`);
             } else {
-                // 남성 음성이 없으면 매우 낮은 pitch로 보정
-                utterance.pitch = 0.5;
-                console.log(`데이빗 음성 (pitch 조정): 기본 음성`);
+                // 우선순위 3: 여성 이름 제외
+                const femaleNames = ['Heami', 'Yuna', 'Seoyeon', 'Sora', 'Female', '여성', '여'];
+                maleVoice = koreanVoices.find(voice => {
+                    const voiceName = voice.name;
+                    return !femaleNames.some(keyword => voiceName.includes(keyword));
+                });
+                
+                if (maleVoice) {
+                    utterance.voice = maleVoice;
+                    console.log(`데이빗 음성 선택: ${maleVoice.name}`);
+                } else {
+                    // 남성 음성이 없으면 매우 낮은 pitch로 보정
+                    utterance.pitch = 0.5;
+                    console.log(`데이빗 음성 (pitch 조정): 기본 음성`);
+                }
             }
         }
     } else {
@@ -308,7 +327,11 @@ function speakText(text) {
     }
     
     utterance.onstart = function() {
-        updateStatusText(`${currentCharacterName}가 말하는 중...`);
+        // 받침 있으면 '이', 없으면 '가'
+        const lastChar = currentCharacterName.charAt(currentCharacterName.length - 1);
+        const hasJongseong = (lastChar.charCodeAt(0) - 0xAC00) % 28 > 0;
+        const particle = hasJongseong ? '이' : '가';
+        updateStatusText(`${currentCharacterName}${particle} 말하는 중...`);
     };
     
     utterance.onend = function() {
