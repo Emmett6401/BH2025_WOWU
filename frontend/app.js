@@ -3133,8 +3133,20 @@ window.handleStudentProfileUpload = async function(event) {
             progressBar.style.width = '0%';
         }
         
+        // 이미지 압축
+        let processedFile = file;
+        if (file.type.startsWith('image/')) {
+            try {
+                processedFile = await window.compressImage(file);
+                console.log(`프로필 이미지 압축: ${(file.size / 1024).toFixed(1)}KB → ${(processedFile.size / 1024).toFixed(1)}KB`);
+            } catch (error) {
+                console.error('이미지 압축 실패, 원본 사용:', error);
+                processedFile = file;
+            }
+        }
+        
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', processedFile);
         
         const response = await axios.post(
             `${API_BASE_URL}/api/upload-image?category=student`,
@@ -8484,7 +8496,7 @@ window.showTeamActivityLogForm = function(logId = null) {
                             </div>
                             <input type="file" id="team-log-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
                                    onchange="window.handleTeamLogImageUpload(event)" class="hidden">
-                            <input type="file" id="team-log-camera-input" accept="image/*" capture="environment" 
+                            <input type="file" id="team-log-camera-input" accept="image/*" 
                                    onchange="window.handleTeamLogImageUpload(event)" class="hidden">
                             <div id="team-log-photos-preview" class="flex flex-col gap-2 mt-2">
                                 ${log?.photo_urls ? JSON.parse(log.photo_urls).map((url, idx) => `
@@ -11617,8 +11629,18 @@ window.handleLogoUpload = async function(event) {
     document.body.appendChild(progressContainer);
     
     try {
+        // 이미지 압축
+        let processedFile = file;
+        try {
+            processedFile = await window.compressImage(file);
+            console.log(`로고 이미지 압축: ${(file.size / 1024).toFixed(1)}KB → ${(processedFile.size / 1024).toFixed(1)}KB`);
+        } catch (error) {
+            console.error('이미지 압축 실패, 원본 사용:', error);
+            processedFile = file;
+        }
+        
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', processedFile);
         
         // teacher 카테고리로 업로드 (로고는 teacher 폴더에 저장)
         const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
@@ -12336,7 +12358,7 @@ window.showMyPageModal = async function() {
                         </div>
                         <input type="file" id="mypage-file-input" accept="image/*,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.txt,.hwp" multiple 
                                onchange="window.handleMyPageFileUpload(event)" class="hidden">
-                        <input type="file" id="mypage-camera-input" accept="image/*" capture="environment"
+                        <input type="file" id="mypage-camera-input" accept="image/*"
                                onchange="window.handleMyPageFileUpload(event)" class="hidden">
                         <div id="mypage-file-upload-progress" class="hidden mb-3">
                             <div class="bg-blue-50 border border-blue-200 rounded p-3">
