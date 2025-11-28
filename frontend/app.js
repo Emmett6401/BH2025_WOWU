@@ -10396,7 +10396,7 @@ function renderAITrainingLog() {
                     </div>
                     <div>
                         <label class="block text-gray-700 mb-2">종료날짜 *</label>
-                        <input type="date" id="ai-end-date" max="${today}" class="w-full border rounded px-3 py-2" required>
+                        <input type="date" id="ai-end-date" value="${today}" max="${today}" class="w-full border rounded px-3 py-2" required>
                     </div>
                 </div>
                 
@@ -10450,6 +10450,34 @@ function renderAITrainingLog() {
             </div>
         </div>
     `;
+    
+    // 과정 선택 시 시작일자 자동 설정
+    setTimeout(() => {
+        const courseSelect = document.getElementById('ai-course');
+        const startDateInput = document.getElementById('ai-start-date');
+        
+        // 과정 선택 이벤트 리스너
+        courseSelect.addEventListener('change', function() {
+            const selectedCourseCode = this.value;
+            if (selectedCourseCode) {
+                const selectedCourse = courses.find(c => c.code === selectedCourseCode);
+                if (selectedCourse && selectedCourse.start_date) {
+                    // 과정 시작일을 시작날짜로 설정
+                    const courseStartDate = selectedCourse.start_date.split('T')[0];
+                    startDateInput.value = courseStartDate;
+                }
+            }
+        });
+        
+        // 초기 선택된 과정의 시작일 설정
+        if (courseSelect.value) {
+            const initialCourse = courses.find(c => c.code === courseSelect.value);
+            if (initialCourse && initialCourse.start_date) {
+                const courseStartDate = initialCourse.start_date.split('T')[0];
+                startDateInput.value = courseStartDate;
+            }
+        }
+    }, 100);
 }
 
 window.searchAITimetables = async function() {
