@@ -4458,7 +4458,7 @@ async def aesong_chat(data: dict):
                 'Content-Type': 'application/json'
             },
             json={
-                'model': 'llama-3.1-70b-versatile',
+                'model': 'llama-3.3-70b-versatile',
                 'messages': data.get('messages', []),
                 'temperature': 0.7,
                 'max_tokens': 500
