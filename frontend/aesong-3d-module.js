@@ -310,19 +310,34 @@ function speakText(text) {
         }
     } else {
         // 애송이: 여성 목소리
-        utterance.pitch = 1.4; // 높은 톤 (여성/귀여운 톤)
-        utterance.rate = 1.1; // 빠른 속도
+        utterance.pitch = 1.2; // 자연스러운 여성 톤
+        utterance.rate = 1.05; // 약간 빠른 속도
         
-        // 한국어 여성 음성 선택
+        // 한국어 음성 필터링
         const koreanVoices = voices.filter(v => v.lang.includes('ko'));
-        const femaleVoice = koreanVoices.find(voice => 
-            voice.name.includes('Female') || 
-            voice.name.includes('여성')
+        
+        // 우선순위 1: Google Neural2-A (여성 음성)
+        let femaleVoice = koreanVoices.find(voice => 
+            voice.name.includes('Neural2-A') || 
+            voice.name.includes('ko-KR-Neural2-A')
         );
         
         if (femaleVoice) {
             utterance.voice = femaleVoice;
-            console.log(`애송이 음성 선택: ${femaleVoice.name}`);
+            console.log(`애송이 음성 선택: ${femaleVoice.name} (Google Neural2-A 여성)`);
+        } else {
+            // 우선순위 2: 여성 키워드 포함된 음성
+            femaleVoice = koreanVoices.find(voice => 
+                voice.name.includes('Female') || 
+                voice.name.includes('여성')
+            );
+            
+            if (femaleVoice) {
+                utterance.voice = femaleVoice;
+                console.log(`애송이 음성 선택: ${femaleVoice.name}`);
+            } else {
+                console.log(`애송이 음성 (기본): 기본 음성`);
+            }
         }
     }
     
