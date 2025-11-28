@@ -141,7 +141,7 @@ function initSpeechRecognition() {
         
         // 서버에 메시지 전송
         try {
-            const API_BASE_URL = window.API_BASE_URL || 'http://localhost:3001';
+            const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000';
             const response = await fetch(`${API_BASE_URL}/api/aesong-chat`, {
                 method: 'POST',
                 headers: {

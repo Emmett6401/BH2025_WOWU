@@ -1,5 +1,6 @@
 // API 베이스 URL - 백엔드 포트로 변경
 const API_BASE_URL = window.location.origin.replace('3000', '8000');
+window.API_BASE_URL = API_BASE_URL; // 전역으로 노출
 
 // ==================== 로컬 캐싱 유틸리티 ====================
 const CACHE_VERSION = '2.0.0'; // 캐시 버전 (업데이트 시 증가)
