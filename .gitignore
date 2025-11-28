@@ -41,3 +41,6 @@ __pycache__/
 
 # misc
 .DS_Store
+
+# Thumbnails
+backend/thumbnails/
