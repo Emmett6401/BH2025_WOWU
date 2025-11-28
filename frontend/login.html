@@ -36,6 +36,46 @@
                 <p class="text-blue-100 text-sm mb-2" id="system-subtitle2-login">바이오헬스아카데미 올인원테크 이노베이터</p>
             </div>
             
+            <!-- 애송이 안내 -->
+            <div class="bg-gradient-to-r from-pink-50 to-purple-50 p-6 border-b border-pink-100">
+                <div class="flex items-start gap-4">
+                    <div class="flex-shrink-0">
+                        <img src="/aesong-character.png" alt="애송이" class="w-20 h-20 rounded-full border-4 border-white shadow-lg aesong-helper-avatar">
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-white rounded-2xl rounded-tl-none shadow-md p-4 border-2 border-pink-200">
+                            <p class="text-sm font-bold text-gray-800 mb-2">
+                                <span class="text-pink-600">안녕하세요! 애송이입니다 🐶</span>
+                            </p>
+                            <div class="space-y-2 text-sm text-gray-700">
+                                <p class="flex items-start gap-2">
+                                    <i class="fas fa-check-circle text-green-500 mt-0.5"></i>
+                                    <span><strong>로그인:</strong> 이름과 비밀번호로 로그인하세요!</span>
+                                </p>
+                                <p class="flex items-start gap-2">
+                                    <i class="fas fa-mobile-alt text-blue-500 mt-0.5"></i>
+                                    <span><strong>앱 설치:</strong> "앱으로 실행" 하면 더 편리해요!</span>
+                                </p>
+                                <p class="flex items-start gap-2">
+                                    <i class="fas fa-info-circle text-purple-500 mt-0.5"></i>
+                                    <span class="text-xs text-gray-500">최초 비밀번호: <strong>kdt2025</strong></span>
+                                </p>
+                            </div>
+                        </div>
+                        <!-- PWA 설치 안내 (앱 미설치 시에만 표시) -->
+                        <div id="pwa-install-hint" class="mt-3 bg-blue-50 border-2 border-blue-200 rounded-lg p-3 hidden">
+                            <div class="flex items-center gap-2 text-sm text-blue-700">
+                                <i class="fas fa-download text-blue-500"></i>
+                                <span class="font-semibold">앱으로 설치하면 더욱 편리합니다!</span>
+                            </div>
+                            <button id="pwa-install-btn" class="mt-2 w-full bg-blue-500 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-all">
+                                <i class="fas fa-plus-circle mr-2"></i>홈 화면에 추가하기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- 로그인 타입 선택 탭 -->
             <div class="flex border-b border-gray-200">
                 <button id="instructor-tab" class="flex-1 py-4 text-center font-semibold transition-all border-b-2 border-blue-600 text-blue-600">
@@ -502,6 +542,49 @@
             alertMessage.classList.remove('hidden');
         }
         
+        // PWA 설치 기능
+        let deferredPrompt;
+        const pwaInstallHint = document.getElementById('pwa-install-hint');
+        const pwaInstallBtn = document.getElementById('pwa-install-btn');
+        
+        // PWA 설치 가능 여부 확인
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // 이미 설치된 상태인지 확인
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                console.log('✅ 이미 PWA로 실행 중');
+            } else {
+                // 앱 미설치 시 안내 표시
+                pwaInstallHint.classList.remove('hidden');
+                console.log('💡 PWA 설치 가능');
+            }
+        });
+        
+        // PWA 설치 버튼 클릭
+        pwaInstallBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) {
+                showAlert('이 브라우저는 앱 설치를 지원하지 않습니다.', 'error');
+                return;
+            }
+            
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            
+            if (outcome === 'accepted') {
+                showAlert('앱이 설치되었습니다! 홈 화면에서 실행하세요 🎉', 'success');
+                pwaInstallHint.classList.add('hidden');
+            }
+            
+            deferredPrompt = null;
+        });
+        
+        // 이미 PWA로 실행 중이면 안내 숨기기
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            pwaInstallHint.classList.add('hidden');
+        }
+        
         // PWA Service Worker 비활성화
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -512,5 +595,30 @@
             });
         }
     </script>
+    
+    <!-- 애송이 애니메이션 CSS -->
+    <style>
+        @keyframes wave {
+            0%, 100% { transform: rotate(0deg); }
+            10%, 30%, 50%, 70%, 90% { transform: rotate(14deg); }
+            20%, 40%, 60%, 80% { transform: rotate(-14deg); }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .aesong-helper-avatar {
+            animation: float 3s ease-in-out infinite;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .aesong-helper-avatar:hover {
+            animation: wave 1s ease-in-out;
+            transform: scale(1.1);
+        }
+    </style>
 </body>
 </html>
