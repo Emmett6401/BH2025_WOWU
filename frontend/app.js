@@ -14510,11 +14510,11 @@ function renderAesong3DChat() {
                         </div>
                     </div>
                     <div class="character-option" data-character="david" onclick="window.switchCharacter('david')">
-                        <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 10px; margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
-                            🧑
+                        <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                            👨‍💻
                         </div>
                         <div>
-                            <div class="text-sm font-semibold">데이빗</div>
+                            <div class="text-sm font-semibold">데이빗 (프로그래머)</div>
                             <div class="text-xs text-gray-500">작은 사이즈 (1.3MB)</div>
                         </div>
                     </div>
