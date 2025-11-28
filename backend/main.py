@@ -4499,6 +4499,84 @@ async def delete_notice(notice_id: int):
     finally:
         conn.close()
 
+# ==================== 애송이 챗봇 API ====================
+@app.post("/api/aesong-chat")
+async def aesong_chat(data: dict):
+    """애송이 AI 챗봇 - GROQ API 사용"""
+    message = data.get('message', '')
+    
+    if not message:
+        raise HTTPException(status_code=400, detail="메시지가 필요합니다")
+    
+    # GROQ API 키 확인
+    groq_api_key = os.getenv('GROQ_API_KEY', '')
+    
+    if not groq_api_key:
+        # API 키가 없으면 기본 응답
+        return {
+            "response": "안녕하세요! 저는 애송이입니다. 🐶 무엇을 도와드릴까요?",
+            "model": "default"
+        }
+    
+    try:
+        # GROQ API 호출
+        headers = {
+            "Authorization": f"Bearer {groq_api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        system_prompt = """당신은 '애송이'라는 이름의 친근하고 귀여운 AI 비서입니다.
+우송대학교의 마스코트로, 학생들을 돕는 역할을 합니다.
+
+특징:
+- 항상 밝고 긍정적인 톤으로 대화합니다
+- 친근하고 귀여운 말투를 사용합니다 (예: ~해요, ~이에요)
+- 이모지를 적절히 사용합니다 🐶
+- 학생들의 고민과 질문에 공감하며 답변합니다
+- 짧고 명확하게 답변합니다 (2-3문장)
+
+역할:
+- 우송대학교 바이오헬스 교육 관리 시스템의 도우미
+- 학생 관리, 상담, 훈련일지 등에 대해 안내
+- 친근한 대화 상대"""
+
+        payload = {
+            "model": "llama-3.1-70b-versatile",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message}
+            ],
+            "temperature": 0.8,
+            "max_tokens": 200,
+            "top_p": 0.9
+        }
+        
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=15
+        )
+        
+        if response.status_code != 200:
+            raise Exception(f"GROQ API 오류: {response.text}")
+        
+        ai_response = response.json()['choices'][0]['message']['content']
+        
+        return {
+            "response": ai_response,
+            "model": "llama-3.1-70b-versatile"
+        }
+        
+    except Exception as e:
+        print(f"애송이 챗봇 오류: {str(e)}")
+        # 오류 시 기본 응답
+        return {
+            "response": "앗! 지금은 답변하기 어려워요 😢 잠시 후 다시 말씀해주세요!",
+            "model": "error",
+            "error": str(e)
+        }
+
 if __name__ == "__main__":
     import uvicorn
     # 파일 업로드 크기 제한 100MB로 증가
