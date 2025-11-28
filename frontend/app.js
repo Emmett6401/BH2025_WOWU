@@ -14365,6 +14365,45 @@ function renderAesong3DChat() {
                 display: block;
             }
             
+            .character-selector {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                background: rgba(255,255,255,0.95);
+                border-radius: 15px;
+                padding: 15px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                z-index: 10;
+            }
+            
+            .character-option {
+                display: flex;
+                align-items: center;
+                padding: 10px;
+                margin: 5px 0;
+                border-radius: 10px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                border: 2px solid transparent;
+            }
+            
+            .character-option:hover {
+                background: rgba(102, 126, 234, 0.1);
+            }
+            
+            .character-option.active {
+                background: rgba(102, 126, 234, 0.2);
+                border-color: #667eea;
+            }
+            
+            .character-option img {
+                width: 50px;
+                height: 50px;
+                border-radius: 10px;
+                margin-right: 10px;
+                object-fit: cover;
+            }
+            
             .chat-controls {
                 position: absolute;
                 bottom: 20px;
@@ -14478,6 +14517,27 @@ function renderAesong3DChat() {
             
             <div id="aesong-3d-container">
                 <canvas id="aesong-canvas"></canvas>
+                
+                <!-- 캐릭터 선택 -->
+                <div class="character-selector">
+                    <div class="text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-user-circle mr-1"></i>캐릭터 선택
+                    </div>
+                    <div class="character-option active" data-character="character1" onclick="window.switchCharacter('character1')">
+                        <img src="/aesong-character.png" alt="캐릭터 1">
+                        <div>
+                            <div class="text-sm font-semibold">애송이 (2D)</div>
+                            <div class="text-xs text-gray-500">작은 사이즈</div>
+                        </div>
+                    </div>
+                    <div class="character-option" data-character="character2" onclick="window.switchCharacter('character2')">
+                        <img src="/aesong-bunny.glb" alt="캐릭터 2" onerror="this.src='/aesong-character.png'">
+                        <div>
+                            <div class="text-sm font-semibold">토끼 (3D)</div>
+                            <div class="text-xs text-gray-500">큰 사이즈</div>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="status-text" id="status-text">
                     🎤 마이크 버튼을 눌러서 말해보세요!

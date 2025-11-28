@@ -6,6 +6,9 @@ let aesongScene, aesongCamera, aesongRenderer, aesongModel, aesongAnimationId, a
 let isRecording = false;
 let recognition = null;
 let synthesis = window.speechSynthesis;
+let currentCharacter = 'character1'; // 기본 캐릭터
+let isDragging = false;
+let previousMousePosition = { x: 0, y: 0 };
 
 // Three.js 3D 씬 초기화
 export function initAesong3DScene() {
@@ -55,43 +58,10 @@ export function initAesong3DScene() {
     pointLight2.position.set(3, 3, -3);
     aesongScene.add(pointLight2);
     
-    // GLB 모델 로드
-    const loader = new GLTFLoader();
-    loader.load(
-        '/aesong-bunny.glb',
-        function(gltf) {
-            aesongModel = gltf.scene;
-            aesongModel.position.set(0, -1, 0);
-            aesongModel.scale.set(1.5, 1.5, 1.5);
-            aesongScene.add(aesongModel);
-            
-            console.log('✅ 애송이 3D 모델 로드 완료!');
-            updateStatusText('✅ 애송이가 준비되었어요!');
-            
-            // 애니메이션 설정
-            if (gltf.animations && gltf.animations.length > 0) {
-                aesongMixer = new THREE.AnimationMixer(aesongModel);
-                gltf.animations.forEach((clip) => {
-                    const action = aesongMixer.clipAction(clip);
-                    action.play();
-                });
-            }
-        },
-        function(xhr) {
-            const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
-            console.log(`📦 로딩: ${percent}%`);
-            updateStatusText(`📦 애송이 로딩 중... ${percent}%`);
-        },
-        function(error) {
-            console.error('❌ GLB 모델 로드 실패:', error);
-            updateStatusText('❌ 애송이를 불러오는데 실패했어요');
-        }
-    );
+    // 초기 캐릭터 로드
+    loadCharacter(currentCharacter);
     
     // 마우스 컨트롤
-    let isDragging = false;
-    let previousMousePosition = { x: 0, y: 0 };
-    
     canvas.addEventListener('mousedown', () => { isDragging = true; });
     canvas.addEventListener('mouseup', () => { isDragging = false; });
     canvas.addEventListener('mouseleave', () => { isDragging = false; });
@@ -282,6 +252,97 @@ function addChatMessage(sender, message) {
     chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
+// 캐릭터 로드 함수
+function loadCharacter(characterType) {
+    // 기존 모델 제거
+    if (aesongModel) {
+        aesongScene.remove(aesongModel);
+        aesongModel = null;
+        if (aesongMixer) {
+            aesongMixer.stopAllAction();
+            aesongMixer = null;
+        }
+    }
+    
+    currentCharacter = characterType;
+    
+    if (characterType === 'character1') {
+        // 2D PNG 스프라이트 (작은 크기)
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load(
+            '/aesong-character.png',
+            function(texture) {
+                const spriteMaterial = new THREE.SpriteMaterial({ 
+                    map: texture,
+                    transparent: true
+                });
+                aesongModel = new THREE.Sprite(spriteMaterial);
+                aesongModel.position.set(0, 0, 0);
+                aesongModel.scale.set(1, 1, 1); // 작은 크기
+                aesongScene.add(aesongModel);
+                
+                console.log('✅ 애송이 2D 캐릭터 로드 완료!');
+                updateStatusText('✅ 애송이 2D가 준비되었어요!');
+            },
+            undefined,
+            function(error) {
+                console.error('❌ 2D 이미지 로드 실패:', error);
+                updateStatusText('❌ 캐릭터를 불러오는데 실패했어요');
+            }
+        );
+    } else if (characterType === 'character2') {
+        // 3D GLB 모델 (큰 크기)
+        const loader = new GLTFLoader();
+        updateStatusText('📦 3D 캐릭터 로딩 중...');
+        
+        loader.load(
+            '/aesong-bunny.glb',
+            function(gltf) {
+                aesongModel = gltf.scene;
+                aesongModel.position.set(0, -1, 0);
+                aesongModel.scale.set(0.8, 0.8, 0.8); // 크기 줄임 (원래 1.5)
+                aesongScene.add(aesongModel);
+                
+                console.log('✅ 3D 토끼 캐릭터 로드 완료!');
+                updateStatusText('✅ 3D 토끼가 준비되었어요!');
+                
+                // 애니메이션 설정
+                if (gltf.animations && gltf.animations.length > 0) {
+                    aesongMixer = new THREE.AnimationMixer(aesongModel);
+                    gltf.animations.forEach((clip) => {
+                        const action = aesongMixer.clipAction(clip);
+                        action.play();
+                    });
+                }
+            },
+            function(xhr) {
+                const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
+                console.log(`📦 3D 로딩: ${percent}%`);
+                updateStatusText(`📦 3D 캐릭터 로딩 중... ${percent}%`);
+            },
+            function(error) {
+                console.error('❌ 3D 모델 로드 실패:', error);
+                updateStatusText('❌ 3D 캐릭터를 불러오는데 실패했어요');
+            }
+        );
+    }
+}
+
+// 캐릭터 전환 함수
+export function switchCharacter(characterType) {
+    console.log('🔄 캐릭터 전환:', characterType);
+    
+    // UI 업데이트
+    document.querySelectorAll('.character-option').forEach(option => {
+        option.classList.remove('active');
+    });
+    document.querySelector(`[data-character="${characterType}"]`).classList.add('active');
+    
+    // 캐릭터 로드
+    loadCharacter(characterType);
+}
+
 // 전역에 함수 노출
 window.initAesong3DScene = initAesong3DScene;
 window.toggleVoiceRecording = toggleVoiceRecording;
+window.switchCharacter = switchCharacter;
