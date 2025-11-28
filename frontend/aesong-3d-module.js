@@ -266,9 +266,9 @@ function speakText(text) {
     
     // 캐릭터에 따라 음성 설정
     if (currentCharacterName === '데이빗') {
-        // 데이빗: 남성 목소리 (매우 낮은 톤으로 강제 설정)
-        utterance.pitch = 0.3; // 극저음 (여성 음성을 남성처럼 변환)
-        utterance.rate = 0.85; // 느린 속도 (낮은 목소리 효과)
+        // 데이빗: 남성 목소리 (자연스러운 낮은 톤)
+        utterance.pitch = 0.75; // 자연스러운 낮은 톤
+        utterance.rate = 0.95; // 약간 느린 속도
         
         // 한국어 음성 필터링
         const koreanVoices = voices.filter(v => v.lang.includes('ko'));
@@ -279,18 +279,17 @@ function speakText(text) {
         
         if (nonHeamiVoice) {
             utterance.voice = nonHeamiVoice;
-            console.log(`데이빗 음성 선택: ${nonHeamiVoice.name} (극저음 pitch 0.3으로 남성화)`);
+            console.log(`데이빗 음성 선택: ${nonHeamiVoice.name} (자연스러운 남성 톤)`);
         } else if (koreanVoices.length > 0) {
-            // Heami도 사용 (pitch로 보정)
             utterance.voice = koreanVoices[0];
-            console.log(`데이빗 음성 선택: ${koreanVoices[0].name} (극저음 pitch 0.3으로 남성화)`);
+            console.log(`데이빗 음성 선택: ${koreanVoices[0].name} (자연스러운 남성 톤)`);
         } else {
-            console.log(`데이빗 음성: 기본 음성 (극저음 pitch 0.3)`);
+            console.log(`데이빗 음성: 기본 음성`);
         }
     } else {
         // 애송이: 여성 목소리
-        utterance.pitch = 1.5; // 높고 귀여운 여성 톤
-        utterance.rate = 1.15; // 빠른 속도 (경쾌한 느낌)
+        utterance.pitch = 1.2; // 자연스러운 여성 톤
+        utterance.rate = 1.05; // 약간 빠른 속도
         
         // 한국어 음성 필터링
         const koreanVoices = voices.filter(v => v.lang.includes('ko'));
@@ -300,9 +299,8 @@ function speakText(text) {
         
         if (femaleVoice) {
             utterance.voice = femaleVoice;
-            console.log(`애송이 음성 선택: ${femaleVoice.name} (높은 톤 여성)`);
+            console.log(`애송이 음성 선택: ${femaleVoice.name} (자연스러운 여성 톤)`);
         } else if (koreanVoices.length > 0) {
-            // 다른 한국어 음성 사용
             utterance.voice = koreanVoices[0];
             console.log(`애송이 음성 선택: ${koreanVoices[0].name}`);
         } else {
@@ -330,6 +328,13 @@ function updateStatusText(text) {
     const statusElement = document.getElementById('status-text');
     if (statusElement) {
         statusElement.textContent = text;
+        
+        // 로딩 중이거나 생각 중일 때만 표시
+        if (text.includes('로딩') || text.includes('생각') || text.includes('말하는')) {
+            statusElement.style.display = 'flex';
+        } else {
+            statusElement.style.display = 'none';
+        }
     }
 }
 

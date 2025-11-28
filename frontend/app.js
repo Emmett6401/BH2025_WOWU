@@ -14448,16 +14448,36 @@ function renderAesong3DChat() {
             
             .status-text {
                 position: absolute;
-                top: 20px;
+                top: 50%;
                 left: 50%;
-                transform: translateX(-50%);
-                background: rgba(255,255,255,0.95);
-                padding: 12px 24px;
-                border-radius: 25px;
+                transform: translate(-50%, -50%);
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 20px 40px;
+                border-radius: 15px;
                 font-weight: 600;
-                color: #667eea;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-                z-index: 10;
+                font-size: 16px;
+                color: white;
+                box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
+                z-index: 1000;
+                backdrop-filter: blur(10px);
+                border: 2px solid rgba(255,255,255,0.2);
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            
+            .status-text::before {
+                content: '';
+                width: 20px;
+                height: 20px;
+                border: 3px solid rgba(255,255,255,0.3);
+                border-top-color: white;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            }
+            
+            @keyframes spin {
+                to { transform: rotate(360deg); }
             }
         </style>
         
@@ -14500,8 +14520,8 @@ function renderAesong3DChat() {
                     </div>
                 </div>
                 
-                <div class="status-text" id="status-text">
-                    🎤 마이크 버튼을 눌러서 말해보세요!
+                <div class="status-text" id="status-text" style="display: none;">
+                    로딩 중...
                 </div>
                 
                 <div class="chat-controls">
