@@ -6441,8 +6441,21 @@ window.handleInstructorImageUpload = async function(event) {
         
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            
+            // 이미지 자동 압축 (PDF 등은 그대로)
+            let processedFile = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                    processedFile = await window.compressImage(file);
+                    console.log(`이미지 압축: ${(file.size / 1024).toFixed(1)}KB → ${(processedFile.size / 1024).toFixed(1)}KB`);
+                } catch (error) {
+                    console.error('이미지 압축 실패, 원본 사용:', error);
+                    processedFile = file;
+                }
+            }
+            
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', processedFile);
             
             // 프로그레스 업데이트
             const progress = ((i + 0.5) / totalFiles) * 100;
@@ -8125,8 +8138,21 @@ window.handleProjectImageUpload = async function(event) {
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            
+            // 이미지 자동 압축 (PDF 등은 그대로)
+            let processedFile = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                    processedFile = await window.compressImage(file);
+                    console.log(`이미지 압축: ${(file.size / 1024).toFixed(1)}KB → ${(processedFile.size / 1024).toFixed(1)}KB`);
+                } catch (error) {
+                    console.error('이미지 압축 실패, 원본 사용:', error);
+                    processedFile = file;
+                }
+            }
+            
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', processedFile);
 
             const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=team`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
@@ -13869,8 +13895,21 @@ window.handleMyPageFileUpload = async function(event) {
         // 파일 업로드
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            
+            // 이미지 자동 압축 (PDF 등은 그대로)
+            let processedFile = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                    processedFile = await window.compressImage(file);
+                    console.log(`이미지 압축: ${(file.size / 1024).toFixed(1)}KB → ${(processedFile.size / 1024).toFixed(1)}KB`);
+                } catch (error) {
+                    console.error('이미지 압축 실패, 원본 사용:', error);
+                    processedFile = file;
+                }
+            }
+            
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', processedFile);
             
             const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
