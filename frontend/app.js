@@ -9865,23 +9865,60 @@ let selectedAITimetables = []; // 선택된 시간표들
 
 async function loadAITrainingLog() {
     try {
+        console.log('🔄 AI 훈련일지 로딩 시작...');
         window.showLoading('데이터를 불러오는 중...');
+        
+        console.log('📡 API 호출 시작:', {
+            courses: `${API_BASE_URL}/api/courses`,
+            subjects: `${API_BASE_URL}/api/subjects`,
+            instructors: `${API_BASE_URL}/api/instructors`,
+            instructorCodes: `${API_BASE_URL}/api/instructor-codes`
+        });
+        
         const [coursesRes, subjectsRes, instructorsRes, instructorTypesRes] = await Promise.all([
             axios.get(`${API_BASE_URL}/api/courses`),
             axios.get(`${API_BASE_URL}/api/subjects`),
             axios.get(`${API_BASE_URL}/api/instructors`),
             axios.get(`${API_BASE_URL}/api/instructor-codes`)
         ]);
+        
+        console.log('✅ API 응답 받음:', {
+            courses: coursesRes.data.length,
+            subjects: subjectsRes.data.length,
+            instructors: instructorsRes.data.length,
+            instructorTypes: instructorTypesRes.data.length
+        });
+        
         courses = coursesRes.data;
         subjects = subjectsRes.data;
         instructors = instructorsRes.data;
         instructorTypes = instructorTypesRes.data;
+        
+        console.log('🎨 렌더링 시작...');
         renderAITrainingLog();
+        
+        console.log('✅ AI 훈련일지 로딩 완료');
         window.hideLoading();
     } catch (error) {
         window.hideLoading();
-        console.error('AI 훈련일지 로드 실패:', error);
-        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">데이터를 불러오는데 실패했습니다.</div>';
+        console.error('❌ AI 훈련일지 로드 실패:', error);
+        console.error('❌ 에러 상세:', error.response?.data || error.message);
+        
+        const app = document.getElementById('app');
+        app.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-6 max-w-2xl mx-auto mt-8">
+                <h3 class="text-red-800 font-bold text-lg mb-2">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>데이터 로드 실패
+                </h3>
+                <p class="text-red-700 mb-4">AI 훈련일지 데이터를 불러오는데 실패했습니다.</p>
+                <div class="bg-white rounded p-4 mb-4">
+                    <pre class="text-sm text-gray-800 whitespace-pre-wrap">${error.response?.data?.detail || error.message}</pre>
+                </div>
+                <button onclick="loadAITrainingLog()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                    <i class="fas fa-sync-alt mr-2"></i>다시 시도
+                </button>
+            </div>
+        `;
     }
 }
 
