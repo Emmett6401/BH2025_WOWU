@@ -611,12 +611,7 @@
     
     <!-- 화면보호기 오버레이 (자동 새로고침 시 표시) -->
     <div id="screensaver" class="screensaver hidden">
-        <div class="screensaver-blur"></div>
-        <div class="screensaver-content">
-            <img src="/aesong-character.png" alt="애송이" class="aesong-moving">
-            <p class="text-white text-2xl font-bold mt-8 text-center animate-pulse">🐶 애송이가 지키고 있어요! 🐶</p>
-            <p class="text-white text-lg mt-2 text-center opacity-80">데이터 새로고침 중...</p>
-        </div>
+        <img src="/aesong-character.png" alt="애송이" class="aesong-moving">
     </div>
     
     <style>
@@ -637,74 +632,53 @@
             display: none !important;
         }
         
-        /* 흐림 배경 */
-        .screensaver-blur {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            backdrop-filter: blur(10px);
-            background: rgba(0, 0, 0, 0.3);
-        }
-        
-        /* 화면보호기 컨텐츠 컨테이너 */
-        .screensaver-content {
-            position: relative;
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            pointer-events: none;
-            perspective: 1500px;
-            transform-style: preserve-3d;
-        }
-        
         /* 애송이 움직이는 애니메이션 */
         .aesong-moving {
-            width: 200px;
-            height: 200px;
-            object-fit: contain;
+            position: absolute;
+            width: auto;
+            height: auto;
+            max-width: none;
+            object-fit: none;
             animation: aesongMove 12s ease-in-out infinite;
-            filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.5));
+            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
             transform-style: preserve-3d;
+            pointer-events: none;
         }
         
-        /* 애송이가 화면을 돌아다니는 애니메이션 */
+        /* 애송이가 화면을 돌아다니는 애니메이션 (원본 크기 유지) */
         @keyframes aesongMove {
             0% {
-                transform: translate(0vw, 0vh) rotate(0deg) scale(1);
+                transform: translate(-50vw, -50vh) rotate(0deg);
             }
             10% {
-                transform: translate(25vw, -15vh) rotate(20deg) scale(1.1);
+                transform: translate(-20vw, -30vh) rotate(20deg);
             }
             20% {
-                transform: translate(35vw, 10vh) rotate(-15deg) scale(0.95);
+                transform: translate(10vw, -35vh) rotate(-15deg);
             }
             30% {
-                transform: translate(20vw, 20vh) rotate(30deg) scale(1.05);
+                transform: translate(30vw, -20vh) rotate(30deg);
             }
             40% {
-                transform: translate(-20vw, 15vh) rotate(-25deg) scale(1);
+                transform: translate(35vw, 10vh) rotate(-25deg);
             }
             50% {
-                transform: translate(-35vw, -10vh) rotate(15deg) scale(1.08);
+                transform: translate(20vw, 30vh) rotate(15deg);
             }
             60% {
-                transform: translate(-30vw, -20vh) rotate(-20deg) scale(0.92);
+                transform: translate(-10vw, 35vh) rotate(-20deg);
             }
             70% {
-                transform: translate(-10vw, -25vh) rotate(25deg) scale(1.03);
+                transform: translate(-30vw, 25vh) rotate(25deg);
             }
             80% {
-                transform: translate(15vw, -18vh) rotate(-30deg) scale(0.98);
+                transform: translate(-35vw, -5vh) rotate(-30deg);
             }
             90% {
-                transform: translate(30vw, -5vh) rotate(10deg) scale(1.02);
+                transform: translate(-25vw, -25vh) rotate(10deg);
             }
             100% {
-                transform: translate(0vw, 0vh) rotate(0deg) scale(1);
+                transform: translate(-50vw, -50vh) rotate(0deg);
             }
         }
     </style>
