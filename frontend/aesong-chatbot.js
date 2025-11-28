@@ -31,6 +31,10 @@ class AesongChatbot {
         console.log('🐶 애송이 챗봇 API URL:', this.apiUrl);
         console.log('🐶 애송이 이미지 URL:', this.aesongImageUrl);
         
+        // 애니메이션 배열
+        this.animations = ['aesong-bounce', 'aesong-shake', 'aesong-wiggle', 'aesong-float'];
+        this.currentAnimation = 0;
+        
         this.init();
     }
 
@@ -38,6 +42,22 @@ class AesongChatbot {
         this.injectStyles();
         this.createChatbotUI();
         this.addSystemPrompt();
+        this.startAnimationCycle();
+    }
+    
+    startAnimationCycle() {
+        // 5초마다 애니메이션 변경
+        setInterval(() => {
+            const floatingBtn = document.getElementById('aesong-floating-btn');
+            if (floatingBtn) {
+                // 이전 애니메이션 제거
+                this.animations.forEach(anim => floatingBtn.classList.remove(anim));
+                
+                // 다음 애니메이션 적용
+                this.currentAnimation = (this.currentAnimation + 1) % this.animations.length;
+                floatingBtn.classList.add(this.animations[this.currentAnimation]);
+            }
+        }, 5000);
     }
 
     injectStyles() {
@@ -53,6 +73,29 @@ class AesongChatbot {
                 50% { opacity: 0.5; }
             }
             
+            @keyframes headShake {
+                0%, 100% { transform: rotate(0deg); }
+                25% { transform: rotate(-8deg); }
+                75% { transform: rotate(8deg); }
+            }
+            
+            @keyframes wave {
+                0%, 100% { transform: rotate(0deg); }
+                10%, 30%, 50%, 70%, 90% { transform: rotate(14deg); }
+                20%, 40%, 60%, 80% { transform: rotate(-14deg); }
+            }
+            
+            @keyframes wiggle {
+                0%, 100% { transform: translateX(0) rotate(0deg); }
+                25% { transform: translateX(-5px) rotate(-5deg); }
+                75% { transform: translateX(5px) rotate(5deg); }
+            }
+            
+            @keyframes float {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-15px); }
+            }
+            
             .aesong-bounce {
                 animation: bounce 2s infinite;
             }
@@ -61,8 +104,39 @@ class AesongChatbot {
                 animation: pulse 2s infinite;
             }
             
+            .aesong-shake {
+                animation: headShake 3s infinite;
+            }
+            
+            .aesong-wave {
+                animation: wave 2s infinite;
+                transform-origin: 70% 70%;
+            }
+            
+            .aesong-wiggle {
+                animation: wiggle 3s infinite;
+            }
+            
+            .aesong-float {
+                animation: float 3s ease-in-out infinite;
+            }
+            
             .aesong-chat-open {
                 transform: translateY(0) !important;
+            }
+            
+            .aesong-avatar:hover {
+                animation: wave 1s ease-in-out;
+                cursor: pointer;
+            }
+            
+            .aesong-header-avatar {
+                transition: transform 0.3s ease;
+            }
+            
+            .aesong-header-avatar:hover {
+                transform: scale(1.1) rotate(10deg);
+                cursor: pointer;
             }
             
             #aesong-messages::-webkit-scrollbar {
@@ -107,7 +181,7 @@ class AesongChatbot {
                 <div class="bg-gradient-to-r from-pink-400 via-purple-400 to-pink-500 p-4 rounded-t-3xl flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <img src="${this.aesongImageUrl}" 
-                             class="w-12 h-12 rounded-full border-2 border-white shadow-lg">
+                             class="w-12 h-12 rounded-full border-2 border-white shadow-lg aesong-header-avatar">
                         <div>
                             <h3 class="text-white font-bold text-lg">애송이</h3>
                             <p class="text-white text-xs flex items-center gap-1">
@@ -125,7 +199,7 @@ class AesongChatbot {
                 <div id="aesong-messages" class="h-[420px] overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white">
                     <!-- 초기 인사 메시지 -->
                     <div class="flex gap-3 mb-4 animate-fade-in">
-                        <img src="${this.aesongImageUrl}" class="w-10 h-10 rounded-full shadow">
+                        <img src="${this.aesongImageUrl}" class="w-10 h-10 rounded-full shadow aesong-avatar">
                         <div class="bg-white p-4 rounded-2xl rounded-tl-none shadow-md max-w-[80%] border border-pink-100">
                             <p class="text-sm text-gray-800 mb-2">안녕하세요! 우송대학교 애송이입니다! 🐶✨</p>
                             <p class="text-sm text-gray-600">
@@ -310,7 +384,7 @@ class AesongChatbot {
         
         if (type === 'ai') {
             messageDiv.innerHTML = `
-                <img src="${this.aesongImageUrl}" class="w-10 h-10 rounded-full shadow">
+                <img src="${this.aesongImageUrl}" class="w-10 h-10 rounded-full shadow aesong-avatar">
                 <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-md max-w-[80%] border border-pink-100">
                     <p class="text-sm text-gray-800 whitespace-pre-wrap">${this.escapeHtml(message)}</p>
                 </div>
@@ -333,7 +407,7 @@ class AesongChatbot {
         loadingDiv.id = 'aesong-loading';
         loadingDiv.className = 'flex gap-3 mb-4';
         loadingDiv.innerHTML = `
-            <img src="${this.aesongImageUrl}" class="w-10 h-10 rounded-full shadow">
+            <img src="${this.aesongImageUrl}" class="w-10 h-10 rounded-full shadow aesong-avatar aesong-wiggle">
             <div class="bg-white p-4 rounded-2xl shadow-md">
                 <div class="flex gap-1">
                     <div class="w-2 h-2 bg-pink-400 rounded-full animate-bounce"></div>
