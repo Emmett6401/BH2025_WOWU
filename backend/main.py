@@ -3736,6 +3736,11 @@ async def get_team_activity_logs(project_id: Optional[int] = None):
         
         logs = cursor.fetchall()
         return logs
+    except pymysql.err.ProgrammingError as e:
+        # 테이블이 없는 경우 빈 배열 반환
+        if "doesn't exist" in str(e):
+            return []
+        raise
     finally:
         conn.close()
 
