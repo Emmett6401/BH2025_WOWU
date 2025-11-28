@@ -12416,6 +12416,9 @@ let screensaverTimer = null;
 let screensaverActive = false;
 
 // 자동 새로고침 시작
+let autoRefreshCountdownTimer = null;
+let nextRefreshTime = null;
+
 async function startAutoRefresh() {
     try {
         const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
@@ -12425,19 +12428,57 @@ async function startAutoRefresh() {
             clearInterval(autoRefreshTimer);
         }
         
+        if (autoRefreshCountdownTimer) {
+            clearInterval(autoRefreshCountdownTimer);
+        }
+        
         if (minutes > 0) {
             console.log(`🔄 자동 새로고침 시작: ${minutes}분마다`);
+            
+            // 다음 새로고침 시간 설정
+            nextRefreshTime = Date.now() + minutes * 60 * 1000;
+            
+            // 메인 새로고침 타이머
             autoRefreshTimer = setInterval(() => {
                 console.log('🔄 자동 새로고침 실행');
                 const currentTab = document.querySelector('.tab-btn.bg-blue-50')?.dataset?.tab;
                 if (currentTab && typeof window.showTab === 'function') {
                     window.showTab(currentTab);
                 }
+                // 다음 새로고침 시간 갱신
+                nextRefreshTime = Date.now() + minutes * 60 * 1000;
             }, minutes * 60 * 1000);
+            
+            // 카운트다운 표시 타이머 (1초마다 업데이트)
+            autoRefreshCountdownTimer = setInterval(() => {
+                updateRefreshCountdown();
+            }, 1000);
+            
+            // 초기 카운트다운 표시
+            updateRefreshCountdown();
         }
     } catch (error) {
         console.error('자동 새로고침 설정 로드 실패:', error);
     }
+}
+
+// 자동 새로고침 카운트다운 업데이트
+function updateRefreshCountdown() {
+    const countdownElement = document.getElementById('countdown-text');
+    if (!countdownElement || !nextRefreshTime) return;
+    
+    const now = Date.now();
+    const remainingMs = nextRefreshTime - now;
+    
+    if (remainingMs <= 0) {
+        countdownElement.textContent = '새로고침 중...';
+        return;
+    }
+    
+    const remainingMinutes = Math.floor(remainingMs / 60000);
+    const remainingSeconds = Math.floor((remainingMs % 60000) / 1000);
+    
+    countdownElement.textContent = `다음 새로고침: ${remainingMinutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
 // 화면 보호기 시작
