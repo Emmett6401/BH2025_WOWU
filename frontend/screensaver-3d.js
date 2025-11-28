@@ -1,10 +1,18 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
 // Three.js 3D 화면보호기
 let scene, camera, renderer, model, mixer, clock;
 let isAnimating = false;
 
 async function init3DScreensaver() {
     const canvas = document.getElementById('threejs-canvas');
-    if (!canvas) return;
+    if (!canvas) {
+        console.error('Canvas not found!');
+        return;
+    }
+
+    console.log('🚀 Initializing 3D Screensaver...');
 
     // Scene 설정
     scene = new THREE.Scene();
@@ -48,15 +56,20 @@ async function init3DScreensaver() {
     backLight.position.set(0, 3, -5);
     scene.add(backLight);
     
+    console.log('💡 Lights added');
+    
     // GLB 모델 로드
-    const loader = new THREE.GLTFLoader();
+    const loader = new GLTFLoader();
     try {
+        console.log('📦 Loading 3D model: /aesong-bunny.glb');
+        
         const gltf = await new Promise((resolve, reject) => {
             loader.load(
                 '/aesong-bunny.glb',
                 resolve,
                 (progress) => {
-                    console.log('Loading 3D model...', (progress.loaded / progress.total * 100).toFixed(0) + '%');
+                    const percent = (progress.loaded / progress.total * 100).toFixed(0);
+                    console.log(`Loading 3D model... ${percent}%`);
                 },
                 reject
             );
@@ -80,8 +93,10 @@ async function init3DScreensaver() {
         if (gltf.animations && gltf.animations.length > 0) {
             mixer = new THREE.AnimationMixer(model);
             gltf.animations.forEach((clip) => {
-                mixer.clipAction(clip).play();
+                const action = mixer.clipAction(clip);
+                action.play();
             });
+            console.log(`🎬 Playing ${gltf.animations.length} animation(s)`);
         }
         
         console.log('✅ 3D Model loaded successfully!');
@@ -98,6 +113,8 @@ async function init3DScreensaver() {
     // 애니메이션 시작
     isAnimating = true;
     animate();
+    
+    console.log('🎪 Animation started!');
 }
 
 function animate() {
@@ -152,6 +169,7 @@ function onWindowResize() {
 }
 
 function stop3DScreensaver() {
+    console.log('🛑 Stopping 3D Screensaver');
     isAnimating = false;
     if (renderer) {
         renderer.dispose();
@@ -161,3 +179,5 @@ function stop3DScreensaver() {
 // Export functions
 window.init3DScreensaver = init3DScreensaver;
 window.stop3DScreensaver = stop3DScreensaver;
+
+console.log('📜 screensaver-3d.js loaded');

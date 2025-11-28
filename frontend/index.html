@@ -756,11 +756,15 @@
     </style>
     
     <!-- Three.js -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
-    
-    <!-- 3D 화면보호기 -->
-    <script src="screensaver-3d.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="screensaver-3d.js"></script>
     
     <!-- 애송이 챗봇 -->
     <script src="aesong-chatbot.js"></script>
