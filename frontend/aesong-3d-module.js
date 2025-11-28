@@ -314,6 +314,12 @@ function loadCharacter(characterType) {
             aesongModel = gltf.scene;
             aesongModel.position.set(0, positionY, 0);
             aesongModel.scale.set(scale, scale, scale);
+            
+            // 데이빗은 정면을 보도록 머리를 위로 살짝 들어 올림
+            if (characterType === 'david') {
+                aesongModel.rotation.x = -0.2; // 머리를 위로 (음수값 = 위로)
+            }
+            
             aesongScene.add(aesongModel);
             
             console.log(`✅ ${modelName} 3D 모델 로드 완료!`);
