@@ -226,7 +226,22 @@ function speakText(text) {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ko-KR';
     utterance.rate = 1.0;
-    utterance.pitch = 1.2; // 약간 높은 톤
+    
+    // 캐릭터에 따라 음성 설정
+    if (currentCharacterName === '데이빗') {
+        utterance.pitch = 0.8; // 남성 낮은 톤
+        // 남성 음성 선택 시도
+        const voices = synthesis.getVoices();
+        const maleVoice = voices.find(voice => 
+            voice.lang.startsWith('ko') && 
+            (voice.name.includes('Male') || voice.name.includes('남성'))
+        );
+        if (maleVoice) {
+            utterance.voice = maleVoice;
+        }
+    } else {
+        utterance.pitch = 1.2; // 애송이 - 약간 높은 톤 (여성/귀여운 톤)
+    }
     
     utterance.onstart = function() {
         updateStatusText(`🔊 ${currentCharacterName}가 말하는 중...`);

@@ -4541,7 +4541,7 @@ async def aesong_chat(data: dict):
 - 친근한 대화 상대"""
 
         payload = {
-            "model": "llama-3.1-70b-versatile",
+            "model": "llama-3.3-70b-versatile",  # 최신 모델로 변경
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": message}
