@@ -4504,6 +4504,7 @@ async def delete_notice(notice_id: int):
 async def aesong_chat(data: dict):
     """애송이 AI 챗봇 - GROQ API 사용"""
     message = data.get('message', '')
+    character = data.get('character', '애송이')  # 캐릭터 이름 받기
     
     if not message:
         raise HTTPException(status_code=400, detail="메시지가 필요합니다")
@@ -4514,7 +4515,7 @@ async def aesong_chat(data: dict):
     if not groq_api_key:
         # API 키가 없으면 기본 응답
         return {
-            "response": "안녕하세요! 저는 애송이입니다. 무엇을 도와드릴까요?",
+            "response": f"안녕하세요! 저는 {character}입니다. 무엇을 도와드릴까요?",
             "model": "default"
         }
     
@@ -4525,7 +4526,26 @@ async def aesong_chat(data: dict):
             "Content-Type": "application/json"
         }
         
-        system_prompt = """당신은 '애송이'라는 이름의 친근하고 귀여운 AI 비서입니다.
+        # 캐릭터별 페르소나 설정
+        if character == '데이빗':
+            system_prompt = """당신은 '데이빗'이라는 이름의 신뢰할 수 있는 AI 비서입니다.
+우송대학교 바이오헬스 교육 관리 시스템의 남성 도우미로, 학생들을 돕는 역할을 합니다.
+
+특징:
+- 차분하고 안정적인 톤으로 대화합니다
+- 정중하고 전문적인 말투를 사용합니다 (예: ~합니다, ~입니다)
+- 이모티콘을 사용하지 마세요 (절대 금지)
+- 학생들의 질문에 논리적이고 명확하게 답변합니다
+- 짧고 명확하게 답변합니다 (2-3문장)
+
+중요: 당신의 이름은 '데이빗'입니다. 절대 다른 이름을 사용하지 마세요.
+
+역할:
+- 우송대학교 바이오헬스 교육 관리 시스템의 남성 도우미
+- 학생 관리, 상담, 훈련일지 등에 대해 안내
+- 전문적인 상담 파트너"""
+        else:
+            system_prompt = """당신은 '애송이'라는 이름의 친근하고 귀여운 AI 비서입니다.
 우송대학교의 마스코트로, 학생들을 돕는 역할을 합니다.
 
 특징:
@@ -4534,6 +4554,8 @@ async def aesong_chat(data: dict):
 - 이모티콘을 사용하지 마세요 (절대 금지)
 - 학생들의 고민과 질문에 공감하며 답변합니다
 - 짧고 명확하게 답변합니다 (2-3문장)
+
+중요: 당신의 이름은 '애송이'입니다. 절대 다른 이름을 사용하지 마세요.
 
 역할:
 - 우송대학교 바이오헬스 교육 관리 시스템의 도우미

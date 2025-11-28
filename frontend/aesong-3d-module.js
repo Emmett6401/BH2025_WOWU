@@ -227,39 +227,53 @@ function speakText(text) {
     utterance.lang = 'ko-KR';
     utterance.rate = 1.0;
     
-    // 음성 목록 가져오기 (비동기 처리)
-    let voices = synthesis.getVoices();
+    // 음성 목록 가져오기
+    const voices = synthesis.getVoices();
     
-    // 음성 목록이 비어있으면 이벤트 대기
-    if (voices.length === 0) {
-        synthesis.addEventListener('voiceschanged', function() {
-            voices = synthesis.getVoices();
-            console.log('사용 가능한 음성 목록:', voices.map(v => v.name));
-        });
-    }
+    console.log('사용 가능한 음성 목록:', voices.map(v => `${v.name} (${v.lang})`));
     
     // 캐릭터에 따라 음성 설정
     if (currentCharacterName === '데이빗') {
-        utterance.pitch = 0.7; // 더 낮은 남성 톤
-        utterance.rate = 0.95; // 약간 느린 속도
+        // 데이빗: 남성 목소리
+        utterance.pitch = 0.6; // 매우 낮은 남성 톤
+        utterance.rate = 0.9; // 느린 속도
         
-        // 남성 음성 선택 (우선순위: Google 남성 > 기타 남성)
-        const maleVoice = voices.find(voice => 
-            voice.lang.startsWith('ko') && 
-            (voice.name.includes('Male') || 
-             voice.name.includes('남성') ||
-             voice.name.includes('남'))
+        // 한국어 음성 필터링 후 여성 음성 제외
+        const koreanVoices = voices.filter(v => v.lang.includes('ko'));
+        console.log('한국어 음성:', koreanVoices.map(v => v.name));
+        
+        // 여성 키워드 제외
+        const nonFemaleVoice = koreanVoices.find(voice => 
+            !voice.name.includes('Female') && 
+            !voice.name.includes('여성') &&
+            !voice.name.includes('여')
         );
         
-        if (maleVoice) {
-            utterance.voice = maleVoice;
-            console.log(`데이빗 음성: ${maleVoice.name}`);
-        } else {
-            console.warn('남성 음성을 찾을 수 없습니다. 기본 음성 사용');
+        if (nonFemaleVoice) {
+            utterance.voice = nonFemaleVoice;
+            console.log(`데이빗 음성 선택: ${nonFemaleVoice.name}`);
+        } else if (koreanVoices.length > 0) {
+            // 한국어 음성 중 첫 번째 사용 (낮은 pitch로 보정)
+            utterance.voice = koreanVoices[0];
+            utterance.pitch = 0.5; // 더 낮게
+            console.log(`데이빗 음성 (pitch 조정): ${koreanVoices[0].name}`);
         }
     } else {
-        utterance.pitch = 1.3; // 애송이 - 높은 톤 (여성/귀여운 톤)
-        utterance.rate = 1.05; // 약간 빠른 속도
+        // 애송이: 여성 목소리
+        utterance.pitch = 1.4; // 높은 톤 (여성/귀여운 톤)
+        utterance.rate = 1.1; // 빠른 속도
+        
+        // 한국어 여성 음성 선택
+        const koreanVoices = voices.filter(v => v.lang.includes('ko'));
+        const femaleVoice = koreanVoices.find(voice => 
+            voice.name.includes('Female') || 
+            voice.name.includes('여성')
+        );
+        
+        if (femaleVoice) {
+            utterance.voice = femaleVoice;
+            console.log(`애송이 음성 선택: ${femaleVoice.name}`);
+        }
     }
     
     utterance.onstart = function() {
@@ -289,14 +303,30 @@ function addChatMessage(sender, message) {
 
 // 캐릭터 로드 함수
 function loadCharacter(characterType) {
-    // 기존 모델 제거
+    // 기존 모델 완전히 제거
     if (aesongModel) {
-        aesongScene.remove(aesongModel);
-        aesongModel = null;
+        // 애니메이션 중지
         if (aesongMixer) {
             aesongMixer.stopAllAction();
             aesongMixer = null;
         }
+        
+        // 씬에서 제거
+        aesongScene.remove(aesongModel);
+        
+        // 메모리 해제
+        aesongModel.traverse((child) => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(material => material.dispose());
+                } else {
+                    child.material.dispose();
+                }
+            }
+        });
+        
+        aesongModel = null;
     }
     
     currentCharacter = characterType;
@@ -325,7 +355,7 @@ function loadCharacter(characterType) {
     // 현재 캐릭터 이름 저장
     currentCharacterName = modelName;
     
-    updateStatusText(`📦 ${modelName} 로딩 중...`);
+    updateStatusText(`${modelName} 로딩 중...`);
     
     loader.load(
         modelPath,
