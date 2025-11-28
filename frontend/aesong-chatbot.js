@@ -7,9 +7,14 @@ class AesongChatbot {
     constructor() {
         this.chatHistory = [];
         this.isOpen = false;
-        // API_BASE_URL 사용 (전역 변수 또는 기본값)
-        this.apiUrl = (window.API_BASE_URL || 'http://localhost:8000') + '/api/aesong-chat';
+        // API_BASE_URL 설정 (빈 문자열이면 상대 경로, 아니면 절대 경로)
+        const baseUrl = window.API_BASE_URL && window.API_BASE_URL !== '' 
+            ? window.API_BASE_URL 
+            : (window.location.protocol + '//' + window.location.hostname + ':8000');
+        this.apiUrl = baseUrl + '/api/aesong-chat';
         this.aesongImageUrl = 'https://www.genspark.ai/api/files/s/0GNDPa0z';
+        
+        console.log('🐶 애송이 챗봇 API URL:', this.apiUrl);
         
         this.init();
     }
