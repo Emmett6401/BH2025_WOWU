@@ -259,28 +259,35 @@ function speakText(text) {
     // 캐릭터에 따라 음성 설정
     if (currentCharacterName === '데이빗') {
         // 데이빗: 남성 목소리
-        utterance.pitch = 0.6; // 매우 낮은 남성 톤
-        utterance.rate = 0.9; // 느린 속도
+        utterance.pitch = 0.8; // 자연스러운 남성 톤
+        utterance.rate = 0.95; // 약간 느린 속도
         
-        // 한국어 음성 필터링 후 여성 음성 제외
+        // 한국어 음성 필터링
         const koreanVoices = voices.filter(v => v.lang.includes('ko'));
         console.log('한국어 음성:', koreanVoices.map(v => v.name));
         
-        // 여성 이름 및 키워드 제외 (Heami, Yuna 등은 여성)
-        const femaleNames = ['Heami', 'Yuna', 'Seoyeon', 'Sora', 'Female', '여성', '여'];
-        const nonFemaleVoice = koreanVoices.find(voice => {
-            const voiceName = voice.name;
-            // 여성 키워드가 하나라도 포함되면 제외
-            return !femaleNames.some(keyword => voiceName.includes(keyword));
-        });
+        // 우선순위 1: Hyunsu (남성 음성)
+        let maleVoice = koreanVoices.find(voice => voice.name.includes('Hyunsu'));
         
-        if (nonFemaleVoice) {
-            utterance.voice = nonFemaleVoice;
-            console.log(`데이빗 음성 선택: ${nonFemaleVoice.name}`);
+        if (maleVoice) {
+            utterance.voice = maleVoice;
+            console.log(`데이빗 음성 선택: ${maleVoice.name} (Hyunsu 남성)`);
         } else {
-            // 남성 음성이 없으면 매우 낮은 pitch로 보정
-            utterance.pitch = 0.4; // 극도로 낮게
-            console.log(`데이빗 음성 (극저음 pitch 조정): 기본 음성`);
+            // 우선순위 2: 여성 이름 제외
+            const femaleNames = ['Heami', 'Yuna', 'Seoyeon', 'Sora', 'Female', '여성', '여'];
+            maleVoice = koreanVoices.find(voice => {
+                const voiceName = voice.name;
+                return !femaleNames.some(keyword => voiceName.includes(keyword));
+            });
+            
+            if (maleVoice) {
+                utterance.voice = maleVoice;
+                console.log(`데이빗 음성 선택: ${maleVoice.name}`);
+            } else {
+                // 남성 음성이 없으면 매우 낮은 pitch로 보정
+                utterance.pitch = 0.5;
+                console.log(`데이빗 음성 (pitch 조정): 기본 음성`);
+            }
         }
     } else {
         // 애송이: 여성 목소리
