@@ -26,14 +26,15 @@ export function initAesong3DScene() {
     aesongScene = new THREE.Scene();
     aesongScene.background = new THREE.Color(0x667eea);
     
-    // 카메라 설정
+    // 카메라 설정 (정면에서 보기)
     aesongCamera = new THREE.PerspectiveCamera(
         50,
         container.clientWidth / container.clientHeight,
         0.1,
         1000
     );
-    aesongCamera.position.set(0, 1, 3);
+    aesongCamera.position.set(0, 0.5, 2.5); // 정면 중앙에서 보기
+    aesongCamera.lookAt(0, 0, 0); // 원점을 바라보기
     
     // 렌더러 설정
     aesongRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
@@ -86,9 +87,18 @@ export function initAesong3DScene() {
             aesongMixer.update(delta);
         }
         
-        // 자동 회전 (드래그 중이 아닐 때)
+        // 자연스러운 대화 동작 (고개 좌우로 살짝 움직임)
         if (aesongModel && !isDragging) {
-            aesongModel.rotation.y += 0.005;
+            const time = Date.now() * 0.001; // 시간 기반 애니메이션
+            
+            // 좌우로 살짝 고개 돌리기 (±15도)
+            aesongModel.rotation.y = Math.sin(time * 0.5) * 0.15;
+            
+            // 위아래로 살짝 고개 끄덕이기 (±5도)
+            aesongModel.rotation.x = Math.sin(time * 0.7) * 0.08;
+            
+            // 좌우로 살짝 기울이기 (±3도) - 더 자연스럽게
+            aesongModel.rotation.z = Math.sin(time * 0.3) * 0.05;
         }
         
         aesongRenderer.render(aesongScene, aesongCamera);
@@ -275,13 +285,13 @@ function loadCharacter(characterType) {
     if (characterType === 'aesong') {
         modelPath = '/AEsong.glb';
         modelName = '애송이';
-        scale = 1.2; // 작은 크기
-        positionY = -0.5;
+        scale = 1.5; // 적당한 크기
+        positionY = -0.2; // 가운데 위치
     } else if (characterType === 'david') {
         modelPath = '/David.glb';
         modelName = '데이빗';
-        scale = 1.2; // 작은 크기
-        positionY = -0.5;
+        scale = 1.5; // 적당한 크기
+        positionY = -0.2; // 가운데 위치
     } else {
         console.error('❌ 알 수 없는 캐릭터 타입:', characterType);
         return;
