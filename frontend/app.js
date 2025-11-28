@@ -924,46 +924,46 @@ let pagination = {
 // 알림 타이머 저장
 let alertTimer = null;
 
-window.showAlert = function(message, type = 'success') {
+window.showAlert = function(message, type = 'success', title = null) {
     const alertModal = document.getElementById('custom-alert');
     const alertMessage = document.getElementById('alert-message');
-    const alertIcon = alertModal.querySelector('.alert-icon');
+    const alertTitle = document.getElementById('alert-title');
+    const alertIcon = document.getElementById('alert-icon');
+    const alertIconContainer = document.getElementById('alert-icon-container');
+    
+    if (!alertModal || !alertMessage) {
+        console.error('Alert modal not found');
+        return;
+    }
     
     // 메시지 설정
     alertMessage.textContent = message;
     
-    // 타입에 따라 스타일과 아이콘 변경
-    const alertBox = alertModal.querySelector('.alert-box');
-    alertBox.className = 'alert-box rounded-lg p-4 shadow-lg max-w-md';
+    // 아이콘 컨테이너 초기화
+    alertIconContainer.classList.remove('bg-green-100', 'bg-red-100', 'bg-yellow-100', 'bg-blue-100');
+    alertIcon.classList.remove('text-green-600', 'text-red-600', 'text-yellow-600', 'text-blue-600');
     
+    // 타입별 스타일 적용
     if (type === 'success') {
-        alertBox.classList.add('bg-green-50', 'border', 'border-green-200');
-        alertMessage.classList.remove('text-red-800', 'text-yellow-800', 'text-blue-800');
-        alertMessage.classList.add('text-green-800');
-        if (alertIcon) {
-            alertIcon.innerHTML = '<i class="fas fa-check-circle text-green-600 text-2xl"></i>';
-        }
+        if (!title) title = '✅ 성공';
+        alertTitle.textContent = title;
+        alertIconContainer.classList.add('bg-green-100');
+        alertIcon.className = 'fas fa-check-circle text-4xl text-green-600';
     } else if (type === 'error') {
-        alertBox.classList.add('bg-red-50', 'border', 'border-red-200');
-        alertMessage.classList.remove('text-green-800', 'text-yellow-800', 'text-blue-800');
-        alertMessage.classList.add('text-red-800');
-        if (alertIcon) {
-            alertIcon.innerHTML = '<i class="fas fa-exclamation-circle text-red-600 text-2xl"></i>';
-        }
+        if (!title) title = '❌ 오류';
+        alertTitle.textContent = title;
+        alertIconContainer.classList.add('bg-red-100');
+        alertIcon.className = 'fas fa-exclamation-circle text-4xl text-red-600';
     } else if (type === 'warning') {
-        alertBox.classList.add('bg-yellow-50', 'border', 'border-yellow-200');
-        alertMessage.classList.remove('text-green-800', 'text-red-800', 'text-blue-800');
-        alertMessage.classList.add('text-yellow-800');
-        if (alertIcon) {
-            alertIcon.innerHTML = '<i class="fas fa-exclamation-triangle text-yellow-600 text-2xl"></i>';
-        }
+        if (!title) title = '⚠️ 경고';
+        alertTitle.textContent = title;
+        alertIconContainer.classList.add('bg-yellow-100');
+        alertIcon.className = 'fas fa-exclamation-triangle text-4xl text-yellow-600';
     } else {
-        alertBox.classList.add('bg-blue-50', 'border', 'border-blue-200');
-        alertMessage.classList.remove('text-green-800', 'text-red-800', 'text-yellow-800');
-        alertMessage.classList.add('text-blue-800');
-        if (alertIcon) {
-            alertIcon.innerHTML = '<i class="fas fa-info-circle text-blue-600 text-2xl"></i>';
-        }
+        if (!title) title = 'ℹ️ 알림';
+        alertTitle.textContent = title;
+        alertIconContainer.classList.add('bg-blue-100');
+        alertIcon.className = 'fas fa-info-circle text-4xl text-blue-600';
     }
     
     alertModal.classList.remove('hidden');
@@ -981,7 +981,9 @@ window.showAlert = function(message, type = 'success') {
 
 window.hideAlert = function() {
     const alertModal = document.getElementById('custom-alert');
-    alertModal.classList.add('hidden');
+    if (alertModal) {
+        alertModal.classList.add('hidden');
+    }
     
     // 타이머 취소
     if (alertTimer) {
@@ -5343,18 +5345,18 @@ window.loadStudentCounselings = async function() {
         
     } catch (error) {
         console.error('상담 기록 로드 실패:', error);
-        alert('상담 기록을 불러오는데 실패했습니다.');
+        window.showAlert('상담 기록을 불러오는데 실패했습니다.', 'error');
     }
 }
 
 window.generateAIReport = async function() {
     if (!selectedStudentForAI) {
-        alert('학생을 먼저 선택해주세요.');
+        window.showAlert('학생을 먼저 선택해주세요.', 'error');
         return;
     }
     
     if (studentCounselings.length === 0) {
-        alert('상담 기록이 없어 생기부를 생성할 수 없습니다.');
+        window.showAlert('상담 기록이 없어 생기부를 생성할 수 없습니다.', 'error');
         return;
     }
     
@@ -5394,10 +5396,10 @@ window.copyAIReport = function() {
     if (!generatedReport) return;
     
     navigator.clipboard.writeText(generatedReport).then(() => {
-        alert('AI 생기부가 클립보드에 복사되었습니다.');
+        window.showAlert('AI 생기부가 클립보드에 복사되었습니다.', 'success');
     }).catch(err => {
         console.error('복사 실패:', err);
-        alert('복사에 실패했습니다.');
+        window.showAlert('복사에 실패했습니다.', 'error');
     });
 }
 
@@ -7113,7 +7115,7 @@ window.saveCourseChanges = async function(courseCode) {
     
     try {
         await axios.put(`${API_BASE_URL}/api/courses/${courseCode}`, data);
-        alert('과정 정보가 저장되었습니다.');
+        window.showAlert('과정 정보가 저장되었습니다.', 'success');
         await loadCourses();
         selectedCourseCode = courseCode;
         renderCourses();
@@ -7131,12 +7133,12 @@ window.autoCalculateDates = async function() {
     const internshipHours = parseInt(document.getElementById('form-course-internship-hours').value) || 0;
     
     if (!startDate) {
-        alert('시작일을 먼저 입력해주세요.');
+        window.showAlert('시작일을 먼저 입력해주세요.', 'error');
         return;
     }
     
     if (lectureHours === 0 && projectHours === 0 && internshipHours === 0) {
-        alert('강의시간, 프로젝트시간, 인턴시간 중 하나 이상을 입력해주세요.');
+        window.showAlert('강의시간, 프로젝트시간, 인턴시간 중 하나 이상을 입력해주세요.', 'error');
         return;
     }
     
@@ -7467,18 +7469,18 @@ window.saveCourse = async function(existingCode) {
     
     // 유효성 검사
     if (!data.code || !data.name) {
-        alert('과정코드와 과정명은 필수 입력 항목입니다.');
+        window.showAlert('과정코드와 과정명은 필수 입력 항목입니다.', 'error');
         return;
     }
     
     try {
         if (existingCode) {
             await axios.put(`${API_BASE_URL}/api/courses/${existingCode}`, data);
-            alert('과정이 수정되었습니다.');
+            window.showAlert('과정이 수정되었습니다.', 'success');
             selectedCourseCode = data.code;
         } else {
             await axios.post(`${API_BASE_URL}/api/courses`, data);
-            alert('과정이 추가되었습니다.');
+            window.showAlert('과정이 추가되었습니다.', 'success');
             selectedCourseCode = data.code;
             // 새 과정 추가 시 빈 교과목 배열로 초기화
             courseSubjects[data.code] = [];
@@ -9262,10 +9264,10 @@ window.saveTimetable = async function(id) {
     try {
         if (id) {
             await axios.put(`${API_BASE_URL}/api/timetables/${id}`, data);
-            alert('시간표가 수정되었습니다.');
+            window.showAlert('시간표가 수정되었습니다.', 'success');
         } else {
             await axios.post(`${API_BASE_URL}/api/timetables`, data);
-            alert('시간표가 추가되었습니다.');
+            window.showAlert('시간표가 추가되었습니다.', 'success');
         }
         window.hideTimetableForm();
         loadTimetables();
@@ -9662,7 +9664,7 @@ window.showTrainingLogForm = async function(timetableId) {
         classDate.setHours(0, 0, 0, 0);
         
         if (classDate > today) {
-            alert('⚠️ 미래 날짜의 훈련일지는 작성할 수 없습니다.\n\n수업이 진행된 후에 작성해주세요.');
+            window.showAlert('미래 날짜의 훈련일지는 작성할 수 없습니다.\n\n수업이 진행된 후에 작성해주세요.', 'warning');
             return;
         }
         
