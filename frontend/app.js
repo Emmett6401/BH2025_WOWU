@@ -10004,8 +10004,21 @@ window.handleTrainingImageUpload = async function(event) {
         
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            
+            // 이미지 파일인 경우 압축 처리
+            let uploadFile = file;
+            const isImage = file.type.startsWith('image/');
+            
+            if (isImage) {
+                try {
+                    uploadFile = await window.compressImage(file, 1280, 0.7);
+                } catch (compressError) {
+                    console.warn('이미지 압축 실패, 원본 업로드:', compressError);
+                }
+            }
+            
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', uploadFile, file.name);
             
             // 프로그레스 업데이트
             const progress = ((i + 0.5) / totalFiles) * 100;
