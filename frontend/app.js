@@ -2235,6 +2235,12 @@ window.showTab = function(tab, addToHistory = true) {
     }
 }
 
+// ==================== MyPage 모달 ====================
+window.showMyPage = function() {
+    console.log('MyPage 열기');
+    showTab('my-profile');
+}
+
 // ==================== 학생 관리 ====================
 async function loadStudents() {
     try {
