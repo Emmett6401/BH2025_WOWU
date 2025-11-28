@@ -14523,7 +14523,7 @@ function renderAesong3DChat() {
                             👨‍💼
                         </div>
                         <div>
-                            <div class="text-sm font-semibold">아솔님</div>
+                            <div class="text-sm font-semibold">PM 정운표</div>
                             <div class="text-xs text-gray-500">중간 사이즈 (7.9MB)</div>
                         </div>
                     </div>

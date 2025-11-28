@@ -281,13 +281,19 @@ async function speakText(text) {
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
         
+        // 오디오가 완전히 로드될 때까지 대기
+        audio.preload = 'auto';
+        
         audio.onplay = function() {
             console.log(`${currentCharacterName} 음성 재생 시작`);
         };
         
         audio.onended = function() {
             console.log(`${currentCharacterName} 음성 재생 완료`);
-            updateStatusText('마이크 버튼을 눌러서 말해보세요');
+            // 약간의 지연 후 상태 업데이트 (음성 끝부분 잘림 방지)
+            setTimeout(() => {
+                updateStatusText('마이크 버튼을 눌러서 말해보세요');
+            }, 200);
             URL.revokeObjectURL(audioUrl); // 메모리 해제
         };
         
@@ -296,7 +302,16 @@ async function speakText(text) {
             updateStatusText('마이크 버튼을 눌러서 말해보세요');
         };
         
-        await audio.play();
+        // 오디오가 충분히 로드된 후 재생 (앞부분 잘림 방지)
+        audio.oncanplaythrough = async function() {
+            try {
+                await audio.play();
+            } catch (e) {
+                console.error('재생 실패:', e);
+            }
+        };
+        
+        audio.load();
         
     } catch (error) {
         console.error('TTS 오류:', error);
@@ -384,7 +399,7 @@ function loadCharacter(characterType) {
         positionY = -0.8; // 키가 크니까 아래로 (얼굴이 보이도록)
     } else if (characterType === 'asol') {
         modelPath = '/Asol.glb';
-        modelName = '아솔님';
+        modelName = 'PM 정운표';
         scale = 1.5; // 적당한 크기
         positionY = -0.8; // 성인 남성 키
     } else {
