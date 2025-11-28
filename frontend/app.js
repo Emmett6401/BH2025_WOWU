@@ -1,5 +1,5 @@
-// API 베이스 URL - 프록시 사용으로 상대 경로
-const API_BASE_URL = '';
+// API 베이스 URL - 백엔드 포트로 변경
+const API_BASE_URL = window.location.origin.replace('3000', '8000');
 
 // ==================== 로컬 캐싱 유틸리티 ====================
 const CACHE_VERSION = '2.0.0'; // 캐시 버전 (업데이트 시 증가)
