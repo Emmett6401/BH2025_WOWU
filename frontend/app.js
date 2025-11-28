@@ -5539,6 +5539,7 @@ window.showInstructorCodeForm = function(code = null) {
         { id: 'ai-report', name: 'AI 생기부', icon: 'fa-file-alt' },
         { id: 'ai-training-log', name: 'AI 훈련일지', icon: 'fa-brain' },
         { id: 'ai-counseling', name: 'AI 상담일지', icon: 'fa-comments' },
+        { id: 'aesong-3d-chat', name: '🐶 애송이 만나기', icon: 'fa-robot' },
         { id: 'projects', name: '팀 관리', icon: 'fa-users' },
         { id: 'team-activity-logs', name: '팀 활동일지', icon: 'fa-clipboard-list' }
     ];
