@@ -290,11 +290,11 @@ async function speakText(text) {
         
         audio.onended = function() {
             console.log(`${currentCharacterName} 음성 재생 완료`);
-            // 약간의 지연 후 상태 업데이트 (음성 끝부분 잘림 방지)
+            // 더 긴 지연으로 음성 끝부분 완전히 보호 (500ms)
             setTimeout(() => {
                 updateStatusText('마이크 버튼을 눌러서 말해보세요');
-            }, 200);
-            URL.revokeObjectURL(audioUrl); // 메모리 해제
+                URL.revokeObjectURL(audioUrl); // 메모리 해제
+            }, 500);
         };
         
         audio.onerror = function() {
@@ -305,6 +305,8 @@ async function speakText(text) {
         // 오디오가 충분히 로드된 후 재생 (앞부분 잘림 방지)
         audio.oncanplaythrough = async function() {
             try {
+                // 약간의 지연 후 재생 (앞부분 완전히 보호, 300ms)
+                await new Promise(resolve => setTimeout(resolve, 300));
                 await audio.play();
             } catch (e) {
                 console.error('재생 실패:', e);
