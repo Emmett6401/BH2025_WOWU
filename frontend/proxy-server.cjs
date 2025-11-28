@@ -15,7 +15,9 @@ const mimeTypes = {
     '.jpg': 'image/jpg',
     '.gif': 'image/gif',
     '.svg': 'image/svg+xml',
-    '.ico': 'image/x-icon'
+    '.ico': 'image/x-icon',
+    '.glb': 'model/gltf-binary',
+    '.gltf': 'model/gltf+json'
 };
 
 const server = http.createServer((req, res) => {
@@ -46,7 +48,14 @@ const server = http.createServer((req, res) => {
 
     // 정적 파일 서빙 - 쿼리 스트링 제거
     const urlPath = req.url.split('?')[0]; // 쿼리 스트링 제거
-    let filePath = path.join(__dirname, urlPath);
+    
+    // .glb 파일은 dist 폴더에서 찾기
+    let filePath;
+    if (urlPath.endsWith('.glb') || urlPath.endsWith('.gltf')) {
+        filePath = path.join(__dirname, '..', 'dist', urlPath);
+    } else {
+        filePath = path.join(__dirname, urlPath);
+    }
     
     // 루트 경로는 데스크탑 index.html로
     if (urlPath === '/') {
