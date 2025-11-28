@@ -426,9 +426,14 @@ function loadCharacter(characterType) {
             }
         },
         function(xhr) {
-            const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
-            console.log(`${modelName} 로딩: ${percent}%`);
-            updateStatusText(`${modelName} 로딩 중... ${percent}%`);
+            if (xhr.total > 0) {
+                const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
+                console.log(`${modelName} 로딩: ${percent}%`);
+                updateStatusText(`${modelName} 로딩 중... ${percent}%`);
+            } else {
+                console.log(`${modelName} 로딩 중...`);
+                updateStatusText(`${modelName} 로딩 중...`);
+            }
         },
         function(error) {
             console.error(`${modelName} 모델 로드 실패:`, error);

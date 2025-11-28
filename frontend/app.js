@@ -14448,9 +14448,9 @@ function renderAesong3DChat() {
             
             .status-text {
                 position: absolute;
-                top: 50%;
+                bottom: 80px;
                 left: 50%;
-                transform: translate(-50%, -50%);
+                transform: translateX(-50%);
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 padding: 20px 40px;
                 border-radius: 15px;
