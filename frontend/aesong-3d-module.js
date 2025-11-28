@@ -399,7 +399,7 @@ function loadCharacter(characterType) {
         scale = 1.5; // 적당한 크기
         positionY = -0.8; // 키가 크니까 아래로 (얼굴이 보이도록)
     } else if (characterType === 'asol') {
-        modelPath = '/Asol.glb';
+        modelPath = '/pmjung.glb';
         modelName = 'PM 정운표';
         scale = 1.5; // 적당한 크기
         positionY = -0.8; // 성인 남성 키
