@@ -14518,6 +14518,15 @@ function renderAesong3DChat() {
                             <div class="text-xs text-gray-500">작은 사이즈 (1.3MB)</div>
                         </div>
                     </div>
+                    <div class="character-option" data-character="asol" onclick="window.switchCharacter('asol')">
+                        <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%); border-radius: 10px; margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                            👨‍💼
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold">아솔님</div>
+                            <div class="text-xs text-gray-500">중간 사이즈 (7.9MB)</div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="status-text" id="status-text" style="display: none;">

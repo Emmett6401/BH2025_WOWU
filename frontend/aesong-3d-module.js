@@ -382,6 +382,11 @@ function loadCharacter(characterType) {
         modelName = '데이빗';
         scale = 1.5; // 적당한 크기
         positionY = -0.8; // 키가 크니까 아래로 (얼굴이 보이도록)
+    } else if (characterType === 'asol') {
+        modelPath = '/Asol.glb';
+        modelName = '아솔님';
+        scale = 1.5; // 적당한 크기
+        positionY = -0.8; // 성인 남성 키
     } else {
         console.error('알 수 없는 캐릭터 타입:', characterType);
         return;
