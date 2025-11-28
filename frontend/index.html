@@ -645,7 +645,7 @@
             z-index: 1;
         }
         
-        /* 애송이 움직이는 애니메이션 (50% 크기) */
+        /* 애송이 움직이는 애니메이션 (3D 효과) */
         .aesong-moving {
             position: absolute;
             width: auto;
@@ -653,47 +653,109 @@
             max-width: none;
             object-fit: none;
             transform: scale(0.5);
-            animation: aesongMove 12s ease-in-out infinite;
-            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+            animation: aesongMove3D 15s ease-in-out infinite, aesongGlow 3s ease-in-out infinite;
+            filter: drop-shadow(0 15px 30px rgba(255, 105, 180, 0.4));
             transform-style: preserve-3d;
             pointer-events: none;
             z-index: 2;
+            perspective: 1000px;
         }
         
-        /* 애송이가 화면을 돌아다니는 애니메이션 (50% 크기) */
-        @keyframes aesongMove {
+        /* 애송이가 3D로 회전하며 화면을 돌아다니는 애니메이션 */
+        @keyframes aesongMove3D {
             0% {
-                transform: translate(-50vw, -50vh) rotate(0deg) scale(0.5);
+                transform: translate(-50vw, -50vh) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(0.5);
+                opacity: 1;
+            }
+            5% {
+                transform: translate(-35vw, -40vh) rotateX(20deg) rotateY(30deg) rotateZ(10deg) scale(0.55);
+                opacity: 0.95;
             }
             10% {
-                transform: translate(-20vw, -30vh) rotate(20deg) scale(0.5);
+                transform: translate(-20vw, -30vh) rotateX(45deg) rotateY(60deg) rotateZ(20deg) scale(0.6);
+                opacity: 0.9;
+            }
+            15% {
+                transform: translate(0vw, -35vh) rotateX(-30deg) rotateY(90deg) rotateZ(-15deg) scale(0.5);
+                opacity: 0.85;
             }
             20% {
-                transform: translate(10vw, -35vh) rotate(-15deg) scale(0.5);
+                transform: translate(10vw, -35vh) rotateX(-45deg) rotateY(120deg) rotateZ(-25deg) scale(0.45);
+                opacity: 0.9;
+            }
+            25% {
+                transform: translate(25vw, -25vh) rotateX(60deg) rotateY(150deg) rotateZ(30deg) scale(0.55);
+                opacity: 0.95;
             }
             30% {
-                transform: translate(30vw, -20vh) rotate(30deg) scale(0.5);
+                transform: translate(30vw, -20vh) rotateX(90deg) rotateY(180deg) rotateZ(40deg) scale(0.6);
+                opacity: 1;
+            }
+            35% {
+                transform: translate(35vw, 0vh) rotateX(-60deg) rotateY(210deg) rotateZ(-35deg) scale(0.5);
+                opacity: 0.95;
             }
             40% {
-                transform: translate(35vw, 10vh) rotate(-25deg) scale(0.5);
+                transform: translate(35vw, 10vh) rotateX(-90deg) rotateY(240deg) rotateZ(-45deg) scale(0.45);
+                opacity: 0.9;
+            }
+            45% {
+                transform: translate(30vw, 25vh) rotateX(75deg) rotateY(270deg) rotateZ(25deg) scale(0.55);
+                opacity: 0.95;
             }
             50% {
-                transform: translate(20vw, 30vh) rotate(15deg) scale(0.5);
+                transform: translate(20vw, 30vh) rotateX(120deg) rotateY(300deg) rotateZ(35deg) scale(0.6);
+                opacity: 1;
+            }
+            55% {
+                transform: translate(5vw, 35vh) rotateX(-45deg) rotateY(330deg) rotateZ(-30deg) scale(0.5);
+                opacity: 0.95;
             }
             60% {
-                transform: translate(-10vw, 35vh) rotate(-20deg) scale(0.5);
+                transform: translate(-10vw, 35vh) rotateX(-75deg) rotateY(360deg) rotateZ(-40deg) scale(0.45);
+                opacity: 0.9;
+            }
+            65% {
+                transform: translate(-25vw, 30vh) rotateX(90deg) rotateY(390deg) rotateZ(30deg) scale(0.55);
+                opacity: 0.95;
             }
             70% {
-                transform: translate(-30vw, 25vh) rotate(25deg) scale(0.5);
+                transform: translate(-30vw, 25vh) rotateX(135deg) rotateY(420deg) rotateZ(45deg) scale(0.6);
+                opacity: 1;
+            }
+            75% {
+                transform: translate(-35vw, 10vh) rotateX(-90deg) rotateY(450deg) rotateZ(-35deg) scale(0.5);
+                opacity: 0.95;
             }
             80% {
-                transform: translate(-35vw, -5vh) rotate(-30deg) scale(0.5);
+                transform: translate(-35vw, -5vh) rotateX(-120deg) rotateY(480deg) rotateZ(-50deg) scale(0.45);
+                opacity: 0.9;
+            }
+            85% {
+                transform: translate(-30vw, -20vh) rotateX(105deg) rotateY(510deg) rotateZ(35deg) scale(0.55);
+                opacity: 0.95;
             }
             90% {
-                transform: translate(-25vw, -25vh) rotate(10deg) scale(0.5);
+                transform: translate(-25vw, -25vh) rotateX(150deg) rotateY(540deg) rotateZ(40deg) scale(0.6);
+                opacity: 1;
+            }
+            95% {
+                transform: translate(-40vw, -35vh) rotateX(-75deg) rotateY(600deg) rotateZ(-30deg) scale(0.55);
+                opacity: 0.95;
             }
             100% {
-                transform: translate(-50vw, -50vh) rotate(0deg) scale(0.5);
+                transform: translate(-50vw, -50vh) rotateX(0deg) rotateY(720deg) rotateZ(0deg) scale(0.5);
+                opacity: 1;
+            }
+        }
+        
+        /* 반짝이는 효과 */
+        @keyframes aesongGlow {
+            0%, 100% {
+                filter: drop-shadow(0 15px 30px rgba(255, 105, 180, 0.4)) brightness(1);
+            }
+            50% {
+                filter: drop-shadow(0 20px 40px rgba(255, 182, 193, 0.7)) brightness(1.2);
             }
         }
     </style>
