@@ -6,7 +6,7 @@ let aesongScene, aesongCamera, aesongRenderer, aesongModel, aesongAnimationId, a
 let isRecording = false;
 let recognition = null;
 let synthesis = window.speechSynthesis;
-let currentCharacter = 'character1'; // 기본 캐릭터
+let currentCharacter = 'aesong'; // 기본 캐릭터 (애송이)
 let isDragging = false;
 let previousMousePosition = { x: 0, y: 0 };
 
@@ -265,67 +265,61 @@ function loadCharacter(characterType) {
     }
     
     currentCharacter = characterType;
+    const loader = new GLTFLoader();
     
-    if (characterType === 'character1') {
-        // 2D PNG 스프라이트 (작은 크기)
-        const textureLoader = new THREE.TextureLoader();
-        textureLoader.load(
-            '/aesong-character.png',
-            function(texture) {
-                const spriteMaterial = new THREE.SpriteMaterial({ 
-                    map: texture,
-                    transparent: true
-                });
-                aesongModel = new THREE.Sprite(spriteMaterial);
-                aesongModel.position.set(0, 0, 0);
-                aesongModel.scale.set(1, 1, 1); // 작은 크기
-                aesongScene.add(aesongModel);
-                
-                console.log('✅ 애송이 2D 캐릭터 로드 완료!');
-                updateStatusText('✅ 애송이 2D가 준비되었어요!');
-            },
-            undefined,
-            function(error) {
-                console.error('❌ 2D 이미지 로드 실패:', error);
-                updateStatusText('❌ 캐릭터를 불러오는데 실패했어요');
-            }
-        );
-    } else if (characterType === 'character2') {
-        // 3D GLB 모델 (큰 크기)
-        const loader = new GLTFLoader();
-        updateStatusText('📦 3D 캐릭터 로딩 중...');
-        
-        loader.load(
-            '/aesong-bunny.glb',
-            function(gltf) {
-                aesongModel = gltf.scene;
-                aesongModel.position.set(0, -1, 0);
-                aesongModel.scale.set(0.8, 0.8, 0.8); // 크기 줄임 (원래 1.5)
-                aesongScene.add(aesongModel);
-                
-                console.log('✅ 3D 토끼 캐릭터 로드 완료!');
-                updateStatusText('✅ 3D 토끼가 준비되었어요!');
-                
-                // 애니메이션 설정
-                if (gltf.animations && gltf.animations.length > 0) {
-                    aesongMixer = new THREE.AnimationMixer(aesongModel);
-                    gltf.animations.forEach((clip) => {
-                        const action = aesongMixer.clipAction(clip);
-                        action.play();
-                    });
-                }
-            },
-            function(xhr) {
-                const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
-                console.log(`📦 3D 로딩: ${percent}%`);
-                updateStatusText(`📦 3D 캐릭터 로딩 중... ${percent}%`);
-            },
-            function(error) {
-                console.error('❌ 3D 모델 로드 실패:', error);
-                updateStatusText('❌ 3D 캐릭터를 불러오는데 실패했어요');
-            }
-        );
+    let modelPath = '';
+    let modelName = '';
+    let scale = 1.0;
+    let positionY = 0;
+    
+    if (characterType === 'aesong') {
+        modelPath = '/AEsong.glb';
+        modelName = '애송이';
+        scale = 1.2; // 작은 크기
+        positionY = -0.5;
+    } else if (characterType === 'david') {
+        modelPath = '/David.glb';
+        modelName = '데이빗';
+        scale = 1.2; // 작은 크기
+        positionY = -0.5;
+    } else {
+        console.error('❌ 알 수 없는 캐릭터 타입:', characterType);
+        return;
     }
+    
+    updateStatusText(`📦 ${modelName} 로딩 중...`);
+    
+    loader.load(
+        modelPath,
+        function(gltf) {
+            aesongModel = gltf.scene;
+            aesongModel.position.set(0, positionY, 0);
+            aesongModel.scale.set(scale, scale, scale);
+            aesongScene.add(aesongModel);
+            
+            console.log(`✅ ${modelName} 3D 모델 로드 완료!`);
+            updateStatusText(`✅ ${modelName}가 준비되었어요!`);
+            
+            // 애니메이션 설정
+            if (gltf.animations && gltf.animations.length > 0) {
+                aesongMixer = new THREE.AnimationMixer(aesongModel);
+                gltf.animations.forEach((clip) => {
+                    const action = aesongMixer.clipAction(clip);
+                    action.play();
+                });
+                console.log(`🎬 ${modelName} 애니메이션 ${gltf.animations.length}개 재생 중`);
+            }
+        },
+        function(xhr) {
+            const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
+            console.log(`📦 ${modelName} 로딩: ${percent}%`);
+            updateStatusText(`📦 ${modelName} 로딩 중... ${percent}%`);
+        },
+        function(error) {
+            console.error(`❌ ${modelName} 모델 로드 실패:`, error);
+            updateStatusText(`❌ ${modelName}를 불러오는데 실패했어요`);
+        }
+    );
 }
 
 // 캐릭터 전환 함수

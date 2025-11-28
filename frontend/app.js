@@ -14523,18 +14523,22 @@ function renderAesong3DChat() {
                     <div class="text-sm font-semibold text-gray-700 mb-2">
                         <i class="fas fa-user-circle mr-1"></i>캐릭터 선택
                     </div>
-                    <div class="character-option active" data-character="character1" onclick="window.switchCharacter('character1')">
-                        <img src="/aesong-character.png" alt="캐릭터 1">
+                    <div class="character-option active" data-character="aesong" onclick="window.switchCharacter('aesong')">
+                        <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                            🐶
+                        </div>
                         <div>
-                            <div class="text-sm font-semibold">애송이 (2D)</div>
-                            <div class="text-xs text-gray-500">작은 사이즈</div>
+                            <div class="text-sm font-semibold">애송이</div>
+                            <div class="text-xs text-gray-500">작은 사이즈 (1.5MB)</div>
                         </div>
                     </div>
-                    <div class="character-option" data-character="character2" onclick="window.switchCharacter('character2')">
-                        <img src="/aesong-bunny.glb" alt="캐릭터 2" onerror="this.src='/aesong-character.png'">
+                    <div class="character-option" data-character="david" onclick="window.switchCharacter('david')">
+                        <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 10px; margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                            🧑
+                        </div>
                         <div>
-                            <div class="text-sm font-semibold">토끼 (3D)</div>
-                            <div class="text-xs text-gray-500">큰 사이즈</div>
+                            <div class="text-sm font-semibold">데이빗</div>
+                            <div class="text-xs text-gray-500">작은 사이즈 (1.3MB)</div>
                         </div>
                     </div>
                 </div>
