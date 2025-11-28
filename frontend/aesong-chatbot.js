@@ -25,8 +25,8 @@ class AesongChatbot {
         }
         
         this.apiUrl = baseUrl + '/api/aesong-chat';
-        // 캐시 무효화를 위한 타임스탬프 추가
-        this.aesongImageUrl = 'https://www.genspark.ai/api/files/s/VbB8BdAr?v=' + Date.now();
+        // 로컬 이미지 사용 (캐시 무효화를 위한 타임스탬프 추가)
+        this.aesongImageUrl = '/aesong-character.png?v=' + Date.now();
         
         console.log('🐶 애송이 챗봇 API URL:', this.apiUrl);
         console.log('🐶 애송이 이미지 URL:', this.aesongImageUrl);
