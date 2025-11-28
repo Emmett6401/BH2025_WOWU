@@ -12613,6 +12613,38 @@ document.addEventListener('keydown', handleUserActivity);
 document.addEventListener('click', handleUserActivity);
 document.addEventListener('scroll', handleUserActivity);
 
+// ==================== 실시간 날짜/시간 표시 ====================
+function updateCurrentDateTime() {
+    const now = new Date();
+    
+    // 요일 배열
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const dayName = days[now.getDay()];
+    
+    // 날짜 포맷: 2025.11.28 (금)
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const date = String(now.getDate()).padStart(2, '0');
+    
+    // 시간 포맷: 16:46:03
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    
+    const dateTimeString = `${year}.${month}.${date} (${dayName}) ${hours}:${minutes}:${seconds}`;
+    
+    const datetimeElement = document.getElementById('current-datetime');
+    if (datetimeElement) {
+        datetimeElement.textContent = dateTimeString;
+    }
+}
+
+// 1초마다 시간 업데이트
+function startClock() {
+    updateCurrentDateTime();
+    setInterval(updateCurrentDateTime, 1000);
+}
+
 // ==================== 페이지 로드 시 헤더 업데이트 및 권한 체크 ====================
 // 페이지가 완전히 로드된 후 헤더 업데이트 및 메뉴 권한 체크 실행
 if (document.readyState === 'loading') {
@@ -12621,6 +12653,7 @@ if (document.readyState === 'loading') {
         applyMenuPermissions();
         startAutoRefresh();
         startScreensaver();
+        startClock();
     });
 } else {
     // 이미 로드된 경우 즉시 실행
@@ -12628,4 +12661,5 @@ if (document.readyState === 'loading') {
     applyMenuPermissions();
     startAutoRefresh();
     startScreensaver();
+    startClock();
 }
