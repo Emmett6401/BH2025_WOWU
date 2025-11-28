@@ -4633,7 +4633,7 @@ async def aesong_chat(data: dict):
 # ==================== Google Cloud TTS API ====================
 @app.post("/api/tts")
 async def text_to_speech(data: dict):
-    """Google Cloud TTS - 텍스트를 음성으로 변환"""
+    """Google Cloud TTS - 텍스트를 음성으로 변환 (개선된 파라미터)"""
     text = data.get('text', '')
     character = data.get('character', '애송이')
     
@@ -4647,15 +4647,15 @@ async def text_to_speech(data: dict):
         raise HTTPException(status_code=500, detail="Google Cloud TTS API 키가 설정되지 않았습니다")
     
     try:
-        # 캐릭터별 음성 설정
+        # 캐릭터별 음성 설정 (자연스러운 파라미터로 개선)
         if character == '데이빗':
-            voice_name = "ko-KR-Wavenet-C"  # 남성 음성
-            pitch = -2.0  # 낮은 톤
-            speaking_rate = 0.95  # 느린 속도
+            voice_name = "ko-KR-Neural2-C"  # Neural2 남성 음성 (더 자연스러움)
+            pitch = -3.0  # 적당히 낮은 톤
+            speaking_rate = 0.95  # 조금 느린 속도
         else:
-            voice_name = "ko-KR-Wavenet-A"  # 여성 음성
-            pitch = 2.0  # 높은 톤
-            speaking_rate = 1.05  # 약간 빠른 속도
+            voice_name = "ko-KR-Neural2-A"  # Neural2 여성 음성 (더 자연스러움)
+            pitch = 2.0  # 적당히 높은 톤
+            speaking_rate = 1.0  # 보통 속도
         
         # Google Cloud TTS API 요청
         url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={api_key}"
@@ -4671,7 +4671,9 @@ async def text_to_speech(data: dict):
             "audioConfig": {
                 "audioEncoding": "MP3",
                 "pitch": pitch,
-                "speakingRate": speaking_rate
+                "speakingRate": speaking_rate,
+                "volumeGainDb": 0.0,
+                "effectsProfileId": ["headphone-class-device"]  # 헤드폰 최적화
             }
         }
         
