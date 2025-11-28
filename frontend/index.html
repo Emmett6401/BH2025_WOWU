@@ -612,9 +612,10 @@
     <!-- 화면보호기 오버레이 (자동 새로고침 시 표시) -->
     <div id="screensaver" class="screensaver hidden">
         <div class="screensaver-blur"></div>
-        <div class="screensaver-logo">
-            <img src="/woosong-logo.png" alt="Logo" class="logo-floating">
-            <p class="text-white text-lg font-semibold mt-4 text-center animate-pulse">데이터 새로고침 중...</p>
+        <div class="screensaver-content">
+            <img src="/aesong-character.png" alt="애송이" class="aesong-moving">
+            <p class="text-white text-2xl font-bold mt-8 text-center animate-pulse">🐶 애송이가 지키고 있어요! 🐶</p>
+            <p class="text-white text-lg mt-2 text-center opacity-80">데이터 새로고침 중...</p>
         </div>
     </div>
     
@@ -647,65 +648,74 @@
             background: rgba(0, 0, 0, 0.3);
         }
         
-        /* 떠다니는 로고 컨테이너 */
-        .screensaver-logo {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        /* 화면보호기 컨텐츠 컨테이너 */
+        .screensaver-content {
+            position: relative;
             z-index: 10000;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            pointer-events: none;  /* 클릭 이벤트 방지 */
-            perspective: 1200px;  /* 3D 원근감 효과 */
-            transform-style: preserve-3d;  /* 3D 변환 유지 */
+            pointer-events: none;
+            perspective: 1500px;
+            transform-style: preserve-3d;
         }
         
-        /* 떠다니는 로고 애니메이션 */
-        .logo-floating {
-            width: 15vmin;  /* 화면 크기의 15% (작은 쪽 기준) */
-            height: 15vmin;
+        /* 애송이 움직이는 애니메이션 */
+        .aesong-moving {
+            width: 200px;
+            height: 200px;
             object-fit: contain;
-            border-radius: 20%;  /* 모서리 라운드 처리 */
-            animation: floatWild3D 8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;  /* 8초로 늘리고 부드러운 타이밍 */
-            filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.4));
-            transition: all 0.5s ease;  /* 전환 시간 늘림 */
-            transform-style: preserve-3d;  /* 3D 변환 유지 */
-            backface-visibility: visible;  /* 뒷면도 보이게 */
+            animation: aesongMove 12s ease-in-out infinite;
+            filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.5));
+            transform-style: preserve-3d;
         }
         
-        /* 전체 화면을 부드럽게 돌아다니는 3D 애니메이션 - 스무스~ */
-        @keyframes floatWild3D {
+        /* 애송이가 화면을 돌아다니는 애니메이션 */
+        @keyframes aesongMove {
             0% {
-                transform: translate(0vw, 0vh) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1);
+                transform: translate(0vw, 0vh) rotate(0deg) scale(1);
             }
-            12.5% {
-                transform: translate(20vw, -12vh) rotateX(90deg) rotateY(45deg) rotateZ(30deg) scale(1.05);
+            10% {
+                transform: translate(25vw, -15vh) rotate(20deg) scale(1.1);
             }
-            25% {
-                transform: translate(30vw, 8vh) rotateX(135deg) rotateY(90deg) rotateZ(60deg) scale(0.95);
+            20% {
+                transform: translate(35vw, 10vh) rotate(-15deg) scale(0.95);
             }
-            37.5% {
-                transform: translate(15vw, 18vh) rotateX(180deg) rotateY(135deg) rotateZ(90deg) scale(1.1);
+            30% {
+                transform: translate(20vw, 20vh) rotate(30deg) scale(1.05);
+            }
+            40% {
+                transform: translate(-20vw, 15vh) rotate(-25deg) scale(1);
             }
             50% {
-                transform: translate(-25vw, 12vh) rotateX(225deg) rotateY(180deg) rotateZ(120deg) scale(1);
+                transform: translate(-35vw, -10vh) rotate(15deg) scale(1.08);
             }
-            62.5% {
-                transform: translate(-30vw, -8vh) rotateX(270deg) rotateY(225deg) rotateZ(150deg) scale(1.08);
+            60% {
+                transform: translate(-30vw, -20vh) rotate(-20deg) scale(0.92);
             }
-            75% {
-                transform: translate(-15vw, -18vh) rotateX(315deg) rotateY(270deg) rotateZ(180deg) scale(0.92);
+            70% {
+                transform: translate(-10vw, -25vh) rotate(25deg) scale(1.03);
             }
-            87.5% {
-                transform: translate(10vw, -15vh) rotateX(345deg) rotateY(315deg) rotateZ(210deg) scale(1.03);
+            80% {
+                transform: translate(15vw, -18vh) rotate(-30deg) scale(0.98);
+            }
+            90% {
+                transform: translate(30vw, -5vh) rotate(10deg) scale(1.02);
             }
             100% {
-                transform: translate(0vw, 0vh) rotateX(360deg) rotateY(360deg) rotateZ(240deg) scale(1);
+                transform: translate(0vw, 0vh) rotate(0deg) scale(1);
             }
         }
     </style>
+    
+    <!-- 애송이 챗봇 -->
+    <script src="aesong-chatbot.js"></script>
+    <script>
+        // 챗봇 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            window.aesongChatbot = new AesongChatbot();
+        });
+    </script>
 </body>
 </html>
