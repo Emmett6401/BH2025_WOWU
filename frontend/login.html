@@ -423,6 +423,12 @@
                     // 로그인 성공
                     const instructor = response.data.instructor;
                     
+                    // 애송이 축하 애니메이션! 🎉
+                    const aesongAvatar = document.querySelector('.aesong-helper-avatar');
+                    if (aesongAvatar) {
+                        aesongAvatar.style.animation = 'spin 0.5s ease-in-out, bounce 0.8s ease-in-out 0.5s';
+                    }
+                    
                     // 세션 스토리지에 강사 정보 저장 (브라우저 닫으면 삭제됨)
                     sessionStorage.setItem('instructor', JSON.stringify(instructor));
                     sessionStorage.setItem('logged_in', 'true');
@@ -440,7 +446,7 @@
                     localStorage.removeItem('instructor_password');
                     localStorage.removeItem('auto_login');
                     
-                    showAlert(response.data.message, 'success');
+                    showAlert(response.data.message + ' 🎉', 'success');
                     
                     // 1초 후 메인 페이지로 이동 (초기 화면 설정이 있으면 해당 메뉴로 이동)
                     setTimeout(() => {
@@ -492,6 +498,12 @@
                     // 로그인 성공
                     const student = response.data.student;
                     
+                    // 애송이 축하 애니메이션! 🎉
+                    const aesongAvatar = document.querySelector('.aesong-helper-avatar');
+                    if (aesongAvatar) {
+                        aesongAvatar.style.animation = 'spin 0.5s ease-in-out, bounce 0.8s ease-in-out 0.5s';
+                    }
+                    
                     // 세션 스토리지에 학생 정보 저장 (브라우저 닫으면 삭제됨)
                     sessionStorage.setItem('student', JSON.stringify(student));
                     sessionStorage.setItem('user_type', 'student');
@@ -506,7 +518,7 @@
                         localStorage.removeItem('remember_student_name');
                     }
                     
-                    showAlert(response.data.message, 'success');
+                    showAlert(response.data.message + ' 🎉', 'success');
                     
                     // 1초 후 학생 페이지로 이동
                     setTimeout(() => {
@@ -605,20 +617,110 @@
         }
         
         @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            25% { transform: translateY(-8px) rotate(-3deg); }
+            50% { transform: translateY(-15px) rotate(0deg); }
+            75% { transform: translateY(-8px) rotate(3deg); }
+        }
+        
+        @keyframes wiggle {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            25% { transform: translateX(-5px) rotate(-5deg); }
+            50% { transform: translateX(0) rotate(0deg); }
+            75% { transform: translateX(5px) rotate(5deg); }
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            25% { transform: translateY(-20px) scale(1.05); }
+            50% { transform: translateY(0) scale(1); }
+            75% { transform: translateY(-10px) scale(1.02); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px) rotate(-3deg); }
+            20%, 40%, 60%, 80% { transform: translateX(5px) rotate(3deg); }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.1); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            10%, 30% { transform: scale(1.1); }
+            20%, 40% { transform: scale(1); }
         }
         
         .aesong-helper-avatar {
-            animation: float 3s ease-in-out infinite;
+            animation: float 4s ease-in-out infinite;
             cursor: pointer;
-            transition: transform 0.3s ease;
+            transition: all 0.3s ease;
         }
         
         .aesong-helper-avatar:hover {
             animation: wave 1s ease-in-out;
-            transform: scale(1.1);
+            transform: scale(1.15);
+        }
+        
+        .aesong-helper-avatar:active {
+            animation: spin 0.5s ease-in-out;
+        }
+        
+        /* 애송이 말풍선 애니메이션 */
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .aesong-message {
+            animation: slideInRight 0.5s ease-out;
         }
     </style>
+    
+    <!-- 애송이 자동 애니메이션 변경 스크립트 -->
+    <script>
+        // 애송이 자동 애니메이션
+        const aesongAvatar = document.querySelector('.aesong-helper-avatar');
+        const animations = ['float', 'wiggle', 'bounce', 'shake', 'heartbeat'];
+        let currentAnimIndex = 0;
+        
+        if (aesongAvatar) {
+            // 7초마다 애니메이션 변경
+            setInterval(() => {
+                currentAnimIndex = (currentAnimIndex + 1) % animations.length;
+                const newAnimation = animations[currentAnimIndex];
+                
+                // 모든 애니메이션 제거
+                aesongAvatar.style.animation = 'none';
+                
+                // 약간의 지연 후 새 애니메이션 적용
+                setTimeout(() => {
+                    aesongAvatar.style.animation = `${newAnimation} 3s ease-in-out infinite`;
+                }, 10);
+                
+                console.log('🐶 애송이 애니메이션:', newAnimation);
+            }, 7000);
+            
+            // 애송이 클릭 시 랜덤 애니메이션
+            aesongAvatar.addEventListener('click', () => {
+                const randomAnim = animations[Math.floor(Math.random() * animations.length)];
+                aesongAvatar.style.animation = `${randomAnim} 1s ease-in-out`;
+                
+                setTimeout(() => {
+                    aesongAvatar.style.animation = `${animations[currentAnimIndex]} 3s ease-in-out infinite`;
+                }, 1000);
+            });
+        }
+    </script>
 </body>
 </html>
