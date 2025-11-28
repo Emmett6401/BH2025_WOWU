@@ -3879,6 +3879,10 @@ async def get_system_settings():
             settings_dict['system_subtitle2'] = '바이오헬스아카데미 올인원테크 이노베이터'
         if 'logo_url' not in settings_dict:
             settings_dict['logo_url'] = '/woosong-logo.png'
+        if 'auto_refresh_minutes' not in settings_dict:
+            settings_dict['auto_refresh_minutes'] = '5'  # 기본값: 5분
+        if 'screensaver_seconds' not in settings_dict:
+            settings_dict['screensaver_seconds'] = '180'  # 기본값: 180초 (3분)
         
         return settings_dict
     except Exception as e:
@@ -3893,7 +3897,9 @@ async def update_system_settings(
     system_title: Optional[str] = Form(None),
     system_subtitle1: Optional[str] = Form(None),
     system_subtitle2: Optional[str] = Form(None),
-    logo_url: Optional[str] = Form(None)
+    logo_url: Optional[str] = Form(None),
+    auto_refresh_minutes: Optional[str] = Form(None),
+    screensaver_seconds: Optional[str] = Form(None)
 ):
     """시스템 설정 업데이트"""
     print(f"📝 시스템 설정 업데이트 요청:")
@@ -3913,7 +3919,9 @@ async def update_system_settings(
             'system_title': system_title,
             'system_subtitle1': system_subtitle1,
             'system_subtitle2': system_subtitle2,
-            'logo_url': logo_url
+            'logo_url': logo_url,
+            'auto_refresh_minutes': auto_refresh_minutes,
+            'screensaver_seconds': screensaver_seconds
         }
         
         update_count = 0

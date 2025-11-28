@@ -11020,6 +11020,34 @@ function renderSystemSettings(settings) {
                     <input type="hidden" id="logo-url">
                 </div>
                 
+                <!-- 자동 새로고침 시간 (분) -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-sync-alt mr-2 text-indigo-500"></i>자동 새로고침 시간 (분)
+                    </label>
+                    <input type="number" id="auto-refresh-minutes" 
+                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="예: 5" min="1" max="60">
+                    <p class="text-sm text-gray-500 mt-1">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        설정한 시간(분)마다 자동으로 데이터를 새로고침합니다 (1-60분)
+                    </p>
+                </div>
+                
+                <!-- 화면 보호기 대기 시간 (초) -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-moon mr-2 text-yellow-500"></i>화면 보호기 대기 시간 (초)
+                    </label>
+                    <input type="number" id="screensaver-seconds" 
+                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="예: 180" min="30" max="3600">
+                    <p class="text-sm text-gray-500 mt-1">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        설정한 시간(초) 동안 활동이 없으면 애송이 화면 보호기가 실행됩니다 (30-3600초)
+                    </p>
+                </div>
+                
                 <!-- 저장 버튼 -->
                 <div class="flex gap-3 pt-4 border-t">
                     <button type="button" onclick="window.saveSystemSettings()" 
@@ -11041,12 +11069,16 @@ function renderSystemSettings(settings) {
         const subtitle1Input = document.getElementById('system-subtitle1');
         const subtitle2Input = document.getElementById('system-subtitle2');
         const logoUrlInput = document.getElementById('logo-url');
+        const autoRefreshInput = document.getElementById('auto-refresh-minutes');
+        const screensaverInput = document.getElementById('screensaver-seconds');
         const logoImg = document.getElementById('current-logo');
         
         if (titleInput) titleInput.value = settings.system_title || 'KDT교육관리시스템 v3.2';
         if (subtitle1Input) subtitle1Input.value = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
         if (subtitle2Input) subtitle2Input.value = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
         if (logoUrlInput) logoUrlInput.value = settings.logo_url || '/woosong-logo.png';
+        if (autoRefreshInput) autoRefreshInput.value = settings.auto_refresh_minutes || '5';
+        if (screensaverInput) screensaverInput.value = settings.screensaver_seconds || '180';
         
         // 로고 이미지 표시
         if (logoImg && settings.logo_url) {
@@ -11065,7 +11097,9 @@ function renderSystemSettings(settings) {
             title: titleInput?.value,
             subtitle1: subtitle1Input?.value,
             subtitle2: subtitle2Input?.value,
-            logo: logoUrlInput?.value
+            logo: logoUrlInput?.value,
+            autoRefresh: autoRefreshInput?.value,
+            screensaver: screensaverInput?.value
         });
     }, 0);
 }
@@ -11160,12 +11194,16 @@ window.saveSystemSettings = async function() {
     const subtitle1Element = document.getElementById('system-subtitle1');
     const subtitle2Element = document.getElementById('system-subtitle2');
     const logoElement = document.getElementById('logo-url');
+    const autoRefreshElement = document.getElementById('auto-refresh-minutes');
+    const screensaverElement = document.getElementById('screensaver-seconds');
     
     console.log('🔍 DOM 요소 확인:', {
         titleElement: titleElement ? '존재' : '없음',
         subtitle1Element: subtitle1Element ? '존재' : '없음',
         subtitle2Element: subtitle2Element ? '존재' : '없음',
-        logoElement: logoElement ? '존재' : '없음'
+        logoElement: logoElement ? '존재' : '없음',
+        autoRefreshElement: autoRefreshElement ? '존재' : '없음',
+        screensaverElement: screensaverElement ? '존재' : '없음'
     });
     
     if (!titleElement || !subtitle1Element || !subtitle2Element || !logoElement) {
@@ -11178,12 +11216,16 @@ window.saveSystemSettings = async function() {
     const systemSubtitle1 = subtitle1Element.value;
     const systemSubtitle2 = subtitle2Element.value;
     const logoUrl = logoElement.value;
+    const autoRefreshMinutes = autoRefreshElement ? autoRefreshElement.value : '5';
+    const screensaverSeconds = screensaverElement ? screensaverElement.value : '180';
     
     console.log('📝 저장할 데이터:', {
         system_title: systemTitle,
         system_subtitle1: systemSubtitle1,
         system_subtitle2: systemSubtitle2,
-        logo_url: logoUrl
+        logo_url: logoUrl,
+        auto_refresh_minutes: autoRefreshMinutes,
+        screensaver_seconds: screensaverSeconds
     });
     
     const formData = new FormData();
@@ -11191,6 +11233,8 @@ window.saveSystemSettings = async function() {
     formData.append('system_subtitle1', systemSubtitle1);
     formData.append('system_subtitle2', systemSubtitle2);
     formData.append('logo_url', logoUrl);
+    formData.append('auto_refresh_minutes', autoRefreshMinutes);
+    formData.append('screensaver_seconds', screensaverSeconds);
     
     try {
         console.log('📤 시스템 설정 저장 API 호출 시작...');
@@ -12365,15 +12409,145 @@ window.deleteInstructorNote = async function(noteId) {
     }
 };
 
+// ==================== 자동 새로고침 및 화면 보호기 ====================
+
+let autoRefreshTimer = null;
+let screensaverTimer = null;
+let screensaverActive = false;
+
+// 자동 새로고침 시작
+async function startAutoRefresh() {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
+        const minutes = parseInt(response.data.auto_refresh_minutes || '5');
+        
+        if (autoRefreshTimer) {
+            clearInterval(autoRefreshTimer);
+        }
+        
+        if (minutes > 0) {
+            console.log(`🔄 자동 새로고침 시작: ${minutes}분마다`);
+            autoRefreshTimer = setInterval(() => {
+                console.log('🔄 자동 새로고침 실행');
+                const currentTab = document.querySelector('.tab-btn.bg-blue-50')?.dataset?.tab;
+                if (currentTab && typeof window.showTab === 'function') {
+                    window.showTab(currentTab);
+                }
+            }, minutes * 60 * 1000);
+        }
+    } catch (error) {
+        console.error('자동 새로고침 설정 로드 실패:', error);
+    }
+}
+
+// 화면 보호기 시작
+async function startScreensaver() {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
+        const seconds = parseInt(response.data.screensaver_seconds || '180');
+        
+        if (seconds > 0) {
+            console.log(`🌙 화면 보호기 대기 시간: ${seconds}초`);
+            resetScreensaverTimer(seconds);
+        }
+    } catch (error) {
+        console.error('화면 보호기 설정 로드 실패:', error);
+    }
+}
+
+// 화면 보호기 타이머 리셋
+function resetScreensaverTimer(seconds) {
+    if (screensaverTimer) {
+        clearTimeout(screensaverTimer);
+    }
+    
+    screensaverTimer = setTimeout(() => {
+        showScreensaver();
+    }, seconds * 1000);
+}
+
+// 화면 보호기 표시
+function showScreensaver() {
+    if (screensaverActive) return;
+    
+    screensaverActive = true;
+    console.log('🌙 화면 보호기 실행');
+    
+    const screensaver = document.createElement('div');
+    screensaver.id = 'screensaver';
+    screensaver.className = 'fixed inset-0 bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900 z-[9999] flex items-center justify-center';
+    screensaver.innerHTML = `
+        <div class="text-center">
+            <img src="/aesong-character.png?v=${Date.now()}" 
+                 alt="애송이" 
+                 class="w-64 h-64 object-contain mx-auto mb-8 animate-bounce"
+                 style="filter: drop-shadow(0 10px 30px rgba(255,255,255,0.3));">
+            <h1 class="text-5xl font-bold text-white mb-4 animate-pulse">
+                🐶 애송이가 지키고 있어요! 🐶
+            </h1>
+            <p class="text-2xl text-white opacity-80">
+                화면을 클릭하면 돌아갈 수 있어요
+            </p>
+        </div>
+    `;
+    
+    screensaver.addEventListener('click', hideScreensaver);
+    screensaver.addEventListener('keydown', hideScreensaver);
+    screensaver.addEventListener('mousemove', hideScreensaver);
+    
+    document.body.appendChild(screensaver);
+}
+
+// 화면 보호기 숨기기
+async function hideScreensaver() {
+    const screensaver = document.getElementById('screensaver');
+    if (screensaver) {
+        screensaver.remove();
+    }
+    screensaverActive = false;
+    
+    // 화면 보호기 타이머 다시 시작
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
+        const seconds = parseInt(response.data.screensaver_seconds || '180');
+        resetScreensaverTimer(seconds);
+    } catch (error) {
+        console.error('화면 보호기 재시작 실패:', error);
+    }
+}
+
+// 사용자 활동 감지 (화면 보호기 타이머 리셋)
+async function handleUserActivity() {
+    if (screensaverActive) return;
+    
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
+        const seconds = parseInt(response.data.screensaver_seconds || '180');
+        resetScreensaverTimer(seconds);
+    } catch (error) {
+        // 에러 무시 (너무 자주 발생할 수 있음)
+    }
+}
+
+// 사용자 활동 이벤트 리스너 등록
+document.addEventListener('mousemove', handleUserActivity);
+document.addEventListener('keydown', handleUserActivity);
+document.addEventListener('click', handleUserActivity);
+document.addEventListener('scroll', handleUserActivity);
+
 // ==================== 페이지 로드 시 헤더 업데이트 및 권한 체크 ====================
 // 페이지가 완전히 로드된 후 헤더 업데이트 및 메뉴 권한 체크 실행
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         updateHeader();
         applyMenuPermissions();
+        startAutoRefresh();
+        startScreensaver();
     });
 } else {
     // 이미 로드된 경우 즉시 실행
     updateHeader();
     applyMenuPermissions();
+    startAutoRefresh();
+    startScreensaver();
 }
