@@ -4533,30 +4533,15 @@ async def delete_notice(notice_id: int):
 # ==================== 애송이 챗봇 API ====================
 @app.post("/api/aesong-chat")
 async def aesong_chat(data: dict):
-    """애송이 AI 챗봇 - GROQ API 사용"""
+    """애송이 AI 챗봇 - GROQ 또는 Gemini API 사용"""
     message = data.get('message', '')
     character = data.get('character', '애송이')  # 캐릭터 이름 받기
+    model = data.get('model', 'groq')  # 사용할 모델 (groq 또는 gemini)
     
     if not message:
         raise HTTPException(status_code=400, detail="메시지가 필요합니다")
     
-    # GROQ API 키 확인
-    groq_api_key = os.getenv('GROQ_API_KEY', '')
-    
-    if not groq_api_key:
-        # API 키가 없으면 기본 응답
-        return {
-            "response": f"안녕하세요! 저는 {character}입니다. 무엇을 도와드릴까요?",
-            "model": "default"
-        }
-    
     try:
-        # GROQ API 호출
-        headers = {
-            "Authorization": f"Bearer {groq_api_key}",
-            "Content-Type": "application/json"
-        }
-        
         # 캐릭터별 페르소나 설정
         if character == '데이빗':
             system_prompt = """당신은 '데이빗'입니다. 우송대학교 바이오헬스 교육과정의 생산직 프로그램 전문가입니다.
@@ -4614,33 +4599,86 @@ async def aesong_chat(data: dict):
 - 학생 관리, 상담, 훈련일지 등에 대해 안내
 - 친근한 대화 상대"""
 
-        payload = {
-            "model": "llama-3.3-70b-versatile",  # 최신 모델로 변경
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": message}
-            ],
-            "temperature": 0.8,
-            "max_tokens": 200,
-            "top_p": 0.9
-        }
+        # Gemini 모델 사용
+        if model == 'gemini':
+            # Google Cloud TTS API KEY를 Gemini API에도 사용
+            gemini_api_key = os.getenv('GOOGLE_CLOUD_TTS_API_KEY', '')
+            
+            if not gemini_api_key:
+                raise Exception("Gemini API 키가 설정되지 않았습니다")
+            
+            # Gemini API 호출
+            gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={gemini_api_key}"
+            
+            payload = {
+                "contents": [{
+                    "parts": [
+                        {"text": f"{system_prompt}\n\n사용자: {message}\n\n당신:"}
+                    ]
+                }],
+                "generationConfig": {
+                    "temperature": 0.8,
+                    "maxOutputTokens": 200,
+                    "topP": 0.9
+                }
+            }
+            
+            response = requests.post(gemini_url, json=payload, timeout=15)
+            
+            if response.status_code != 200:
+                raise Exception(f"Gemini API 오류: {response.text}")
+            
+            result = response.json()
+            ai_response = result['candidates'][0]['content']['parts'][0]['text']
+            
+            return {
+                "response": ai_response,
+                "model": "gemini-2.0-flash-exp"
+            }
         
-        response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=15
-        )
-        
-        if response.status_code != 200:
-            raise Exception(f"GROQ API 오류: {response.text}")
-        
-        ai_response = response.json()['choices'][0]['message']['content']
-        
-        return {
-            "response": ai_response,
-            "model": "llama-3.1-70b-versatile"
-        }
+        # GROQ 모델 사용 (기본값)
+        else:
+            groq_api_key = os.getenv('GROQ_API_KEY', '')
+            
+            if not groq_api_key:
+                # API 키가 없으면 기본 응답
+                return {
+                    "response": f"안녕하세요! 저는 {character}입니다. 무엇을 도와드릴까요?",
+                    "model": "default"
+                }
+            
+            headers = {
+                "Authorization": f"Bearer {groq_api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": message}
+                ],
+                "temperature": 0.8,
+                "max_tokens": 200,
+                "top_p": 0.9
+            }
+            
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=15
+            )
+            
+            if response.status_code != 200:
+                raise Exception(f"GROQ API 오류: {response.text}")
+            
+            ai_response = response.json()['choices'][0]['message']['content']
+            
+            return {
+                "response": ai_response,
+                "model": "llama-3.3-70b-versatile"
+            }
         
     except Exception as e:
         print(f"애송이 챗봇 오류: {str(e)}")

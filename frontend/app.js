@@ -11535,6 +11535,25 @@ function renderSystemSettings(settings) {
                     <input type="hidden" id="logo-url">
                 </div>
                 
+                <!-- AI 모델 선택 -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-robot mr-2 text-purple-500"></i>AI 챗봇 모델 선택
+                    </label>
+                    <select id="ai-model" 
+                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="groq">GROQ (llama-3.3-70b-versatile) - 빠른 응답</option>
+                        <option value="gemini">Gemini (gemini-2.0-flash-exp) - 고품질 응답</option>
+                    </select>
+                    <p class="text-sm text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        애송이 3D 챗봇에서 사용할 AI 모델을 선택합니다
+                    </p>
+                    <p class="text-sm text-gray-400 mt-1">
+                        💡 GROQ: 빠른 응답 속도 | Gemini: 더 자연스러운 대화
+                    </p>
+                </div>
+                
                 <!-- 대시보드 자동 새로고침 시간 -->
                 <div>
                     <label class="block text-gray-700 font-semibold mb-2">
@@ -11583,6 +11602,14 @@ function renderSystemSettings(settings) {
         if (subtitle1Input) subtitle1Input.value = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
         if (subtitle2Input) subtitle2Input.value = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
         if (logoUrlInput) logoUrlInput.value = settings.logo_url || '/woosong-logo.png';
+        
+        // AI 모델 설정 로드
+        const aiModelSelect = document.getElementById('ai-model');
+        const savedModel = localStorage.getItem('ai_model') || 'groq';
+        if (aiModelSelect) {
+            aiModelSelect.value = savedModel;
+            console.log('✅ AI 모델 로드:', savedModel);
+        }
         
         // 대시보드 자동 새로고침 시간 설정 로드
         const savedInterval = localStorage.getItem('dashboard_refresh_interval') || '5';
@@ -11714,6 +11741,7 @@ window.saveSystemSettings = async function() {
     const subtitle1Element = document.getElementById('system-subtitle1');
     const subtitle2Element = document.getElementById('system-subtitle2');
     const logoElement = document.getElementById('logo-url');
+    const aiModelElement = document.getElementById('ai-model');
     const refreshIntervalElement = document.getElementById('refresh-interval');
     
     console.log('🔍 DOM 요소 확인:', {
@@ -11721,6 +11749,7 @@ window.saveSystemSettings = async function() {
         subtitle1Element: subtitle1Element ? '존재' : '없음',
         subtitle2Element: subtitle2Element ? '존재' : '없음',
         logoElement: logoElement ? '존재' : '없음',
+        aiModelElement: aiModelElement ? '존재' : '없음',
         refreshIntervalElement: refreshIntervalElement ? '존재' : '없음'
     });
     
@@ -11734,6 +11763,11 @@ window.saveSystemSettings = async function() {
     const systemSubtitle1 = subtitle1Element.value;
     const systemSubtitle2 = subtitle2Element.value;
     const logoUrl = logoElement.value;
+    
+    // AI 모델 선택 저장
+    const aiModel = aiModelElement ? aiModelElement.value : 'groq';
+    localStorage.setItem('ai_model', aiModel);
+    console.log('💾 AI 모델 저장:', aiModel);
     
     // 대시보드 자동 새로고침 시간 저장
     let refreshInterval = 5; // 기본값

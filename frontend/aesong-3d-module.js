@@ -170,6 +170,9 @@ function initSpeechRecognition() {
         // 서버에 메시지 전송
         try {
             const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000';
+            // 선택된 AI 모델 가져오기 (localStorage에서)
+            const selectedModel = localStorage.getItem('ai_model') || 'groq';
+            
             const response = await fetch(`${API_BASE_URL}/api/aesong-chat`, {
                 method: 'POST',
                 headers: {
@@ -177,7 +180,8 @@ function initSpeechRecognition() {
                 },
                 body: JSON.stringify({ 
                     message: transcript,
-                    character: currentCharacterName // 캐릭터 이름 전달
+                    character: currentCharacterName, // 캐릭터 이름 전달
+                    model: selectedModel // 선택된 AI 모델 전달
                 })
             });
             
@@ -290,11 +294,8 @@ async function speakText(text) {
         
         audio.onended = function() {
             console.log(`${currentCharacterName} 음성 재생 완료`);
-            // 더 긴 지연으로 음성 끝부분 완전히 보호 (500ms)
-            setTimeout(() => {
-                updateStatusText('마이크 버튼을 눌러서 말해보세요');
-                URL.revokeObjectURL(audioUrl); // 메모리 해제
-            }, 500);
+            updateStatusText('마이크 버튼을 눌러서 말해보세요');
+            URL.revokeObjectURL(audioUrl); // 메모리 해제
         };
         
         audio.onerror = function() {
@@ -302,11 +303,9 @@ async function speakText(text) {
             updateStatusText('마이크 버튼을 눌러서 말해보세요');
         };
         
-        // 오디오가 충분히 로드된 후 재생 (앞부분 잘림 방지)
+        // 오디오가 충분히 로드된 후 즉시 재생
         audio.oncanplaythrough = async function() {
             try {
-                // 약간의 지연 후 재생 (앞부분 완전히 보호, 300ms)
-                await new Promise(resolve => setTimeout(resolve, 300));
                 await audio.play();
             } catch (e) {
                 console.error('재생 실패:', e);
