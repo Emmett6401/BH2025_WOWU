@@ -1825,24 +1825,24 @@ async function loadDashboard() {
                     </h2>
                     <div class="flex items-center gap-2">
                         <!-- BGM 컨트롤 패널 (얇게, 한 줄) -->
-                        <div class="flex items-center gap-1 bg-pink-50 px-1.5 py-0.5 rounded border border-pink-200">
-                            <select id="dashboard-bgm-genre" class="px-1 py-0.5 border-0 rounded text-xs bg-transparent text-gray-700 focus:outline-none" onchange="window.changeBGMGenre(this.value)">
-                                <option value="">🎵</option>
-                                <option value="classical">🎻</option>
-                                <option value="piano">🎹</option>
-                                <option value="meditation">🧘</option>
-                                <option value="oldpop">🎤</option>
-                                <option value="custom">🔍</option>
+                        <div class="flex items-center gap-1.5 bg-pink-50 px-2 py-1 rounded border border-pink-200">
+                            <select id="dashboard-bgm-genre" class="px-2 py-0.5 border rounded text-xs bg-white text-gray-700 focus:outline-none" onchange="window.changeBGMGenre(this.value)">
+                                <option value="">🎵 BGM 끄기</option>
+                                <option value="classical">🎻 클래식</option>
+                                <option value="piano">🎹 피아노</option>
+                                <option value="meditation">🧘 명상</option>
+                                <option value="oldpop">🎤 팝송</option>
+                                <option value="custom">🔍 직접 검색</option>
                             </select>
                             <input type="text" id="dashboard-bgm-search" placeholder="검색..." 
-                                   class="px-1 py-0.5 border rounded text-xs bg-white text-gray-700 w-16 hidden focus:outline-none"
+                                   class="px-2 py-0.5 border rounded text-xs bg-white text-gray-700 w-20 hidden focus:outline-none"
                                    onkeypress="if(event.key==='Enter'){window.changeBGMGenre(this.value);}">
                             <button id="dashboard-bgm-play-btn" onclick="window.toggleBGM()" class="text-pink-600 hover:text-pink-800 transition">
                                 <i class="fas fa-play text-xs"></i>
                             </button>
                             <input type="range" id="dashboard-bgm-volume" min="0" max="100" value="30" 
-                                   class="w-12 h-1" oninput="window.changeBGMVolume(this.value)">
-                            <span id="dashboard-volume-value" class="text-xs text-pink-600 w-6">30%</span>
+                                   class="w-16 h-1" oninput="window.changeBGMVolume(this.value)">
+                            <span id="dashboard-volume-value" class="text-xs text-pink-600 min-w-[2rem]">30%</span>
                         </div>
                         
                         <select id="dashboard-course-filter" class="px-3 py-1 border rounded text-sm" onchange="window.filterDashboard(this.value)">
