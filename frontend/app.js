@@ -1824,6 +1824,26 @@ async function loadDashboard() {
                         <i class="fas fa-tachometer-alt mr-2"></i>대시보드
                     </h2>
                     <div class="flex items-center gap-3">
+                        <!-- BGM 컨트롤 -->
+                        <div class="flex items-center gap-2 bg-pink-50 px-3 py-2 rounded-lg border border-pink-200">
+                            <select id="dashboard-bgm-genre" class="px-2 py-1 border rounded text-sm bg-white" onchange="window.changeBGMGenre(this.value)">
+                                <option value="">BGM 끄기</option>
+                                <option value="classical">클래식</option>
+                                <option value="piano">피아노</option>
+                                <option value="meditation">명상</option>
+                                <option value="oldpop">팝송</option>
+                            </select>
+                            <button id="bgm-play-btn" onclick="window.toggleBGM()" class="p-1 text-pink-600 hover:text-pink-800 transition">
+                                <i class="fas fa-play text-lg"></i>
+                            </button>
+                            <div class="flex items-center gap-1">
+                                <i class="fas fa-volume-up text-pink-600 text-sm"></i>
+                                <input type="range" id="dashboard-bgm-volume" min="0" max="100" value="30" 
+                                       class="w-20 h-1" oninput="window.changeBGMVolume(this.value)">
+                                <span id="dashboard-volume-value" class="text-xs text-pink-600 w-8">30%</span>
+                            </div>
+                        </div>
+                        
                         <select id="dashboard-course-filter" class="px-3 py-1 border rounded text-sm" onchange="window.filterDashboard(this.value)">
                             ${coursesData.map(c => `
                                 <option value="${c.code}" ${c.code === mainCourse.code ? 'selected' : ''}>
@@ -2380,6 +2400,9 @@ async function loadDashboard() {
                 window.showDashboard();
             }, 100);
         };
+        
+        // BGM 설정 복원
+        restoreBGMSettings();
         
         window.hideLoading();
         console.log('✅ 대시보드 렌더링 완료');
@@ -11559,9 +11582,16 @@ function renderSystemSettings(settings) {
                     <label class="block text-gray-700 font-semibold mb-2">
                         <i class="fab fa-youtube mr-2 text-red-500"></i>YouTube API 키
                     </label>
-                    <input type="text" id="youtube-api-key" 
-                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                           placeholder="YouTube Data API v3 키를 입력하세요">
+                    <div class="flex gap-2">
+                        <input type="text" id="youtube-api-key" 
+                               class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="YouTube Data API v3 키를 입력하세요">
+                        <button type="button" onclick="window.testYouTubeApiKey()" 
+                                class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors whitespace-nowrap">
+                            <i class="fas fa-check-circle mr-2"></i>테스트
+                        </button>
+                    </div>
+                    <div id="api-test-result" class="mt-2 text-sm hidden"></div>
                     <p class="text-sm text-gray-500 mt-2">
                         <i class="fas fa-info-circle mr-1"></i>
                         YouTube에서 BGM을 검색하려면 API 키가 필요합니다
@@ -14886,6 +14916,146 @@ function stopBGM() {
     
     bgmPlayer = null;
     currentBGMVideoId = null;
+}
+
+// YouTube API 키 테스트 함수
+window.testYouTubeApiKey = async function() {
+    const apiKey = document.getElementById('youtube-api-key')?.value;
+    const resultDiv = document.getElementById('api-test-result');
+    
+    if (!apiKey) {
+        resultDiv.className = 'mt-2 text-sm text-red-600';
+        resultDiv.innerHTML = '<i class="fas fa-exclamation-circle mr-1"></i>API 키를 입력해주세요';
+        resultDiv.classList.remove('hidden');
+        return;
+    }
+    
+    // 테스트 중 표시
+    resultDiv.className = 'mt-2 text-sm text-blue-600';
+    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>API 키 테스트 중...';
+    resultDiv.classList.remove('hidden');
+    
+    try {
+        // 간단한 YouTube 검색 API 테스트
+        const searchQuery = 'test';
+        const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${encodeURIComponent(searchQuery)}&type=video&key=${apiKey}`;
+        
+        console.log('🧪 YouTube API 키 테스트 시작...');
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+        
+        if (response.ok && data.items && data.items.length > 0) {
+            // 성공
+            resultDiv.className = 'mt-2 text-sm text-green-600 bg-green-50 p-2 rounded';
+            resultDiv.innerHTML = '<i class="fas fa-check-circle mr-1"></i>✅ API 키가 정상적으로 작동합니다!';
+            console.log('✅ YouTube API 키 테스트 성공');
+        } else if (data.error) {
+            // API 오류
+            resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded';
+            resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>❌ API 오류: ${data.error.message}`;
+            console.error('❌ YouTube API 오류:', data.error);
+        } else {
+            // 알 수 없는 오류
+            resultDiv.className = 'mt-2 text-sm text-orange-600 bg-orange-50 p-2 rounded';
+            resultDiv.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>⚠️ 예상치 못한 응답입니다';
+            console.warn('⚠️ 예상치 못한 YouTube API 응답:', data);
+        }
+    } catch (error) {
+        resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded';
+        resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>❌ 테스트 실패: ${error.message}`;
+        console.error('❌ YouTube API 키 테스트 실패:', error);
+    }
+}
+
+// 대시보드 BGM 장르 변경
+window.changeBGMGenre = function(genre) {
+    console.log('🎵 BGM 장르 변경:', genre);
+    localStorage.setItem('bgm_genre', genre);
+    
+    if (genre) {
+        window.searchYouTubeBGM();
+        // 재생 버튼 아이콘 업데이트
+        const playBtn = document.getElementById('bgm-play-btn');
+        if (playBtn) {
+            playBtn.innerHTML = '<i class="fas fa-pause text-lg"></i>';
+        }
+    } else {
+        stopBGM();
+        // 재생 버튼 아이콘 업데이트
+        const playBtn = document.getElementById('bgm-play-btn');
+        if (playBtn) {
+            playBtn.innerHTML = '<i class="fas fa-play text-lg"></i>';
+        }
+    }
+}
+
+// 대시보드 BGM 재생/정지 토글
+window.toggleBGM = function() {
+    const genre = document.getElementById('dashboard-bgm-genre')?.value;
+    const playBtn = document.getElementById('bgm-play-btn');
+    
+    if (!genre) {
+        window.showAlert('BGM 장르를 먼저 선택해주세요');
+        return;
+    }
+    
+    if (bgmPlayer && currentBGMVideoId) {
+        // 현재 재생 중이면 정지
+        stopBGM();
+        if (playBtn) {
+            playBtn.innerHTML = '<i class="fas fa-play text-lg"></i>';
+        }
+        console.log('⏸️ BGM 정지');
+    } else {
+        // 정지 중이면 재생
+        window.searchYouTubeBGM();
+        if (playBtn) {
+            playBtn.innerHTML = '<i class="fas fa-pause text-lg"></i>';
+        }
+        console.log('▶️ BGM 재생');
+    }
+}
+
+// 대시보드 BGM 볼륨 변경
+window.changeBGMVolume = function(volume) {
+    console.log('🔊 BGM 볼륨 변경:', volume + '%');
+    localStorage.setItem('bgm_volume', volume);
+    
+    // 볼륨 표시 업데이트
+    const volumeValueSpan = document.getElementById('dashboard-volume-value');
+    if (volumeValueSpan) {
+        volumeValueSpan.textContent = volume + '%';
+    }
+    
+    // 현재 재생 중인 BGM 볼륨 업데이트
+    if (bgmPlayer && bgmPlayer.setVolume) {
+        bgmPlayer.setVolume(parseInt(volume));
+        console.log('✅ 볼륨 적용됨:', volume + '%');
+    }
+}
+
+// 대시보드 로드 시 BGM 설정 복원
+function restoreBGMSettings() {
+    const savedGenre = localStorage.getItem('bgm_genre') || '';
+    const savedVolume = localStorage.getItem('bgm_volume') || '30';
+    
+    const genreSelect = document.getElementById('dashboard-bgm-genre');
+    const volumeSlider = document.getElementById('dashboard-bgm-volume');
+    const volumeValue = document.getElementById('dashboard-volume-value');
+    
+    if (genreSelect) {
+        genreSelect.value = savedGenre;
+        console.log('✅ BGM 장르 복원:', savedGenre || '끄기');
+    }
+    
+    if (volumeSlider) {
+        volumeSlider.value = savedVolume;
+        console.log('✅ BGM 볼륨 복원:', savedVolume + '%');
+    }
+    
+    if (volumeValue) {
+        volumeValue.textContent = savedVolume + '%';
+    }
 }
 
 // 대시보드 로드 시 자동으로 BGM 재생
