@@ -11923,6 +11923,9 @@ window.saveSystemSettings = async function() {
     formData.append('logo_url', logoUrl);
     
     try {
+        // 프로그레스바 표시
+        window.showLoading('시스템 설정을 저장하는 중...');
+        
         console.log('📤 시스템 설정 저장 API 호출 시작...');
         const response = await axios.post(`${API_BASE_URL}/api/system-settings`, formData);
         console.log('✅ API 응답:', response.data);
@@ -11948,8 +11951,14 @@ window.saveSystemSettings = async function() {
         console.log('🔄 헤더 업데이트 시작...');
         await updateHeader();
         
+        // 프로그레스바 숨기기
+        window.hideLoading();
+        
         window.showAlert(`✅ 시스템 설정이 저장되었습니다!\n\n대시보드 자동 새로고침: ${refreshInterval}분마다\n(10초간 화면보호기 표시)`);
     } catch (error) {
+        // 프로그레스바 숨기기
+        window.hideLoading();
+        
         console.error('❌ 시스템 설정 저장 실패:', error);
         console.error('❌ 에러 상세:', error.response?.data);
         window.showAlert('시스템 설정 저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
@@ -14972,27 +14981,49 @@ window.changeBGMGenre = function(genre) {
     console.log('🎵 BGM 장르 변경:', genre);
     localStorage.setItem('bgm_genre', genre);
     
+    // 헤더와 대시보드 장르 선택 동기화
+    const headerGenre = document.getElementById('header-bgm-genre');
+    const dashboardGenre = document.getElementById('dashboard-bgm-genre');
+    if (headerGenre && headerGenre.value !== genre) {
+        headerGenre.value = genre;
+    }
+    if (dashboardGenre && dashboardGenre.value !== genre) {
+        dashboardGenre.value = genre;
+    }
+    
     if (genre) {
         window.searchYouTubeBGM();
-        // 재생 버튼 아이콘 업데이트
-        const playBtn = document.getElementById('bgm-play-btn');
-        if (playBtn) {
-            playBtn.innerHTML = '<i class="fas fa-pause text-lg"></i>';
+        // 재생 버튼 아이콘 업데이트 (헤더와 대시보드 모두)
+        const headerPlayBtn = document.getElementById('header-bgm-play-btn');
+        const dashboardPlayBtn = document.getElementById('bgm-play-btn');
+        if (headerPlayBtn) {
+            headerPlayBtn.innerHTML = '<i class="fas fa-pause text-sm"></i>';
+        }
+        if (dashboardPlayBtn) {
+            dashboardPlayBtn.innerHTML = '<i class="fas fa-pause text-lg"></i>';
         }
     } else {
         stopBGM();
-        // 재생 버튼 아이콘 업데이트
-        const playBtn = document.getElementById('bgm-play-btn');
-        if (playBtn) {
-            playBtn.innerHTML = '<i class="fas fa-play text-lg"></i>';
+        // 재생 버튼 아이콘 업데이트 (헤더와 대시보드 모두)
+        const headerPlayBtn = document.getElementById('header-bgm-play-btn');
+        const dashboardPlayBtn = document.getElementById('bgm-play-btn');
+        if (headerPlayBtn) {
+            headerPlayBtn.innerHTML = '<i class="fas fa-play text-sm"></i>';
+        }
+        if (dashboardPlayBtn) {
+            dashboardPlayBtn.innerHTML = '<i class="fas fa-play text-lg"></i>';
         }
     }
 }
 
 // 대시보드 BGM 재생/정지 토글
 window.toggleBGM = function() {
-    const genre = document.getElementById('dashboard-bgm-genre')?.value;
-    const playBtn = document.getElementById('bgm-play-btn');
+    const headerGenre = document.getElementById('header-bgm-genre')?.value;
+    const dashboardGenre = document.getElementById('dashboard-bgm-genre')?.value;
+    const genre = headerGenre || dashboardGenre;
+    
+    const headerPlayBtn = document.getElementById('header-bgm-play-btn');
+    const dashboardPlayBtn = document.getElementById('bgm-play-btn');
     
     if (!genre) {
         window.showAlert('BGM 장르를 먼저 선택해주세요');
@@ -15002,15 +15033,21 @@ window.toggleBGM = function() {
     if (bgmPlayer && currentBGMVideoId) {
         // 현재 재생 중이면 정지
         stopBGM();
-        if (playBtn) {
-            playBtn.innerHTML = '<i class="fas fa-play text-lg"></i>';
+        if (headerPlayBtn) {
+            headerPlayBtn.innerHTML = '<i class="fas fa-play text-sm"></i>';
+        }
+        if (dashboardPlayBtn) {
+            dashboardPlayBtn.innerHTML = '<i class="fas fa-play text-lg"></i>';
         }
         console.log('⏸️ BGM 정지');
     } else {
         // 정지 중이면 재생
         window.searchYouTubeBGM();
-        if (playBtn) {
-            playBtn.innerHTML = '<i class="fas fa-pause text-lg"></i>';
+        if (headerPlayBtn) {
+            headerPlayBtn.innerHTML = '<i class="fas fa-pause text-sm"></i>';
+        }
+        if (dashboardPlayBtn) {
+            dashboardPlayBtn.innerHTML = '<i class="fas fa-pause text-lg"></i>';
         }
         console.log('▶️ BGM 재생');
     }
@@ -15021,10 +15058,24 @@ window.changeBGMVolume = function(volume) {
     console.log('🔊 BGM 볼륨 변경:', volume + '%');
     localStorage.setItem('bgm_volume', volume);
     
-    // 볼륨 표시 업데이트
-    const volumeValueSpan = document.getElementById('dashboard-volume-value');
-    if (volumeValueSpan) {
-        volumeValueSpan.textContent = volume + '%';
+    // 헤더와 대시보드 볼륨 슬라이더 동기화
+    const headerVolumeSlider = document.getElementById('header-bgm-volume');
+    const dashboardVolumeSlider = document.getElementById('dashboard-bgm-volume');
+    if (headerVolumeSlider && headerVolumeSlider.value !== volume) {
+        headerVolumeSlider.value = volume;
+    }
+    if (dashboardVolumeSlider && dashboardVolumeSlider.value !== volume) {
+        dashboardVolumeSlider.value = volume;
+    }
+    
+    // 볼륨 표시 업데이트 (헤더와 대시보드 모두)
+    const headerVolumeValue = document.getElementById('header-volume-value');
+    const dashboardVolumeValue = document.getElementById('dashboard-volume-value');
+    if (headerVolumeValue) {
+        headerVolumeValue.textContent = volume + '%';
+    }
+    if (dashboardVolumeValue) {
+        dashboardVolumeValue.textContent = volume + '%';
     }
     
     // 현재 재생 중인 BGM 볼륨 업데이트
@@ -15034,27 +15085,47 @@ window.changeBGMVolume = function(volume) {
     }
 }
 
-// 대시보드 로드 시 BGM 설정 복원
-function restoreBGMSettings() {
+// 페이지 로드 시 BGM 설정 복원 (헤더와 대시보드 모두)
+window.restoreBGMSettings = function() {
     const savedGenre = localStorage.getItem('bgm_genre') || '';
     const savedVolume = localStorage.getItem('bgm_volume') || '30';
     
-    const genreSelect = document.getElementById('dashboard-bgm-genre');
-    const volumeSlider = document.getElementById('dashboard-bgm-volume');
-    const volumeValue = document.getElementById('dashboard-volume-value');
+    // 헤더 BGM 컨트롤 복원
+    const headerGenreSelect = document.getElementById('header-bgm-genre');
+    const headerVolumeSlider = document.getElementById('header-bgm-volume');
+    const headerVolumeValue = document.getElementById('header-volume-value');
     
-    if (genreSelect) {
-        genreSelect.value = savedGenre;
-        console.log('✅ BGM 장르 복원:', savedGenre || '끄기');
+    if (headerGenreSelect) {
+        headerGenreSelect.value = savedGenre;
+        console.log('✅ 헤더 BGM 장르 복원:', savedGenre || '끄기');
     }
     
-    if (volumeSlider) {
-        volumeSlider.value = savedVolume;
-        console.log('✅ BGM 볼륨 복원:', savedVolume + '%');
+    if (headerVolumeSlider) {
+        headerVolumeSlider.value = savedVolume;
+        console.log('✅ 헤더 BGM 볼륨 복원:', savedVolume + '%');
     }
     
-    if (volumeValue) {
-        volumeValue.textContent = savedVolume + '%';
+    if (headerVolumeValue) {
+        headerVolumeValue.textContent = savedVolume + '%';
+    }
+    
+    // 대시보드 BGM 컨트롤 복원
+    const dashboardGenreSelect = document.getElementById('dashboard-bgm-genre');
+    const dashboardVolumeSlider = document.getElementById('dashboard-bgm-volume');
+    const dashboardVolumeValue = document.getElementById('dashboard-volume-value');
+    
+    if (dashboardGenreSelect) {
+        dashboardGenreSelect.value = savedGenre;
+        console.log('✅ 대시보드 BGM 장르 복원:', savedGenre || '끄기');
+    }
+    
+    if (dashboardVolumeSlider) {
+        dashboardVolumeSlider.value = savedVolume;
+        console.log('✅ 대시보드 BGM 볼륨 복원:', savedVolume + '%');
+    }
+    
+    if (dashboardVolumeValue) {
+        dashboardVolumeValue.textContent = savedVolume + '%';
     }
 }
 
@@ -15074,11 +15145,13 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         updateHeader();
         applyMenuPermissions();
+        window.restoreBGMSettings(); // BGM 설정 복원 (헤더)
         autoPlayBGM(); // BGM 자동 재생
     });
 } else {
     // 이미 로드된 경우 즉시 실행
     updateHeader();
     applyMenuPermissions();
+    window.restoreBGMSettings(); // BGM 설정 복원 (헤더)
     autoPlayBGM(); // BGM 자동 재생
 }

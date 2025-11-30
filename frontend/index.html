@@ -121,7 +121,7 @@
 <body class="bg-gray-50">
     <div class="min-h-screen">
         <!-- 헤더 -->
-        <header class="bg-blue-600 text-white shadow-lg">
+        <header class="bg-blue-600 text-white shadow-lg relative z-30">
             <div class="container mx-auto px-4 py-6">
                 <div class="flex justify-between items-start">
                     <div class="flex items-center gap-4">
@@ -138,12 +138,32 @@
                         </div>
                     </div>
                     <div class="flex flex-col gap-2">
-                        <!-- 상단: 사용자 정보 + 버튼들 -->
+                        <!-- 상단: 사용자 정보 + BGM + 버튼들 -->
                         <div class="flex items-center justify-end gap-4">
                             <!-- 사용자 정보 -->
                             <div id="userInfo" class="text-right">
                                 <p class="text-sm text-blue-100">로그인: <span id="instructorName" class="font-semibold text-white"></span></p>
                                 <p class="text-xs text-blue-200"><span id="instructorType"></span></p>
+                            </div>
+                            
+                            <!-- BGM 컨트롤 -->
+                            <div class="flex items-center gap-2 bg-white bg-opacity-20 px-3 py-2 rounded-lg border border-white border-opacity-30">
+                                <select id="header-bgm-genre" class="px-2 py-1 border rounded text-xs bg-white text-gray-700" onchange="window.changeBGMGenre(this.value)">
+                                    <option value="">🎵 BGM 끄기</option>
+                                    <option value="classical">🎻 클래식</option>
+                                    <option value="piano">🎹 피아노</option>
+                                    <option value="meditation">🧘 명상</option>
+                                    <option value="oldpop">🎤 팝송</option>
+                                </select>
+                                <button id="header-bgm-play-btn" onclick="window.toggleBGM()" class="p-1 text-white hover:text-blue-200 transition">
+                                    <i class="fas fa-play text-sm"></i>
+                                </button>
+                                <div class="flex items-center gap-1">
+                                    <i class="fas fa-volume-up text-white text-xs"></i>
+                                    <input type="range" id="header-bgm-volume" min="0" max="100" value="30" 
+                                           class="w-16 h-1" oninput="window.changeBGMVolume(this.value)" style="accent-color: white;">
+                                    <span id="header-volume-value" class="text-xs text-white w-8 font-mono">30%</span>
+                                </div>
                             </div>
                             
                             <!-- 버튼들 -->
@@ -170,7 +190,7 @@
         </header>
 
         <!-- 네비게이션 탭 (2단 메뉴) -->
-        <nav class="bg-white shadow-md">
+        <nav class="bg-white shadow-md relative z-40">
             <div class="container mx-auto px-4">
                 <div class="flex space-x-1 border-b border-gray-200">
                     <!-- 대시보드 -->
@@ -184,7 +204,7 @@
                             <i class="fas fa-cogs mr-1"></i>시스템관리
                             <i class="fas fa-chevron-down ml-1 text-xs"></i>
                         </button>
-                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-10 w-[300px] flex-col">
+                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-50 w-[300px] flex-col">
                             <button onclick="showTab('instructor-codes')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="instructor-codes" style="justify-content: flex-start !important; text-align: left !important;">
                                 <i class="fas fa-user-shield mr-2" style="width: 16px;"></i>강사코드/권한
                             </button>
@@ -206,7 +226,7 @@
                             <i class="fas fa-graduation-cap mr-1"></i>과정
                             <i class="fas fa-chevron-down ml-1 text-xs"></i>
                         </button>
-                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-10 w-[300px] flex-col">
+                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-50 w-[300px] flex-col">
                             <button onclick="showTab('subjects')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="subjects" style="justify-content: flex-start !important; text-align: left !important;">
                                 <i class="fas fa-book mr-2" style="width: 16px;"></i>교과목
                             </button>
@@ -225,7 +245,7 @@
                             <i class="fas fa-user-graduate mr-1"></i>학생
                             <i class="fas fa-chevron-down ml-1 text-xs"></i>
                         </button>
-                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-10 w-[300px] flex-col">
+                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-50 w-[300px] flex-col">
                             <button onclick="showTab('students')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50 bg-blue-50 text-blue-600" data-tab="students" style="justify-content: flex-start !important; text-align: left !important;">
                                 <i class="fas fa-users mr-2" style="width: 16px;"></i>학생관리
                             </button>
@@ -241,7 +261,7 @@
                             <i class="fas fa-chalkboard mr-1"></i>강의
                             <i class="fas fa-chevron-down ml-1 text-xs"></i>
                         </button>
-                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-10 w-[300px] flex-col">
+                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-50 w-[300px] flex-col">
                             <button onclick="showTab('timetables')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="timetables" style="justify-content: flex-start !important; text-align: left !important;">
                                 <i class="fas fa-clock mr-2" style="width: 16px;"></i>시간표
                             </button>
@@ -257,7 +277,7 @@
                             <i class="fas fa-robot mr-1"></i>AI
                             <i class="fas fa-chevron-down ml-1 text-xs"></i>
                         </button>
-                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-10 w-[300px] flex-col">
+                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-50 w-[300px] flex-col">
                             <button onclick="showTab('class-notes')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="class-notes" style="justify-content: flex-start !important; text-align: left !important;">
                                 <i class="fas fa-book-open mr-2" style="width: 16px;"></i>SSIRN메모장(수업,기억,정보,etc)
                             </button>
@@ -282,7 +302,7 @@
                             <i class="fas fa-users mr-1"></i>팀
                             <i class="fas fa-chevron-down ml-1 text-xs"></i>
                         </button>
-                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-10 w-[300px] flex-col">
+                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-50 w-[300px] flex-col">
                             <button onclick="showTab('projects')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="projects" style="justify-content: flex-start !important; text-align: left !important;">
                                 <i class="fas fa-users mr-2" style="width: 16px;"></i>팀 관리
                             </button>
