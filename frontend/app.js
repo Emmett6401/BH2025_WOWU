@@ -1837,6 +1837,7 @@ async function loadDashboard() {
                     </div>
                 </div>
                 
+
                 <!-- 상단 통계 카드 (6개 컴팩트) -->
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-3">
                     <!-- 학생 -->
@@ -2480,6 +2481,18 @@ window.showTab = function(tab, addToHistory = true) {
             btn.className = 'tab-btn px-4 py-3 text-sm font-semibold text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded';
         }
     });
+    
+    // BGM 패널 표시/숨김 (대시보드일 때만 표시)
+    const bgmPanel = document.getElementById('header-bgm-panel');
+    if (bgmPanel) {
+        if (tab === 'dashboard') {
+            bgmPanel.classList.remove('hidden');
+            bgmPanel.classList.add('flex');
+        } else {
+            bgmPanel.classList.remove('flex');
+            bgmPanel.classList.add('hidden');
+        }
+    }
     
     // 해당 탭 콘텐츠 로드
     switch(tab) {
@@ -14970,7 +14983,7 @@ window.changeBGMGenre = function(genre) {
     // 사용자 정의 검색어인지 확인
     const isCustomSearch = genre && !['classical', 'piano', 'meditation', 'oldpop', '', 'custom'].includes(genre);
     
-    // 검색창 표시/숨김 처리
+    // 검색창 표시/숨김 처리 (헤더 BGM 컨트롤)
     const headerGenreSelect = document.getElementById('header-bgm-genre');
     const headerSearchInput = document.getElementById('header-bgm-search');
     
@@ -15009,14 +15022,14 @@ window.changeBGMGenre = function(genre) {
         // 새로운 BGM 검색 및 재생
         window.searchYouTubeBGM();
         
-        // 재생 버튼 아이콘 업데이트
+        // 재생 버튼 아이콘 업데이트 (헤더 BGM 컨트롤)
         const headerPlayBtn = document.getElementById('header-bgm-play-btn');
         if (headerPlayBtn) {
             headerPlayBtn.innerHTML = '<i class="fas fa-pause text-xs"></i>';
         }
     } else {
         stopBGM();
-        // 재생 버튼 아이콘 업데이트
+        // 재생 버튼 아이콘 업데이트 (헤더 BGM 컨트롤)
         const headerPlayBtn = document.getElementById('header-bgm-play-btn');
         if (headerPlayBtn) {
             headerPlayBtn.innerHTML = '<i class="fas fa-play text-xs"></i>';
@@ -15053,7 +15066,7 @@ window.toggleBGM = function() {
     }
 }
 
-// 대시보드 BGM 볼륨 변경
+// BGM 볼륨 변경 (헤더 BGM 컨트롤)
 window.changeBGMVolume = function(volume) {
     console.log('🔊 BGM 볼륨 변경:', volume + '%');
     localStorage.setItem('bgm_volume', volume);
@@ -15064,7 +15077,7 @@ window.changeBGMVolume = function(volume) {
         headerVolumeSlider.value = volume;
     }
     
-    // 볼륨 표시 업데이트
+    // 볼륨 표시 업데이트 (헤더 BGM 컨트롤)
     const headerVolumeValue = document.getElementById('header-volume-value');
     if (headerVolumeValue) {
         headerVolumeValue.textContent = volume + '%';
