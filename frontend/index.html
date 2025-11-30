@@ -138,48 +138,24 @@
                         </div>
                     </div>
                     <div class="flex flex-col gap-2">
-                        <!-- 상단: 사용자 정보 + BGM + 버튼들 -->
-                        <div class="flex items-center justify-end gap-4">
+                        <!-- 상단: 사용자 정보 + 버튼들 -->
+                        <div class="flex items-center justify-end gap-3">
                             <!-- 사용자 정보 -->
                             <div id="userInfo" class="text-right">
                                 <p class="text-sm text-blue-100">로그인: <span id="instructorName" class="font-semibold text-white"></span></p>
                                 <p class="text-xs text-blue-200"><span id="instructorType"></span></p>
                             </div>
                             
-                            <!-- BGM 컨트롤 -->
-                            <div class="flex items-center gap-2 bg-white bg-opacity-20 px-3 py-2 rounded-lg border border-white border-opacity-30">
-                                <select id="header-bgm-genre" class="px-2 py-1 border rounded text-xs bg-white text-gray-700" onchange="window.changeBGMGenre(this.value)">
-                                    <option value="">🎵 BGM 끄기</option>
-                                    <option value="classical">🎻 클래식</option>
-                                    <option value="piano">🎹 피아노</option>
-                                    <option value="meditation">🧘 명상</option>
-                                    <option value="oldpop">🎤 팝송</option>
-                                    <option value="custom">🔍 직접 검색</option>
-                                </select>
-                                <input type="text" id="header-bgm-search" placeholder="검색어 입력..." 
-                                       class="px-2 py-1 border rounded text-xs bg-white text-gray-700 w-24 hidden"
-                                       onkeypress="if(event.key==='Enter'){window.changeBGMGenre(this.value);}">
-                                <button id="header-bgm-play-btn" onclick="window.toggleBGM()" class="p-1 text-white hover:text-blue-200 transition">
-                                    <i class="fas fa-play text-sm"></i>
-                                </button>
-                                <div class="flex items-center gap-1">
-                                    <i class="fas fa-volume-up text-white text-xs"></i>
-                                    <input type="range" id="header-bgm-volume" min="0" max="100" value="30" 
-                                           class="w-16 h-1" oninput="window.changeBGMVolume(this.value)" style="accent-color: white;">
-                                    <span id="header-volume-value" class="text-xs text-white w-8 font-mono">30%</span>
-                                </div>
-                            </div>
-                            
-                            <!-- 버튼들 -->
-                            <button onclick="showMyPageModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-all">
-                                <i class="fas fa-user-circle mr-2"></i>MyPage
+                            <!-- 버튼들 (얇게) -->
+                            <button onclick="showMyPageModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-semibold transition-all">
+                                <i class="fas fa-user-circle mr-1"></i>MyPage
                             </button>
-                            <button onclick="logout()" class="bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg font-semibold transition-all">
-                                <i class="fas fa-sign-out-alt mr-2"></i>로그아웃
+                            <button onclick="logout()" class="bg-white text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded text-sm font-semibold transition-all">
+                                <i class="fas fa-sign-out-alt mr-1"></i>로그아웃
                             </button>
                         </div>
                         
-                        <!-- 하단: 날짜/시간 + 카운트다운 바 (전체 너비) -->
+                        <!-- 중간: 날짜/시간 + 카운트다운 바 -->
                         <div class="flex items-center justify-between bg-blue-500 bg-opacity-50 rounded-lg px-4 py-2 border border-blue-400">
                             <span class="text-white font-semibold text-sm" id="currentDateTime">
                                 <i class="fas fa-calendar-day mr-2"></i>로딩 중...
@@ -187,6 +163,30 @@
                             <span class="text-blue-100 text-sm" id="refreshCountdownContainer" style="display: none;">
                                 <i class="fas fa-sync-alt mr-1"></i>다음 새로고침: <span id="refresh-countdown" class="font-mono text-white">--:--</span>
                             </span>
+                        </div>
+                        
+                        <!-- 하단: BGM 컨트롤 (얇게) -->
+                        <div class="flex items-center justify-end gap-2 bg-white bg-opacity-20 px-3 py-1 rounded border border-white border-opacity-30">
+                            <select id="header-bgm-genre" class="px-2 py-1 border rounded text-xs bg-white text-gray-700" onchange="window.changeBGMGenre(this.value)">
+                                <option value="">🎵 BGM 끄기</option>
+                                <option value="classical">🎻 클래식</option>
+                                <option value="piano">🎹 피아노</option>
+                                <option value="meditation">🧘 명상</option>
+                                <option value="oldpop">🎤 팝송</option>
+                                <option value="custom">🔍 직접 검색</option>
+                            </select>
+                            <input type="text" id="header-bgm-search" placeholder="검색어 입력..." 
+                                   class="px-2 py-1 border rounded text-xs bg-white text-gray-700 w-24 hidden"
+                                   onkeypress="if(event.key==='Enter'){window.changeBGMGenre(this.value);}">
+                            <button id="header-bgm-play-btn" onclick="window.toggleBGM()" class="p-1 text-white hover:text-blue-200 transition">
+                                <i class="fas fa-play text-xs"></i>
+                            </button>
+                            <div class="flex items-center gap-1">
+                                <i class="fas fa-volume-up text-white text-xs"></i>
+                                <input type="range" id="header-bgm-volume" min="0" max="100" value="30" 
+                                       class="w-16 h-1" oninput="window.changeBGMVolume(this.value)" style="accent-color: white;">
+                                <span id="header-volume-value" class="text-xs text-white w-7 font-mono">30%</span>
+                            </div>
                         </div>
                     </div>
                 </div>
