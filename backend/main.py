@@ -3972,7 +3972,11 @@ async def update_system_settings(
     system_title: Optional[str] = Form(None),
     system_subtitle1: Optional[str] = Form(None),
     system_subtitle2: Optional[str] = Form(None),
-    logo_url: Optional[str] = Form(None)
+    logo_url: Optional[str] = Form(None),
+    youtube_api_key: Optional[str] = Form(None),
+    bgm_genre: Optional[str] = Form(None),
+    bgm_volume: Optional[str] = Form(None),
+    dashboard_refresh_interval: Optional[str] = Form(None)
 ):
     """시스템 설정 업데이트"""
     print(f"📝 시스템 설정 업데이트 요청:")
@@ -3980,6 +3984,10 @@ async def update_system_settings(
     print(f"  - system_subtitle1: {system_subtitle1}")
     print(f"  - system_subtitle2: {system_subtitle2}")
     print(f"  - logo_url: {logo_url}")
+    print(f"  - youtube_api_key: {youtube_api_key}")
+    print(f"  - bgm_genre: {bgm_genre}")
+    print(f"  - bgm_volume: {bgm_volume}")
+    print(f"  - dashboard_refresh_interval: {dashboard_refresh_interval}")
     
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -3992,7 +4000,11 @@ async def update_system_settings(
             'system_title': system_title,
             'system_subtitle1': system_subtitle1,
             'system_subtitle2': system_subtitle2,
-            'logo_url': logo_url
+            'logo_url': logo_url,
+            'youtube_api_key': youtube_api_key,
+            'bgm_genre': bgm_genre,
+            'bgm_volume': bgm_volume,
+            'dashboard_refresh_interval': dashboard_refresh_interval
         }
         
         update_count = 0
