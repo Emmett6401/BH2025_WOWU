@@ -154,7 +154,11 @@
                                     <option value="piano">🎹 피아노</option>
                                     <option value="meditation">🧘 명상</option>
                                     <option value="oldpop">🎤 팝송</option>
+                                    <option value="custom">🔍 직접 검색</option>
                                 </select>
+                                <input type="text" id="header-bgm-search" placeholder="검색어 입력..." 
+                                       class="px-2 py-1 border rounded text-xs bg-white text-gray-700 w-24 hidden"
+                                       onkeypress="if(event.key==='Enter'){window.changeBGMGenre(this.value);}">
                                 <button id="header-bgm-play-btn" onclick="window.toggleBGM()" class="p-1 text-white hover:text-blue-200 transition">
                                     <i class="fas fa-play text-sm"></i>
                                 </button>

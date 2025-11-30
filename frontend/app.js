@@ -1832,7 +1832,11 @@ async function loadDashboard() {
                                 <option value="piano">피아노</option>
                                 <option value="meditation">명상</option>
                                 <option value="oldpop">팝송</option>
+                                <option value="custom">🔍 직접 검색</option>
                             </select>
+                            <input type="text" id="dashboard-bgm-search" placeholder="검색어 입력 후 Enter" 
+                                   class="px-2 py-1 border rounded text-sm bg-white w-32 hidden"
+                                   onkeypress="if(event.key==='Enter'){window.changeBGMGenre(this.value);}">
                             <button id="bgm-play-btn" onclick="window.toggleBGM()" class="p-1 text-pink-600 hover:text-pink-800 transition">
                                 <i class="fas fa-play text-lg"></i>
                             </button>
@@ -14744,7 +14748,21 @@ let currentBGMVideoId = null;
 
 // YouTube 검색 및 BGM 재생
 window.searchYouTubeBGM = async function() {
-    const genre = document.getElementById('bgm-genre')?.value;
+    // 장르 또는 검색어 가져오기
+    let genre = localStorage.getItem('bgm_genre') || '';
+    
+    // 사용자 정의 검색인 경우 검색창에서 가져오기
+    const headerSearchInput = document.getElementById('header-bgm-search');
+    const dashboardSearchInput = document.getElementById('dashboard-bgm-search');
+    
+    if (genre === 'custom') {
+        genre = (headerSearchInput?.value || dashboardSearchInput?.value || '').trim();
+        if (!genre) {
+            window.showAlert('검색어를 입력해주세요');
+            return;
+        }
+    }
+    
     const apiKey = localStorage.getItem('youtube_api_key');
     
     console.log('🎵 BGM 검색 시작:', genre);
@@ -14771,7 +14789,8 @@ window.searchYouTubeBGM = async function() {
         'oldpop': 'classic pop songs 80s 90s'
     };
     
-    const searchQuery = searchQueries[genre];
+    // 사전 정의된 장르면 매핑된 검색어 사용, 아니면 사용자 입력 그대로 사용
+    const searchQuery = searchQueries[genre] || genre;
     console.log('🔍 검색어:', searchQuery);
     
     try {
@@ -14979,20 +14998,62 @@ window.testYouTubeApiKey = async function() {
 // 대시보드 BGM 장르 변경
 window.changeBGMGenre = function(genre) {
     console.log('🎵 BGM 장르 변경:', genre);
+    
+    // 사용자 정의 검색어인지 확인
+    const isCustomSearch = genre && !['classical', 'piano', 'meditation', 'oldpop', '', 'custom'].includes(genre);
+    
+    // 검색창 표시/숨김 처리
+    const headerGenreSelect = document.getElementById('header-bgm-genre');
+    const dashboardGenreSelect = document.getElementById('dashboard-bgm-genre');
+    const headerSearchInput = document.getElementById('header-bgm-search');
+    const dashboardSearchInput = document.getElementById('dashboard-bgm-search');
+    
+    // 'custom' 선택 시 검색창 표시
+    if (genre === 'custom') {
+        if (headerSearchInput) {
+            headerSearchInput.classList.remove('hidden');
+            headerSearchInput.focus();
+        }
+        if (dashboardSearchInput) {
+            dashboardSearchInput.classList.remove('hidden');
+            dashboardSearchInput.focus();
+        }
+        return; // 검색어 입력 대기
+    } else {
+        // 다른 장르 선택 시 검색창 숨김
+        if (headerSearchInput) headerSearchInput.classList.add('hidden');
+        if (dashboardSearchInput) dashboardSearchInput.classList.add('hidden');
+    }
+    
     localStorage.setItem('bgm_genre', genre);
     
     // 헤더와 대시보드 장르 선택 동기화
-    const headerGenre = document.getElementById('header-bgm-genre');
-    const dashboardGenre = document.getElementById('dashboard-bgm-genre');
-    if (headerGenre && headerGenre.value !== genre) {
-        headerGenre.value = genre;
+    if (headerGenreSelect && headerGenreSelect.value !== genre && !isCustomSearch) {
+        headerGenreSelect.value = genre;
     }
-    if (dashboardGenre && dashboardGenre.value !== genre) {
-        dashboardGenre.value = genre;
+    if (dashboardGenreSelect && dashboardGenreSelect.value !== genre && !isCustomSearch) {
+        dashboardGenreSelect.value = genre;
+    }
+    
+    // 사용자 정의 검색어를 입력창에 표시
+    if (isCustomSearch) {
+        if (headerSearchInput) headerSearchInput.value = genre;
+        if (dashboardSearchInput) dashboardSearchInput.value = genre;
+        if (headerGenreSelect) headerGenreSelect.value = 'custom';
+        if (dashboardGenreSelect) dashboardGenreSelect.value = 'custom';
+        // 검색창 표시
+        if (headerSearchInput) headerSearchInput.classList.remove('hidden');
+        if (dashboardSearchInput) dashboardSearchInput.classList.remove('hidden');
     }
     
     if (genre) {
+        // 이전 BGM 먼저 정지
+        console.log('⏹️ 이전 BGM 정지 중...');
+        stopBGM();
+        
+        // 새로운 BGM 검색 및 재생
         window.searchYouTubeBGM();
+        
         // 재생 버튼 아이콘 업데이트 (헤더와 대시보드 모두)
         const headerPlayBtn = document.getElementById('header-bgm-play-btn');
         const dashboardPlayBtn = document.getElementById('bgm-play-btn');
