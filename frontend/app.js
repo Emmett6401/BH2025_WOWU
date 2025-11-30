@@ -14708,15 +14708,19 @@ window.searchYouTubeBGM = async function() {
     const genre = document.getElementById('bgm-genre')?.value;
     const apiKey = localStorage.getItem('youtube_api_key');
     
+    console.log('🎵 BGM 검색 시작:', genre);
+    
     // 장르가 없으면 BGM 정지
     if (!genre) {
+        console.log('❌ 장르 없음 - BGM 정지');
         stopBGM();
         return;
     }
     
     // API 키가 없으면 경고
     if (!apiKey) {
-        window.showAlert('YouTube API 키를 먼저 입력해주세요.');
+        console.log('❌ YouTube API 키 없음');
+        window.showAlert('YouTube API 키를 먼저 입력하고 저장해주세요.');
         return;
     }
     
@@ -14729,52 +14733,67 @@ window.searchYouTubeBGM = async function() {
     };
     
     const searchQuery = searchQueries[genre];
+    console.log('🔍 검색어:', searchQuery);
     
     try {
         // YouTube Data API로 검색
-        const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${encodeURIComponent(searchQuery)}&type=video&videoCategoryId=10&key=${apiKey}`
-        );
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${encodeURIComponent(searchQuery)}&type=video&videoCategoryId=10&key=${apiKey}`;
+        console.log('📡 YouTube API 호출...');
+        
+        const response = await fetch(url);
         
         if (!response.ok) {
-            throw new Error('YouTube API 오류');
+            const errorData = await response.json();
+            console.error('❌ YouTube API 오류:', errorData);
+            throw new Error('YouTube API 오류: ' + (errorData.error?.message || response.statusText));
         }
         
         const data = await response.json();
+        console.log('✅ YouTube 검색 결과:', data);
         
         if (data.items && data.items.length > 0) {
             const videoId = data.items[0].id.videoId;
+            const videoTitle = data.items[0].snippet.title;
+            console.log('🎬 비디오 찾음:', videoTitle, videoId);
             playBGM(videoId);
         } else {
+            console.log('❌ BGM을 찾을 수 없음');
             window.showAlert('BGM을 찾을 수 없습니다.');
         }
     } catch (error) {
-        console.error('YouTube 검색 오류:', error);
+        console.error('❌ YouTube 검색 오류:', error);
         window.showAlert('YouTube 검색 실패: ' + error.message);
     }
 }
 
 // BGM 재생
 function playBGM(videoId) {
+    console.log('▶️ BGM 재생 시작:', videoId);
     currentBGMVideoId = videoId;
     
     // BGM 플레이어가 없으면 생성
     if (!bgmPlayer) {
+        console.log('🎬 BGM 플레이어 생성');
         createBGMPlayer();
     }
     
     // 이미 YouTube IFrame API가 로드되어 있으면 바로 재생
     if (window.YT && window.YT.Player) {
+        console.log('✅ YouTube API 로드됨 - 재생 시작');
         if (bgmPlayer && bgmPlayer.loadVideoById) {
             const volume = parseInt(localStorage.getItem('bgm_volume') || '30');
+            console.log('🔊 볼륨 설정:', volume + '%');
             bgmPlayer.setVolume(volume);
             bgmPlayer.loadVideoById(videoId);
         } else {
+            console.log('🎵 YouTube Player 초기화');
             initYouTubePlayer(videoId);
         }
     } else {
+        console.log('📥 YouTube IFrame API 로드 중...');
         // YouTube IFrame API 로드
         loadYouTubeAPI(() => {
+            console.log('✅ YouTube API 로드 완료');
             initYouTubePlayer(videoId);
         });
     }
@@ -14815,26 +14834,43 @@ function createBGMPlayer() {
 
 // YouTube Player 초기화
 function initYouTubePlayer(videoId) {
+    console.log('🎬 YouTube Player 초기화:', videoId);
     const volume = parseInt(localStorage.getItem('bgm_volume') || '30');
+    console.log('🔊 초기 볼륨:', volume + '%');
     
-    bgmPlayer = new YT.Player('bgm-youtube-player', {
-        height: '113',
-        width: '200',
-        videoId: videoId,
-        playerVars: {
-            autoplay: 1,
-            loop: 1,
-            playlist: videoId,
-            controls: 0,
-            modestbranding: 1
-        },
-        events: {
-            onReady: (event) => {
-                event.target.setVolume(volume);
-                event.target.playVideo();
+    try {
+        bgmPlayer = new YT.Player('bgm-youtube-player', {
+            height: '113',
+            width: '200',
+            videoId: videoId,
+            playerVars: {
+                autoplay: 1,
+                loop: 1,
+                playlist: videoId,
+                controls: 0,
+                modestbranding: 1
+            },
+            events: {
+                onReady: (event) => {
+                    console.log('✅ YouTube Player 준비 완료');
+                    event.target.setVolume(volume);
+                    console.log('🔊 볼륨 적용:', volume + '%');
+                    event.target.playVideo();
+                    console.log('▶️ 재생 시작');
+                },
+                onStateChange: (event) => {
+                    console.log('🎵 Player 상태 변경:', event.data);
+                    // -1: 시작되지 않음, 0: 종료, 1: 재생 중, 2: 일시정지, 3: 버퍼링, 5: 동영상 신호
+                },
+                onError: (event) => {
+                    console.error('❌ YouTube Player 오류:', event.data);
+                }
             }
-        }
-    });
+        });
+        console.log('✅ YouTube Player 객체 생성됨');
+    } catch (error) {
+        console.error('❌ YouTube Player 생성 실패:', error);
+    }
 }
 
 // BGM 정지
