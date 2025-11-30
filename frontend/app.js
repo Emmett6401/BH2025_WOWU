@@ -11554,6 +11554,62 @@ function renderSystemSettings(settings) {
                     </p>
                 </div>
                 
+                <!-- YouTube API 키 -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fab fa-youtube mr-2 text-red-500"></i>YouTube API 키
+                    </label>
+                    <input type="text" id="youtube-api-key" 
+                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="YouTube Data API v3 키를 입력하세요">
+                    <p class="text-sm text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        YouTube에서 BGM을 검색하려면 API 키가 필요합니다
+                    </p>
+                    <p class="text-sm text-gray-400 mt-1">
+                        💡 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-blue-500 hover:underline">Google Cloud Console</a>에서 발급 가능
+                    </p>
+                </div>
+                
+                <!-- 백그라운드 뮤직 장르 선택 -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-music mr-2 text-pink-500"></i>백그라운드 뮤직 장르
+                    </label>
+                    <select id="bgm-genre" 
+                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                            onchange="window.searchYouTubeBGM()">
+                        <option value="">BGM 끄기</option>
+                        <option value="classical">클래식 (Classical Music)</option>
+                        <option value="piano">피아노 연주 (Piano Instrumental)</option>
+                        <option value="meditation">명상 음악 (Meditation Music)</option>
+                        <option value="oldpop">고전 팝송 (Classic Pop)</option>
+                    </select>
+                    <p class="text-sm text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        대시보드에서 재생될 BGM 장르를 선택합니다
+                    </p>
+                    <p class="text-sm text-gray-400 mt-1">
+                        💡 장르 선택 시 YouTube에서 자동으로 검색하여 재생합니다
+                    </p>
+                </div>
+                
+                <!-- BGM 볼륨 조절 -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-volume-up mr-2 text-green-500"></i>BGM 볼륨
+                    </label>
+                    <div class="flex items-center gap-4">
+                        <input type="range" id="bgm-volume" min="0" max="100" value="30" 
+                               class="flex-1" oninput="document.getElementById('volume-value').textContent = this.value + '%'">
+                        <span id="volume-value" class="text-gray-700 font-semibold w-12">30%</span>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        BGM 재생 볼륨을 조절합니다 (0-100%)
+                    </p>
+                </div>
+                
                 <!-- 대시보드 자동 새로고침 시간 -->
                 <div>
                     <label class="block text-gray-700 font-semibold mb-2">
@@ -11602,6 +11658,31 @@ function renderSystemSettings(settings) {
         if (subtitle1Input) subtitle1Input.value = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
         if (subtitle2Input) subtitle2Input.value = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
         if (logoUrlInput) logoUrlInput.value = settings.logo_url || '/woosong-logo.png';
+        
+        // YouTube API 키 로드
+        const youtubeApiKeyInput = document.getElementById('youtube-api-key');
+        const savedYoutubeKey = localStorage.getItem('youtube_api_key') || '';
+        if (youtubeApiKeyInput) {
+            youtubeApiKeyInput.value = savedYoutubeKey;
+            console.log('✅ YouTube API 키 로드:', savedYoutubeKey ? '설정됨' : '미설정');
+        }
+        
+        // BGM 장르 로드
+        const bgmGenreSelect = document.getElementById('bgm-genre');
+        const savedGenre = localStorage.getItem('bgm_genre') || '';
+        if (bgmGenreSelect) {
+            bgmGenreSelect.value = savedGenre;
+            console.log('✅ BGM 장르 로드:', savedGenre || '끄기');
+        }
+        
+        // BGM 볼륨 로드
+        const bgmVolumeInput = document.getElementById('bgm-volume');
+        const savedVolume = localStorage.getItem('bgm_volume') || '30';
+        if (bgmVolumeInput) {
+            bgmVolumeInput.value = savedVolume;
+            document.getElementById('volume-value').textContent = savedVolume + '%';
+            console.log('✅ BGM 볼륨 로드:', savedVolume + '%');
+        }
         
         // AI 모델 설정 로드
         const aiModelSelect = document.getElementById('ai-model');
@@ -11763,6 +11844,21 @@ window.saveSystemSettings = async function() {
     const systemSubtitle1 = subtitle1Element.value;
     const systemSubtitle2 = subtitle2Element.value;
     const logoUrl = logoElement.value;
+    
+    // YouTube API 키 저장
+    const youtubeApiKey = document.getElementById('youtube-api-key')?.value || '';
+    localStorage.setItem('youtube_api_key', youtubeApiKey);
+    console.log('💾 YouTube API 키 저장:', youtubeApiKey ? '설정됨' : '미설정');
+    
+    // BGM 장르 저장
+    const bgmGenre = document.getElementById('bgm-genre')?.value || '';
+    localStorage.setItem('bgm_genre', bgmGenre);
+    console.log('💾 BGM 장르 저장:', bgmGenre || '끄기');
+    
+    // BGM 볼륨 저장
+    const bgmVolume = document.getElementById('bgm-volume')?.value || '30';
+    localStorage.setItem('bgm_volume', bgmVolume);
+    console.log('💾 BGM 볼륨 저장:', bgmVolume + '%');
     
     // AI 모델 선택 저장
     const aiModel = aiModelElement ? aiModelElement.value : 'groq';
@@ -14603,15 +14699,180 @@ function renderAesong3DChat() {
     }, 100);
 }
 
+// ==================== BGM 관련 기능 ====================
+let bgmPlayer = null;
+let currentBGMVideoId = null;
+
+// YouTube 검색 및 BGM 재생
+window.searchYouTubeBGM = async function() {
+    const genre = document.getElementById('bgm-genre')?.value;
+    const apiKey = localStorage.getItem('youtube_api_key');
+    
+    // 장르가 없으면 BGM 정지
+    if (!genre) {
+        stopBGM();
+        return;
+    }
+    
+    // API 키가 없으면 경고
+    if (!apiKey) {
+        window.showAlert('YouTube API 키를 먼저 입력해주세요.');
+        return;
+    }
+    
+    // 장르별 검색어 매핑
+    const searchQueries = {
+        'classical': 'classical music instrumental relaxing',
+        'piano': 'piano instrumental background music',
+        'meditation': 'meditation music calm relaxing',
+        'oldpop': 'classic pop songs 80s 90s'
+    };
+    
+    const searchQuery = searchQueries[genre];
+    
+    try {
+        // YouTube Data API로 검색
+        const response = await fetch(
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${encodeURIComponent(searchQuery)}&type=video&videoCategoryId=10&key=${apiKey}`
+        );
+        
+        if (!response.ok) {
+            throw new Error('YouTube API 오류');
+        }
+        
+        const data = await response.json();
+        
+        if (data.items && data.items.length > 0) {
+            const videoId = data.items[0].id.videoId;
+            playBGM(videoId);
+        } else {
+            window.showAlert('BGM을 찾을 수 없습니다.');
+        }
+    } catch (error) {
+        console.error('YouTube 검색 오류:', error);
+        window.showAlert('YouTube 검색 실패: ' + error.message);
+    }
+}
+
+// BGM 재생
+function playBGM(videoId) {
+    currentBGMVideoId = videoId;
+    
+    // BGM 플레이어가 없으면 생성
+    if (!bgmPlayer) {
+        createBGMPlayer();
+    }
+    
+    // 이미 YouTube IFrame API가 로드되어 있으면 바로 재생
+    if (window.YT && window.YT.Player) {
+        if (bgmPlayer && bgmPlayer.loadVideoById) {
+            const volume = parseInt(localStorage.getItem('bgm_volume') || '30');
+            bgmPlayer.setVolume(volume);
+            bgmPlayer.loadVideoById(videoId);
+        } else {
+            initYouTubePlayer(videoId);
+        }
+    } else {
+        // YouTube IFrame API 로드
+        loadYouTubeAPI(() => {
+            initYouTubePlayer(videoId);
+        });
+    }
+}
+
+// YouTube IFrame API 로드
+function loadYouTubeAPI(callback) {
+    if (window.YT) {
+        callback();
+        return;
+    }
+    
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    
+    window.onYouTubeIframeAPIReady = callback;
+}
+
+// BGM 플레이어 HTML 생성
+function createBGMPlayer() {
+    const playerHTML = `
+        <div id="bgm-player-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                <i class="fas fa-music" style="color: #ec4899;"></i>
+                <span style="font-size: 12px; font-weight: bold;">BGM 재생 중</span>
+                <button onclick="stopBGM()" style="background: #ef4444; color: white; border: none; border-radius: 5px; padding: 2px 8px; cursor: pointer; font-size: 11px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="bgm-youtube-player" style="width: 200px; height: 113px;"></div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', playerHTML);
+}
+
+// YouTube Player 초기화
+function initYouTubePlayer(videoId) {
+    const volume = parseInt(localStorage.getItem('bgm_volume') || '30');
+    
+    bgmPlayer = new YT.Player('bgm-youtube-player', {
+        height: '113',
+        width: '200',
+        videoId: videoId,
+        playerVars: {
+            autoplay: 1,
+            loop: 1,
+            playlist: videoId,
+            controls: 0,
+            modestbranding: 1
+        },
+        events: {
+            onReady: (event) => {
+                event.target.setVolume(volume);
+                event.target.playVideo();
+            }
+        }
+    });
+}
+
+// BGM 정지
+function stopBGM() {
+    if (bgmPlayer && bgmPlayer.stopVideo) {
+        bgmPlayer.stopVideo();
+    }
+    
+    const container = document.getElementById('bgm-player-container');
+    if (container) {
+        container.remove();
+    }
+    
+    bgmPlayer = null;
+    currentBGMVideoId = null;
+}
+
+// 대시보드 로드 시 자동으로 BGM 재생
+function autoPlayBGM() {
+    const savedGenre = localStorage.getItem('bgm_genre');
+    if (savedGenre) {
+        setTimeout(() => {
+            window.searchYouTubeBGM();
+        }, 2000); // 2초 대기 후 재생
+    }
+}
+
 // ==================== 페이지 로드 시 헤더 업데이트 및 권한 체크 ====================
 // 페이지가 완전히 로드된 후 헤더 업데이트 및 메뉴 권한 체크 실행
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         updateHeader();
         applyMenuPermissions();
+        autoPlayBGM(); // BGM 자동 재생
     });
 } else {
     // 이미 로드된 경우 즉시 실행
     updateHeader();
     applyMenuPermissions();
+    autoPlayBGM(); // BGM 자동 재생
 }
