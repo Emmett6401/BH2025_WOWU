@@ -163,30 +163,6 @@
                                 <i class="fas fa-sync-alt mr-1"></i>새로고침: <span id="refresh-countdown" class="font-mono text-white">--:--</span>
                             </span>
                         </div>
-                        
-                        <!-- BGM 컨트롤 (대시보드일 때만 표시) -->
-                        <div id="header-bgm-panel" class="hidden items-center justify-end gap-1.5 bg-pink-50 bg-opacity-90 px-2 py-1 rounded border border-pink-200 mt-1">
-                            <select id="header-bgm-genre" class="px-1.5 py-0.5 border rounded text-xs bg-white text-gray-700" onchange="window.changeBGMGenre(this.value)">
-                                <option value="">🎵 BGM 끄기</option>
-                                <option value="classical">🎻 클래식</option>
-                                <option value="piano">🎹 피아노</option>
-                                <option value="meditation">🧘 명상</option>
-                                <option value="oldpop">🎤 팝송</option>
-                                <option value="custom">🔍 직접 검색</option>
-                            </select>
-                            <input type="text" id="header-bgm-search" placeholder="검색어..." 
-                                   class="px-1.5 py-0.5 border rounded text-xs bg-white text-gray-700 w-20 hidden"
-                                   onkeypress="if(event.key==='Enter'){window.changeBGMGenre(this.value);}">
-                            <button id="header-bgm-play-btn" onclick="window.toggleBGM()" class="px-1 py-0.5 text-pink-600 hover:text-pink-800 transition">
-                                <i class="fas fa-play text-xs"></i>
-                            </button>
-                            <div class="flex items-center gap-1">
-                                <i class="fas fa-volume-up text-pink-600 text-xs"></i>
-                                <input type="range" id="header-bgm-volume" min="0" max="100" value="30" 
-                                       class="w-14 h-1" oninput="window.changeBGMVolume(this.value)">
-                                <span id="header-volume-value" class="text-xs text-pink-600 w-6">30%</span>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>

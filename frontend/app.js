@@ -1837,6 +1837,29 @@ async function loadDashboard() {
                     </div>
                 </div>
                 
+                <!-- BGM 컨트롤 패널 -->
+                <div class="flex items-center justify-end gap-1.5 bg-pink-50 px-2 py-1 rounded border border-pink-200 mb-3">
+                    <select id="dashboard-bgm-genre" class="px-1.5 py-0.5 border rounded text-xs bg-white text-gray-700" onchange="window.changeBGMGenre(this.value)">
+                        <option value="">🎵 BGM 끄기</option>
+                        <option value="classical">🎻 클래식</option>
+                        <option value="piano">🎹 피아노</option>
+                        <option value="meditation">🧘 명상</option>
+                        <option value="oldpop">🎤 팝송</option>
+                        <option value="custom">🔍 직접 검색</option>
+                    </select>
+                    <input type="text" id="dashboard-bgm-search" placeholder="검색어..." 
+                           class="px-1.5 py-0.5 border rounded text-xs bg-white text-gray-700 w-20 hidden"
+                           onkeypress="if(event.key==='Enter'){window.changeBGMGenre(this.value);}">
+                    <button id="dashboard-bgm-play-btn" onclick="window.toggleBGM()" class="px-1 py-0.5 text-pink-600 hover:text-pink-800 transition">
+                        <i class="fas fa-play text-xs"></i>
+                    </button>
+                    <div class="flex items-center gap-1">
+                        <i class="fas fa-volume-up text-pink-600 text-xs"></i>
+                        <input type="range" id="dashboard-bgm-volume" min="0" max="100" value="30" 
+                               class="w-14 h-1" oninput="window.changeBGMVolume(this.value)">
+                        <span id="dashboard-volume-value" class="text-xs text-pink-600 w-6">30%</span>
+                    </div>
+                </div>
 
                 <!-- 상단 통계 카드 (6개 컴팩트) -->
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-3">
@@ -2384,6 +2407,9 @@ async function loadDashboard() {
         
         window.hideLoading();
         console.log('✅ 대시보드 렌더링 완료');
+        
+        // BGM 설정 복원
+        window.restoreBGMSettings();
     } catch (error) {
         window.hideLoading();
         console.error('❌ 대시보드 로드 실패:', error);
@@ -2481,18 +2507,6 @@ window.showTab = function(tab, addToHistory = true) {
             btn.className = 'tab-btn px-4 py-3 text-sm font-semibold text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded';
         }
     });
-    
-    // BGM 패널 표시/숨김 (대시보드일 때만 표시)
-    const bgmPanel = document.getElementById('header-bgm-panel');
-    if (bgmPanel) {
-        if (tab === 'dashboard') {
-            bgmPanel.classList.remove('hidden');
-            bgmPanel.classList.add('flex');
-        } else {
-            bgmPanel.classList.remove('flex');
-            bgmPanel.classList.add('hidden');
-        }
-    }
     
     // 해당 탭 콘텐츠 로드
     switch(tab) {
@@ -14983,35 +14997,35 @@ window.changeBGMGenre = function(genre) {
     // 사용자 정의 검색어인지 확인
     const isCustomSearch = genre && !['classical', 'piano', 'meditation', 'oldpop', '', 'custom'].includes(genre);
     
-    // 검색창 표시/숨김 처리 (헤더 BGM 컨트롤)
-    const headerGenreSelect = document.getElementById('header-bgm-genre');
-    const headerSearchInput = document.getElementById('header-bgm-search');
+    // 검색창 표시/숨김 처리 (대시보드 BGM 컨트롤)
+    const dashboardGenreSelect = document.getElementById('dashboard-bgm-genre');
+    const dashboardSearchInput = document.getElementById('dashboard-bgm-search');
     
     // 'custom' 선택 시 검색창 표시
     if (genre === 'custom') {
-        if (headerSearchInput) {
-            headerSearchInput.classList.remove('hidden');
-            headerSearchInput.focus();
+        if (dashboardSearchInput) {
+            dashboardSearchInput.classList.remove('hidden');
+            dashboardSearchInput.focus();
         }
         return; // 검색어 입력 대기
     } else {
         // 다른 장르 선택 시 검색창 숨김
-        if (headerSearchInput) headerSearchInput.classList.add('hidden');
+        if (dashboardSearchInput) dashboardSearchInput.classList.add('hidden');
     }
     
     localStorage.setItem('bgm_genre', genre);
     
-    // 헤더 장르 선택 동기화
-    if (headerGenreSelect && headerGenreSelect.value !== genre && !isCustomSearch) {
-        headerGenreSelect.value = genre;
+    // 대시보드 장르 선택 동기화
+    if (dashboardGenreSelect && dashboardGenreSelect.value !== genre && !isCustomSearch) {
+        dashboardGenreSelect.value = genre;
     }
     
     // 사용자 정의 검색어를 입력창에 표시
     if (isCustomSearch) {
-        if (headerSearchInput) headerSearchInput.value = genre;
-        if (headerGenreSelect) headerGenreSelect.value = 'custom';
+        if (dashboardSearchInput) dashboardSearchInput.value = genre;
+        if (dashboardGenreSelect) dashboardGenreSelect.value = 'custom';
         // 검색창 표시
-        if (headerSearchInput) headerSearchInput.classList.remove('hidden');
+        if (dashboardSearchInput) dashboardSearchInput.classList.remove('hidden');
     }
     
     if (genre) {
@@ -15022,27 +15036,27 @@ window.changeBGMGenre = function(genre) {
         // 새로운 BGM 검색 및 재생
         window.searchYouTubeBGM();
         
-        // 재생 버튼 아이콘 업데이트 (헤더 BGM 컨트롤)
-        const headerPlayBtn = document.getElementById('header-bgm-play-btn');
-        if (headerPlayBtn) {
-            headerPlayBtn.innerHTML = '<i class="fas fa-pause text-xs"></i>';
+        // 재생 버튼 아이콘 업데이트 (대시보드 BGM 컨트롤)
+        const dashboardPlayBtn = document.getElementById('dashboard-bgm-play-btn');
+        if (dashboardPlayBtn) {
+            dashboardPlayBtn.innerHTML = '<i class="fas fa-pause text-xs"></i>';
         }
     } else {
         stopBGM();
-        // 재생 버튼 아이콘 업데이트 (헤더 BGM 컨트롤)
-        const headerPlayBtn = document.getElementById('header-bgm-play-btn');
-        if (headerPlayBtn) {
-            headerPlayBtn.innerHTML = '<i class="fas fa-play text-xs"></i>';
+        // 재생 버튼 아이콘 업데이트 (대시보드 BGM 컨트롤)
+        const dashboardPlayBtn = document.getElementById('dashboard-bgm-play-btn');
+        if (dashboardPlayBtn) {
+            dashboardPlayBtn.innerHTML = '<i class="fas fa-play text-xs"></i>';
         }
     }
 }
 
 // BGM 재생/정지 토글
 window.toggleBGM = function() {
-    const headerGenre = document.getElementById('header-bgm-genre')?.value;
-    const genre = headerGenre;
+    const dashboardGenre = document.getElementById('dashboard-bgm-genre')?.value;
+    const genre = dashboardGenre;
     
-    const headerPlayBtn = document.getElementById('header-bgm-play-btn');
+    const dashboardPlayBtn = document.getElementById('dashboard-bgm-play-btn');
     
     if (!genre) {
         window.showAlert('BGM 장르를 먼저 선택해주세요');
@@ -15052,35 +15066,35 @@ window.toggleBGM = function() {
     if (bgmPlayer && currentBGMVideoId) {
         // 현재 재생 중이면 정지
         stopBGM();
-        if (headerPlayBtn) {
-            headerPlayBtn.innerHTML = '<i class="fas fa-play text-xs"></i>';
+        if (dashboardPlayBtn) {
+            dashboardPlayBtn.innerHTML = '<i class="fas fa-play text-xs"></i>';
         }
         console.log('⏸️ BGM 정지');
     } else {
         // 정지 중이면 재생
         window.searchYouTubeBGM();
-        if (headerPlayBtn) {
-            headerPlayBtn.innerHTML = '<i class="fas fa-pause text-xs"></i>';
+        if (dashboardPlayBtn) {
+            dashboardPlayBtn.innerHTML = '<i class="fas fa-pause text-xs"></i>';
         }
         console.log('▶️ BGM 재생');
     }
 }
 
-// BGM 볼륨 변경 (헤더 BGM 컨트롤)
+// BGM 볼륨 변경 (대시보드 BGM 컨트롤)
 window.changeBGMVolume = function(volume) {
     console.log('🔊 BGM 볼륨 변경:', volume + '%');
     localStorage.setItem('bgm_volume', volume);
     
-    // 헤더 볼륨 슬라이더 동기화
-    const headerVolumeSlider = document.getElementById('header-bgm-volume');
-    if (headerVolumeSlider && headerVolumeSlider.value !== volume) {
-        headerVolumeSlider.value = volume;
+    // 대시보드 볼륨 슬라이더 동기화
+    const dashboardVolumeSlider = document.getElementById('dashboard-bgm-volume');
+    if (dashboardVolumeSlider && dashboardVolumeSlider.value !== volume) {
+        dashboardVolumeSlider.value = volume;
     }
     
-    // 볼륨 표시 업데이트 (헤더 BGM 컨트롤)
-    const headerVolumeValue = document.getElementById('header-volume-value');
-    if (headerVolumeValue) {
-        headerVolumeValue.textContent = volume + '%';
+    // 볼륨 표시 업데이트 (대시보드 BGM 컨트롤)
+    const dashboardVolumeValue = document.getElementById('dashboard-volume-value');
+    if (dashboardVolumeValue) {
+        dashboardVolumeValue.textContent = volume + '%';
     }
     
     // 현재 재생 중인 BGM 볼륨 업데이트
@@ -15090,28 +15104,28 @@ window.changeBGMVolume = function(volume) {
     }
 }
 
-// 페이지 로드 시 BGM 설정 복원 (헤더와 대시보드 모두)
+// 페이지 로드 시 BGM 설정 복원 (대시보드)
 window.restoreBGMSettings = function() {
     const savedGenre = localStorage.getItem('bgm_genre') || '';
     const savedVolume = localStorage.getItem('bgm_volume') || '30';
     
-    // 헤더 BGM 컨트롤 복원
-    const headerGenreSelect = document.getElementById('header-bgm-genre');
-    const headerVolumeSlider = document.getElementById('header-bgm-volume');
-    const headerVolumeValue = document.getElementById('header-volume-value');
+    // 대시보드 BGM 컨트롤 복원
+    const dashboardGenreSelect = document.getElementById('dashboard-bgm-genre');
+    const dashboardVolumeSlider = document.getElementById('dashboard-bgm-volume');
+    const dashboardVolumeValue = document.getElementById('dashboard-volume-value');
     
-    if (headerGenreSelect) {
-        headerGenreSelect.value = savedGenre;
-        console.log('✅ 헤더 BGM 장르 복원:', savedGenre || '끄기');
+    if (dashboardGenreSelect) {
+        dashboardGenreSelect.value = savedGenre;
+        console.log('✅ 대시보드 BGM 장르 복원:', savedGenre || '끄기');
     }
     
-    if (headerVolumeSlider) {
-        headerVolumeSlider.value = savedVolume;
-        console.log('✅ 헤더 BGM 볼륨 복원:', savedVolume + '%');
+    if (dashboardVolumeSlider) {
+        dashboardVolumeSlider.value = savedVolume;
+        console.log('✅ 대시보드 BGM 볼륨 복원:', savedVolume + '%');
     }
     
-    if (headerVolumeValue) {
-        headerVolumeValue.textContent = savedVolume + '%';
+    if (dashboardVolumeValue) {
+        dashboardVolumeValue.textContent = savedVolume + '%';
     }
 }
 
