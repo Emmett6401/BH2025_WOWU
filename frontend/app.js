@@ -11690,29 +11690,39 @@ function renderSystemSettings(settings) {
         if (subtitle2Input) subtitle2Input.value = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
         if (logoUrlInput) logoUrlInput.value = settings.logo_url || '/woosong-logo.png';
         
-        // YouTube API 키 로드
+        // YouTube API 키 로드 (서버 우선, 없으면 localStorage)
         const youtubeApiKeyInput = document.getElementById('youtube-api-key');
-        const savedYoutubeKey = localStorage.getItem('youtube_api_key') || '';
+        const youtubeKey = settings.youtube_api_key || localStorage.getItem('youtube_api_key') || '';
         if (youtubeApiKeyInput) {
-            youtubeApiKeyInput.value = savedYoutubeKey;
-            console.log('✅ YouTube API 키 로드:', savedYoutubeKey ? '설정됨' : '미설정');
+            youtubeApiKeyInput.value = youtubeKey;
+            // 서버에서 불러온 키를 localStorage에도 저장 (BGM 재생에 사용)
+            if (youtubeKey) {
+                localStorage.setItem('youtube_api_key', youtubeKey);
+            }
+            console.log('✅ YouTube API 키 로드 (서버):', youtubeKey ? '설정됨' : '미설정');
         }
         
-        // BGM 장르 로드
+        // BGM 장르 로드 (서버 우선, 없으면 localStorage)
         const bgmGenreSelect = document.getElementById('bgm-genre');
-        const savedGenre = localStorage.getItem('bgm_genre') || '';
+        const bgmGenre = settings.bgm_genre || localStorage.getItem('bgm_genre') || '';
         if (bgmGenreSelect) {
-            bgmGenreSelect.value = savedGenre;
-            console.log('✅ BGM 장르 로드:', savedGenre || '끄기');
+            bgmGenreSelect.value = bgmGenre;
+            if (bgmGenre) {
+                localStorage.setItem('bgm_genre', bgmGenre);
+            }
+            console.log('✅ BGM 장르 로드 (서버):', bgmGenre || '끄기');
         }
         
-        // BGM 볼륨 로드
+        // BGM 볼륨 로드 (서버 우선, 없으면 localStorage)
         const bgmVolumeInput = document.getElementById('bgm-volume');
-        const savedVolume = localStorage.getItem('bgm_volume') || '30';
+        const bgmVolume = settings.bgm_volume || localStorage.getItem('bgm_volume') || '30';
         if (bgmVolumeInput) {
-            bgmVolumeInput.value = savedVolume;
-            document.getElementById('volume-value').textContent = savedVolume + '%';
-            console.log('✅ BGM 볼륨 로드:', savedVolume + '%');
+            bgmVolumeInput.value = bgmVolume;
+            document.getElementById('volume-value').textContent = bgmVolume + '%';
+            if (bgmVolume) {
+                localStorage.setItem('bgm_volume', bgmVolume);
+            }
+            console.log('✅ BGM 볼륨 로드 (서버):', bgmVolume + '%');
         }
         
         // AI 모델 설정 로드
@@ -11723,11 +11733,14 @@ function renderSystemSettings(settings) {
             console.log('✅ AI 모델 로드:', savedModel);
         }
         
-        // 대시보드 자동 새로고침 시간 설정 로드
-        const savedInterval = localStorage.getItem('dashboard_refresh_interval') || '5';
+        // 대시보드 자동 새로고침 시간 설정 로드 (서버 우선)
+        const refreshInterval = settings.dashboard_refresh_interval || localStorage.getItem('dashboard_refresh_interval') || '5';
         if (refreshIntervalInput) {
-            refreshIntervalInput.value = savedInterval;
-            console.log('✅ 자동 새로고침 시간 로드:', savedInterval + '분');
+            refreshIntervalInput.value = refreshInterval;
+            if (refreshInterval) {
+                localStorage.setItem('dashboard_refresh_interval', refreshInterval);
+            }
+            console.log('✅ 자동 새로고침 시간 로드 (서버):', refreshInterval + '분');
         }
         
         // 로고 이미지 표시
@@ -11922,6 +11935,10 @@ window.saveSystemSettings = async function() {
     formData.append('system_subtitle1', systemSubtitle1);
     formData.append('system_subtitle2', systemSubtitle2);
     formData.append('logo_url', logoUrl);
+    formData.append('youtube_api_key', youtubeApiKey);
+    formData.append('bgm_genre', bgmGenre);
+    formData.append('bgm_volume', bgmVolume);
+    formData.append('dashboard_refresh_interval', refreshInterval.toString());
     
     try {
         // 프로그레스바 표시
