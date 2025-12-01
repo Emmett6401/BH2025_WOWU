@@ -7362,35 +7362,36 @@ function renderCourseDetail(course) {
         </div>
     `;
     
-    // 공휴일 비동기 로드 (DOM 렌더링 후 실행)
-    setTimeout(async () => {
-        console.log('공휴일 로드 시작:', course.start_date, '~', course.final_end_date);
-        const holidays = await getCourseHolidays(course.start_date, course.final_end_date);
-        console.log('조회된 공휴일:', holidays);
-        
-        const holidayElement = document.getElementById(`course-holidays-${course.code}`);
-        console.log('holidayElement:', holidayElement);
-        
-        if (holidayElement) {
-            if (holidays.length === 0) {
-                holidayElement.innerHTML = '<span class="text-gray-500">등록된 공휴일이 없습니다</span>';
-            } else {
-                // MM-DD(공휴일명) 형식으로 표시
-                const holidayTexts = holidays.map(h => {
-                    const date = new Date(h.holiday_date);
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    return `${month}-${day}(${h.name})`;
-                });
-                holidayElement.textContent = holidayTexts.join(', ');
-                console.log('공휴일 표시 완료:', holidayTexts.join(', '));
-            }
-        } else {
-            console.error('holidayElement를 찾을 수 없습니다');
-        }
-    }, 100);
+    // updateSubjectArea와 공휴일 로드는 renderCourses에서 호출됨
+}
+
+// 과정 공휴일 로드 함수
+async function loadCourseHolidays(course) {
+    console.log('🔔 공휴일 로드 시작:', course.start_date, '~', course.final_end_date);
     
-    // updateSubjectArea는 renderCourses에서 호출됨
+    const holidays = await getCourseHolidays(course.start_date, course.final_end_date);
+    console.log('🔔 조회된 공휴일:', holidays);
+    
+    const holidayElement = document.getElementById(`course-holidays-${course.code}`);
+    console.log('🔔 holidayElement:', holidayElement);
+    
+    if (holidayElement) {
+        if (holidays.length === 0) {
+            holidayElement.innerHTML = '<span class="text-gray-500">등록된 공휴일이 없습니다</span>';
+        } else {
+            // MM-DD(공휴일명) 형식으로 표시
+            const holidayTexts = holidays.map(h => {
+                const date = new Date(h.holiday_date);
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${month}-${day}(${h.name})`;
+            });
+            holidayElement.textContent = holidayTexts.join(', ');
+            console.log('✅ 공휴일 표시 완료:', holidayTexts.join(', '));
+        }
+    } else {
+        console.error('❌ holidayElement를 찾을 수 없습니다:', `course-holidays-${course.code}`);
+    }
 }
 
 // 과목 영역 업데이트 함수
@@ -8014,10 +8015,13 @@ function renderCourses() {
         </div>
     `;
     
-    // DOM 렌더링 후 교과목 영역 업데이트
+    // DOM 렌더링 후 교과목 영역 업데이트 및 공휴일 로드
     if (selectedCourse) {
         console.log(`🔄 renderCourses 완료 후 updateSubjectArea 직접 호출 - 과정: ${selectedCourse.code}`);
         updateSubjectArea(selectedCourse.code);
+        
+        // 공휴일 로드
+        loadCourseHolidays(selectedCourse);
     }
 }
 
