@@ -7540,13 +7540,30 @@ window.updateDailyHours = function() {
 
 // 자동계산 결과를 예쁜 모달로 표시
 window.showCalculationResult = function(result, startDate, endDate) {
+    console.log('🎯 showCalculationResult 호출:', result);
+    
+    // alert-modal 내부의 요소들을 정확히 찾기
     const modal = document.getElementById('alert-modal');
-    const header = document.getElementById('alert-header');
-    const icon = document.getElementById('alert-icon');
-    const title = document.getElementById('alert-title');
-    const message = document.getElementById('alert-message');
-    const confirmBtn = document.getElementById('alert-confirm-btn');
-    const cancelBtn = document.getElementById('alert-cancel-btn');
+    if (!modal) {
+        console.error('❌ alert-modal을 찾을 수 없습니다!');
+        alert(`자동계산 완료!\n\n교육기간: ${startDate} ~ ${endDate}\n총 교육시간: ${result.total_hours}시간\n총 교육일수: ${result.total_days}일`);
+        return;
+    }
+    
+    const header = modal.querySelector('#alert-header');
+    const icon = modal.querySelector('#alert-icon');
+    const title = modal.querySelector('#alert-title');
+    const message = modal.querySelector('#alert-message');
+    const confirmBtn = modal.querySelector('#alert-confirm-btn');
+    const cancelBtn = modal.querySelector('#alert-cancel-btn');
+    
+    console.log('📦 모달 요소들:', { modal, header, icon, title, message, confirmBtn, cancelBtn });
+    
+    if (!header || !message) {
+        console.error('❌ 모달 내부 요소를 찾을 수 없습니다!');
+        alert(`자동계산 완료!\n\n교육기간: ${startDate} ~ ${endDate}\n총 교육시간: ${result.total_hours}시간\n총 교육일수: ${result.total_days}일`);
+        return;
+    }
     
     // 성공 스타일 적용
     header.className = 'p-6 rounded-t-2xl bg-gradient-to-r from-green-500 to-emerald-600';
