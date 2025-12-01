@@ -9522,9 +9522,14 @@ function renderTimetableList() {
                   String(now.getMonth() + 1).padStart(2, '0') + '-' + 
                   String(now.getDate()).padStart(2, '0');
     
-    // 과목별 총 시수 계산
+    // 날짜순 정렬된 시간표로 과목별 총 시수 계산
+    const sortedTimetables = [...filteredTimetables].sort((a, b) => {
+        if (a.class_date !== b.class_date) return a.class_date.localeCompare(b.class_date);
+        return (a.start_time || '').localeCompare(b.start_time || '');
+    });
+    
     const subjectHoursMap = {};
-    filteredTimetables.forEach((t) => {
+    sortedTimetables.forEach((t) => {
         if (t.subject_code) {
             if (!subjectHoursMap[t.subject_code]) {
                 subjectHoursMap[t.subject_code] = 0;
@@ -9538,13 +9543,13 @@ function renderTimetableList() {
         const duration = calculateDuration(tt.start_time, tt.end_time);
         const isToday = tt.class_date === today;
         
-        // 누적시수 계산 (현재 항목까지의 합계)
+        // 누적시수 계산 (정렬된 시간표에서 현재 항목까지의 합계)
         let accumulatedHours = 0;
-        for (let i = 0; i < filteredTimetables.length; i++) {
-            if (filteredTimetables[i].subject_code === tt.subject_code) {
-                accumulatedHours += calculateDuration(filteredTimetables[i].start_time, filteredTimetables[i].end_time);
+        for (let i = 0; i < sortedTimetables.length; i++) {
+            if (sortedTimetables[i].subject_code === tt.subject_code) {
+                accumulatedHours += calculateDuration(sortedTimetables[i].start_time, sortedTimetables[i].end_time);
             }
-            if (filteredTimetables[i].id === tt.id) break;
+            if (sortedTimetables[i].id === tt.id) break;
         }
         
         const totalHours = subjectHoursMap[tt.subject_code] || 0;
