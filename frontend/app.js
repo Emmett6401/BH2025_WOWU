@@ -7319,13 +7319,7 @@ function renderCourseDetail(course) {
         </div>
     `;
     
-    // 과목 영역 업데이트 (DOM이 생성된 직후)
-    console.log(`⏱️ updateSubjectArea 직접 호출 - 과정: ${course.code}`);
-    // setTimeout 대신 Promise를 사용하여 DOM 렌더링 후 실행
-    Promise.resolve().then(() => {
-        console.log(`⏰ updateSubjectArea 실행 - 과정: ${course.code}`);
-        updateSubjectArea(course.code);
-    });
+    // updateSubjectArea는 renderCourses에서 호출됨
 }
 
 // 과목 영역 업데이트 함수
@@ -7701,6 +7695,12 @@ function renderCourses() {
             `}
         </div>
     `;
+    
+    // DOM 렌더링 후 교과목 영역 업데이트
+    if (selectedCourse) {
+        console.log(`🔄 renderCourses 완료 후 updateSubjectArea 직접 호출 - 과정: ${selectedCourse.code}`);
+        updateSubjectArea(selectedCourse.code);
+    }
 }
 
 // 과정코드 자동생성
