@@ -1811,8 +1811,9 @@ async function loadDashboard() {
             };
         };
         
-        // 기본 과정 (2025-우송1반)
-        const mainCourse = coursesData.find(c => c.name === '2025-우송1반') || coursesData[0];
+        // 기본 과정 (localStorage에서 마지막 선택 복원 또는 첫 번째 과정)
+        const savedCourseCode = localStorage.getItem('dashboard_selected_course');
+        const mainCourse = (savedCourseCode ? coursesData.find(c => c.code === savedCourseCode) : null) || coursesData[0];
         const progress = window.calculateProgress(mainCourse.code);
         
         // 대시보드 렌더링
@@ -2396,6 +2397,9 @@ async function loadDashboard() {
         
         // 과정 필터 함수
         window.filterDashboard = function(courseCode) {
+            // 선택된 과정 코드를 localStorage에 저장
+            localStorage.setItem('dashboard_selected_course', courseCode);
+            
             window.showLoading();
             setTimeout(() => {
                 window.showDashboard();
