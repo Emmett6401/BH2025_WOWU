@@ -7769,11 +7769,11 @@ window.showSubjectSelector = async function(courseCode) {
                             const mainInstructorCode = s.main_instructor;
                             const mainInstructorInfo = allInstructors.find(inst => inst.code === mainInstructorCode);
                             
-                            // 기본 표시 텍스트: "주강사명-전공" 형식
+                            // 기본 표시 텍스트: "주강사명-전공" 형식 (major 필드 사용)
                             let defaultInstructorText = '강사 선택';
                             if (mainInstructorInfo) {
-                                const specialty = mainInstructorInfo.specialty || '전공';
-                                defaultInstructorText = `${mainInstructorInfo.name}-${specialty}`;
+                                const major = mainInstructorInfo.major || '전공미지정';
+                                defaultInstructorText = `${mainInstructorInfo.name}-${major}`;
                             }
                             
                             return `
@@ -7804,12 +7804,12 @@ window.showSubjectSelector = async function(courseCode) {
                                 </td>
                                 <td class="px-3 py-3">
                                     <select class="subject-instructor-select text-sm border rounded px-2 py-2 w-full" data-subject-code="${s.code}">
-                                        <option value="" disabled selected>${defaultInstructorText}</option>
                                         ${mainInstructors.map(inst => {
-                                            const specialty = inst.specialty || '전공';
+                                            const major = inst.major || '전공미지정';
+                                            const isMainInstructor = mainInstructorCode === inst.code;
                                             return `
-                                            <option value="${inst.code}" ${mainInstructorCode === inst.code ? 'selected' : ''}>
-                                                ${inst.name}-${specialty}
+                                            <option value="${inst.code}" ${isMainInstructor ? 'selected' : ''}>
+                                                ${inst.name}-${major}
                                             </option>
                                         `}).join('')}
                                     </select>
