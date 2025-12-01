@@ -7736,10 +7736,9 @@ window.showSubjectSelector = async function(courseCode) {
         const allSubjects = subjectsRes.data;
         const allInstructors = instructorsRes.data;
         
-        // 주강사만 필터링 (instructor_type_name 사용)
+        // 주강사만 필터링 (instructor_type_name === '주강사'만)
         const mainInstructors = allInstructors.filter(inst => 
-            inst.instructor_type_name === '주강사' || 
-            inst.instructor_type_type === '1. 주강사'
+            inst.instructor_type_name === '주강사'
         );
         
         console.log('전체 강사 수:', allInstructors.length);
