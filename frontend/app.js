@@ -1825,7 +1825,7 @@ async function loadDashboard() {
                     </h2>
                     <div class="flex items-center gap-2">
                         <!-- BGM 컨트롤 패널 (얇게, 한 줄) -->
-                        <div class="flex items-center gap-1.5 bg-pink-50 px-2 py-1 rounded border border-pink-200">
+                        <div id="dashboard-bgm-panel" class="flex items-center gap-1.5 bg-pink-50 px-2 py-1 rounded border border-pink-200">
                             <select id="dashboard-bgm-genre" class="px-2 py-0.5 border rounded text-xs bg-white text-gray-700 focus:outline-none" onchange="window.changeBGMGenre(this.value)">
                                 <option value="">🎵 BGM 끄기</option>
                                 <option value="classical">🎻 클래식</option>
@@ -15042,7 +15042,16 @@ window.changeBGMGenre = function(genre) {
         if (dashboardSearchInput) dashboardSearchInput.classList.remove('hidden');
     }
     
+    // BGM 패널 표시/숨김
+    const bgmPanel = document.getElementById('dashboard-bgm-panel');
+    
     if (genre) {
+        // BGM 켜짐 - 패널 표시
+        if (bgmPanel) {
+            bgmPanel.classList.remove('hidden');
+            bgmPanel.classList.add('flex');
+        }
+        
         // 이전 BGM 먼저 정지
         console.log('⏹️ 이전 BGM 정지 중...');
         stopBGM();
@@ -15056,6 +15065,12 @@ window.changeBGMGenre = function(genre) {
             dashboardPlayBtn.innerHTML = '<i class="fas fa-pause text-xs"></i>';
         }
     } else {
+        // BGM 꺼짐 - 패널 숨김
+        if (bgmPanel) {
+            bgmPanel.classList.remove('flex');
+            bgmPanel.classList.add('hidden');
+        }
+        
         stopBGM();
         // 재생 버튼 아이콘 업데이트 (대시보드 BGM 컨트롤)
         const dashboardPlayBtn = document.getElementById('dashboard-bgm-play-btn');
@@ -15127,6 +15142,7 @@ window.restoreBGMSettings = function() {
     const dashboardGenreSelect = document.getElementById('dashboard-bgm-genre');
     const dashboardVolumeSlider = document.getElementById('dashboard-bgm-volume');
     const dashboardVolumeValue = document.getElementById('dashboard-volume-value');
+    const bgmPanel = document.getElementById('dashboard-bgm-panel');
     
     if (dashboardGenreSelect) {
         dashboardGenreSelect.value = savedGenre;
@@ -15140,6 +15156,18 @@ window.restoreBGMSettings = function() {
     
     if (dashboardVolumeValue) {
         dashboardVolumeValue.textContent = savedVolume + '%';
+    }
+    
+    // BGM이 꺼져있으면 패널 숨김
+    if (bgmPanel) {
+        if (savedGenre) {
+            bgmPanel.classList.remove('hidden');
+            bgmPanel.classList.add('flex');
+        } else {
+            bgmPanel.classList.remove('flex');
+            bgmPanel.classList.add('hidden');
+        }
+        console.log('🎵 BGM 패널 표시 상태:', savedGenre ? '표시' : '숨김');
     }
 }
 
