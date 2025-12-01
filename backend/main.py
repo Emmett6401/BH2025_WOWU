@@ -1200,7 +1200,7 @@ async def delete_holiday(holiday_id: int):
 
 @app.get("/api/courses")
 async def get_courses():
-    """과정 목록 조회 (학생수, 과목수 포함)"""
+    """과정 목록 조회 (학생수, 과목수, 교과목 목록 포함)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -1215,13 +1215,25 @@ async def get_courses():
             ORDER BY c.code
         """)
         courses = cursor.fetchall()
+        
+        # 각 과정의 교과목 목록 조회
+        for course in courses:
+            cursor.execute("""
+                SELECT subject_code
+                FROM course_subjects
+                WHERE course_code = %s
+                ORDER BY subject_code
+            """, (course['code'],))
+            subjects = cursor.fetchall()
+            course['subjects'] = [s['subject_code'] for s in subjects]
+        
         return [convert_datetime(course) for course in courses]
     finally:
         conn.close()
 
 @app.get("/api/courses/{code}")
 async def get_course(code: str):
-    """특정 과정 조회"""
+    """특정 과정 조회 (교과목 포함)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -1236,6 +1248,17 @@ async def get_course(code: str):
         course = cursor.fetchone()
         if not course:
             raise HTTPException(status_code=404, detail="과정을 찾을 수 없습니다")
+        
+        # 과정의 교과목 조회
+        cursor.execute("""
+            SELECT subject_code
+            FROM course_subjects
+            WHERE course_code = %s
+            ORDER BY subject_code
+        """, (code,))
+        subjects = cursor.fetchall()
+        course['subjects'] = [s['subject_code'] for s in subjects]
+        
         return convert_datetime(course)
     finally:
         conn.close()

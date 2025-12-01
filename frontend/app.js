@@ -6782,56 +6782,71 @@ async function loadCourses() {
         const response = await axios.get(`${API_BASE_URL}/api/courses`);
         courses = response.data;
         
-        // 각 과정별 선택된 과목 초기화 (임시로 G-001~G-006)
+        // 각 과정별 선택된 교과목을 DB에서 로드
         courses.forEach(course => {
-            if (!courseSubjects[course.code]) {
-                courseSubjects[course.code] = ['G-001', 'G-002', 'G-003', 'G-004', 'G-005', 'G-006'];
-            }
+            // DB에서 가져온 교과목 목록 사용
+            courseSubjects[course.code] = course.subjects || [];
         });
+        
+        console.log('✅ 과정 목록 로드 완료:', courses.length, '개');
+        console.log('✅ 교과목 정보:', courseSubjects);
         
         renderCourses();
         window.hideLoading();
     } catch (error) {
         window.hideLoading();
-        console.error('과정 목록 로드 실패:', error);
+        console.error('❌ 과정 목록 로드 실패:', error);
         document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">과정 목록을 불러오는데 실패했습니다.</div>';
     }
 }
 
 function renderCourseDetail(course) {
-    // 날짜 계산 헬퍼 함수
-    const addDays = (dateStr, days) => {
+    // 날짜 포맷 헬퍼 함수 (YYYY-MM-DD -> M월 D일)
+    const formatDate = (dateStr) => {
         if (!dateStr) return '-';
         const date = new Date(dateStr);
-        date.setDate(date.getDate() + days);
         const month = date.getMonth() + 1;
         const day = date.getDate();
         return `${month}월 ${day}일`;
     };
     
-    // 총 기간 계산
-    const totalDays = course.total_days || 113;
-    const lectureDays = course.lecture_hours ? Math.ceil(course.lecture_hours / 8) : 33;
-    const projectDays = course.project_hours ? Math.ceil(course.project_hours / 8) : 28;
-    const internDays = course.internship_hours ? Math.ceil(course.internship_hours / 8) : 15;
+    // 날짜 차이 계산 (일수)
+    const calcDaysDiff = (startDate, endDate) => {
+        if (!startDate || !endDate) return 0;
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const diff = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end date
+        return diff > 0 ? diff : 0;
+    };
+    
+    // 실제 DB 데이터 사용
+    const totalDays = course.total_days || 0;
+    const lectureHours = course.lecture_hours || 0;
+    const projectHours = course.project_hours || 0;
+    const internHours = course.internship_hours || 0;
+    
+    // 일수 계산 (8시간 = 1일 기준)
+    const lectureDays = lectureHours > 0 ? Math.ceil(lectureHours / 8) : 0;
+    const projectDays = projectHours > 0 ? Math.ceil(projectHours / 8) : 0;
+    const internDays = internHours > 0 ? Math.ceil(internHours / 8) : 0;
     
     // 퍼센트 계산
-    const lecturePercent = Math.floor((lectureDays / totalDays) * 100);
-    const projectPercent = Math.floor((projectDays / totalDays) * 100);
-    const internPercent = Math.floor((internDays / totalDays) * 100);
+    const lecturePercent = totalDays > 0 ? Math.floor((lectureDays / totalDays) * 100) : 0;
+    const projectPercent = totalDays > 0 ? Math.floor((projectDays / totalDays) * 100) : 0;
+    const internPercent = totalDays > 0 ? Math.floor((internDays / totalDays) * 100) : 0;
     
-    // 각 단계별 종료일 계산 (시작일 기준)
-    const lectureEndDate = addDays(course.start_date, lectureDays - 1);
-    const projectEndDate = addDays(course.start_date, lectureDays + projectDays - 1);
-    const internEndDate = addDays(course.start_date, lectureDays + projectDays + internDays - 1);
+    // DB의 실제 종료일 사용
+    const lectureEndDate = formatDate(course.lecture_end_date);
+    const projectEndDate = formatDate(course.project_end_date);
+    const internEndDate = formatDate(course.internship_end_date);
     
     // 근무일 합계
     const workDays = lectureDays + projectDays + internDays;
     
     // 제외일 계산
-    const excludedDays = totalDays - workDays;
-    const weekends = Math.floor(totalDays / 7) * 2;
-    const holidays = excludedDays - weekends;
+    const excludedDays = totalDays > workDays ? totalDays - workDays : 0;
+    const weekends = totalDays > 0 ? Math.floor(totalDays / 7) * 2 : 0;
+    const holidays = excludedDays > weekends ? excludedDays - weekends : 0;
     
     return `
         <div class="p-6">
@@ -6844,16 +6859,16 @@ function renderCourseDetail(course) {
                        class="px-3 py-2 border rounded" onchange="window.updateCourseDate('${course.code}')">
             </div>
             
-            <!-- 과정 개요 (총 600시간) -->
+            <!-- 과정 개요 (총 시간 표시) -->
             <div class="mb-6 bg-gray-50 p-4 rounded">
                 <h3 class="font-bold text-lg mb-3">
-                    <i class="fas fa-clock mr-2"></i>과정 개요 (총 600시간)
+                    <i class="fas fa-clock mr-2"></i>과정 개요 (총 ${lectureHours + projectHours + internHours}시간)
                 </h3>
                 <div class="grid grid-cols-3 gap-4">
                     <div class="bg-blue-100 p-3 rounded">
                         <label class="block text-xs text-gray-600 mb-2">이론</label>
                         <div class="flex items-center mb-2">
-                            <input type="number" id="theory-hours" value="${course.lecture_hours || 260}" 
+                            <input type="number" id="theory-hours" value="${lectureHours}" 
                                    class="w-20 px-2 py-1 border rounded text-sm" onchange="window.updateCourseHours('${course.code}')">
                             <span class="ml-2 text-sm font-semibold">h</span>
                         </div>
@@ -6861,13 +6876,13 @@ function renderCourseDetail(course) {
                             약 ${lectureDays}일 (${lecturePercent}%)
                         </div>
                         <div class="text-xs text-blue-600 mt-1">
-                            ${lectureEndDate}까지
+                            ${course.start_date ? formatDate(course.start_date) : '-'} ~ ${lectureEndDate}
                         </div>
                     </div>
                     <div class="bg-green-100 p-3 rounded">
                         <label class="block text-xs text-gray-600 mb-2">프로젝트</label>
                         <div class="flex items-center mb-2">
-                            <input type="number" id="project-hours" value="${course.project_hours || 220}" 
+                            <input type="number" id="project-hours" value="${projectHours}" 
                                    class="w-20 px-2 py-1 border rounded text-sm" onchange="window.updateCourseHours('${course.code}')">
                             <span class="ml-2 text-sm font-semibold">h</span>
                         </div>
@@ -6875,13 +6890,13 @@ function renderCourseDetail(course) {
                             약 ${projectDays}일 (${projectPercent}%)
                         </div>
                         <div class="text-xs text-green-600 mt-1">
-                            ${projectEndDate}까지
+                            ${lectureEndDate} ~ ${projectEndDate}
                         </div>
                     </div>
                     <div class="bg-red-100 p-3 rounded">
                         <label class="block text-xs text-gray-600 mb-2">현장실습</label>
                         <div class="flex items-center mb-2">
-                            <input type="number" id="intern-hours" value="${course.internship_hours || 120}" 
+                            <input type="number" id="intern-hours" value="${internHours}" 
                                    class="w-20 px-2 py-1 border rounded text-sm" onchange="window.updateCourseHours('${course.code}')">
                             <span class="ml-2 text-sm font-semibold">h</span>
                         </div>
@@ -6889,7 +6904,7 @@ function renderCourseDetail(course) {
                             약 ${internDays}일 (${internPercent}%)
                         </div>
                         <div class="text-xs text-red-600 mt-1">
-                            ${internEndDate}까지
+                            ${projectEndDate} ~ ${internEndDate}
                         </div>
                     </div>
                 </div>
