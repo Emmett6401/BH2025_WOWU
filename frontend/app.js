@@ -7809,7 +7809,7 @@ window.generateTimetableFromButton = async function(courseCode) {
             );
             
             // 시간표 관리 탭으로 이동
-            switchTab('timetables');
+            showTab('timetables');
         } else {
             window.showAlert('시간표 생성에 실패했습니다.', 'error');
         }
@@ -8295,7 +8295,12 @@ function renderCourses() {
                     <i class="fas fa-plus mr-1"></i>과정 추가
                 </button>
                 ${selectedCourse ? `
-                <button onclick="window.generateTimetableFromButton('${selectedCourse.code}')" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-t font-semibold">
+                <button 
+                    onclick="window.generateTimetableFromButton('${selectedCourse.code}')" 
+                    id="btn-generate-timetable-${selectedCourse.code}"
+                    class="px-4 py-2 rounded-t font-semibold"
+                    ${!selectedCourse.lecture_end_date || !selectedCourse.project_end_date || !selectedCourse.workship_end_date || !courseSubjects[selectedCourse.code] || courseSubjects[selectedCourse.code].length === 0 ? 'disabled' : ''}
+                    style="${!selectedCourse.lecture_end_date || !selectedCourse.project_end_date || !selectedCourse.workship_end_date || !courseSubjects[selectedCourse.code] || courseSubjects[selectedCourse.code].length === 0 ? 'background: linear-gradient(to right, #94a3b8, #cbd5e1); color: #cbd5e1; cursor: not-allowed;' : 'background: linear-gradient(to right, #3b82f6, #4f46e5); color: white;'} ${!selectedCourse.lecture_end_date || !selectedCourse.project_end_date || !selectedCourse.workship_end_date || !courseSubjects[selectedCourse.code] || courseSubjects[selectedCourse.code].length === 0 ? '' : 'cursor: pointer;'}">
                     <i class="fas fa-calendar-plus mr-1"></i>시간표생성
                 </button>
                 ` : ''}
