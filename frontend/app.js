@@ -6809,22 +6809,60 @@ window.showHolidayForm = function(id = null) {
     
     const existingHoliday = id ? holidays.find(h => h.id === id) : null;
     
+    // 현재 연도부터 5년 후까지 생성
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({length: 10}, (_, i) => currentYear + i);
+    
     formDiv.innerHTML = `
-        <h3 class="text-lg font-semibold mb-4">${id ? '공휴일 수정' : '공휴일 추가'}</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input type="date" id="holiday-date" value="${existingHoliday ? existingHoliday.holiday_date : ''}" class="border rounded px-3 py-2">
-            <input type="text" id="holiday-name" placeholder="공휴일명" value="${existingHoliday ? existingHoliday.name : ''}" class="border rounded px-3 py-2">
-            <select id="holiday-legal" class="border rounded px-3 py-2">
-                <option value="1" ${existingHoliday && existingHoliday.is_legal ? 'selected' : ''}>법정공휴일</option>
-                <option value="0" ${existingHoliday && !existingHoliday.is_legal ? 'selected' : ''}>일반</option>
-            </select>
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">${id ? '공휴일 수정' : '공휴일 추가'}</h3>
+            ${!id ? `
+                <button onclick="window.showAutoHolidayModal()" 
+                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
+                    <i class="fas fa-magic mr-2"></i>법정공휴일 자동 추가
+                </button>
+            ` : ''}
         </div>
-        <div class="mt-4 space-x-2">
-            <button onclick="window.saveHoliday(${id || 'null'})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-                <i class="fas fa-save mr-2"></i>저장
+        
+        ${!id ? `
+            <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded">
+                <p class="text-sm text-green-800">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    <strong>법정공휴일 자동 추가</strong> 버튼을 클릭하면 연도별 법정공휴일을 한번에 추가할 수 있습니다.
+                </p>
+            </div>
+        ` : ''}
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">날짜</label>
+                <input type="date" id="holiday-date" 
+                       value="${existingHoliday ? existingHoliday.holiday_date : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">공휴일명</label>
+                <input type="text" id="holiday-name" 
+                       placeholder="공휴일명" 
+                       value="${existingHoliday ? existingHoliday.name : ''}" 
+                       class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">구분</label>
+                <select id="holiday-legal" class="w-full border rounded px-3 py-2">
+                    <option value="1" ${existingHoliday && existingHoliday.is_legal ? 'selected' : ''}>법정공휴일</option>
+                    <option value="0" ${existingHoliday && !existingHoliday.is_legal ? 'selected' : ''}>일반</option>
+                </select>
+            </div>
+        </div>
+        <div class="mt-4 flex justify-end space-x-2">
+            <button onclick="window.hideHolidayForm()" 
+                    class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
+                <i class="fas fa-times mr-2"></i>취소
             </button>
-            <button onclick="window.hideHolidayForm()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
-                취소
+            <button onclick="window.saveHoliday(${id || 'null'})" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                <i class="fas fa-save mr-2"></i>저장
             </button>
         </div>
     `;
@@ -6899,6 +6937,110 @@ window.resetHolidayFilters = function() {
     window.holidayFilterType = 'all';
     
     renderHolidays();
+}
+
+// 법정공휴일 자동 추가 모달 표시
+window.showAutoHolidayModal = function() {
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({length: 10}, (_, i) => currentYear + i);
+    
+    const modal = document.createElement('div');
+    modal.id = 'auto-holiday-modal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-magic mr-2 text-green-600"></i>법정공휴일 자동 추가
+                </h3>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">연도 선택</label>
+                    <select id="auto-holiday-year" class="w-full border rounded px-3 py-2">
+                        ${years.map(year => `<option value="${year}">${year}년</option>`).join('')}
+                    </select>
+                </div>
+                
+                <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <p class="text-sm text-yellow-800">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        선택한 연도의 법정공휴일이 자동으로 추가됩니다.<br>
+                        이미 등록된 공휴일은 중복 추가되지 않습니다.
+                    </p>
+                </div>
+                
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600">
+                        추가될 공휴일:
+                    </p>
+                    <ul class="mt-2 text-sm text-gray-700 space-y-1">
+                        <li>• 신정 (1월 1일)</li>
+                        <li>• 설날 연휴 (음력 12월 30일 ~ 1월 2일)</li>
+                        <li>• 삼일절 (3월 1일)</li>
+                        <li>• 어린이날 (5월 5일)</li>
+                        <li>• 부처님오신날 (음력 4월 8일)</li>
+                        <li>• 현충일 (6월 6일)</li>
+                        <li>• 광복절 (8월 15일)</li>
+                        <li>• 추석 연휴 (음력 8월 14일 ~ 16일)</li>
+                        <li>• 개천절 (10월 3일)</li>
+                        <li>• 한글날 (10월 9일)</li>
+                        <li>• 성탄절 (12월 25일)</li>
+                        <li>• 대체공휴일 (해당 시)</li>
+                    </ul>
+                </div>
+                
+                <div class="flex justify-end space-x-2">
+                    <button onclick="window.closeAutoHolidayModal()" 
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
+                        <i class="fas fa-times mr-2"></i>취소
+                    </button>
+                    <button onclick="window.autoAddHolidays()" 
+                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+                        <i class="fas fa-plus mr-2"></i>자동 추가
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// 자동 추가 모달 닫기
+window.closeAutoHolidayModal = function() {
+    const modal = document.getElementById('auto-holiday-modal');
+    if (modal) modal.remove();
+}
+
+// 법정공휴일 자동 추가 실행
+window.autoAddHolidays = async function() {
+    const year = parseInt(document.getElementById('auto-holiday-year').value);
+    
+    try {
+        window.showLoading('법정공휴일을 추가하는 중...');
+        
+        // 백엔드 API 호출
+        const response = await axios.post(`${API_BASE_URL}/api/holidays/auto-add/${year}`);
+        
+        window.hideLoading();
+        window.closeAutoHolidayModal();
+        window.hideHolidayForm();
+        
+        const result = response.data;
+        window.showAlert(
+            `✅ ${year}년 법정공휴일 자동 추가 완료!\n\n` +
+            `추가된 공휴일: ${result.added}개\n` +
+            `이미 등록됨: ${result.skipped}개\n` +
+            `총 처리: ${result.total}개`,
+            'success'
+        );
+        
+        await loadHolidays();
+    } catch (error) {
+        window.hideLoading();
+        console.error('자동 추가 실패:', error);
+        window.showAlert('❌ 자동 추가 실패: ' + (error.response?.data?.detail || error.message), 'error');
+    }
 }
 
 // ==================== 과정 관리 ====================

@@ -1210,6 +1210,113 @@ async def delete_holiday(holiday_id: int):
     finally:
         conn.close()
 
+@app.post("/api/holidays/auto-add/{year}")
+async def auto_add_holidays(year: int):
+    """법정공휴일 자동 추가"""
+    from datetime import datetime
+    import korean_lunar_calendar
+    
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 법정공휴일 정의 (양력)
+        solar_holidays = [
+            (1, 1, "신정"),
+            (3, 1, "삼일절"),
+            (5, 5, "어린이날"),
+            (6, 6, "현충일"),
+            (8, 15, "광복절"),
+            (10, 3, "개천절"),
+            (10, 9, "한글날"),
+            (12, 25, "성탄절"),
+        ]
+        
+        # 음력 공휴일 (설날, 추석, 부처님오신날)
+        lunar_holidays = [
+            # 설날: 음력 12/30, 1/1, 1/2
+            ((12, 30), "설날 연휴"),
+            ((1, 1), "설날"),
+            ((1, 2), "설날 연휴"),
+            # 부처님오신날: 음력 4/8
+            ((4, 8), "부처님오신날"),
+            # 추석: 음력 8/14, 8/15, 8/16
+            ((8, 14), "추석 연휴"),
+            ((8, 15), "추석"),
+            ((8, 16), "추석 연휴"),
+        ]
+        
+        added = 0
+        skipped = 0
+        
+        # 양력 공휴일 추가
+        for month, day, name in solar_holidays:
+            holiday_date = f"{year}-{month:02d}-{day:02d}"
+            
+            # 중복 체크
+            cursor.execute("""
+                SELECT id FROM holidays 
+                WHERE holiday_date = %s AND name = %s
+            """, (holiday_date, name))
+            
+            if cursor.fetchone():
+                skipped += 1
+                print(f"ℹ️  이미 등록됨: {holiday_date} - {name}")
+            else:
+                cursor.execute("""
+                    INSERT INTO holidays (holiday_date, name, is_legal)
+                    VALUES (%s, %s, 1)
+                """, (holiday_date, name))
+                added += 1
+                print(f"✅ 추가됨: {holiday_date} - {name}")
+        
+        # 음력 공휴일 추가
+        try:
+            for (lunar_month, lunar_day), name in lunar_holidays:
+                # 음력을 양력으로 변환
+                calendar = korean_lunar_calendar.KoreanLunarCalendar()
+                
+                # 설날 전날(음력 12/30)의 경우 전년도 기준
+                if lunar_month == 12 and lunar_day == 30:
+                    calendar.setLunarDate(year - 1, lunar_month, lunar_day, False)
+                else:
+                    calendar.setLunarDate(year, lunar_month, lunar_day, False)
+                
+                solar_date = calendar.SolarIsoFormat()
+                
+                # 중복 체크
+                cursor.execute("""
+                    SELECT id FROM holidays 
+                    WHERE holiday_date = %s AND name = %s
+                """, (solar_date, name))
+                
+                if cursor.fetchone():
+                    skipped += 1
+                    print(f"ℹ️  이미 등록됨: {solar_date} - {name} (음력)")
+                else:
+                    cursor.execute("""
+                        INSERT INTO holidays (holiday_date, name, is_legal)
+                        VALUES (%s, %s, 1)
+                    """, (solar_date, name))
+                    added += 1
+                    print(f"✅ 추가됨: {solar_date} - {name} (음력)")
+        except Exception as e:
+            print(f"⚠️  음력 변환 실패 (korean_lunar_calendar 라이브러리 필요): {e}")
+            print("ℹ️  음력 공휴일은 추가되지 않았습니다. 수동으로 추가해주세요.")
+        
+        conn.commit()
+        
+        total = added + skipped
+        return {
+            "year": year,
+            "added": added,
+            "skipped": skipped,
+            "total": total,
+            "message": f"{year}년 법정공휴일 자동 추가 완료"
+        }
+    finally:
+        conn.close()
+
 # ==================== 과정(학급) 관리 API ====================
 
 @app.get("/api/courses")
