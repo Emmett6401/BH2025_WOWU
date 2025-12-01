@@ -10062,11 +10062,20 @@ function renderTimetables() {
                             const dateStr = tt.class_date || '';
                             let dayOfWeek = '';
                             if (dateStr) {
-                                // YYYY-MM-DD 형식을 직접 파싱하여 로컬 날짜 생성
-                                const [year, month, day] = dateStr.split('-').map(Number);
-                                const classDate = new Date(year, month - 1, day);
-                                const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-                                dayOfWeek = dayNames[classDate.getDay()];
+                                try {
+                                    // YYYY-MM-DD 형식을 직접 파싱하여 로컬 날짜 생성
+                                    const [year, month, day] = dateStr.split('-').map(Number);
+                                    const classDate = new Date(year, month - 1, day);
+                                    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+                                    dayOfWeek = dayNames[classDate.getDay()];
+                                    
+                                    // 디버깅: 첫 3개만 로그
+                                    if (index < 3) {
+                                        console.log(`[요일계산 ${index}] date: ${dateStr}, dayOfWeek: ${dayOfWeek}`);
+                                    }
+                                } catch (e) {
+                                    console.error('요일 계산 오류:', e, dateStr);
+                                }
                             }
                             
                             return `
