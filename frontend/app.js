@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.38'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.39'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -7404,7 +7404,7 @@ async function loadCourseHolidays(course) {
 }
 
 // 과목 영역 업데이트 함수
-async function updateSubjectArea(courseCode) {
+async function updateSubjectArea(courseCode, updatedSubjectsInfo = null) {
     console.log(`📚 updateSubjectArea 시작 - 과정: ${courseCode}`);
     
     const subjectArea = document.getElementById(`subject-area-${courseCode}`);
@@ -7421,8 +7421,23 @@ async function updateSubjectArea(courseCode) {
         // 교과목 정보 가져오기
         try {
             console.log(`🔍 교과목 상세 정보 조회 중...`);
-            const response = await axios.get(`${API_BASE_URL}/api/subjects`);
+            const response = await axios.get(`${API_BASE_URL}/api/subjects?_t=${Date.now()}`);
             const allSubjects = response.data;
+            
+            // 업데이트된 정보가 있으면 병합 (최신 정보 우선 반영)
+            if (updatedSubjectsInfo) {
+                console.log('📝 업데이트된 교과목 정보 병합:', updatedSubjectsInfo);
+                updatedSubjectsInfo.forEach(updated => {
+                    const subject = allSubjects.find(s => s.code === updated.subject_code);
+                    if (subject) {
+                        subject.day_of_week = updated.day_of_week;
+                        subject.is_biweekly = updated.is_biweekly;
+                        subject.main_instructor = updated.main_instructor;
+                        subject.instructor_name = updated.instructor_name;
+                    }
+                });
+            }
+            
             console.log(`✅ 교과목 상세 정보 로드 완료:`, allSubjects.length, '개');
             
             // 선택된 과목이 있는 경우
@@ -8085,9 +8100,11 @@ window.saveSelectedSubjects = async function(courseCode) {
     const progressText = document.getElementById('progress-text');
     
     try {
-        // 교과목 목록 다시 가져오기 (main_instructor 정보 필요)
+        // 교과목 목록 및 강사 목록 가져오기
         const subjectsRes = await axios.get(`${API_BASE_URL}/api/subjects`);
         const allSubjects = subjectsRes.data;
+        const instructorsRes = await axios.get(`${API_BASE_URL}/api/instructors`);
+        const allInstructors = instructorsRes.data;
         
         // 각 교과목의 요일과 담당강사 정보 수집
         const subjectUpdates = [];
@@ -8109,6 +8126,10 @@ window.saveSelectedSubjects = async function(courseCode) {
                 mainInstructor = subject ? subject.main_instructor : null;
             }
             
+            // 강사명 찾기
+            const instructor = allInstructors.find(i => i.code === mainInstructor);
+            const instructorName = instructor ? instructor.name : '(미지정)';
+            
             // 교과목 정보 업데이트 (요일, 격주, 담당강사)
             await axios.put(`${API_BASE_URL}/api/subjects/${subjectCode}`, {
                 day_of_week: dayOfWeek,
@@ -8120,7 +8141,8 @@ window.saveSelectedSubjects = async function(courseCode) {
                 subject_code: subjectCode,
                 day_of_week: dayOfWeek,
                 is_biweekly: isBiweekly,
-                main_instructor: mainInstructor
+                main_instructor: mainInstructor,
+                instructor_name: instructorName
             });
             
             // 프로그레스바 업데이트
@@ -8146,8 +8168,8 @@ window.saveSelectedSubjects = async function(courseCode) {
         window.hideSubjectSelector();
         window.showAlert(`${selectedSubjects.length}개의 교과목이 저장되었습니다.`, 'success');
         
-        // 과목 영역 업데이트
-        updateSubjectArea(courseCode);
+        // 과목 영역 업데이트 (업데이트된 정보 전달)
+        updateSubjectArea(courseCode, subjectUpdates);
     } catch (error) {
         console.error('교과목 저장 실패:', error);
         // 프로그레스바 제거
