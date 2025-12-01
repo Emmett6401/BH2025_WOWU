@@ -7744,7 +7744,7 @@ window.showSubjectSelector = async function(courseCode) {
                 <i class="fas fa-list mr-2"></i>교과목 선택 - ${courseCode}
             </h3>
             <p class="text-sm text-gray-600 mb-4">
-                과정에 포함할 교과목을 선택하고, 요일과 담당강사를 수정할 수 있습니다.
+                과정에 포함할 교과목을 선택하고, 요일/격주/담당강사를 수정할 수 있습니다.
             </p>
             <div class="max-h-[500px] overflow-y-auto border rounded p-4">
                 <table class="min-w-full table-fixed">
@@ -7782,7 +7782,12 @@ window.showSubjectSelector = async function(courseCode) {
                                         <option value="6" ${s.day_of_week === 6 ? 'selected' : ''}>토</option>
                                     </select>
                                 </td>
-                                <td class="px-2 py-2 text-xs">${s.is_biweekly ? '격주' : '매주'}</td>
+                                <td class="px-2 py-2">
+                                    <select class="subject-biweekly-select text-xs border rounded px-1 py-1 w-full" data-subject-code="${s.code}">
+                                        <option value="0" ${!s.is_biweekly || s.is_biweekly === 0 ? 'selected' : ''}>매주</option>
+                                        <option value="1" ${s.is_biweekly === 1 ? 'selected' : ''}>격주</option>
+                                    </select>
+                                </td>
                                 <td class="px-2 py-2">
                                     <select class="subject-instructor-select text-xs border rounded px-1 py-1 w-full" data-subject-code="${s.code}">
                                         <option value="">선택</option>
@@ -7837,20 +7842,24 @@ window.saveSelectedSubjects = async function(courseCode) {
         
         for (const subjectCode of selectedSubjects) {
             const daySelect = document.querySelector(`.subject-day-select[data-subject-code="${subjectCode}"]`);
+            const biweeklySelect = document.querySelector(`.subject-biweekly-select[data-subject-code="${subjectCode}"]`);
             const instructorSelect = document.querySelector(`.subject-instructor-select[data-subject-code="${subjectCode}"]`);
             
             const dayOfWeek = daySelect ? parseInt(daySelect.value) : null;
+            const isBiweekly = biweeklySelect ? parseInt(biweeklySelect.value) : 0;
             const instructorCode = instructorSelect && instructorSelect.value ? instructorSelect.value : null;
             
-            // 교과목 정보 업데이트 (요일, 담당강사)
+            // 교과목 정보 업데이트 (요일, 격주, 담당강사)
             await axios.put(`${API_BASE_URL}/api/subjects/${subjectCode}`, {
                 day_of_week: dayOfWeek,
+                is_biweekly: isBiweekly,
                 instructor_code: instructorCode
             });
             
             subjectUpdates.push({
                 subject_code: subjectCode,
                 day_of_week: dayOfWeek,
+                is_biweekly: isBiweekly,
                 instructor_code: instructorCode
             });
         }
