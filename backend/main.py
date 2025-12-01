@@ -1153,17 +1153,31 @@ async def get_holidays(year: Optional[int] = None):
 
 @app.post("/api/holidays")
 async def create_holiday(data: dict):
-    """공휴일 생성"""
+    """공휴일 생성 (중복 시 조용히 무시)"""
     conn = get_db_connection()
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 중복 체크: 같은 날짜에 같은 이름의 공휴일이 있는지 확인
+        cursor.execute("""
+            SELECT id FROM holidays 
+            WHERE holiday_date = %s AND name = %s
+        """, (data['holiday_date'], data['name']))
+        existing = cursor.fetchone()
+        
+        if existing:
+            # 이미 존재하는 경우 조용히 기존 ID 반환 (에러 없이)
+            print(f"ℹ️  이미 등록된 공휴일: {data['holiday_date']} - {data['name']}")
+            return {"id": existing['id'], "message": "이미 등록된 공휴일입니다"}
+        
+        # 새로 등록
         query = """
             INSERT INTO holidays (holiday_date, name, is_legal)
             VALUES (%s, %s, %s)
         """
         cursor.execute(query, (data['holiday_date'], data['name'], data.get('is_legal', 0)))
         conn.commit()
-        return {"id": cursor.lastrowid}
+        return {"id": cursor.lastrowid, "message": "공휴일이 추가되었습니다"}
     finally:
         conn.close()
 

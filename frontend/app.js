@@ -6639,12 +6639,13 @@ let holidays = [];
 
 async function loadHolidays() {
     try {
-        const year = new Date().getFullYear();
-        const response = await axios.get(`${API_BASE_URL}/api/holidays?year=${year}`);
+        // year 파라미터 제거 - 모든 연도의 공휴일 표시
+        const response = await axios.get(`${API_BASE_URL}/api/holidays`);
         holidays = response.data;
+        console.log('✅ 공휴일 로드 완료:', holidays.length, '개');
         renderHolidays();
     } catch (error) {
-        console.error('공휴일 목록 로드 실패:', error);
+        console.error('❌ 공휴일 목록 로드 실패:', error);
         document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">공휴일 목록을 불러오는데 실패했습니다.</div>';
     }
 }
@@ -6744,8 +6745,14 @@ window.saveHoliday = async function(id) {
             await axios.put(`${API_BASE_URL}/api/holidays/${id}`, data);
             window.showAlert('✅ 공휴일이 수정되었습니다!', 'success');
         } else {
-            await axios.post(`${API_BASE_URL}/api/holidays`, data);
-            window.showAlert('✅ 공휴일이 추가되었습니다!', 'success');
+            const response = await axios.post(`${API_BASE_URL}/api/holidays`, data);
+            // 중복인 경우에도 에러 없이 처리
+            if (response.data.message && response.data.message.includes('이미 등록')) {
+                console.log('ℹ️ 이미 등록된 공휴일:', data.holiday_date, data.name);
+                // 에러 메시지 없이 조용히 처리
+            } else {
+                window.showAlert('✅ 공휴일이 추가되었습니다!', 'success');
+            }
         }
         window.hideHolidayForm();
         loadHolidays();
