@@ -9698,9 +9698,21 @@ function renderTimetables() {
                                 .filter(t => t.subject_code === tt.subject_code && t.course_code === tt.course_code)
                                 .reduce((sum, t) => sum + (t.hours || 0), 0);
                             
+                            // 디버깅: 첫 번째 항목만 로그 출력
+                            if (index === 0) {
+                                console.log('시간표 누적시수 계산:', {
+                                    subject_code: tt.subject_code,
+                                    subject_name: tt.subject_name,
+                                    subject_hours: tt.subject_hours,
+                                    subjectTotalHours,
+                                    accumulatedHours,
+                                    dailyHours
+                                });
+                            }
+                            
                             // 진행률 계산
                             const progressPercent = subjectTotalHours > 0 ? Math.round((accumulatedHours / subjectTotalHours) * 100) : 0;
-                            const isCompleted = accumulatedHours >= subjectTotalHours;
+                            const isCompleted = accumulatedHours >= subjectTotalHours && subjectTotalHours > 0;
                             
                             return `
                             <tr class="border-t hover:bg-gray-50 ${isToday ? 'bg-yellow-100 border-l-4 border-yellow-500' : ''}" ${isToday ? 'id="today-timetable-row"' : ''}>
