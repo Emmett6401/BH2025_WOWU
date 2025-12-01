@@ -7362,10 +7362,14 @@ function renderCourseDetail(course) {
         </div>
     `;
     
-    // 공휴일 비동기 로드
-    (async () => {
+    // 공휴일 비동기 로드 (DOM 렌더링 후 실행)
+    setTimeout(async () => {
+        console.log('공휴일 로드 시작:', course.start_date, '~', course.final_end_date);
         const holidays = await getCourseHolidays(course.start_date, course.final_end_date);
+        console.log('조회된 공휴일:', holidays);
+        
         const holidayElement = document.getElementById(`course-holidays-${course.code}`);
+        console.log('holidayElement:', holidayElement);
         
         if (holidayElement) {
             if (holidays.length === 0) {
@@ -7379,9 +7383,12 @@ function renderCourseDetail(course) {
                     return `${month}-${day}(${h.name})`;
                 });
                 holidayElement.textContent = holidayTexts.join(', ');
+                console.log('공휴일 표시 완료:', holidayTexts.join(', '));
             }
+        } else {
+            console.error('holidayElement를 찾을 수 없습니다');
         }
-    })();
+    }, 100);
     
     // updateSubjectArea는 renderCourses에서 호출됨
 }
