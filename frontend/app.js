@@ -7765,9 +7765,16 @@ window.showSubjectSelector = async function(courseCode) {
                     <tbody>
                         ${allSubjects.map(s => {
                             const isSelected = selectedSubjects.includes(s.code);
-                            // 현재 강사명 찾기
-                            const currentInstructor = allInstructors.find(inst => inst.code === s.instructor_code);
-                            const instructorPlaceholder = currentInstructor ? currentInstructor.name : '강사 선택';
+                            // 교과목관리에서 지정된 주강사 정보 (main_instructor 기준)
+                            const mainInstructorCode = s.main_instructor;
+                            const mainInstructorInfo = allInstructors.find(inst => inst.code === mainInstructorCode);
+                            
+                            // 기본 표시 텍스트: "주강사명-전공" 형식
+                            let defaultInstructorText = '강사 선택';
+                            if (mainInstructorInfo) {
+                                const specialty = mainInstructorInfo.specialty || '전공';
+                                defaultInstructorText = `${mainInstructorInfo.name}-${specialty}`;
+                            }
                             
                             return `
                             <tr class="border-t hover:bg-gray-50" data-subject-code="${s.code}">
@@ -7797,12 +7804,14 @@ window.showSubjectSelector = async function(courseCode) {
                                 </td>
                                 <td class="px-3 py-3">
                                     <select class="subject-instructor-select text-sm border rounded px-2 py-2 w-full" data-subject-code="${s.code}">
-                                        <option value="" disabled>${instructorPlaceholder}</option>
-                                        ${mainInstructors.map(inst => `
-                                            <option value="${inst.code}" ${s.instructor_code === inst.code ? 'selected' : ''}>
-                                                ${inst.name}
+                                        <option value="" disabled selected>${defaultInstructorText}</option>
+                                        ${mainInstructors.map(inst => {
+                                            const specialty = inst.specialty || '전공';
+                                            return `
+                                            <option value="${inst.code}" ${mainInstructorCode === inst.code ? 'selected' : ''}>
+                                                ${inst.name}-${specialty}
                                             </option>
-                                        `).join('')}
+                                        `}).join('')}
                                     </select>
                                 </td>
                             </tr>
@@ -7844,6 +7853,10 @@ window.saveSelectedSubjects = async function(courseCode) {
     }
     
     try {
+        // 교과목 목록 다시 가져오기 (main_instructor 정보 필요)
+        const subjectsRes = await axios.get(`${API_BASE_URL}/api/subjects`);
+        const allSubjects = subjectsRes.data;
+        
         // 각 교과목의 요일과 담당강사 정보 수집
         const subjectUpdates = [];
         
@@ -7854,7 +7867,13 @@ window.saveSelectedSubjects = async function(courseCode) {
             
             const dayOfWeek = daySelect ? parseInt(daySelect.value) : null;
             const isBiweekly = biweeklySelect ? parseInt(biweeklySelect.value) : 0;
-            const instructorCode = instructorSelect && instructorSelect.value ? instructorSelect.value : null;
+            let instructorCode = instructorSelect && instructorSelect.value ? instructorSelect.value : null;
+            
+            // instructor_code가 없으면 교과목의 main_instructor를 기본값으로 사용
+            if (!instructorCode) {
+                const subject = allSubjects.find(s => s.code === subjectCode);
+                instructorCode = subject ? subject.main_instructor : null;
+            }
             
             // 교과목 정보 업데이트 (요일, 격주, 담당강사)
             await axios.put(`${API_BASE_URL}/api/subjects/${subjectCode}`, {
