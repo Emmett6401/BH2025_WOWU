@@ -1496,24 +1496,62 @@ async def update_course(code: str, data: dict):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        query = """
-            UPDATE courses
-            SET name = %s, lecture_hours = %s, project_hours = %s, internship_hours = %s,
-                capacity = %s, location = %s, notes = %s, start_date = %s,
-                lecture_end_date = %s, project_end_date = %s, internship_end_date = %s,
-                final_end_date = %s, total_days = %s, morning_hours = %s, afternoon_hours = %s
-            WHERE code = %s
-        """
-        cursor.execute(query, (
-            data['name'], data['lecture_hours'], data['project_hours'],
-            data['internship_hours'], data['capacity'], data.get('location'),
-            data.get('notes'), data.get('start_date'), data.get('lecture_end_date'),
-            data.get('project_end_date'), data.get('internship_end_date'),
-            data.get('final_end_date'), data.get('total_days'),
-            data.get('morning_hours', 4), data.get('afternoon_hours', 4), code
-        ))
+        
+        # 이모지 제거 (utf8mb4 미지원 DB 컬럼 대응)
+        def remove_emoji(text):
+            if not text:
+                return text
+            try:
+                # 4바이트 UTF-8 문자 모두 제거 (이모지 포함)
+                return ''.join(c for c in text if len(c.encode('utf-8')) < 4)
+            except:
+                return text
+        
+        # 동적 UPDATE 쿼리 생성
+        update_fields = []
+        values = []
+        
+        field_mapping = {
+            'name': 'name',
+            'lecture_hours': 'lecture_hours',
+            'project_hours': 'project_hours',
+            'internship_hours': 'internship_hours',
+            'capacity': 'capacity',
+            'location': 'location',
+            'notes': 'notes',
+            'start_date': 'start_date',
+            'lecture_end_date': 'lecture_end_date',
+            'project_end_date': 'project_end_date',
+            'internship_end_date': 'internship_end_date',
+            'final_end_date': 'final_end_date',
+            'total_days': 'total_days',
+            'morning_hours': 'morning_hours',
+            'afternoon_hours': 'afternoon_hours'
+        }
+        
+        for field_name, db_column in field_mapping.items():
+            if field_name in data:
+                value = data[field_name]
+                # notes 필드만 이모지 제거
+                if field_name == 'notes':
+                    value = remove_emoji(value)
+                update_fields.append(f"{db_column} = %s")
+                values.append(value)
+        
+        if not update_fields:
+            return {"code": code, "message": "업데이트할 필드가 없습니다"}
+        
+        query = f"UPDATE courses SET {', '.join(update_fields)} WHERE code = %s"
+        values.append(code)
+        
+        cursor.execute(query, tuple(values))
         conn.commit()
         return {"code": code}
+    except Exception as e:
+        import traceback
+        print(f"과정 업데이트 에러: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"과정 업데이트 실패: {str(e)}")
     finally:
         conn.close()
 
