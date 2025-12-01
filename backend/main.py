@@ -1495,17 +1495,17 @@ async def create_course(data: dict):
         notes_cleaned = remove_emoji(data.get('notes'))
         
         query = """
-            INSERT INTO courses (code, name, lecture_hours, project_hours, internship_hours,
+            INSERT INTO courses (code, name, lecture_hours, project_hours, workship_hours,
                                 capacity, location, notes, start_date, lecture_end_date,
-                                project_end_date, internship_end_date, final_end_date, total_days,
+                                project_end_date, workship_end_date, final_end_date, total_days,
                                 morning_hours, afternoon_hours)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
             data['code'], data['name'], data['lecture_hours'], data['project_hours'],
-            data['internship_hours'], data['capacity'], data.get('location'),
+            data['workship_hours'], data['capacity'], data.get('location'),
             notes_cleaned, data.get('start_date'), data.get('lecture_end_date'),
-            data.get('project_end_date'), data.get('internship_end_date'),
+            data.get('project_end_date'), data.get('workship_end_date'),
             data.get('final_end_date'), data.get('total_days'),
             data.get('morning_hours', 4), data.get('afternoon_hours', 4)
         ))
@@ -1545,14 +1545,14 @@ async def update_course(code: str, data: dict):
             'name': 'name',
             'lecture_hours': 'lecture_hours',
             'project_hours': 'project_hours',
-            'internship_hours': 'internship_hours',
+            'workship_hours': 'workship_hours',
             'capacity': 'capacity',
             'location': 'location',
             'notes': 'notes',
             'start_date': 'start_date',
             'lecture_end_date': 'lecture_end_date',
             'project_end_date': 'project_end_date',
-            'internship_end_date': 'internship_end_date',
+            'workship_end_date': 'workship_end_date',
             'final_end_date': 'final_end_date',
             'total_days': 'total_days',
             'morning_hours': 'morning_hours',
@@ -3182,8 +3182,8 @@ def generate_calculation_pdf(calculation_result: dict, course_code: str):
              calculation_result['start_date'], calculation_result['lecture_end_date']],
             ['프로젝트', f"{calculation_result['project_hours']}h", f"{calculation_result['project_days']}일",
              calculation_result['lecture_end_date'], calculation_result['project_end_date']],
-            ['현장실습', f"{calculation_result['internship_hours']}h", f"{calculation_result['internship_days']}일",
-             calculation_result['project_end_date'], calculation_result['internship_end_date']]
+            ['현장실습', f"{calculation_result['workship_hours']}h", f"{calculation_result['workship_days']}일",
+             calculation_result['project_end_date'], calculation_result['workship_end_date']]
         ]
         phase_table = Table(phase_data, colWidths=[80, 70, 70, 90, 90])
         phase_table.setStyle(TableStyle([
@@ -3256,9 +3256,9 @@ def generate_calculation_pdf(calculation_result: dict, course_code: str):
         print(traceback.format_exc())
         raise
 
-def generate_detailed_calculation(start_date, lecture_hours, project_hours, internship_hours,
+def generate_detailed_calculation(start_date, lecture_hours, project_hours, workship_hours,
                                   morning_hours, afternoon_hours, holidays_detail,
-                                  lecture_end_date, project_end_date, internship_end_date,
+                                  lecture_end_date, project_end_date, workship_end_date,
                                   lecture_days, project_days, intern_days,
                                   weekend_days, holiday_count):
     """상세 계산 과정 생성 - 오전/오후 분할 고려"""
@@ -3432,7 +3432,7 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
         intern_starts_afternoon = True
     
     intern_detail, intern_actual_end, _ = calculate_stage_detail(
-        "3단계: 현장실습", intern_start, internship_hours, morning_hours, afternoon_hours, intern_starts_afternoon
+        "3단계: 현장실습", intern_start, workship_hours, morning_hours, afternoon_hours, intern_starts_afternoon
     )
     
     details = f"""
@@ -3448,8 +3448,8 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 • 이론: {lecture_hours}시간
 • 프로젝트: {project_hours}시간
-• 현장실습: {internship_hours}시간
-• 총: {lecture_hours + project_hours + internship_hours}시간
+• 현장실습: {workship_hours}시간
+• 총: {lecture_hours + project_hours + workship_hours}시간
 
 📅 공휴일 (과정 기간 내)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{holidays_str}
@@ -3464,7 +3464,7 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
 📊 최종 요약
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 • 교육 기간: {format_date(start_date)} ~ {format_date(intern_actual_end)}
-• 총 교육시간: {lecture_hours + project_hours + internship_hours}시간
+• 총 교육시간: {lecture_hours + project_hours + workship_hours}시간
 • 총 근무일: {lecture_days + project_days + intern_days}일
 • 주말 제외: {weekend_days}일
 • 공휴일 제외: {holiday_count}일
@@ -3475,7 +3475,7 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
     actual_dates = {
         'lecture_end': lecture_actual_end,
         'project_end': project_actual_end,
-        'internship_end': intern_actual_end
+        'workship_end': intern_actual_end
     }
     
     return details, actual_dates
@@ -3488,7 +3488,7 @@ async def calculate_course_dates(data: dict):
     - start_date: 시작일
     - lecture_hours: 강의시간
     - project_hours: 프로젝트시간
-    - internship_hours: 현장실습시간
+    - workship_hours: 현장실습시간
     """
     from datetime import timedelta
     
@@ -3496,7 +3496,7 @@ async def calculate_course_dates(data: dict):
         start_date_str = data.get('start_date')
         lecture_hours = int(data.get('lecture_hours', 0))
         project_hours = int(data.get('project_hours', 0))
-        internship_hours = int(data.get('internship_hours', 0))
+        workship_hours = int(data.get('workship_hours', 0))
         daily_hours = int(data.get('daily_hours', 8))  # 일일 수업시간 (기본값 8시간)
         morning_hours = int(data.get('morning_hours', 4))
         afternoon_hours = int(data.get('afternoon_hours', 4))
@@ -3509,7 +3509,7 @@ async def calculate_course_dates(data: dict):
         # 시간을 일수로 변환 (입력된 일일 시간 기준)
         lecture_days = (lecture_hours + daily_hours - 1) // daily_hours  # 올림 처리
         project_days = (project_hours + daily_hours - 1) // daily_hours
-        intern_days = (internship_hours + daily_hours - 1) // daily_hours
+        intern_days = (workship_hours + daily_hours - 1) // daily_hours
         
         # 공휴일 가져오기
         conn = get_db_connection()
@@ -3546,10 +3546,10 @@ async def calculate_course_dates(data: dict):
         # 각 단계별 종료일 계산
         lecture_end_date = add_business_days(start_date, lecture_days)
         project_end_date = add_business_days(lecture_end_date, project_days)
-        internship_end_date = add_business_days(project_end_date, intern_days)
+        workship_end_date = add_business_days(project_end_date, intern_days)
         
         # 총 일수 계산 (실제 캘린더 일수)
-        total_days = (internship_end_date - start_date).days
+        total_days = (workship_end_date - start_date).days
         
         # 과정 기간 내 공휴일 목록 생성 (상세)
         holidays_in_period = []
@@ -3560,7 +3560,7 @@ async def calculate_course_dates(data: dict):
         conn_holiday = get_db_connection()
         cursor_holiday = conn_holiday.cursor(pymysql.cursors.DictCursor)
         
-        while current <= internship_end_date:
+        while current <= workship_end_date:
             if current in holidays:
                 # 공휴일 이름 조회
                 cursor_holiday.execute(
@@ -3607,7 +3607,7 @@ async def calculate_course_dates(data: dict):
         # 주말 일수 계산
         weekend_days = 0
         current = start_date
-        while current <= internship_end_date:
+        while current <= workship_end_date:
             if current.weekday() >= 5:  # 토요일(5), 일요일(6)
                 weekend_days += 1
             current += timedelta(days=1)
@@ -3617,9 +3617,9 @@ async def calculate_course_dates(data: dict):
         
         # 상세 계산 과정 생성 (정확한 종료일 포함)
         calculation_details, actual_dates = generate_detailed_calculation(
-            start_date, lecture_hours, project_hours, internship_hours,
+            start_date, lecture_hours, project_hours, workship_hours,
             morning_hours, afternoon_hours, holidays_detail,
-            lecture_end_date, project_end_date, internship_end_date,
+            lecture_end_date, project_end_date, workship_end_date,
             lecture_days, project_days, intern_days,
             weekend_days, len(holidays_in_period)
         )
@@ -3627,18 +3627,18 @@ async def calculate_course_dates(data: dict):
         # 정확한 종료일 사용
         lecture_end_date = actual_dates['lecture_end']
         project_end_date = actual_dates['project_end']
-        internship_end_date = actual_dates['internship_end']
+        workship_end_date = actual_dates['workship_end']
         
         result = {
             "start_date": start_date_str,
             "lecture_end_date": lecture_end_date.strftime('%Y-%m-%d'),
             "project_end_date": project_end_date.strftime('%Y-%m-%d'),
-            "internship_end_date": internship_end_date.strftime('%Y-%m-%d'),
-            "final_end_date": internship_end_date.strftime('%Y-%m-%d'),
-            "total_days": (internship_end_date - start_date).days,
+            "workship_end_date": workship_end_date.strftime('%Y-%m-%d'),
+            "final_end_date": workship_end_date.strftime('%Y-%m-%d'),
+            "total_days": (workship_end_date - start_date).days,
             "lecture_days": lecture_days,
             "project_days": project_days,
-            "internship_days": intern_days,
+            "workship_days": intern_days,
             "work_days": lecture_days + project_days + intern_days,
             "weekend_days": weekend_days,
             "holiday_count": len(holidays_in_period),
@@ -3647,8 +3647,8 @@ async def calculate_course_dates(data: dict):
             "holidays_detail": holidays_detail,
             "lecture_hours": lecture_hours,
             "project_hours": project_hours,
-            "internship_hours": internship_hours,
-            "total_hours": lecture_hours + project_hours + internship_hours,
+            "workship_hours": workship_hours,
+            "total_hours": lecture_hours + project_hours + workship_hours,
             "morning_hours": morning_hours,
             "afternoon_hours": afternoon_hours,
             "daily_hours": daily_hours,
@@ -3714,7 +3714,7 @@ async def calculate_course_dates(data: dict):
                         'start_date': start_date_str,
                         'lecture_hours': lecture_hours,
                         'project_hours': project_hours,
-                        'internship_hours': internship_hours,
+                        'workship_hours': workship_hours,
                         'morning_hours': morning_hours,
                         'afternoon_hours': afternoon_hours,
                         'subject_codes': subject_codes
@@ -5656,7 +5656,7 @@ async def auto_generate_timetables(data: dict):
         start_date: 시작일
         lecture_hours: 이론 시간
         project_hours: 프로젝트 시간
-        internship_hours: 현장실습 시간
+        workship_hours: 현장실습 시간
         morning_hours: 오전 시간 (기본 4)
         afternoon_hours: 오후 시간 (기본 4)
     
@@ -5670,7 +5670,7 @@ async def auto_generate_timetables(data: dict):
         start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
         lecture_hours = data['lecture_hours']
         project_hours = data['project_hours']
-        internship_hours = data['internship_hours']
+        workship_hours = data['workship_hours']
         morning_hours = data.get('morning_hours', 4)
         afternoon_hours = data.get('afternoon_hours', 4)
         
@@ -5884,9 +5884,9 @@ async def auto_generate_timetables(data: dict):
                 instructor_idx += 1
                 current_date += timedelta(days=1)
         
-        # 3단계: 현장실습 (internship)
-        if internship_hours > 0:
-            remaining_hours = internship_hours
+        # 3단계: 현장실습 (workship)
+        if workship_hours > 0:
+            remaining_hours = workship_hours
             
             while remaining_hours > 0:
                 if is_weekend(current_date) or is_holiday(current_date):
@@ -5905,7 +5905,7 @@ async def auto_generate_timetables(data: dict):
                         'start_time': '09:00:00',
                         'end_time': f'{9 + int(hours_to_use):02d}:00:00',
                         'instructor_code': daily_instructor,
-                        'type': 'internship'
+                        'type': 'workship'
                     })
                     remaining_hours -= hours_to_use
                 
@@ -5919,7 +5919,7 @@ async def auto_generate_timetables(data: dict):
                         'start_time': '14:00:00',
                         'end_time': f'{14 + int(hours_to_use):02d}:00:00',
                         'instructor_code': daily_instructor,
-                        'type': 'internship'
+                        'type': 'workship'
                     })
                     remaining_hours -= hours_to_use
                 

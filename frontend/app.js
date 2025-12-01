@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.52'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.53'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -1757,16 +1757,16 @@ async function loadDashboard() {
         // 진도율 계산 함수 (과정별)
         window.calculateProgress = function(courseCode) {
             const course = coursesData.find(c => c.code === courseCode);
-            if (!course) return { lecture: 0, project: 0, internship: 0, total: 0, trainingLogRate: 0 };
+            if (!course) return { lecture: 0, project: 0, workship: 0, total: 0, trainingLogRate: 0 };
             
             const lectureTotal = course.lecture_hours || 0;
             const projectTotal = course.project_hours || 0;
-            const internshipTotal = course.internship_hours || 0;
-            const totalHours = lectureTotal + projectTotal + internshipTotal;
+            const workshipTotal = course.workship_hours || 0;
+            const totalHours = lectureTotal + projectTotal + workshipTotal;
             
             let lectureCompleted = 0;
             let projectCompleted = 0;
-            let internshipCompleted = 0;
+            let workshipCompleted = 0;
             
             // 오늘까지의 시간표 필터링
             const completedTimetables = timetablesData.filter(tt => 
@@ -1789,7 +1789,7 @@ async function loadDashboard() {
                 const hours = calcHours(tt);
                 if (tt.type === 'lecture') lectureCompleted += hours;
                 else if (tt.type === 'project') projectCompleted += hours;
-                else if (tt.type === 'internship') internshipCompleted += hours;
+                else if (tt.type === 'workship') workshipCompleted += hours;
             });
             
             // 훈련일지 작성률 계산 (오늘 이전까지)
@@ -1806,14 +1806,14 @@ async function loadDashboard() {
             return {
                 lecture: lectureTotal > 0 ? Math.round((lectureCompleted / lectureTotal) * 100) : 0,
                 project: projectTotal > 0 ? Math.round((projectCompleted / projectTotal) * 100) : 0,
-                internship: internshipTotal > 0 ? Math.round((internshipCompleted / internshipTotal) * 100) : 0,
-                total: totalHours > 0 ? Math.round(((lectureCompleted + projectCompleted + internshipCompleted) / totalHours) * 100) : 0,
+                workship: workshipTotal > 0 ? Math.round((workshipCompleted / workshipTotal) * 100) : 0,
+                total: totalHours > 0 ? Math.round(((lectureCompleted + projectCompleted + workshipCompleted) / totalHours) * 100) : 0,
                 lectureCompleted: Math.round(lectureCompleted),
                 projectCompleted: Math.round(projectCompleted),
-                internshipCompleted: Math.round(internshipCompleted),
+                workshipCompleted: Math.round(workshipCompleted),
                 lectureTotal,
                 projectTotal,
-                internshipTotal,
+                workshipTotal,
                 trainingLogRate,
                 trainingLogCount,
                 pastTimetablesCount: pastTimetables.length
@@ -2037,13 +2037,13 @@ async function loadDashboard() {
                     <!-- 현장실습 진도율 -->
                     <div class="mb-3">
                         <div class="flex justify-between items-center mb-1">
-                            <span class="text-xs font-semibold text-gray-700">현장실습 (${mainCourse?.project_end_date?.substring(0, 10) || '-'} ~ ${mainCourse?.internship_end_date?.substring(0, 10) || '-'})</span>
-                            <span class="text-xs text-gray-600">${progress.internshipCompleted}h / ${progress.internshipTotal}h (${progress.internship}%)</span>
+                            <span class="text-xs font-semibold text-gray-700">현장실습 (${mainCourse?.project_end_date?.substring(0, 10) || '-'} ~ ${mainCourse?.workship_end_date?.substring(0, 10) || '-'})</span>
+                            <span class="text-xs text-gray-600">${progress.workshipCompleted}h / ${progress.workshipTotal}h (${progress.workship}%)</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-6 relative overflow-hidden">
                             <div class="bg-gradient-to-r from-purple-500 to-purple-600 h-6 rounded-full flex items-center justify-end pr-2 transition-all duration-500" 
-                                 style="width: ${progress.internship}%">
-                                <span class="text-xs font-bold text-white">${progress.internship}%</span>
+                                 style="width: ${progress.workship}%">
+                                <span class="text-xs font-bold text-white">${progress.workship}%</span>
                             </div>
                         </div>
                     </div>
@@ -7135,7 +7135,7 @@ function renderCourseDetail(course) {
     const totalDays = course.total_days || 0;
     const lectureHours = course.lecture_hours || 0;
     const projectHours = course.project_hours || 0;
-    const internHours = course.internship_hours || 0;
+    const internHours = course.workship_hours || 0;
     const morningHours = course.morning_hours || 4;
     const afternoonHours = course.afternoon_hours || 4;
     const dailyHours = morningHours + afternoonHours;
@@ -7153,7 +7153,7 @@ function renderCourseDetail(course) {
     // DB의 실제 종료일 사용
     const lectureEndDate = formatDate(course.lecture_end_date);
     const projectEndDate = formatDate(course.project_end_date);
-    const internEndDate = formatDate(course.internship_end_date);
+    const internEndDate = formatDate(course.workship_end_date);
     
     // 근무일 합계
     const workDays = lectureDays + projectDays + internDays;
@@ -7363,7 +7363,7 @@ function renderCourseDetail(course) {
                                     <td class="px-3 py-2 text-xs">${c.start_date ? formatDateWithDay(c.start_date) : '-'}</td>
                                     <td class="px-3 py-2 text-xs">${c.lecture_end_date ? formatDateWithDay(c.lecture_end_date) : '-'}</td>
                                     <td class="px-3 py-2 text-xs">${c.project_end_date ? formatDateWithDay(c.project_end_date) : '-'}</td>
-                                    <td class="px-3 py-2 text-xs">${c.internship_end_date ? formatDateWithDay(c.internship_end_date) : '-'}</td>
+                                    <td class="px-3 py-2 text-xs">${c.workship_end_date ? formatDateWithDay(c.workship_end_date) : '-'}</td>
                                     <td class="px-3 py-2 text-xs">${c.total_days || 113}일</td>
                                     <td class="px-3 py-2 text-xs">${c.capacity || 24}</td>
                                     <td class="px-3 py-2 text-xs">${c.location || '-'}</td>
@@ -7587,7 +7587,7 @@ window.updateCourseHours = function(courseCode) {
     if (course) {
         course.lecture_hours = theoryHours;
         course.project_hours = projectHours;
-        course.internship_hours = internHours;
+        course.workship_hours = internHours;
         renderCourses();
     }
 }
@@ -7610,13 +7610,13 @@ window.saveCourseChanges = async function(courseCode) {
         capacity: parseInt(document.getElementById('course-capacity').value) || 24,
         lecture_hours: parseInt(document.getElementById('theory-hours').value) || 260,
         project_hours: parseInt(document.getElementById('project-hours').value) || 220,
-        internship_hours: parseInt(document.getElementById('intern-hours').value) || 120,
+        workship_hours: parseInt(document.getElementById('intern-hours').value) || 120,
         start_date: document.getElementById('course-start-date').value,
         notes: document.getElementById('course-notes').value,
         // 기존 필드 유지
         lecture_end_date: course.lecture_end_date,
         project_end_date: course.project_end_date,
-        internship_end_date: course.internship_end_date,
+        workship_end_date: course.workship_end_date,
         final_end_date: course.final_end_date,
         total_days: course.total_days
     };
@@ -7701,7 +7701,7 @@ window.showCalculationResult = function(result, startDate, endDate) {
                 <div class="text-sm text-purple-600 space-y-1">
                     <div>├ 이론: ${result.lecture_hours}시간 (${result.lecture_days}일)</div>
                     <div>├ 프로젝트: ${result.project_hours}시간 (${result.project_days}일)</div>
-                    <div>└ 현장실습: ${result.internship_hours}시간 (${result.internship_days}일)</div>
+                    <div>└ 현장실습: ${result.workship_hours}시간 (${result.workship_days}일)</div>
                 </div>
             </div>
             
@@ -7811,7 +7811,7 @@ window.generateTimetable = async function(courseCode, calculationResult) {
             start_date: course.start_date,
             lecture_hours: course.lecture_hours || 0,
             project_hours: course.project_hours || 0,
-            internship_hours: course.internship_hours || 0,
+            workship_hours: course.workship_hours || 0,
             morning_hours: course.morning_hours || 4,
             afternoon_hours: course.afternoon_hours || 4,
             subject_codes: subjectCodes
@@ -7852,7 +7852,7 @@ window.autoCalculateDates = async function() {
     const startDate = document.getElementById('form-course-start-date').value;
     const lectureHours = parseInt(document.getElementById('form-course-lecture-hours').value) || 0;
     const projectHours = parseInt(document.getElementById('form-course-project-hours').value) || 0;
-    const internshipHours = parseInt(document.getElementById('form-course-internship-hours').value) || 0;
+    const workshipHours = parseInt(document.getElementById('form-course-workship-hours').value) || 0;
     const morningHours = parseInt(document.getElementById('form-course-morning-hours').value) || 4;
     const afternoonHours = parseInt(document.getElementById('form-course-afternoon-hours').value) || 4;
     const dailyHours = morningHours + afternoonHours;
@@ -7862,7 +7862,7 @@ window.autoCalculateDates = async function() {
         return;
     }
     
-    if (lectureHours === 0 && projectHours === 0 && internshipHours === 0) {
+    if (lectureHours === 0 && projectHours === 0 && workshipHours === 0) {
         window.showAlert('강의시간, 프로젝트시간, 현장실습시간 중 하나 이상을 입력해주세요.', 'error');
         return;
     }
@@ -7889,7 +7889,7 @@ window.autoCalculateDates = async function() {
             start_date: startDate,
             lecture_hours: lectureHours,
             project_hours: projectHours,
-            internship_hours: internshipHours,
+            workship_hours: workshipHours,
             daily_hours: dailyHours,
             morning_hours: morningHours,
             afternoon_hours: afternoonHours,
@@ -7904,7 +7904,7 @@ window.autoCalculateDates = async function() {
         // 계산된 날짜들을 폼에 입력
         document.getElementById('form-course-lecture-end').value = result.lecture_end_date;
         document.getElementById('form-course-project-end').value = result.project_end_date;
-        document.getElementById('form-course-internship-end').value = result.internship_end_date;
+        document.getElementById('form-course-workship-end').value = result.workship_end_date;
         document.getElementById('form-course-final-end').value = result.final_end_date;
         document.getElementById('form-course-total-days').value = result.total_days;
         
@@ -7915,8 +7915,8 @@ window.autoCalculateDates = async function() {
         if (document.getElementById('form-course-project-end-display')) {
             document.getElementById('form-course-project-end-display').value = result.project_end_date ? `${result.project_end_date} 18:00` : '';
         }
-        if (document.getElementById('form-course-internship-end-display')) {
-            document.getElementById('form-course-internship-end-display').value = result.internship_end_date ? `${result.internship_end_date} 18:00` : '';
+        if (document.getElementById('form-course-workship-end-display')) {
+            document.getElementById('form-course-workship-end-display').value = result.workship_end_date ? `${result.workship_end_date} 18:00` : '';
         }
         
         // 비고 필드에 자동으로 입력
@@ -7930,7 +7930,7 @@ window.autoCalculateDates = async function() {
         // calculation_details를 비고란에 표시
         const notesText = result.calculation_details || `1. 교육기간 : ${startDateFormatted} ~ ${endDateFormatted} (공휴일 : ${result.holidays_formatted})
 2. 일${dailyHours}시간 (오전 ${morningHours}시간, 오후 ${afternoonHours}시간) / 주${weeklyHours}시간 수업
-3. 총 교육시간 : ${result.total_hours}시간 (이론 ${result.lecture_hours}시간, 프로젝트 ${result.project_hours}시간, 현장실습 ${result.internship_hours}시간)
+3. 총 교육시간 : ${result.total_hours}시간 (이론 ${result.lecture_hours}시간, 프로젝트 ${result.project_hours}시간, 현장실습 ${result.workship_hours}시간)
 4. 총 교육일수 : ${result.total_days}일 (근무일 ${result.work_days}일, 제외일 ${result.excluded_days}일)`;
         
         document.getElementById('form-course-notes').value = notesText;
@@ -8329,7 +8329,7 @@ window.showCourseForm = function(code = null) {
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">현장실습시간(h)</label>
-                <input type="number" id="form-course-internship-hours" placeholder="120" value="${existing ? existing.internship_hours : ''}" 
+                <input type="number" id="form-course-workship-hours" placeholder="120" value="${existing ? existing.workship_hours : ''}" 
                        class="w-full border rounded px-3 py-2"
                        onkeydown="if(event.key==='Tab' && !this.value) {event.preventDefault(); this.value=this.placeholder;}">
             </div>
@@ -8383,9 +8383,9 @@ window.showCourseForm = function(code = null) {
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">현장실습종료일 (시간포함)</label>
-                <input type="text" id="form-course-internship-end-display" value="${existing && existing.internship_end_date ? existing.internship_end_date + ' 18:00' : ''}" 
+                <input type="text" id="form-course-workship-end-display" value="${existing && existing.workship_end_date ? existing.workship_end_date + ' 18:00' : ''}" 
                        class="w-full border rounded px-3 py-2 bg-gray-50 font-semibold text-red-600" readonly placeholder="YYYY-MM-DD HH:MM">
-                <input type="date" id="form-course-internship-end" value="${existing ? existing.internship_end_date : ''}" class="hidden">
+                <input type="date" id="form-course-workship-end" value="${existing ? existing.workship_end_date : ''}" class="hidden">
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">최종종료일</label>
@@ -8426,13 +8426,13 @@ window.saveCourse = async function(existingCode) {
         capacity: parseInt(document.getElementById('form-course-capacity').value) || 24,
         lecture_hours: parseInt(document.getElementById('form-course-lecture-hours').value) || 0,
         project_hours: parseInt(document.getElementById('form-course-project-hours').value) || 0,
-        internship_hours: parseInt(document.getElementById('form-course-internship-hours').value) || 0,
+        workship_hours: parseInt(document.getElementById('form-course-workship-hours').value) || 0,
         morning_hours: parseInt(document.getElementById('form-course-morning-hours').value) || 4,
         afternoon_hours: parseInt(document.getElementById('form-course-afternoon-hours').value) || 4,
         start_date: document.getElementById('form-course-start-date').value,
         lecture_end_date: document.getElementById('form-course-lecture-end').value,
         project_end_date: document.getElementById('form-course-project-end').value,
-        internship_end_date: document.getElementById('form-course-internship-end').value,
+        workship_end_date: document.getElementById('form-course-workship-end').value,
         final_end_date: document.getElementById('form-course-final-end').value,
         total_days: parseInt(document.getElementById('form-course-total-days').value) || 113,
         notes: document.getElementById('form-course-notes').value
@@ -9894,12 +9894,21 @@ function renderTimetables() {
                 </p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                 <div>
                     <label class="block text-gray-700 mb-2">과정 선택</label>
                     <select id="tt-course" class="w-full border rounded px-3 py-2" onchange="window.filterTimetables()">
                         <option value="">-- 전체 과정 --</option>
                         ${courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">타입</label>
+                    <select id="tt-type" class="w-full border rounded px-3 py-2" onchange="window.filterTimetables()">
+                        <option value="">전체</option>
+                        <option value="lecture">교과</option>
+                        <option value="project">프로젝트</option>
+                        <option value="workship">현장실습</option>
                     </select>
                 </div>
                 <div>
@@ -10161,6 +10170,7 @@ function normalizePhone(phone) {
 
 window.filterTimetables = function() {
     const courseCode = document.getElementById('tt-course').value;
+    const type = document.getElementById('tt-type').value;
     const month = document.getElementById('tt-month').value; // YYYY-MM 형식
     const instructorCode = document.getElementById('tt-instructor').value;
     const subjectCode = document.getElementById('tt-subject').value;
@@ -10169,6 +10179,11 @@ window.filterTimetables = function() {
     filteredTimetables = timetables.filter(tt => {
         // 과정 필터
         if (courseCode && tt.course_code !== courseCode) {
+            return false;
+        }
+        
+        // 타입 필터
+        if (type && tt.type !== type) {
             return false;
         }
         
@@ -10267,7 +10282,7 @@ window.showTimetableForm = function(id = null) {
                 <select id="tt-type" class="w-full border rounded px-3 py-2" required>
                     <option value="lecture" ${existing && existing.type === 'lecture' ? 'selected' : ''}>강의</option>
                     <option value="project" ${existing && existing.type === 'project' ? 'selected' : ''}>프로젝트</option>
-                    <option value="internship" ${existing && existing.type === 'internship' ? 'selected' : ''}>현장실습</option>
+                    <option value="workship" ${existing && existing.type === 'workship' ? 'selected' : ''}>현장실습</option>
                 </select>
             </div>
             <div>
@@ -10385,12 +10400,21 @@ function renderTrainingLogsSelection(courses) {
                 </p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
                 <div>
                     <label class="block text-gray-700 mb-2">과정 선택</label>
                     <select id="log-course" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
                         <option value="">-- 과정 선택 --</option>
                         ${courses.map(c => `<option value="${c.code}" ${c.code === 'C-001' ? 'selected' : ''}>${c.name} (${c.code})</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 mb-2">타입</label>
+                    <select id="log-type" class="w-full border rounded px-3 py-2" onchange="window.filterTrainingLogs()">
+                        <option value="" selected>전체</option>
+                        <option value="lecture">교과</option>
+                        <option value="project">프로젝트</option>
+                        <option value="workship">현장실습</option>
                     </select>
                 </div>
                 <div>
@@ -10448,6 +10472,7 @@ function renderTrainingLogsSelection(courses) {
 
 window.filterTrainingLogs = async function() {
     const courseCode = document.getElementById('log-course').value;
+    const type = document.getElementById('log-type').value;
     const instructorCode = document.getElementById('log-instructor').value;
     const year = document.getElementById('log-year').value;
     const month = document.getElementById('log-month').value;
@@ -10471,6 +10496,11 @@ window.filterTrainingLogs = async function() {
         
         // 필터링
         let filteredTimetables = timetables;
+        
+        // 타입 필터
+        if (type) {
+            filteredTimetables = filteredTimetables.filter(tt => tt.type === type);
+        }
         
         if (instructorCode) {
             filteredTimetables = filteredTimetables.filter(tt => tt.instructor_code === instructorCode);
