@@ -9667,7 +9667,7 @@ function renderTimetables() {
                             <th class="px-3 py-2 text-left text-xs">강사</th>
                             <th class="px-3 py-2 text-left text-xs">시간</th>
                             <th class="px-3 py-2 text-left text-xs">시수</th>
-                            <th class="px-3 py-2 text-left text-xs">남은시수</th>
+                            <th class="px-3 py-2 text-left text-xs">누적시수</th>
                             <th class="px-3 py-2 text-left text-xs">타입</th>
                             <th class="px-3 py-2 text-left text-xs">훈련일지</th>
                             <th class="px-3 py-2 text-left text-xs">작업</th>
@@ -9691,13 +9691,16 @@ function renderTimetables() {
                             // 해당일 시수 계산 (시간 차이)
                             const dailyHours = tt.hours || 0;
                             
-                            // 남은시수 계산 (해당 과목의 총 시수 - 현재까지 진행된 시수)
+                            // 누적시수 계산 (현재까지 진행된 시수)
                             const subjectTotalHours = tt.subject_hours || 0; // 과목 총 시수
-                            const completedHours = timetables
+                            const accumulatedHours = timetables
                                 .slice(0, index + 1)
                                 .filter(t => t.subject_code === tt.subject_code && t.course_code === tt.course_code)
                                 .reduce((sum, t) => sum + (t.hours || 0), 0);
-                            const remainingHours = Math.max(0, subjectTotalHours - completedHours);
+                            
+                            // 진행률 계산
+                            const progressPercent = subjectTotalHours > 0 ? Math.round((accumulatedHours / subjectTotalHours) * 100) : 0;
+                            const isCompleted = accumulatedHours >= subjectTotalHours;
                             
                             return `
                             <tr class="border-t hover:bg-gray-50 ${isToday ? 'bg-yellow-100 border-l-4 border-yellow-500' : ''}" ${isToday ? 'id="today-timetable-row"' : ''}>
@@ -9708,7 +9711,9 @@ function renderTimetables() {
                                 <td class="px-3 py-2 text-xs">${tt.instructor_name || tt.instructor_code || '-'}</td>
                                 <td class="px-3 py-2 text-xs">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
                                 <td class="px-3 py-2 text-xs font-semibold">${dailyHours}h</td>
-                                <td class="px-3 py-2 text-xs ${remainingHours === 0 ? 'text-green-600' : 'text-blue-600'}">${remainingHours}h</td>
+                                <td class="px-3 py-2 text-xs ${isCompleted ? 'text-green-600 font-semibold' : 'text-blue-600'}">
+                                    ${accumulatedHours}/${subjectTotalHours}h (${progressPercent}%)
+                                </td>
                                 <td class="px-3 py-2 text-xs">
                                     <span class="px-2 py-1 rounded text-xs ${tt.type === 'lecture' ? 'bg-blue-100 text-blue-800' : tt.type === 'project' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
                                         ${tt.type}
