@@ -670,37 +670,58 @@ async def update_subject(subject_code: str, data: dict):
     try:
         cursor = conn.cursor()
         
-        query = """
-            UPDATE subjects 
-            SET name = %s, main_instructor = %s, day_of_week = %s, 
-                is_biweekly = %s, week_offset = %s, hours = %s, description = %s,
-                sub_subject_1 = %s, sub_hours_1 = %s, sub_subject_2 = %s, sub_hours_2 = %s,
-                sub_subject_3 = %s, sub_hours_3 = %s, sub_subject_4 = %s, sub_hours_4 = %s,
-                sub_subject_5 = %s, sub_hours_5 = %s
-            WHERE code = %s
-        """
+        # 업데이트할 필드 동적 구성
+        update_fields = []
+        update_values = []
         
-        cursor.execute(query, (
-            data.get('name'),
-            data.get('main_instructor'),
-            data.get('day_of_week', 0),
-            data.get('is_biweekly', 0),
-            data.get('week_offset', 0),
-            data.get('hours', 0),
-            data.get('description', ''),
-            data.get('sub_subject_1', ''),
-            data.get('sub_hours_1', 0),
-            data.get('sub_subject_2', ''),
-            data.get('sub_hours_2', 0),
-            data.get('sub_subject_3', ''),
-            data.get('sub_hours_3', 0),
-            data.get('sub_subject_4', ''),
-            data.get('sub_hours_4', 0),
-            data.get('sub_subject_5', ''),
-            data.get('sub_hours_5', 0),
-            subject_code
-        ))
+        if 'name' in data:
+            update_fields.append("name = %s")
+            update_values.append(data['name'])
         
+        if 'main_instructor' in data:
+            update_fields.append("main_instructor = %s")
+            update_values.append(data['main_instructor'])
+        
+        if 'instructor_code' in data:
+            update_fields.append("instructor_code = %s")
+            update_values.append(data['instructor_code'])
+        
+        if 'day_of_week' in data:
+            update_fields.append("day_of_week = %s")
+            update_values.append(data['day_of_week'])
+        
+        if 'is_biweekly' in data:
+            update_fields.append("is_biweekly = %s")
+            update_values.append(data['is_biweekly'])
+        
+        if 'week_offset' in data:
+            update_fields.append("week_offset = %s")
+            update_values.append(data['week_offset'])
+        
+        if 'hours' in data:
+            update_fields.append("hours = %s")
+            update_values.append(data['hours'])
+        
+        if 'description' in data:
+            update_fields.append("description = %s")
+            update_values.append(data['description'])
+        
+        # 세부 과목들
+        for i in range(1, 6):
+            if f'sub_subject_{i}' in data:
+                update_fields.append(f"sub_subject_{i} = %s")
+                update_values.append(data[f'sub_subject_{i}'])
+            if f'sub_hours_{i}' in data:
+                update_fields.append(f"sub_hours_{i} = %s")
+                update_values.append(data[f'sub_hours_{i}'])
+        
+        if not update_fields:
+            return {"code": subject_code, "message": "No fields to update"}
+        
+        query = f"UPDATE subjects SET {', '.join(update_fields)} WHERE code = %s"
+        update_values.append(subject_code)
+        
+        cursor.execute(query, tuple(update_values))
         conn.commit()
         return {"code": subject_code}
     finally:
@@ -715,6 +736,37 @@ async def delete_subject(subject_code: str):
         cursor.execute("DELETE FROM subjects WHERE code = %s", (subject_code,))
         conn.commit()
         return {"message": "과목이 삭제되었습니다"}
+    finally:
+        conn.close()
+
+@app.post("/api/courses/{course_code}/subjects")
+async def save_course_subjects(course_code: str, data: dict):
+    """과정-교과목 관계 저장"""
+    subject_codes = data.get('subject_codes', [])
+    
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        # 기존 과정-교과목 관계 삭제
+        cursor.execute("DELETE FROM course_subjects WHERE course_code = %s", (course_code,))
+        
+        # 새로운 관계 추가
+        for idx, subject_code in enumerate(subject_codes, start=1):
+            cursor.execute("""
+                INSERT INTO course_subjects (course_code, subject_code, display_order)
+                VALUES (%s, %s, %s)
+            """, (course_code, subject_code, idx))
+        
+        conn.commit()
+        return {
+            "message": f"{len(subject_codes)}개의 교과목이 저장되었습니다",
+            "course_code": course_code,
+            "subject_count": len(subject_codes)
+        }
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"교과목 저장 실패: {str(e)}")
     finally:
         conn.close()
 

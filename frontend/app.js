@@ -7715,15 +7715,26 @@ window.autoCalculateDates = async function() {
     }
 }
 
+// 요일 번호를 한글로 변환
+function getDayNameFromNumber(dayNum) {
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    return dayNum !== null && dayNum !== undefined ? days[dayNum] : '-';
+}
+
 // 교과목 선택 모달 표시
 window.showSubjectSelector = async function(courseCode) {
     const modal = document.getElementById('subject-selector');
     const content = modal.querySelector('div');
     
     try {
-        // 교과목 목록 가져오기
-        const response = await axios.get(`${API_BASE_URL}/api/subjects`);
-        const allSubjects = response.data;
+        // 교과목 목록과 강사 목록 가져오기
+        const [subjectsRes, instructorsRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/api/subjects`),
+            axios.get(`${API_BASE_URL}/api/instructors`)
+        ]);
+        
+        const allSubjects = subjectsRes.data;
+        const allInstructors = instructorsRes.data;
         
         // 현재 과정에 선택된 과목 목록
         const selectedSubjects = courseSubjects[courseCode] || [];
@@ -7733,36 +7744,55 @@ window.showSubjectSelector = async function(courseCode) {
                 <i class="fas fa-list mr-2"></i>교과목 선택 - ${courseCode}
             </h3>
             <p class="text-sm text-gray-600 mb-4">
-                과정에 포함할 교과목을 선택하세요. (체크박스를 클릭하여 선택/해제)
+                과정에 포함할 교과목을 선택하고, 요일과 담당강사를 수정할 수 있습니다.
             </p>
-            <div class="max-h-96 overflow-y-auto border rounded p-4">
-                <table class="min-w-full">
+            <div class="max-h-[500px] overflow-y-auto border rounded p-4">
+                <table class="min-w-full table-fixed">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
-                            <th class="px-3 py-2 text-left text-xs">선택</th>
-                            <th class="px-3 py-2 text-left text-xs">과목코드</th>
-                            <th class="px-3 py-2 text-left text-xs">과목명</th>
-                            <th class="px-3 py-2 text-left text-xs">시수</th>
-                            <th class="px-3 py-2 text-left text-xs">요일</th>
-                            <th class="px-3 py-2 text-left text-xs">격주</th>
-                            <th class="px-3 py-2 text-left text-xs">담당강사</th>
+                            <th class="w-12 px-2 py-2 text-left text-xs">선택</th>
+                            <th class="w-20 px-2 py-2 text-left text-xs">과목코드</th>
+                            <th class="w-40 px-2 py-2 text-left text-xs">과목명</th>
+                            <th class="w-16 px-2 py-2 text-left text-xs">시수</th>
+                            <th class="w-24 px-2 py-2 text-left text-xs">요일</th>
+                            <th class="w-20 px-2 py-2 text-left text-xs">격주</th>
+                            <th class="w-40 px-2 py-2 text-left text-xs">담당강사</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${allSubjects.map(s => {
                             const isSelected = selectedSubjects.includes(s.code);
                             return `
-                            <tr class="border-t hover:bg-gray-50">
-                                <td class="px-3 py-2">
+                            <tr class="border-t hover:bg-gray-50" data-subject-code="${s.code}">
+                                <td class="px-2 py-2">
                                     <input type="checkbox" class="subject-checkbox" value="${s.code}" 
                                            id="subject-${s.code}" ${isSelected ? 'checked' : ''}>
                                 </td>
-                                <td class="px-3 py-2 text-xs">${s.code}</td>
-                                <td class="px-3 py-2 text-xs">${s.name}</td>
-                                <td class="px-3 py-2 text-xs">${s.hours || '-'}시간</td>
-                                <td class="px-3 py-2 text-xs">${s.day_of_week || '-'}</td>
-                                <td class="px-3 py-2 text-xs">${s.is_biweekly ? '격주' : '매주'}</td>
-                                <td class="px-3 py-2 text-xs">${s.instructor_name || '-'}</td>
+                                <td class="px-2 py-2 text-xs">${s.code}</td>
+                                <td class="px-2 py-2 text-xs">${s.name}</td>
+                                <td class="px-2 py-2 text-xs">${s.hours || '-'}시간</td>
+                                <td class="px-2 py-2">
+                                    <select class="subject-day-select text-xs border rounded px-1 py-1 w-full" data-subject-code="${s.code}">
+                                        <option value="0" ${s.day_of_week === 0 ? 'selected' : ''}>일</option>
+                                        <option value="1" ${s.day_of_week === 1 ? 'selected' : ''}>월</option>
+                                        <option value="2" ${s.day_of_week === 2 ? 'selected' : ''}>화</option>
+                                        <option value="3" ${s.day_of_week === 3 ? 'selected' : ''}>수</option>
+                                        <option value="4" ${s.day_of_week === 4 ? 'selected' : ''}>목</option>
+                                        <option value="5" ${s.day_of_week === 5 ? 'selected' : ''}>금</option>
+                                        <option value="6" ${s.day_of_week === 6 ? 'selected' : ''}>토</option>
+                                    </select>
+                                </td>
+                                <td class="px-2 py-2 text-xs">${s.is_biweekly ? '격주' : '매주'}</td>
+                                <td class="px-2 py-2">
+                                    <select class="subject-instructor-select text-xs border rounded px-1 py-1 w-full" data-subject-code="${s.code}">
+                                        <option value="">선택</option>
+                                        ${allInstructors.map(inst => `
+                                            <option value="${inst.code}" ${s.instructor_code === inst.code ? 'selected' : ''}>
+                                                ${inst.name}
+                                            </option>
+                                        `).join('')}
+                                    </select>
+                                </td>
                             </tr>
                         `;
                         }).join('')}
@@ -7774,7 +7804,7 @@ window.showSubjectSelector = async function(courseCode) {
                     <i class="fas fa-times mr-2"></i>취소
                 </button>
                 <button onclick="window.saveSelectedSubjects('${courseCode}')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
-                    <i class="fas fa-check mr-2"></i>적용
+                    <i class="fas fa-save mr-2"></i>저장 및 적용
                 </button>
             </div>
         `;
@@ -7792,26 +7822,59 @@ window.hideSubjectSelector = function() {
 }
 
 // 선택된 교과목 저장
-window.saveSelectedSubjects = function(courseCode) {
+window.saveSelectedSubjects = async function(courseCode) {
     const checkboxes = document.querySelectorAll('.subject-checkbox:checked');
     const selectedSubjects = Array.from(checkboxes).map(cb => cb.value);
     
     if (selectedSubjects.length === 0) {
-        window.showAlert('하나 이상의 교과목을 선택해주세요.');
+        window.showAlert('하나 이상의 교과목을 선택해주세요.', 'error');
         return;
     }
     
-    // courseSubjects에 저장
-    courseSubjects[courseCode] = selectedSubjects;
-    
-    // TODO: 실제로는 course_subjects 테이블에 저장해야 함
-    console.log(`과정 ${courseCode}에 선택된 교과목:`, selectedSubjects);
-    
-    window.hideSubjectSelector();
-    window.showAlert(`${selectedSubjects.length}개의 교과목이 선택되었습니다.`);
-    
-    // 과목 영역 업데이트
-    updateSubjectArea(courseCode);
+    try {
+        // 각 교과목의 요일과 담당강사 정보 수집
+        const subjectUpdates = [];
+        
+        for (const subjectCode of selectedSubjects) {
+            const daySelect = document.querySelector(`.subject-day-select[data-subject-code="${subjectCode}"]`);
+            const instructorSelect = document.querySelector(`.subject-instructor-select[data-subject-code="${subjectCode}"]`);
+            
+            const dayOfWeek = daySelect ? parseInt(daySelect.value) : null;
+            const instructorCode = instructorSelect && instructorSelect.value ? instructorSelect.value : null;
+            
+            // 교과목 정보 업데이트 (요일, 담당강사)
+            await axios.put(`${API_BASE_URL}/api/subjects/${subjectCode}`, {
+                day_of_week: dayOfWeek,
+                instructor_code: instructorCode
+            });
+            
+            subjectUpdates.push({
+                subject_code: subjectCode,
+                day_of_week: dayOfWeek,
+                instructor_code: instructorCode
+            });
+        }
+        
+        // course_subjects 테이블에 과정-교과목 관계 저장
+        await axios.post(`${API_BASE_URL}/api/courses/${courseCode}/subjects`, {
+            subject_codes: selectedSubjects
+        });
+        
+        // courseSubjects에 저장
+        courseSubjects[courseCode] = selectedSubjects;
+        
+        console.log(`과정 ${courseCode}에 선택된 교과목:`, selectedSubjects);
+        console.log('교과목 업데이트 정보:', subjectUpdates);
+        
+        window.hideSubjectSelector();
+        window.showAlert(`${selectedSubjects.length}개의 교과목이 저장되었습니다.`, 'success');
+        
+        // 과목 영역 업데이트
+        updateSubjectArea(courseCode);
+    } catch (error) {
+        console.error('교과목 저장 실패:', error);
+        window.showAlert('교과목 저장에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
+    }
 }
 
 // renderCourses를 selectedCourseCode를 고려하도록 수정
