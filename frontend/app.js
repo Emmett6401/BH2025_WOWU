@@ -5568,7 +5568,7 @@ window.showInstructorCodeForm = function(code = null) {
         { id: 'ai-report', name: 'AI 생기부', icon: 'fa-file-alt' },
         { id: 'ai-training-log', name: 'AI 훈련일지', icon: 'fa-brain' },
         { id: 'ai-counseling', name: 'AI 상담일지', icon: 'fa-comments' },
-        { id: 'aesong-3d-chat', name: '🐶 애송이 만나기', icon: 'fa-robot' },
+        { id: 'aesong-3d-chat', name: '🐶 예진이 만나기', icon: 'fa-robot' },
         { id: 'projects', name: '팀 관리', icon: 'fa-users' },
         { id: 'team-activity-logs', name: '팀 활동일지', icon: 'fa-clipboard-list' }
     ];
@@ -7649,7 +7649,7 @@ window.autoCalculateDates = async function() {
     }
     
     if (lectureHours === 0 && projectHours === 0 && internshipHours === 0) {
-        window.showAlert('강의시간, 프로젝트시간, 인턴시간 중 하나 이상을 입력해주세요.', 'error');
+        window.showAlert('강의시간, 프로젝트시간, 현장실습시간 중 하나 이상을 입력해주세요.', 'error');
         return;
     }
     
@@ -8023,7 +8023,7 @@ window.showCourseForm = function(code = null) {
                        onkeydown="if(event.key==='Tab' && !this.value) {event.preventDefault(); this.value=this.placeholder; this.parentElement.nextElementSibling.querySelector('input').focus();}">
             </div>
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">인턴시간(h)</label>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">현장실습시간(h)</label>
                 <input type="number" id="form-course-internship-hours" placeholder="120" value="${existing ? existing.internship_hours : ''}" 
                        class="w-full border rounded px-3 py-2"
                        onkeydown="if(event.key==='Tab' && !this.value) {event.preventDefault(); this.value=this.placeholder;}">
@@ -8075,7 +8075,7 @@ window.showCourseForm = function(code = null) {
                        class="w-full border rounded px-3 py-2 bg-gray-50" readonly>
             </div>
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">인턴종료일</label>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">현장실습종료일</label>
                 <input type="date" id="form-course-internship-end" value="${existing ? existing.internship_end_date : ''}" 
                        class="w-full border rounded px-3 py-2 bg-gray-50" readonly>
             </div>
@@ -8240,7 +8240,7 @@ function renderProjects() {
                         <option value="">전체 그룹</option>
                         <option value="1. 스터디그룹">1. 스터디그룹</option>
                         <option value="2. 프로젝트그룹">2. 프로젝트그룹</option>
-                        <option value="3. 인턴그룹">3. 인턴그룹</option>
+                        <option value="3. 현장실습그룹">3. 현장실습그룹</option>
                         <option value="4. 기타그룹">4. 기타그룹</option>
                     </select>
                 </div>
@@ -8455,7 +8455,7 @@ window.showProjectForm = function(code = null) {
                     <option value="">그룹 선택</option>
                     <option value="1. 스터디그룹" ${existing && existing.group_type === '1. 스터디그룹' ? 'selected' : ''}>1. 스터디그룹</option>
                     <option value="2. 프로젝트그룹" ${existing && existing.group_type === '2. 프로젝트그룹' ? 'selected' : ''}>2. 프로젝트그룹</option>
-                    <option value="3. 인턴그룹" ${existing && existing.group_type === '3. 인턴그룹' ? 'selected' : ''}>3. 인턴그룹</option>
+                    <option value="3. 현장실습그룹" ${existing && existing.group_type === '3. 현장실습그룹' ? 'selected' : ''}>3. 현장실습그룹</option>
                     <option value="4. 기타그룹" ${existing && existing.group_type === '4. 기타그룹' ? 'selected' : ''}>4. 기타그룹</option>
                 </select>
             </div>
@@ -12191,7 +12191,7 @@ function renderSystemSettings(settings) {
                     </select>
                     <p class="text-sm text-gray-500 mt-2">
                         <i class="fas fa-info-circle mr-1"></i>
-                        애송이 3D 챗봇에서 사용할 AI 모델을 선택합니다
+                        예진이 3D 챗봇에서 사용할 AI 모델을 선택합니다
                     </p>
                     <p class="text-sm text-gray-400 mt-1">
                         💡 GROQ: 빠른 응답 속도 | Gemini: 더 자연스러운 대화
@@ -15151,7 +15151,7 @@ window.togglePasswordVisibility = function(inputId) {
     }
 };
 
-// ==================== 애송이 3D 채팅 ====================
+// ==================== 예진이 3D 채팅 ====================
 function renderAesong3DChat() {
     const app = document.getElementById('app');
     app.innerHTML = `
@@ -15292,7 +15292,7 @@ function renderAesong3DChat() {
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">
                     <i class="fas fa-robot text-purple-600 mr-2"></i>
-                    🐶 애송이 만나기
+                    🐶 예진이 만나기
                 </h2>
                 <button onclick="showTab('dashboard')" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition">
                     <i class="fas fa-arrow-left mr-2"></i>돌아가기
@@ -15312,7 +15312,7 @@ function renderAesong3DChat() {
                             🐶
                         </div>
                         <div>
-                            <div class="text-sm font-semibold">애송이</div>
+                            <div class="text-sm font-semibold">예진이</div>
                             <div class="text-xs text-gray-500">작은 사이즈 (1.5MB)</div>
                         </div>
                     </div>
@@ -15358,8 +15358,8 @@ function renderAesong3DChat() {
                             <ul class="list-disc list-inside space-y-1">
                                 <li>마이크 버튼을 클릭하여 음성 녹음을 시작하세요</li>
                                 <li>말씀하신 후 다시 버튼을 클릭하여 녹음을 중지하세요</li>
-                                <li>애송이가 음성으로 답변해드립니다!</li>
-                                <li>3D 애송이 캐릭터를 마우스로 회전할 수 있어요</li>
+                                <li>예진이가 음성으로 답변해드립니다!</li>
+                                <li>3D 예진이 캐릭터를 마우스로 회전할 수 있어요</li>
                             </ul>
                         </div>
                     </div>
