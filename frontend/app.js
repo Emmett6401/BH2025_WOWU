@@ -10058,10 +10058,16 @@ function renderTimetables() {
                                 const progressPercent = subjectTotalHours > 0 ? Math.round((accumulatedHours / subjectTotalHours) * 100) : 0;
                                 const isCompleted = accumulatedHours >= subjectTotalHours && subjectTotalHours > 0;
                             
-                            // 요일 계산
-                            const classDate = new Date(tt.class_date);
-                            const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-                            const dayOfWeek = dayNames[classDate.getDay()];
+                            // 요일 계산 (로컬 시간 기준)
+                            const dateStr = tt.class_date || '';
+                            let dayOfWeek = '';
+                            if (dateStr) {
+                                // YYYY-MM-DD 형식을 직접 파싱하여 로컬 날짜 생성
+                                const [year, month, day] = dateStr.split('-').map(Number);
+                                const classDate = new Date(year, month - 1, day);
+                                const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+                                dayOfWeek = dayNames[classDate.getDay()];
+                            }
                             
                             return `
                             <tr class="border-t hover:bg-gray-50 ${isToday ? 'bg-yellow-100 border-l-4 border-yellow-500' : ''}" ${isToday ? 'id="today-timetable-row"' : ''}>
