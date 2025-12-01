@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.42'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.43'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -7902,6 +7902,17 @@ window.autoCalculateDates = async function() {
         document.getElementById('form-course-final-end').value = result.final_end_date;
         document.getElementById('form-course-total-days').value = result.total_days;
         
+        // 시간 정보도 표시 (강의: 13:00, 프로젝트/실습: 18:00)
+        if (document.getElementById('form-course-lecture-end-display')) {
+            document.getElementById('form-course-lecture-end-display').value = result.lecture_end_date ? `${result.lecture_end_date} 13:00` : '';
+        }
+        if (document.getElementById('form-course-project-end-display')) {
+            document.getElementById('form-course-project-end-display').value = result.project_end_date ? `${result.project_end_date} 18:00` : '';
+        }
+        if (document.getElementById('form-course-internship-end-display')) {
+            document.getElementById('form-course-internship-end-display').value = result.internship_end_date ? `${result.internship_end_date} 18:00` : '';
+        }
+        
         // 비고 필드에 자동으로 입력
         const startDateFormatted = result.start_date.replace(/-/g, '.');
         const endDateFormatted = result.final_end_date.replace(/-/g, '.');
@@ -8353,19 +8364,22 @@ window.showCourseForm = function(code = null) {
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">강의종료일</label>
-                <input type="date" id="form-course-lecture-end" value="${existing ? existing.lecture_end_date : ''}" 
-                       class="w-full border rounded px-3 py-2 bg-gray-50" readonly>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">강의종료일 (시간포함)</label>
+                <input type="text" id="form-course-lecture-end-display" value="${existing && existing.lecture_end_date ? existing.lecture_end_date + ' 13:00' : ''}" 
+                       class="w-full border rounded px-3 py-2 bg-gray-50 font-semibold text-blue-600" readonly placeholder="YYYY-MM-DD HH:MM">
+                <input type="date" id="form-course-lecture-end" value="${existing ? existing.lecture_end_date : ''}" class="hidden">
             </div>
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">프로젝트종료일</label>
-                <input type="date" id="form-course-project-end" value="${existing ? existing.project_end_date : ''}" 
-                       class="w-full border rounded px-3 py-2 bg-gray-50" readonly>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">프로젝트종료일 (시간포함)</label>
+                <input type="text" id="form-course-project-end-display" value="${existing && existing.project_end_date ? existing.project_end_date + ' 18:00' : ''}" 
+                       class="w-full border rounded px-3 py-2 bg-gray-50 font-semibold text-green-600" readonly placeholder="YYYY-MM-DD HH:MM">
+                <input type="date" id="form-course-project-end" value="${existing ? existing.project_end_date : ''}" class="hidden">
             </div>
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">현장실습종료일</label>
-                <input type="date" id="form-course-internship-end" value="${existing ? existing.internship_end_date : ''}" 
-                       class="w-full border rounded px-3 py-2 bg-gray-50" readonly>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">현장실습종료일 (시간포함)</label>
+                <input type="text" id="form-course-internship-end-display" value="${existing && existing.internship_end_date ? existing.internship_end_date + ' 18:00' : ''}" 
+                       class="w-full border rounded px-3 py-2 bg-gray-50 font-semibold text-red-600" readonly placeholder="YYYY-MM-DD HH:MM">
+                <input type="date" id="form-course-internship-end" value="${existing ? existing.internship_end_date : ''}" class="hidden">
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">최종종료일</label>
