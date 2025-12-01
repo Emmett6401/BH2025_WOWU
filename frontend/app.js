@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.41'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.42'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -8030,13 +8030,13 @@ window.showSubjectSelector = async function(courseCode) {
                                 <td class="px-3 py-3 text-sm">${s.hours || '-'}시간</td>
                                 <td class="px-3 py-3">
                                     <select class="subject-day-select text-sm border rounded px-2 py-2 w-full" data-subject-code="${s.code}">
-                                        <option value="0" ${s.day_of_week === 0 ? 'selected' : ''}>월</option>
-                                        <option value="1" ${s.day_of_week === 1 ? 'selected' : ''}>화</option>
-                                        <option value="2" ${s.day_of_week === 2 ? 'selected' : ''}>수</option>
-                                        <option value="3" ${s.day_of_week === 3 ? 'selected' : ''}>목</option>
-                                        <option value="4" ${s.day_of_week === 4 ? 'selected' : ''}>금</option>
-                                        <option value="5" ${s.day_of_week === 5 ? 'selected' : ''}>토</option>
-                                        <option value="6" ${s.day_of_week === 6 ? 'selected' : ''}>일</option>
+                                        <option value="1" ${s.day_of_week === 1 ? 'selected' : ''}>월</option>
+                                        <option value="2" ${s.day_of_week === 2 ? 'selected' : ''}>화</option>
+                                        <option value="3" ${s.day_of_week === 3 ? 'selected' : ''}>수</option>
+                                        <option value="4" ${s.day_of_week === 4 ? 'selected' : ''}>목</option>
+                                        <option value="5" ${s.day_of_week === 5 ? 'selected' : ''}>금</option>
+                                        <option value="6" ${s.day_of_week === 6 ? 'selected' : ''}>토</option>
+                                        <option value="0" ${s.day_of_week === 0 ? 'selected' : ''}>일</option>
                                     </select>
                                 </td>
                                 <td class="px-3 py-3">
