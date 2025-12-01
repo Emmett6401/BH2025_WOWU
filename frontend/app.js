@@ -7517,6 +7517,102 @@ window.saveCourseChanges = async function(courseCode) {
     }
 }
 
+// 일일 총 수업시간 자동 계산
+window.updateDailyHours = function() {
+    const morningHours = parseInt(document.getElementById('form-course-morning-hours').value) || 0;
+    const afternoonHours = parseInt(document.getElementById('form-course-afternoon-hours').value) || 0;
+    const dailyHours = morningHours + afternoonHours;
+    
+    document.getElementById('form-course-daily-hours').value = dailyHours;
+    
+    // 일일 시간이 8시간을 초과하면 경고
+    if (dailyHours > 8) {
+        document.getElementById('form-course-daily-hours').classList.add('text-red-600', 'bg-red-50');
+        document.getElementById('form-course-daily-hours').classList.remove('text-purple-600', 'bg-purple-50');
+    } else {
+        document.getElementById('form-course-daily-hours').classList.add('text-purple-600', 'bg-purple-50');
+        document.getElementById('form-course-daily-hours').classList.remove('text-red-600', 'bg-red-50');
+    }
+}
+
+// 자동계산 결과를 예쁜 모달로 표시
+window.showCalculationResult = function(result, startDate, endDate) {
+    const modal = document.getElementById('alert-modal');
+    const header = document.getElementById('alert-header');
+    const icon = document.getElementById('alert-icon');
+    const title = document.getElementById('alert-title');
+    const message = document.getElementById('alert-message');
+    const confirmBtn = document.getElementById('alert-confirm-btn');
+    const cancelBtn = document.getElementById('alert-cancel-btn');
+    
+    // 성공 스타일 적용
+    header.className = 'p-6 rounded-t-2xl bg-gradient-to-r from-green-500 to-emerald-600';
+    icon.innerHTML = '✅';
+    title.textContent = '자동계산 완료!';
+    
+    // 상세한 결과 HTML
+    message.innerHTML = `
+        <div class="space-y-4">
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <div class="font-semibold text-blue-900 mb-2 flex items-center">
+                    <i class="fas fa-calendar-alt mr-2"></i>교육기간
+                </div>
+                <div class="text-blue-700 font-bold text-lg">${startDate} ~ ${endDate}</div>
+            </div>
+            
+            <div class="bg-purple-50 p-4 rounded-lg">
+                <div class="font-semibold text-purple-900 mb-2 flex items-center">
+                    <i class="fas fa-clock mr-2"></i>총 교육시간
+                </div>
+                <div class="text-purple-700 font-bold text-xl mb-2">${result.total_hours}시간</div>
+                <div class="text-sm text-purple-600 space-y-1">
+                    <div>├ 이론: ${result.lecture_hours}시간 (${result.lecture_days}일)</div>
+                    <div>├ 프로젝트: ${result.project_hours}시간 (${result.project_days}일)</div>
+                    <div>└ 현장실습: ${result.internship_hours}시간 (${result.internship_days}일)</div>
+                </div>
+            </div>
+            
+            <div class="bg-green-50 p-4 rounded-lg">
+                <div class="font-semibold text-green-900 mb-2 flex items-center">
+                    <i class="fas fa-calendar-check mr-2"></i>교육일수
+                </div>
+                <div class="text-green-700 font-bold text-xl mb-2">총 ${result.total_days}일</div>
+                <div class="text-sm text-green-600 space-y-1">
+                    <div>├ 근무일: ${result.work_days}일</div>
+                    <div>├ 주말: ${result.weekend_days}일</div>
+                    <div>└ 공휴일: ${result.holiday_count}일</div>
+                </div>
+            </div>
+            
+            <div class="bg-red-50 p-4 rounded-lg">
+                <div class="font-semibold text-red-900 mb-2 flex items-center">
+                    <i class="fas fa-calendar-times mr-2"></i>과정 기간 내 공휴일
+                </div>
+                <div class="text-red-700 font-semibold">${result.holidays_formatted}</div>
+            </div>
+            
+            <div class="bg-yellow-50 p-3 rounded-lg border-l-4 border-yellow-500">
+                <div class="flex items-center text-yellow-800">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <span class="text-sm font-semibold">비고란에 자동으로 입력되었습니다!</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 버튼 설정
+    cancelBtn.classList.add('hidden');
+    confirmBtn.textContent = '확인';
+    confirmBtn.className = 'px-6 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-lg font-semibold transition-all shadow-lg';
+    
+    confirmBtn.onclick = () => {
+        modal.classList.add('hidden');
+    };
+    
+    // 모달 표시
+    modal.classList.remove('hidden');
+}
+
 // 자동계산 버튼 클릭 시 날짜 자동 계산
 window.autoCalculateDates = async function() {
     const startDate = document.getElementById('form-course-start-date').value;
@@ -7572,25 +7668,8 @@ window.autoCalculateDates = async function() {
         button.innerHTML = originalHTML;
         button.disabled = false;
         
-        // 상세한 결과 메시지
-        const message = `✅ 자동계산 완료!
-
-📅 교육기간: ${startDateFormatted} ~ ${endDateFormatted}
-⏱️ 총 교육시간: ${result.total_hours}시간
-  ├ 이론: ${result.lecture_hours}시간 (${result.lecture_days}일)
-  ├ 프로젝트: ${result.project_hours}시간 (${result.project_days}일)
-  └ 현장실습: ${result.internship_hours}시간 (${result.internship_days}일)
-
-📊 교육일수: 총 ${result.total_days}일
-  ├ 근무일: ${result.work_days}일
-  ├ 주말: ${result.weekend_days}일
-  └ 공휴일: ${result.holiday_count}일
-
-🎉 공휴일: ${result.holidays_formatted}
-
-💡 비고란에 자동으로 입력되었습니다!`;
-        
-        alert(message);
+        // 예쁜 모달로 결과 표시
+        window.showCalculationResult(result, startDateFormatted, endDateFormatted);
     } catch (error) {
         console.error('자동계산 실패:', error);
         alert('자동계산에 실패했습니다: ' + (error.response?.data?.detail || error.message));
@@ -7817,6 +7896,29 @@ window.showCourseForm = function(code = null) {
                        class="w-full border rounded px-3 py-2"
                        onkeydown="if(event.key==='Tab' && !this.value) {event.preventDefault(); this.value=this.placeholder;}">
             </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">
+                    <i class="fas fa-sun text-yellow-500 mr-1"></i>오전 수업시간(h)
+                </label>
+                <input type="number" id="form-course-morning-hours" placeholder="4" value="${existing ? (existing.morning_hours || 4) : 4}" 
+                       class="w-full border rounded px-3 py-2" min="0" max="8"
+                       onchange="window.updateDailyHours()">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">
+                    <i class="fas fa-moon text-blue-500 mr-1"></i>오후 수업시간(h)
+                </label>
+                <input type="number" id="form-course-afternoon-hours" placeholder="4" value="${existing ? (existing.afternoon_hours || 4) : 4}" 
+                       class="w-full border rounded px-3 py-2" min="0" max="8"
+                       onchange="window.updateDailyHours()">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">
+                    <i class="fas fa-clock text-purple-500 mr-1"></i>일일 총 수업시간
+                </label>
+                <input type="number" id="form-course-daily-hours" value="${existing ? ((existing.morning_hours || 4) + (existing.afternoon_hours || 4)) : 8}" 
+                       class="w-full border rounded px-3 py-2 bg-purple-50 font-semibold text-purple-600" readonly>
+            </div>
             <div class="col-span-3">
                 <div class="flex items-center gap-2">
                     <div class="flex-1">
@@ -7885,6 +7987,8 @@ window.saveCourse = async function(existingCode) {
         lecture_hours: parseInt(document.getElementById('form-course-lecture-hours').value) || 0,
         project_hours: parseInt(document.getElementById('form-course-project-hours').value) || 0,
         internship_hours: parseInt(document.getElementById('form-course-internship-hours').value) || 0,
+        morning_hours: parseInt(document.getElementById('form-course-morning-hours').value) || 4,
+        afternoon_hours: parseInt(document.getElementById('form-course-afternoon-hours').value) || 4,
         start_date: document.getElementById('form-course-start-date').value,
         lecture_end_date: document.getElementById('form-course-lecture-end').value,
         project_end_date: document.getElementById('form-course-project-end').value,

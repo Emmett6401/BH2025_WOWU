@@ -1390,18 +1390,27 @@ async def create_course(data: dict):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        # morning_hours, afternoon_hours 컬럼이 없으면 추가
+        cursor.execute("""
+            ALTER TABLE courses 
+            ADD COLUMN IF NOT EXISTS morning_hours INT DEFAULT 4,
+            ADD COLUMN IF NOT EXISTS afternoon_hours INT DEFAULT 4
+        """)
+        
         query = """
             INSERT INTO courses (code, name, lecture_hours, project_hours, internship_hours,
                                 capacity, location, notes, start_date, lecture_end_date,
-                                project_end_date, internship_end_date, final_end_date, total_days)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                project_end_date, internship_end_date, final_end_date, total_days,
+                                morning_hours, afternoon_hours)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
             data['code'], data['name'], data['lecture_hours'], data['project_hours'],
             data['internship_hours'], data['capacity'], data.get('location'),
             data.get('notes'), data.get('start_date'), data.get('lecture_end_date'),
             data.get('project_end_date'), data.get('internship_end_date'),
-            data.get('final_end_date'), data.get('total_days')
+            data.get('final_end_date'), data.get('total_days'),
+            data.get('morning_hours', 4), data.get('afternoon_hours', 4)
         ))
         conn.commit()
         return {"code": data['code']}
@@ -1419,7 +1428,7 @@ async def update_course(code: str, data: dict):
             SET name = %s, lecture_hours = %s, project_hours = %s, internship_hours = %s,
                 capacity = %s, location = %s, notes = %s, start_date = %s,
                 lecture_end_date = %s, project_end_date = %s, internship_end_date = %s,
-                final_end_date = %s, total_days = %s
+                final_end_date = %s, total_days = %s, morning_hours = %s, afternoon_hours = %s
             WHERE code = %s
         """
         cursor.execute(query, (
@@ -1427,7 +1436,8 @@ async def update_course(code: str, data: dict):
             data['internship_hours'], data['capacity'], data.get('location'),
             data.get('notes'), data.get('start_date'), data.get('lecture_end_date'),
             data.get('project_end_date'), data.get('internship_end_date'),
-            data.get('final_end_date'), data.get('total_days'), code
+            data.get('final_end_date'), data.get('total_days'),
+            data.get('morning_hours', 4), data.get('afternoon_hours', 4), code
         ))
         conn.commit()
         return {"code": code}
