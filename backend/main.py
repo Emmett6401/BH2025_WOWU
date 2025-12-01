@@ -5862,37 +5862,48 @@ async def auto_generate_timetables(data: dict):
             
             # 오후 슬롯 - 이론이 아직 남아있는 경우에만
             if total_remaining > 0:
-                # ★★★ 핵심: 오후 슬롯은 요일 배정 무시하고 남은 시수가 가장 많은 과목으로 채우기 ★★★
-                afternoon_available = []
-                for assignment in course_subject_assignments:
-                    if subject_remaining.get(assignment['subject_code'], 0) > 0:
-                        afternoon_available.append({
-                            'subject_code': assignment['subject_code'],
-                            'is_biweekly': 0,
-                            'week_offset': 0,
-                            'name': assignment['name'],
-                            'hours': assignment['hours'],
-                            'instructor': assignment['main_instructor']
-                        })
+                # ★★★ 1일 1과목 원칙: 오전 과목이 남아있으면 계속, 소진되었으면 다른 과목 ★★★
+                afternoon_subject = None
                 
-                if afternoon_available:
-                    # 남은 시수가 가장 많은 과목 선택
-                    afternoon_available.sort(key=lambda s: subject_remaining.get(s['subject_code'], 0), reverse=True)
-                    subj = afternoon_available[0]
+                # 1. 오전에 사용한 과목이 아직 남아있는지 확인
+                morning_subject_code = subj['subject_code'] if 'subj' in locals() else None
+                if morning_subject_code and subject_remaining.get(morning_subject_code, 0) > 0:
+                    # 오전 과목이 남아있으면 계속 사용
+                    afternoon_subject = subj
+                else:
+                    # 2. 오전 과목이 소진되었으면 다른 과목 선택 (요일 배정 무시)
+                    afternoon_available = []
+                    for assignment in course_subject_assignments:
+                        if subject_remaining.get(assignment['subject_code'], 0) > 0:
+                            afternoon_available.append({
+                                'subject_code': assignment['subject_code'],
+                                'is_biweekly': 0,
+                                'week_offset': 0,
+                                'name': assignment['name'],
+                                'hours': assignment['hours'],
+                                'instructor': assignment['main_instructor']
+                            })
                     
-                    hours_to_use = min(afternoon_hours, subject_remaining[subj['subject_code']], total_remaining)
+                    if afternoon_available:
+                        # 남은 시수가 가장 많은 과목 선택
+                        afternoon_available.sort(key=lambda s: subject_remaining.get(s['subject_code'], 0), reverse=True)
+                        afternoon_subject = afternoon_available[0]
+                
+                # 오후 슬롯 생성
+                if afternoon_subject:
+                    hours_to_use = min(afternoon_hours, subject_remaining[afternoon_subject['subject_code']], total_remaining)
                     
                     timetables.append({
                         'course_code': course_code,
-                        'subject_code': subj['subject_code'],
+                        'subject_code': afternoon_subject['subject_code'],
                         'class_date': current_date,
                         'start_time': '14:00:00',
                         'end_time': f'{14 + int(hours_to_use):02d}:00:00',
-                        'instructor_code': subj['instructor'],
+                        'instructor_code': afternoon_subject['instructor'],
                         'type': 'lecture'
                     })
                     
-                    subject_remaining[subj['subject_code']] -= hours_to_use
+                    subject_remaining[afternoon_subject['subject_code']] -= hours_to_use
                     total_remaining -= hours_to_use
             
             # 다음날로 이동
