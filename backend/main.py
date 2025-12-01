@@ -16,6 +16,14 @@ import uuid
 import base64
 from PIL import Image
 from pathlib import Path
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+from reportlab.lib import colors
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
 # .env 파일을 상위 디렉토리에서 로드
 env_path = Path(__file__).parent.parent / '.env'
@@ -2994,6 +3002,161 @@ async def root():
         "status": "running"
     }
 
+def generate_calculation_pdf(calculation_result: dict, course_code: str):
+    """과정 계산 결과 PDF 생성"""
+    try:
+        # 한글 폰트 등록
+        font_path = os.path.join(os.path.dirname(__file__), 'fonts', 'NanumGothic.ttf')
+        if os.path.exists(font_path):
+            pdfmetrics.registerFont(TTFont('NanumGothic', font_path))
+            font_name = 'NanumGothic'
+        else:
+            font_name = 'Helvetica'
+        
+        # PDF 파일 경로
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"course_calculation_{course_code}_{timestamp}.pdf"
+        pdf_path = os.path.join('/tmp', filename)
+        
+        # PDF 문서 생성
+        doc = SimpleDocTemplate(pdf_path, pagesize=A4)
+        story = []
+        
+        # 스타일 정의
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontName=font_name,
+            fontSize=18,
+            alignment=TA_CENTER,
+            spaceAfter=30
+        )
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading2'],
+            fontName=font_name,
+            fontSize=14,
+            spaceAfter=12
+        )
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontName=font_name,
+            fontSize=10,
+            leading=16
+        )
+        
+        # 제목
+        story.append(Paragraph(f'과정 자동 계산 보고서', title_style))
+        story.append(Paragraph(f'과정 코드: {course_code}', normal_style))
+        story.append(Spacer(1, 20))
+        
+        # 1. 기본 정보
+        story.append(Paragraph('1. 과정 기본 정보', heading_style))
+        basic_data = [
+            ['항목', '내용'],
+            ['과정 시작일', calculation_result['start_date']],
+            ['과정 종료일', calculation_result['final_end_date']],
+            ['총 교육시간', f"{calculation_result['total_hours']}시간"],
+            ['일일 수업시간', f"{calculation_result['daily_hours']}시간 (오전 {calculation_result['morning_hours']}h + 오후 {calculation_result['afternoon_hours']}h)"],
+            ['주간 수업시간', f"{calculation_result['daily_hours'] * 5}시간 (월~금)"]
+        ]
+        basic_table = Table(basic_data, colWidths=[100, 300])
+        basic_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), font_name),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(basic_table)
+        story.append(Spacer(1, 20))
+        
+        # 2. 단계별 상세
+        story.append(Paragraph('2. 교육 단계별 상세', heading_style))
+        phase_data = [
+            ['단계', '시간', '일수', '시작일', '종료일'],
+            ['이론', f"{calculation_result['lecture_hours']}h", f"{calculation_result['lecture_days']}일", 
+             calculation_result['start_date'], calculation_result['lecture_end_date']],
+            ['프로젝트', f"{calculation_result['project_hours']}h", f"{calculation_result['project_days']}일",
+             calculation_result['lecture_end_date'], calculation_result['project_end_date']],
+            ['현장실습', f"{calculation_result['internship_hours']}h", f"{calculation_result['internship_days']}일",
+             calculation_result['project_end_date'], calculation_result['internship_end_date']]
+        ]
+        phase_table = Table(phase_data, colWidths=[80, 70, 70, 90, 90])
+        phase_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, -1), font_name),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(phase_table)
+        story.append(Spacer(1, 20))
+        
+        # 3. 일수 계산
+        story.append(Paragraph('3. 교육일수 분석', heading_style))
+        days_data = [
+            ['구분', '일수'],
+            ['총 기간', f"{calculation_result['total_days']}일"],
+            ['근무일', f"{calculation_result['work_days']}일"],
+            ['주말', f"{calculation_result['weekend_days']}일"],
+            ['공휴일', f"{calculation_result['holiday_count']}일"],
+            ['제외일 합계', f"{calculation_result['excluded_days']}일"]
+        ]
+        days_table = Table(days_data, colWidths=[200, 200])
+        days_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), font_name),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(days_table)
+        story.append(Spacer(1, 20))
+        
+        # 4. 공휴일 목록
+        story.append(Paragraph('4. 과정 기간 내 공휴일', heading_style))
+        story.append(Paragraph(f"공휴일: {calculation_result['holidays_formatted']}", normal_style))
+        story.append(Spacer(1, 20))
+        
+        # 5. 계산 공식
+        story.append(Paragraph('5. 계산 방식', heading_style))
+        story.append(Paragraph('• 근무일 계산: 주말(토,일) 및 공휴일 제외', normal_style))
+        story.append(Paragraph(f"• 일일 수업: {calculation_result['morning_hours']}시간(오전) + {calculation_result['afternoon_hours']}시간(오후) = {calculation_result['daily_hours']}시간", normal_style))
+        story.append(Paragraph(f"• 필요 근무일 = 총 교육시간({calculation_result['total_hours']}h) ÷ 일일시간({calculation_result['daily_hours']}h) = {calculation_result['work_days']}일", normal_style))
+        story.append(Spacer(1, 20))
+        
+        # 생성 정보
+        story.append(Spacer(1, 30))
+        story.append(Paragraph(f"생성일시: {datetime.now().strftime('%Y년 %m월 %d일 %H:%M:%S')}", normal_style))
+        story.append(Paragraph("시스템: 바이오헬스교육관리시스템", normal_style))
+        
+        # PDF 빌드
+        doc.build(story)
+        
+        # FTP 업로드
+        try:
+            upload_to_ftp(pdf_path, f"course_reports/{filename}")
+            print(f"✅ PDF FTP 업로드 완료: {filename}")
+        except Exception as e:
+            print(f"⚠️ PDF FTP 업로드 실패: {str(e)}")
+        
+        return pdf_path
+        
+    except Exception as e:
+        import traceback
+        print(f"PDF 생성 오류: {str(e)}")
+        print(traceback.format_exc())
+        raise
+
 @app.post("/api/courses/calculate-dates")
 async def calculate_course_dates(data: dict):
     """
@@ -3106,7 +3269,7 @@ async def calculate_course_dates(data: dict):
         # 제외 일수 (주말 + 공휴일)
         excluded_days = weekend_days + len(holidays_in_period)
         
-        return {
+        result = {
             "start_date": start_date_str,
             "lecture_end_date": lecture_end_date.strftime('%Y-%m-%d'),
             "project_end_date": project_end_date.strftime('%Y-%m-%d'),
@@ -3124,8 +3287,51 @@ async def calculate_course_dates(data: dict):
             "lecture_hours": lecture_hours,
             "project_hours": project_hours,
             "internship_hours": internship_hours,
-            "total_hours": lecture_hours + project_hours + internship_hours
+            "total_hours": lecture_hours + project_hours + internship_hours,
+            "morning_hours": morning_hours,
+            "afternoon_hours": afternoon_hours,
+            "daily_hours": daily_hours,
+            "course_code": data.get('course_code', '')
         }
+        
+        # 자동 저장 옵션이 있으면 시간표도 생성
+        if data.get('auto_save_timetable', False):
+            course_code = data.get('course_code')
+            if course_code:
+                # 시간표 자동 생성 호출
+                try:
+                    timetable_data = {
+                        'course_code': course_code,
+                        'start_date': start_date_str,
+                        'lecture_hours': lecture_hours,
+                        'project_hours': project_hours,
+                        'internship_hours': internship_hours,
+                        'morning_hours': morning_hours,
+                        'afternoon_hours': afternoon_hours,
+                        'subject_codes': data.get('subject_codes', [])
+                    }
+                    # 시간표 생성 로직 호출 (동일 함수 재사용)
+                    from fastapi.responses import Response
+                    timetable_result = await auto_generate_timetables(timetable_data)
+                    result['timetable_generated'] = True
+                    result['timetable_count'] = timetable_result.get('generated_count', 0)
+                except Exception as e:
+                    print(f"시간표 자동 생성 실패: {str(e)}")
+                    result['timetable_generated'] = False
+                    result['timetable_error'] = str(e)
+        
+        # PDF 생성 옵션이 있으면 PDF도 생성
+        if data.get('generate_pdf', False):
+            try:
+                pdf_path = generate_calculation_pdf(result, data.get('course_code', 'COURSE'))
+                result['pdf_generated'] = True
+                result['pdf_path'] = pdf_path
+            except Exception as e:
+                print(f"PDF 생성 실패: {str(e)}")
+                result['pdf_generated'] = False
+                result['pdf_error'] = str(e)
+        
+        return result
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"날짜 계산 실패: {str(e)}")
@@ -5147,7 +5353,20 @@ async def auto_generate_timetables(data: dict):
                     week_number += 1
                 day_number += 1
         
-        # 2단계: 프로젝트 (project)
+        # 주강사 3명 가져오기
+        cursor.execute("""
+            SELECT code FROM instructors 
+            WHERE instructor_type_name = '주강사' 
+            ORDER BY code 
+            LIMIT 3
+        """)
+        main_instructors = [row['code'] for row in cursor.fetchall()]
+        if not main_instructors:
+            main_instructors = ['T-001', 'T-002', 'T-004']  # 기본값
+        
+        instructor_idx = 0  # 로테이션 인덱스
+        
+        # 2단계: 프로젝트 (project) - 주강사 3명 로테이션
         if project_hours > 0:
             remaining_hours = project_hours
             
@@ -5156,6 +5375,9 @@ async def auto_generate_timetables(data: dict):
                     current_date += pd.Timedelta(days=1)
                     continue
                 
+                # 일일 강사 배정 (하루에 1명)
+                daily_instructor = main_instructors[instructor_idx % len(main_instructors)]
+                
                 # 오전
                 if remaining_hours >= morning_hours:
                     timetables.append({
@@ -5164,7 +5386,7 @@ async def auto_generate_timetables(data: dict):
                         'class_date': current_date,
                         'start_time': '09:00:00',
                         'end_time': f'{9 + morning_hours:02d}:00:00',
-                        'instructor_code': None,
+                        'instructor_code': daily_instructor,
                         'type': 'project',
                         'week_number': week_number,
                         'day_number': day_number
@@ -5179,19 +5401,20 @@ async def auto_generate_timetables(data: dict):
                         'class_date': current_date,
                         'start_time': '14:00:00',
                         'end_time': f'{14 + afternoon_hours:02d}:00:00',
-                        'instructor_code': None,
+                        'instructor_code': daily_instructor,
                         'type': 'project',
                         'week_number': week_number,
                         'day_number': day_number
                     })
                     remaining_hours -= afternoon_hours
                 
+                instructor_idx += 1  # 다음 강사로
                 current_date += pd.Timedelta(days=1)
                 if current_date.weekday() == 0:
                     week_number += 1
                 day_number += 1
         
-        # 3단계: 현장실습 (internship)
+        # 3단계: 현장실습 (internship) - 주강사 3명 로테이션
         if internship_hours > 0:
             remaining_hours = internship_hours
             
@@ -5200,6 +5423,9 @@ async def auto_generate_timetables(data: dict):
                     current_date += pd.Timedelta(days=1)
                     continue
                 
+                # 일일 강사 배정 (하루에 1명)
+                daily_instructor = main_instructors[instructor_idx % len(main_instructors)]
+                
                 # 오전
                 if remaining_hours >= morning_hours:
                     timetables.append({
@@ -5208,7 +5434,7 @@ async def auto_generate_timetables(data: dict):
                         'class_date': current_date,
                         'start_time': '09:00:00',
                         'end_time': f'{9 + morning_hours:02d}:00:00',
-                        'instructor_code': None,
+                        'instructor_code': daily_instructor,
                         'type': 'internship',
                         'week_number': week_number,
                         'day_number': day_number
@@ -5223,13 +5449,14 @@ async def auto_generate_timetables(data: dict):
                         'class_date': current_date,
                         'start_time': '14:00:00',
                         'end_time': f'{14 + afternoon_hours:02d}:00:00',
-                        'instructor_code': None,
+                        'instructor_code': daily_instructor,
                         'type': 'internship',
                         'week_number': week_number,
                         'day_number': day_number
                     })
                     remaining_hours -= afternoon_hours
                 
+                instructor_idx += 1  # 다음 강사로
                 current_date += pd.Timedelta(days=1)
                 if current_date.weekday() == 0:
                     week_number += 1

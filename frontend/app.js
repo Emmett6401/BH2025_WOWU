@@ -7808,6 +7808,12 @@ window.autoCalculateDates = async function() {
         button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>계산중...';
         button.disabled = true;
         
+        // 과정 코드와 교과목 정보 가져오기
+        const courseCode = document.getElementById('form-course-code')?.value;
+        const courseRes = await axios.get(`${API_BASE_URL}/api/courses`);
+        const course = courseRes.data.find(c => c.code === courseCode);
+        const subjectCodes = course?.subjects || [];
+        
         const response = await axios.post(`${API_BASE_URL}/api/courses/calculate-dates`, {
             start_date: startDate,
             lecture_hours: lectureHours,
@@ -7815,7 +7821,11 @@ window.autoCalculateDates = async function() {
             internship_hours: internshipHours,
             daily_hours: dailyHours,
             morning_hours: morningHours,
-            afternoon_hours: afternoonHours
+            afternoon_hours: afternoonHours,
+            course_code: courseCode,
+            subject_codes: subjectCodes,
+            generate_pdf: true,  // PDF 자동 생성
+            auto_save_timetable: true  // 시간표 자동 저장
         });
         
         const result = response.data;
@@ -7847,6 +7857,23 @@ window.autoCalculateDates = async function() {
         
         // 예쁜 모달로 결과 표시
         window.showCalculationResult(result, startDateFormatted, endDateFormatted);
+        
+        // PDF 생성 결과 표시
+        if (result.pdf_generated) {
+            console.log('✅ PDF 생성 완료:', result.pdf_path);
+        }
+        
+        // 시간표 자동 생성 결과 표시
+        if (result.timetable_generated) {
+            console.log(`✅ 시간표 자동 생성 완료: ${result.timetable_count}개`);
+            window.showAlert(
+                `✅ 자동 계산 완료!\n\n` +
+                `📄 PDF 보고서: ${result.pdf_generated ? '생성됨' : '생성 실패'}\n` +
+                `📅 시간표: ${result.timetable_count}개 자동 생성됨\n\n` +
+                `시간표 메뉴에서 확인하세요.`,
+                'success'
+            );
+        }
     } catch (error) {
         console.error('자동계산 실패:', error);
         alert('자동계산에 실패했습니다: ' + (error.response?.data?.detail || error.message));
