@@ -7736,8 +7736,15 @@ window.showSubjectSelector = async function(courseCode) {
         const allSubjects = subjectsRes.data;
         const allInstructors = instructorsRes.data;
         
-        // 주강사만 필터링
-        const mainInstructors = allInstructors.filter(inst => inst.type === '주강사' || inst.type === 'main');
+        // 주강사만 필터링 (instructor_type_name 사용)
+        const mainInstructors = allInstructors.filter(inst => 
+            inst.instructor_type_name === '주강사' || 
+            inst.instructor_type_type === '1. 주강사'
+        );
+        
+        console.log('전체 강사 수:', allInstructors.length);
+        console.log('주강사 수:', mainInstructors.length);
+        console.log('주강사 목록:', mainInstructors.map(i => `${i.name}-${i.major}`));
         
         // 현재 과정에 선택된 과목 목록
         const selectedSubjects = courseSubjects[courseCode] || [];
