@@ -1464,11 +1464,21 @@ async def create_course(data: dict):
     try:
         cursor = conn.cursor()
         # morning_hours, afternoon_hours 컬럼이 없으면 추가
-        cursor.execute("""
-            ALTER TABLE courses 
-            ADD COLUMN IF NOT EXISTS morning_hours INT DEFAULT 4,
-            ADD COLUMN IF NOT EXISTS afternoon_hours INT DEFAULT 4
-        """)
+        try:
+            cursor.execute("""
+                ALTER TABLE courses 
+                ADD COLUMN morning_hours INT DEFAULT 4
+            """)
+        except:
+            pass  # 이미 존재하면 무시
+        
+        try:
+            cursor.execute("""
+                ALTER TABLE courses 
+                ADD COLUMN afternoon_hours INT DEFAULT 4
+            """)
+        except:
+            pass  # 이미 존재하면 무시
         
         query = """
             INSERT INTO courses (code, name, lecture_hours, project_hours, internship_hours,
@@ -1487,6 +1497,12 @@ async def create_course(data: dict):
         ))
         conn.commit()
         return {"code": data['code']}
+    except Exception as e:
+        conn.rollback()
+        import traceback
+        print(f"❌ 과정 생성 에러: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"과정 생성 실패: {str(e)}")
     finally:
         conn.close()
 
