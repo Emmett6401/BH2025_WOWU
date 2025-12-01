@@ -7319,12 +7319,13 @@ function renderCourseDetail(course) {
         </div>
     `;
     
-    // 과목 영역 업데이트 (DOM이 생성된 후)
-    console.log(`⏱️ updateSubjectArea 예약 - 과정: ${course.code}`);
-    setTimeout(() => {
-        console.log(`⏰ updateSubjectArea 실행 시작 - 과정: ${course.code}`);
+    // 과목 영역 업데이트 (DOM이 생성된 직후)
+    console.log(`⏱️ updateSubjectArea 직접 호출 - 과정: ${course.code}`);
+    // setTimeout 대신 Promise를 사용하여 DOM 렌더링 후 실행
+    Promise.resolve().then(() => {
+        console.log(`⏰ updateSubjectArea 실행 - 과정: ${course.code}`);
         updateSubjectArea(course.code);
-    }, 100);
+    });
 }
 
 // 과목 영역 업데이트 함수
