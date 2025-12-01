@@ -5690,14 +5690,14 @@ async def auto_generate_timetables(data: dict):
         cursor.execute("SELECT holiday_date FROM holidays ORDER BY holiday_date")
         holidays = [row['holiday_date'] for row in cursor.fetchall()]
         
-        # 과정별 요일 배정 정보 가져오기 (course_subjects 기반)
+        # 과정별 요일 배정 정보 가져오기 (subjects 테이블의 day_of_week 사용)
         cursor.execute("""
-            SELECT cs.subject_code, cs.day_of_week, cs.week_type,
+            SELECT cs.subject_code, s.day_of_week, s.is_biweekly, s.week_offset,
                    s.name, s.hours, s.main_instructor
             FROM course_subjects cs
             JOIN subjects s ON cs.subject_code = s.code
             WHERE cs.course_code = %s
-            ORDER BY cs.day_of_week, cs.week_type
+            ORDER BY s.day_of_week, s.week_offset
         """, (course_code,))
         course_subject_assignments = cursor.fetchall()
         
@@ -5713,7 +5713,8 @@ async def auto_generate_timetables(data: dict):
             
             day_subject_map[day].append({
                 'subject_code': assignment['subject_code'],
-                'week_type': assignment['week_type'],
+                'is_biweekly': assignment['is_biweekly'],
+                'week_offset': assignment['week_offset'],
                 'name': assignment['name'],
                 'hours': assignment['hours'],
                 'instructor': assignment['main_instructor']
@@ -5739,9 +5740,10 @@ async def auto_generate_timetables(data: dict):
         
         print(f"📋 과정 {course_code}의 요일별 배정:")
         for day, subjects in sorted(day_subject_map.items()):
-            day_name = ['월', '화', '수', '목', '금'][day]
+            # day_of_week는 1(월) ~ 5(금)이므로 -1 해야 함
+            day_name = ['월', '화', '수', '목', '금'][day - 1] if 1 <= day <= 5 else f"[{day}]"
             for subj in subjects:
-                week_info = f" ({subj['week_type']}주)" if subj['week_type'] else ""
+                week_info = f" ({'짝수' if subj['week_offset'] == 0 else '홀수'}주)" if subj['is_biweekly'] else ""
                 print(f"  {day_name}{week_info}: {subj['subject_code']} - {subj['name']}")
         
         # 헬퍼 함수
@@ -5751,11 +5753,10 @@ async def auto_generate_timetables(data: dict):
         def is_holiday(date_obj):
             return date_obj in holidays
         
-        def get_week_type(date_obj, start_date):
-            """짝수주/홀수주 판단"""
+        def get_week_number(date_obj, start_date):
+            """과정 시작일로부터 몇 주차인지 계산 (0부터 시작)"""
             days_diff = (date_obj - start_date).days
-            week_num = days_diff // 7
-            return 'even' if week_num % 2 == 0 else 'odd'
+            return days_diff // 7
         
         timetables = []
         current_date = start_date
@@ -5786,14 +5787,15 @@ async def auto_generate_timetables(data: dict):
                 afternoon_slot_available = False
                 continue
             
-            week_type = get_week_type(current_date, start_date)
+            week_number = get_week_number(current_date, start_date)
             
             # 오늘 수업 가능한 교과목 필터링
             available_subjects = []
             for subj in day_subject_map[today_weekday]:
-                # 격주 체크
-                if subj['week_type'] and subj['week_type'] != week_type:
-                    continue
+                # 격주 체크 (is_biweekly=1이면 격주, week_offset으로 짝수주/홀수주 구분)
+                if subj['is_biweekly']:
+                    if (week_number % 2) != subj['week_offset']:
+                        continue
                 # ★★★ 핵심: 남은 시간이 0보다 큰 교과목만 선택 ★★★
                 if subject_remaining.get(subj['subject_code'], 0) > 0:
                     available_subjects.append(subj)
@@ -5813,7 +5815,8 @@ async def auto_generate_timetables(data: dict):
                         if subject_remaining.get(assignment['subject_code'], 0) > 0:
                             available_subjects.append({
                                 'subject_code': assignment['subject_code'],
-                                'week_type': None,  # 요일 배정 무시
+                                'is_biweekly': 0,  # 요일 배정 무시
+                                'week_offset': 0,
                                 'name': assignment['name'],
                                 'hours': assignment['hours'],
                                 'instructor': assignment['main_instructor']
