@@ -10113,11 +10113,16 @@ function renderTimetables() {
         </div>
     `;
     
-    // 초기 필터링된 데이터 설정 (전체 표시)
-    filteredTimetables = timetables;
-    pagination.timetables.totalItems = timetables.length;
-    pagination.timetables.currentPage = 1;
-    renderTimetableList();
+    // 초기 필터링된 데이터 설정 (기본 과정: C-001)
+    const courseSelect = document.getElementById('tt-course');
+    if (courseSelect && courses.length > 0) {
+        // C-001이 있으면 선택, 없으면 첫 번째 과정 선택
+        const defaultCourse = courses.find(c => c.code === 'C-001');
+        courseSelect.value = defaultCourse ? 'C-001' : courses[0].code;
+    }
+    
+    // 필터 적용
+    window.filterTimetables();
     
     // 오늘 날짜 행으로 자동 스크롤
     setTimeout(() => {
