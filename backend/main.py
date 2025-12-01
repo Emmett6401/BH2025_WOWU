@@ -5631,7 +5631,7 @@ async def text_to_speech(data: dict):
 
 @app.post("/api/timetables/auto-generate")
 async def auto_generate_timetables(data: dict):
-    """시간표 자동 생성
+    """스마트 시간표 자동 생성 (요일 지정, 격주, 오전/오후 자동 채우기)
     
     Args:
         course_code: 과정 코드
@@ -5652,7 +5652,6 @@ async def auto_generate_timetables(data: dict):
         internship_hours = data['internship_hours']
         morning_hours = data.get('morning_hours', 4)
         afternoon_hours = data.get('afternoon_hours', 4)
-        daily_hours = morning_hours + afternoon_hours
         subject_codes = data.get('subject_codes', [])
         
         cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -5664,11 +5663,12 @@ async def auto_generate_timetables(data: dict):
         cursor.execute("SELECT holiday_date FROM holidays ORDER BY holiday_date")
         holidays = [row['holiday_date'] for row in cursor.fetchall()]
         
-        # 교과목 정보 가져오기
+        # 교과목 정보 가져오기 (요일, 격주 정보 포함)
         if subject_codes:
             placeholders = ','.join(['%s'] * len(subject_codes))
             cursor.execute(f"""
-                SELECT code, name, hours, main_instructor
+                SELECT code, name, hours, main_instructor, 
+                       lecture_days, frequency, is_biweekly, week_offset
                 FROM subjects
                 WHERE code IN ({placeholders})
             """, subject_codes)
@@ -5698,69 +5698,122 @@ async def auto_generate_timetables(data: dict):
         
         # 시간표 생성 헬퍼 함수
         def is_weekend(date_obj):
-            return date_obj.weekday() >= 5  # 5=토, 6=일
+            return date_obj.weekday() >= 5
         
         def is_holiday(date_obj):
             return date_obj in holidays
         
+        def get_week_number(date_obj, start_date):
+            """시작일 기준 몇 주차인지 계산 (0-based)"""
+            days_diff = (date_obj - start_date).days
+            return days_diff // 7
+        
+        def is_valid_lecture_day(date_obj, subject):
+            """해당 날짜가 교과목의 수업 요일인지 확인"""
+            lecture_days = subject.get('lecture_days', '')
+            if not lecture_days:
+                return True  # 요일 지정 없으면 모든 날 가능
+            
+            # 요일 매핑 (0=월, 1=화, 2=수, 3=목, 4=금)
+            weekday_map = {'월': 0, '화': 1, '수': 2, '목': 3, '금': 4}
+            allowed_days = [weekday_map[day] for day in lecture_days.split(',') if day in weekday_map]
+            
+            return date_obj.weekday() in allowed_days
+        
+        def is_valid_biweekly(date_obj, subject, start_date):
+            """격주 수업 여부 확인"""
+            if not subject.get('is_biweekly'):
+                return True  # 매주 수업이면 항상 True
+            
+            week_num = get_week_number(date_obj, start_date)
+            week_offset = subject.get('week_offset', 0)
+            
+            # week_offset이 0이면 짝수주, 1이면 홀수주
+            return (week_num % 2) == week_offset
+        
         timetables = []
         current_date = start_date
         
-        # 1단계: 이론 (lecture)
+        # 1단계: 이론 (lecture) - 스마트 배치
         if lecture_hours > 0 and subjects:
-            remaining_hours = lecture_hours
-            subject_idx = 0
-            subject_remaining = subjects[subject_idx]['hours'] if subjects else 0
+            # 각 교과목별로 남은 시간 추적
+            subject_remaining = {subj['code']: subj['hours'] for subj in subjects}
+            total_remaining = lecture_hours
             
-            while remaining_hours > 0 and subject_idx < len(subjects):
+            # 일별 슬롯 (오전/오후) 추적
+            MAX_ITERATIONS = 500  # 무한루프 방지
+            iteration_count = 0
+            
+            while total_remaining > 0 and iteration_count < MAX_ITERATIONS:
+                iteration_count += 1
+                
                 if is_weekend(current_date) or is_holiday(current_date):
                     current_date += timedelta(days=1)
                     continue
                 
-                # 오전 수업
-                if remaining_hours > 0 and subject_remaining > 0:
-                    hours_to_use = min(morning_hours, subject_remaining, remaining_hours)
+                # 오늘 배정 가능한 교과목 찾기
+                available_subjects = []
+                for subj in subjects:
+                    if (subject_remaining[subj['code']] > 0 and
+                        is_valid_lecture_day(current_date, subj) and
+                        is_valid_biweekly(current_date, subj, start_date)):
+                        available_subjects.append(subj)
+                
+                if not available_subjects:
+                    current_date += timedelta(days=1)
+                    continue
+                
+                # 오전 슬롯 - 첫 번째 교과목
+                if available_subjects and total_remaining > 0:
+                    subj = available_subjects[0]
+                    hours_to_use = min(morning_hours, subject_remaining[subj['code']], total_remaining)
+                    
                     timetables.append({
                         'course_code': course_code,
-                        'subject_code': subjects[subject_idx]['code'],
+                        'subject_code': subj['code'],
                         'class_date': current_date,
                         'start_time': '09:00:00',
-                        'end_time': f'{9 + hours_to_use:02d}:00:00',
-                        'instructor_code': subjects[subject_idx]['main_instructor'],
+                        'end_time': f'{9 + int(hours_to_use):02d}:00:00',
+                        'instructor_code': subj['main_instructor'],
                         'type': 'lecture'
                     })
-                    remaining_hours -= hours_to_use
-                    subject_remaining -= hours_to_use
+                    
+                    subject_remaining[subj['code']] -= hours_to_use
+                    total_remaining -= hours_to_use
+                    
+                    # 오전에 교과목이 끝났으면 available_subjects에서 제거
+                    if subject_remaining[subj['code']] <= 0:
+                        available_subjects = [s for s in available_subjects if s['code'] != subj['code']]
                 
-                # 오후 수업
-                if remaining_hours > 0 and subject_remaining > 0:
-                    hours_to_use = min(afternoon_hours, subject_remaining, remaining_hours)
+                # 오후 슬롯 - 두 번째 교과목 (있으면) 또는 첫 번째 교과목 계속
+                if available_subjects and total_remaining > 0:
+                    # 오전과 다른 교과목 우선 선택 (자동 채우기)
+                    if len(available_subjects) > 1:
+                        subj = available_subjects[1]
+                    else:
+                        subj = available_subjects[0]
+                    
+                    hours_to_use = min(afternoon_hours, subject_remaining[subj['code']], total_remaining)
+                    
                     timetables.append({
                         'course_code': course_code,
-                        'subject_code': subjects[subject_idx]['code'],
+                        'subject_code': subj['code'],
                         'class_date': current_date,
                         'start_time': '14:00:00',
-                        'end_time': f'{14 + hours_to_use:02d}:00:00',
-                        'instructor_code': subjects[subject_idx]['main_instructor'],
+                        'end_time': f'{14 + int(hours_to_use):02d}:00:00',
+                        'instructor_code': subj['main_instructor'],
                         'type': 'lecture'
                     })
-                    remaining_hours -= hours_to_use
-                    subject_remaining -= hours_to_use
-                
-                # 다음 교과목으로
-                if subject_remaining <= 0:
-                    subject_idx += 1
-                    if subject_idx < len(subjects):
-                        subject_remaining = subjects[subject_idx]['hours']
-                    else:
-                        break  # 모든 교과목 소진
+                    
+                    subject_remaining[subj['code']] -= hours_to_use
+                    total_remaining -= hours_to_use
                 
                 current_date += timedelta(days=1)
         
         # 프로젝트/현장실습에서는 course_instructors를 그대로 사용
-        instructor_idx = 0  # 로테이션 인덱스
+        instructor_idx = 0
         
-        # 2단계: 프로젝트 (project) - 주강사 3명 로테이션
+        # 2단계: 프로젝트 (project)
         if project_hours > 0:
             remaining_hours = project_hours
             
@@ -5769,10 +5822,9 @@ async def auto_generate_timetables(data: dict):
                     current_date += timedelta(days=1)
                     continue
                 
-                # 일일 강사 배정 (하루에 1명, 과정 교과목 주강사 로테이션)
                 daily_instructor = course_instructors[instructor_idx % len(course_instructors)]
                 
-                # 오전 (남은 시간이 있으면 무조건 배정)
+                # 오전
                 if remaining_hours > 0:
                     hours_to_use = min(morning_hours, remaining_hours)
                     timetables.append({
@@ -5786,7 +5838,7 @@ async def auto_generate_timetables(data: dict):
                     })
                     remaining_hours -= hours_to_use
                 
-                # 오후 (남은 시간이 있으면 무조건 배정)
+                # 오후
                 if remaining_hours > 0:
                     hours_to_use = min(afternoon_hours, remaining_hours)
                     timetables.append({
@@ -5800,10 +5852,10 @@ async def auto_generate_timetables(data: dict):
                     })
                     remaining_hours -= hours_to_use
                 
-                instructor_idx += 1  # 다음 강사로
+                instructor_idx += 1
                 current_date += timedelta(days=1)
         
-        # 3단계: 현장실습 (internship) - 주강사 3명 로테이션
+        # 3단계: 현장실습 (internship)
         if internship_hours > 0:
             remaining_hours = internship_hours
             
@@ -5812,10 +5864,9 @@ async def auto_generate_timetables(data: dict):
                     current_date += timedelta(days=1)
                     continue
                 
-                # 일일 강사 배정 (하루에 1명, 과정 교과목 주강사 로테이션)
                 daily_instructor = course_instructors[instructor_idx % len(course_instructors)]
                 
-                # 오전 (남은 시간이 있으면 무조건 배정)
+                # 오전
                 if remaining_hours > 0:
                     hours_to_use = min(morning_hours, remaining_hours)
                     timetables.append({
@@ -5829,7 +5880,7 @@ async def auto_generate_timetables(data: dict):
                     })
                     remaining_hours -= hours_to_use
                 
-                # 오후 (남은 시간이 있으면 무조건 배정)
+                # 오후
                 if remaining_hours > 0:
                     hours_to_use = min(afternoon_hours, remaining_hours)
                     timetables.append({
@@ -5843,7 +5894,7 @@ async def auto_generate_timetables(data: dict):
                     })
                     remaining_hours -= hours_to_use
                 
-                instructor_idx += 1  # 다음 강사로
+                instructor_idx += 1
                 current_date += timedelta(days=1)
         
         # DB에 삽입
