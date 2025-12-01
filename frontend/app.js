@@ -7187,7 +7187,7 @@ function renderCourseDetail(course) {
                 <h3 class="font-bold text-lg mb-3">
                     <i class="fas fa-calendar-check mr-2"></i>교육 일정 계산 결과
                 </h3>
-                <div class="grid grid-cols-3 gap-4">
+                <div class="grid grid-cols-4 gap-4 mb-4">
                     <div class="text-center p-3 bg-white rounded shadow-sm">
                         <div class="text-xs text-gray-500 mb-1">총 기간</div>
                         <div class="text-2xl font-bold text-blue-600">${totalDays}일</div>
@@ -7201,6 +7201,21 @@ function renderCourseDetail(course) {
                         <div class="text-xs text-gray-500 mb-1">제외일</div>
                         <div class="text-xl font-bold text-red-600">${excludedDays}일</div>
                         <div class="text-xs text-gray-600 mt-1">= 주말(${weekends}) + 공휴일(${holidays})</div>
+                    </div>
+                    <div class="text-center p-3 bg-white rounded shadow-sm">
+                        <div class="text-xs text-gray-500 mb-1">일일 수업</div>
+                        <div class="text-xl font-bold text-purple-600">8시간</div>
+                        <div class="text-xs text-gray-600 mt-1">오전 4시간 + 오후 4시간</div>
+                    </div>
+                </div>
+                <div class="bg-blue-50 p-3 rounded">
+                    <div class="flex items-center justify-center text-sm">
+                        <i class="fas fa-clock mr-2 text-blue-600"></i>
+                        <span class="font-semibold">수업 시간:</span>
+                        <span class="ml-2 text-blue-600">오전 09:00~13:00 (4시간) / 오후 14:00~18:00 (4시간)</span>
+                        <span class="ml-4 text-gray-600">|</span>
+                        <span class="ml-4 font-semibold">주간 수업:</span>
+                        <span class="ml-2 text-green-600">40시간 (월~금, 주 5일)</span>
                     </div>
                 </div>
             </div>
@@ -7543,10 +7558,10 @@ window.autoCalculateDates = async function() {
         document.getElementById('form-course-total-days').value = result.total_days;
         
         // 비고 필드에 자동으로 입력
-        const startDate = result.start_date.replace(/-/g, '.');
-        const endDate = result.final_end_date.replace(/-/g, '.');
+        const startDateFormatted = result.start_date.replace(/-/g, '.');
+        const endDateFormatted = result.final_end_date.replace(/-/g, '.');
         
-        const notesText = `1. 교육기간 : ${startDate} ~ ${endDate} (공휴일 : ${result.holidays_formatted})
+        const notesText = `1. 교육기간 : ${startDateFormatted} ~ ${endDateFormatted} (공휴일 : ${result.holidays_formatted})
 2. 일8시간 / 주40시간 수업
 3. 총 교육시간 : ${result.total_hours}시간 (이론 ${result.lecture_hours}시간, 프로젝트 ${result.project_hours}시간, 현장실습 ${result.internship_hours}시간)
 4. 총 교육일수 : ${result.total_days}일 (근무일 ${result.work_days}일, 제외일 ${result.excluded_days}일)`;
@@ -7560,7 +7575,7 @@ window.autoCalculateDates = async function() {
         // 상세한 결과 메시지
         const message = `✅ 자동계산 완료!
 
-📅 교육기간: ${startDate} ~ ${endDate}
+📅 교육기간: ${startDateFormatted} ~ ${endDateFormatted}
 ⏱️ 총 교육시간: ${result.total_hours}시간
   ├ 이론: ${result.lecture_hours}시간 (${result.lecture_days}일)
   ├ 프로젝트: ${result.project_hours}시간 (${result.project_days}일)
