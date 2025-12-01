@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.37'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.38'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -7442,14 +7442,26 @@ async function updateSubjectArea(courseCode) {
                         ${selectedSubjects.map((code, index) => {
                             const subject = allSubjects.find(s => s.code === code);
                             const name = subject ? subject.name : '(교과목명 없음)';
+                            const instructorName = subject?.instructor_name || '(미지정)';
+                            const dayOfWeek = subject?.day_of_week;
+                            const dayNames = ['', '월', '화', '수', '목', '금', '토', '일'];
+                            const dayName = dayOfWeek ? dayNames[dayOfWeek] : '(미지정)';
+                            
                             return `
-                                <li class="flex items-start text-sm">
-                                    <span class="inline-flex items-center justify-center w-6 h-6 bg-green-600 text-white rounded-full text-xs font-bold mr-2 flex-shrink-0">
+                                <li class="flex items-start text-sm border-b border-gray-100 pb-2 last:border-0">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 bg-green-600 text-white rounded-full text-xs font-bold mr-3 flex-shrink-0">
                                         ${index + 1}
                                     </span>
                                     <div class="flex-1">
-                                        <span class="font-semibold text-gray-700">${code}</span>
-                                        <span class="text-gray-600 ml-2">${name}</span>
+                                        <div class="text-gray-700">
+                                            <span class="font-bold text-blue-700">${code}</span>
+                                            <span class="mx-2 text-gray-400">|</span>
+                                            <span class="font-semibold">${name}</span>
+                                            <span class="mx-2 text-gray-400">|</span>
+                                            <span class="text-gray-600">${instructorName}</span>
+                                            <span class="mx-2 text-gray-400">|</span>
+                                            <span class="text-green-700 font-semibold">${dayName}요일</span>
+                                        </div>
                                     </div>
                                 </li>
                             `;
@@ -8055,6 +8067,23 @@ window.saveSelectedSubjects = async function(courseCode) {
         return;
     }
     
+    // 프로그레스바 표시
+    const progressModal = document.createElement('div');
+    progressModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    progressModal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 class="text-lg font-semibold mb-4">교과목 저장 중...</h3>
+            <div class="w-full bg-gray-200 rounded-full h-4 mb-2">
+                <div id="progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p id="progress-text" class="text-sm text-gray-600 text-center">0 / ${selectedSubjects.length}</p>
+        </div>
+    `;
+    document.body.appendChild(progressModal);
+    
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    
     try {
         // 교과목 목록 다시 가져오기 (main_instructor 정보 필요)
         const subjectsRes = await axios.get(`${API_BASE_URL}/api/subjects`);
@@ -8063,7 +8092,9 @@ window.saveSelectedSubjects = async function(courseCode) {
         // 각 교과목의 요일과 담당강사 정보 수집
         const subjectUpdates = [];
         
-        for (const subjectCode of selectedSubjects) {
+        for (let i = 0; i < selectedSubjects.length; i++) {
+            const subjectCode = selectedSubjects[i];
+            
             const daySelect = document.querySelector(`.subject-day-select[data-subject-code="${subjectCode}"]`);
             const biweeklySelect = document.querySelector(`.subject-biweekly-select[data-subject-code="${subjectCode}"]`);
             const instructorSelect = document.querySelector(`.subject-instructor-select[data-subject-code="${subjectCode}"]`);
@@ -8091,6 +8122,11 @@ window.saveSelectedSubjects = async function(courseCode) {
                 is_biweekly: isBiweekly,
                 main_instructor: mainInstructor
             });
+            
+            // 프로그레스바 업데이트
+            const progress = ((i + 1) / selectedSubjects.length) * 100;
+            progressBar.style.width = `${progress}%`;
+            progressText.textContent = `${i + 1} / ${selectedSubjects.length}`;
         }
         
         // course_subjects 테이블에 과정-교과목 관계 저장
@@ -8104,6 +8140,9 @@ window.saveSelectedSubjects = async function(courseCode) {
         console.log(`과정 ${courseCode}에 선택된 교과목:`, selectedSubjects);
         console.log('교과목 업데이트 정보:', subjectUpdates);
         
+        // 프로그레스바 제거
+        document.body.removeChild(progressModal);
+        
         window.hideSubjectSelector();
         window.showAlert(`${selectedSubjects.length}개의 교과목이 저장되었습니다.`, 'success');
         
@@ -8111,6 +8150,10 @@ window.saveSelectedSubjects = async function(courseCode) {
         updateSubjectArea(courseCode);
     } catch (error) {
         console.error('교과목 저장 실패:', error);
+        // 프로그레스바 제거
+        if (document.body.contains(progressModal)) {
+            document.body.removeChild(progressModal);
+        }
         window.showAlert('교과목 저장에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
