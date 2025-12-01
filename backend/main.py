@@ -794,8 +794,15 @@ async def save_course_subjects(course_code: str, data: dict):
 # ==================== 유틸리티 함수 ====================
 
 def convert_datetime(obj):
-    """datetime 객체를 문자열로 변환"""
+    """datetime 객체를 문자열로 변환 + internship → workship 컬럼명 매핑"""
     from datetime import timedelta
+    
+    # DB 컬럼명 → 프론트엔드 필드명 매핑
+    if 'internship_hours' in obj:
+        obj['workship_hours'] = obj.pop('internship_hours')
+    if 'internship_end_date' in obj:
+        obj['workship_end_date'] = obj.pop('internship_end_date')
+    
     for key, value in obj.items():
         if isinstance(value, (datetime, date)):
             obj[key] = value.isoformat()
@@ -1545,14 +1552,14 @@ async def update_course(code: str, data: dict):
             'name': 'name',
             'lecture_hours': 'lecture_hours',
             'project_hours': 'project_hours',
-            'workship_hours': 'workship_hours',
+            'workship_hours': 'internship_hours',  # DB 컬럼명은 아직 internship_hours
             'capacity': 'capacity',
             'location': 'location',
             'notes': 'notes',
             'start_date': 'start_date',
             'lecture_end_date': 'lecture_end_date',
             'project_end_date': 'project_end_date',
-            'workship_end_date': 'workship_end_date',
+            'workship_end_date': 'internship_end_date',  # DB 컬럼명은 아직 internship_end_date
             'final_end_date': 'final_end_date',
             'total_days': 'total_days',
             'morning_hours': 'morning_hours',
