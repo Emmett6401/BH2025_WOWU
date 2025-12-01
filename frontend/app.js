@@ -9839,6 +9839,20 @@ function renderTimetableList() {
         const duration = calculateDuration(tt.start_time, tt.end_time);
         const isToday = tt.class_date === today;
         
+        // 요일 계산 로직 추가
+        let dayOfWeek = '';
+        if (tt.class_date) {
+            try {
+                const [y, m, d] = tt.class_date.split('-').map(Number);
+                const dateObj = new Date(y, m - 1, d);
+                const dayIndex = dateObj.getDay();
+                const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+                dayOfWeek = dayNames[dayIndex];
+            } catch (err) {
+                console.error('[요일계산 오류 renderTimetableList]', tt.class_date, err);
+            }
+        }
+        
         // 누적시수 계산 (정렬된 시간표에서 현재 항목까지의 합계)
         let accumulatedHours = 0;
         for (let i = 0; i < sortedTimetables.length; i++) {
@@ -9853,7 +9867,7 @@ function renderTimetableList() {
         
         return `
         <tr class="border-t hover:bg-gray-50 ${isToday ? 'bg-yellow-100 border-l-4 border-yellow-500' : ''}" ${isToday ? 'id="today-timetable-row"' : ''}>
-            <td class="px-3 py-2 text-xs ${isToday ? 'font-bold text-yellow-900' : ''}">${tt.class_date}${isToday ? ' <span class="text-yellow-600">(오늘)</span>' : ''}</td>
+            <td class="px-3 py-2 text-xs ${isToday ? 'font-bold text-yellow-900' : ''}">${tt.class_date}${dayOfWeek ? ' (' + dayOfWeek + ')' : ''}${isToday ? ' <span class="text-yellow-600">(오늘)</span>' : ''}</td>
             <td class="px-3 py-2 text-xs">${tt.week_number || '-'}주차</td>
             <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
             <td class="px-3 py-2 text-xs">${tt.subject_name || tt.subject_code || '-'}</td>
