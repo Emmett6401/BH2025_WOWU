@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.0'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.36'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -8068,26 +8068,26 @@ window.saveSelectedSubjects = async function(courseCode) {
             
             const dayOfWeek = daySelect ? parseInt(daySelect.value) : null;
             const isBiweekly = biweeklySelect ? parseInt(biweeklySelect.value) : 0;
-            let instructorCode = instructorSelect && instructorSelect.value ? instructorSelect.value : null;
+            let mainInstructor = instructorSelect && instructorSelect.value ? instructorSelect.value : null;
             
-            // instructor_code가 없으면 교과목의 main_instructor를 기본값으로 사용
-            if (!instructorCode) {
+            // main_instructor가 없으면 교과목의 기존 main_instructor를 유지
+            if (!mainInstructor) {
                 const subject = allSubjects.find(s => s.code === subjectCode);
-                instructorCode = subject ? subject.main_instructor : null;
+                mainInstructor = subject ? subject.main_instructor : null;
             }
             
             // 교과목 정보 업데이트 (요일, 격주, 담당강사)
             await axios.put(`${API_BASE_URL}/api/subjects/${subjectCode}`, {
                 day_of_week: dayOfWeek,
                 is_biweekly: isBiweekly,
-                instructor_code: instructorCode
+                main_instructor: mainInstructor
             });
             
             subjectUpdates.push({
                 subject_code: subjectCode,
                 day_of_week: dayOfWeek,
                 is_biweekly: isBiweekly,
-                instructor_code: instructorCode
+                main_instructor: mainInstructor
             });
         }
         

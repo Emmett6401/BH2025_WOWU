@@ -3265,8 +3265,17 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
         while not is_workday(end_date):
             end_date -= timedelta(days=1)
         
-        # 종료 시간 판단 (마지막 날의 시간으로)
-        last_day_hours = hours % (morning_h + afternoon_h)
+        # 종료 시간 판단
+        # 오후부터 시작한 경우: (hours - afternoon_h) % 8을 기준으로 계산
+        # 그 외: hours % 8을 기준으로 계산
+        if start_at_afternoon:
+            # 첫날 오후(4시간) + N일 + 마지막날
+            # 예: 220 = 4(첫날) + 208(26일) + 8(마지막날)
+            remaining_after_first = hours - afternoon_h
+            last_day_hours = remaining_after_first % (morning_h + afternoon_h)
+        else:
+            last_day_hours = hours % (morning_h + afternoon_h)
+        
         if last_day_hours == 0:
             end_time = "18:00"
         elif last_day_hours <= morning_h:
@@ -3289,7 +3298,13 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
         
         summary += f"\n  ✅ 총: {hours}시간 완료\n"
         
-        return summary, end_date, (last_day_hours > morning_h if last_day_hours > 0 else True)
+        # 다음 단계가 오후부터 시작하는지 판단
+        # last_day_hours == 0이면 오전+오후 모두 사용 → 다음은 다음날 오전부터
+        # last_day_hours <= morning_h이면 오전만 사용 → 다음은 같은 날 오후부터
+        # last_day_hours > morning_h이면 오전+오후 모두 사용 → 다음은 다음날 오전부터
+        ends_with_afternoon = (last_day_hours == 0 or last_day_hours > morning_h)
+        
+        return summary, end_date, ends_with_afternoon
     
     # 공휴일 정보 포맷팅
     holidays_str = ""
@@ -3370,6 +3385,14 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
 • 실제 경과일: {(intern_actual_end - start_date).days + 1}일
 """
     
+    # 정확한 종료일 반환
+    actual_dates = {
+        'lecture_end': lecture_actual_end,
+        'project_end': project_actual_end,
+        'internship_end': intern_actual_end
+    }
+    
+    return details, actual_dates
     return details
 
 @app.post("/api/courses/calculate-dates")
@@ -3506,8 +3529,8 @@ async def calculate_course_dates(data: dict):
         # 제외 일수 (주말 + 공휴일)
         excluded_days = weekend_days + len(holidays_in_period)
         
-        # 상세 계산 과정 생성
-        calculation_details = generate_detailed_calculation(
+        # 상세 계산 과정 생성 (정확한 종료일 포함)
+        calculation_details, actual_dates = generate_detailed_calculation(
             start_date, lecture_hours, project_hours, internship_hours,
             morning_hours, afternoon_hours, holidays_detail,
             lecture_end_date, project_end_date, internship_end_date,
@@ -3515,13 +3538,18 @@ async def calculate_course_dates(data: dict):
             weekend_days, len(holidays_in_period)
         )
         
+        # 정확한 종료일 사용
+        lecture_end_date = actual_dates['lecture_end']
+        project_end_date = actual_dates['project_end']
+        internship_end_date = actual_dates['internship_end']
+        
         result = {
             "start_date": start_date_str,
             "lecture_end_date": lecture_end_date.strftime('%Y-%m-%d'),
             "project_end_date": project_end_date.strftime('%Y-%m-%d'),
             "internship_end_date": internship_end_date.strftime('%Y-%m-%d'),
             "final_end_date": internship_end_date.strftime('%Y-%m-%d'),
-            "total_days": total_days,
+            "total_days": (internship_end_date - start_date).days,
             "lecture_days": lecture_days,
             "project_days": project_days,
             "internship_days": intern_days,
