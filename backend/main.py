@@ -690,6 +690,14 @@ async def update_subject(subject_code: str, data: dict):
             update_fields.append("main_instructor = %s")
             update_values.append(data['main_instructor'])
         
+        if 'assistant_instructor' in data:
+            update_fields.append("assistant_instructor = %s")
+            update_values.append(data['assistant_instructor'])
+        
+        if 'reserve_instructor' in data:
+            update_fields.append("reserve_instructor = %s")
+            update_values.append(data['reserve_instructor'])
+        
         if 'instructor_code' in data:
             update_fields.append("instructor_code = %s")
             update_values.append(data['instructor_code'])
@@ -732,6 +740,11 @@ async def update_subject(subject_code: str, data: dict):
         cursor.execute(query, tuple(update_values))
         conn.commit()
         return {"code": subject_code}
+    except Exception as e:
+        import traceback
+        print(f"교과목 수정 오류: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"교과목 수정 실패: {str(e)}")
     finally:
         conn.close()
 
@@ -3177,11 +3190,12 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
     def is_workday(date):
         return date.weekday() < 5 and date not in holidays_set
     
-    # 상세 계산 로직 (오전/오후 분할 정확 처리)
+    # 상세 계산 로직 (오전/오후 분할 정확 처리, 날짜별 상세 표시)
     def calculate_stage_detail(stage_name, start, hours, morning_h, afternoon_h, start_at_afternoon=False):
         current = start
         remaining = hours
         monthly_hours = defaultdict(lambda: {'days': 0, 'hours': 0, 'detail': []})
+        all_dates = []  # 모든 날짜 기록
         
         # 첫날 오후부터 시작하는 경우
         first_day = True
@@ -3193,6 +3207,7 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
             
             month_key = f"{current.year}년 {current.month}월"
             day_hours = 0
+            time_str = ""
             
             # 첫날이고 오후부터 시작하는 경우
             if first_day and start_at_afternoon:
@@ -3200,33 +3215,48 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
                 if remaining >= afternoon_h:
                     day_hours = afternoon_h
                     remaining -= afternoon_h
+                    time_str = f"오후 {afternoon_h}시간"
                 else:
                     day_hours = remaining
                     remaining = 0
+                    time_str = f"오후 {day_hours}시간"
                 first_day = False
             else:
                 # 일반적인 경우: 오전 + 오후
+                morning_done = 0
+                afternoon_done = 0
+                
                 # 오전
                 if remaining >= morning_h:
-                    day_hours += morning_h
+                    morning_done = morning_h
                     remaining -= morning_h
                 elif remaining > 0:
-                    day_hours += remaining
+                    morning_done = remaining
                     remaining = 0
                 
                 # 오후
                 if remaining >= afternoon_h:
-                    day_hours += afternoon_h
+                    afternoon_done = afternoon_h
                     remaining -= afternoon_h
                 elif remaining > 0:
-                    day_hours += remaining
+                    afternoon_done = remaining
                     remaining = 0
+                
+                day_hours = morning_done + afternoon_done
+                
+                if morning_done > 0 and afternoon_done > 0:
+                    time_str = f"오전 {morning_done}시간 + 오후 {afternoon_done}시간"
+                elif morning_done > 0:
+                    time_str = f"오전 {morning_done}시간"
+                elif afternoon_done > 0:
+                    time_str = f"오후 {afternoon_done}시간"
                 
                 first_day = False
             
             if day_hours > 0:
                 monthly_hours[month_key]['hours'] += day_hours
                 monthly_hours[month_key]['days'] += 1
+                all_dates.append(f"    {format_date(current)}: {time_str} (누적: {hours - remaining}시간)")
             
             current += timedelta(days=1)
         
@@ -3244,15 +3274,18 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
         else:
             end_time = "18:00"
         
-        # 월별 요약 생성
+        # 월별 요약 생성 (날짜별 상세 포함)
         summary = f"\n【{stage_name}: {hours}시간】\n"
         summary += f"  • 시작: {format_date(start)} {'14:00' if start_at_afternoon else '09:00'}\n"
         summary += f"  • 종료: {format_date(end_date)} {end_time}\n\n"
         
+        summary += "  📅 일자별 상세:\n"
+        for date_line in all_dates:
+            summary += date_line + "\n"
+        
+        summary += "\n  📊 월별 집계:\n"
         for month, data in sorted(monthly_hours.items()):
-            summary += f"  {month}:\n"
-            summary += f"    - 근무일: {data['days']}일\n"
-            summary += f"    - 수업시간: {data['hours']}시간\n"
+            summary += f"    {month}: 근무일 {data['days']}일, 수업시간 {data['hours']}시간\n"
         
         summary += f"\n  ✅ 총: {hours}시간 완료\n"
         
