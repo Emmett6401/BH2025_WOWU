@@ -1502,17 +1502,17 @@ async def create_course(data: dict):
         notes_cleaned = remove_emoji(data.get('notes'))
         
         query = """
-            INSERT INTO courses (code, name, lecture_hours, project_hours, workship_hours,
+            INSERT INTO courses (code, name, lecture_hours, project_hours, internship_hours,
                                 capacity, location, notes, start_date, lecture_end_date,
-                                project_end_date, workship_end_date, final_end_date, total_days,
+                                project_end_date, internship_end_date, final_end_date, total_days,
                                 morning_hours, afternoon_hours)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
             data['code'], data['name'], data['lecture_hours'], data['project_hours'],
-            data['workship_hours'], data['capacity'], data.get('location'),
+            data.get('workship_hours', 0), data['capacity'], data.get('location'),  # workship_hours → DB에는 internship_hours
             notes_cleaned, data.get('start_date'), data.get('lecture_end_date'),
-            data.get('project_end_date'), data.get('workship_end_date'),
+            data.get('project_end_date'), data.get('workship_end_date'),  # workship_end_date → DB에는 internship_end_date
             data.get('final_end_date'), data.get('total_days'),
             data.get('morning_hours', 4), data.get('afternoon_hours', 4)
         ))
@@ -5798,18 +5798,36 @@ async def auto_generate_timetables(data: dict):
                 if subject_remaining.get(subj['subject_code'], 0) > 0:
                     available_subjects.append(subj)
             
-            # 오늘 수업 가능한 교과목이 없으면 다음날로
+            # ★★★ 핵심: 해당 요일 배정 과목이 모두 소진되면 다른 과목으로 채우기 ★★★
             if not available_subjects:
-                # ★★★ 핵심: 모든 교과목이 소진되었는지 확인 ★★★
+                # 모든 교과목이 소진되었는지 확인
                 all_subjects_exhausted = all(hours <= 0 for hours in subject_remaining.values())
                 if all_subjects_exhausted and total_remaining <= 0:
-                    # 이론 완전 종료 → 오후부터 프로젝트 시작 가능
-                    afternoon_slot_available = False  # 이미 다음날로 넘어가므로
+                    # 이론 완전 종료
                     break
                 
-                current_date += timedelta(days=1)
-                afternoon_slot_available = False
-                continue
+                # 해당 요일 과목은 소진되었지만, 다른 과목이 남아있으면 채우기
+                if total_remaining > 0:
+                    # 전체 교과목 중 남은 시수가 있는 과목 찾기
+                    for assignment in course_subject_assignments:
+                        if subject_remaining.get(assignment['subject_code'], 0) > 0:
+                            available_subjects.append({
+                                'subject_code': assignment['subject_code'],
+                                'week_type': None,  # 요일 배정 무시
+                                'name': assignment['name'],
+                                'hours': assignment['hours'],
+                                'instructor': assignment['main_instructor']
+                            })
+                    
+                    # 여전히 과목이 없으면 다음날로
+                    if not available_subjects:
+                        current_date += timedelta(days=1)
+                        afternoon_slot_available = False
+                        continue
+                else:
+                    current_date += timedelta(days=1)
+                    afternoon_slot_available = False
+                    continue
             
             # 남은 시수가 많은 순으로 정렬
             available_subjects.sort(key=lambda s: subject_remaining.get(s['subject_code'], 0), reverse=True)
