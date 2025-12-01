@@ -9993,6 +9993,7 @@ function renderTimetables() {
                     <thead class="bg-gray-100">
                         <tr>
                             <th class="px-3 py-2 text-left text-xs">날짜(요일)</th>
+                            <th class="px-3 py-2 text-left text-xs">주차</th>
                             <th class="px-3 py-2 text-left text-xs">일차</th>
                             <th class="px-3 py-2 text-left text-xs">과목</th>
                             <th class="px-3 py-2 text-left text-xs">강사</th>
@@ -10065,6 +10066,7 @@ function renderTimetables() {
                             return `
                             <tr class="border-t hover:bg-gray-50 ${isToday ? 'bg-yellow-100 border-l-4 border-yellow-500' : ''}" ${isToday ? 'id="today-timetable-row"' : ''}>
                                 <td class="px-3 py-2 text-xs ${isToday ? 'font-bold text-yellow-900' : ''}">${tt.class_date} (${dayOfWeek})${isToday ? ' <span class="text-yellow-600">(오늘)</span>' : ''}</td>
+                                <td class="px-3 py-2 text-xs">${tt.week_number || '-'}주차</td>
                                 <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일참</td>
                                 <td class="px-3 py-2 text-xs">${tt.subject_name || tt.subject_code || '-'}</td>
                                 <td class="px-3 py-2 text-xs">${tt.instructor_name || tt.instructor_code || '-'}</td>
