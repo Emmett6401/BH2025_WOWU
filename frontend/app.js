@@ -7542,11 +7542,40 @@ window.autoCalculateDates = async function() {
         document.getElementById('form-course-final-end').value = result.final_end_date;
         document.getElementById('form-course-total-days').value = result.total_days;
         
+        // 비고 필드에 자동으로 입력
+        const startDate = result.start_date.replace(/-/g, '.');
+        const endDate = result.final_end_date.replace(/-/g, '.');
+        
+        const notesText = `1. 교육기간 : ${startDate} ~ ${endDate} (공휴일 : ${result.holidays_formatted})
+2. 일8시간 / 주40시간 수업
+3. 총 교육시간 : ${result.total_hours}시간 (이론 ${result.lecture_hours}시간, 프로젝트 ${result.project_hours}시간, 현장실습 ${result.internship_hours}시간)
+4. 총 교육일수 : ${result.total_days}일 (근무일 ${result.work_days}일, 제외일 ${result.excluded_days}일)`;
+        
+        document.getElementById('form-course-notes').value = notesText;
+        
         // 버튼 원상복구
         button.innerHTML = originalHTML;
         button.disabled = false;
         
-        alert(`자동계산 완료!\n총 ${result.total_days}일 (근무일: ${result.work_days}일)`);
+        // 상세한 결과 메시지
+        const message = `✅ 자동계산 완료!
+
+📅 교육기간: ${startDate} ~ ${endDate}
+⏱️ 총 교육시간: ${result.total_hours}시간
+  ├ 이론: ${result.lecture_hours}시간 (${result.lecture_days}일)
+  ├ 프로젝트: ${result.project_hours}시간 (${result.project_days}일)
+  └ 현장실습: ${result.internship_hours}시간 (${result.internship_days}일)
+
+📊 교육일수: 총 ${result.total_days}일
+  ├ 근무일: ${result.work_days}일
+  ├ 주말: ${result.weekend_days}일
+  └ 공휴일: ${result.holiday_count}일
+
+🎉 공휴일: ${result.holidays_formatted}
+
+💡 비고란에 자동으로 입력되었습니다!`;
+        
+        alert(message);
     } catch (error) {
         console.error('자동계산 실패:', error);
         alert('자동계산에 실패했습니다: ' + (error.response?.data?.detail || error.message));

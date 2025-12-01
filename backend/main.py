@@ -2999,6 +2999,48 @@ async def calculate_course_dates(data: dict):
         # 총 일수 계산 (실제 캘린더 일수)
         total_days = (internship_end_date - start_date).days
         
+        # 과정 기간 내 공휴일 목록 생성
+        holidays_in_period = []
+        current = start_date
+        while current <= internship_end_date:
+            if current in holidays:
+                holidays_in_period.append(current)
+            current += timedelta(days=1)
+        
+        # 공휴일을 그룹화 (연속된 날짜는 범위로 표시)
+        holiday_strings = []
+        if holidays_in_period:
+            holidays_in_period.sort()
+            i = 0
+            while i < len(holidays_in_period):
+                start_holiday = holidays_in_period[i]
+                end_holiday = start_holiday
+                
+                # 연속된 날짜 찾기
+                j = i + 1
+                while j < len(holidays_in_period) and (holidays_in_period[j] - holidays_in_period[j-1]).days == 1:
+                    end_holiday = holidays_in_period[j]
+                    j += 1
+                
+                # 포맷팅 (연속이면 범위로, 아니면 단일 날짜로)
+                if start_holiday == end_holiday:
+                    holiday_strings.append(start_holiday.strftime('%-m/%-d'))
+                else:
+                    holiday_strings.append(f"{start_holiday.strftime('%-m/%-d')}~{end_holiday.strftime('%-m/%-d')}")
+                
+                i = j
+        
+        # 주말 일수 계산
+        weekend_days = 0
+        current = start_date
+        while current <= internship_end_date:
+            if current.weekday() >= 5:  # 토요일(5), 일요일(6)
+                weekend_days += 1
+            current += timedelta(days=1)
+        
+        # 제외 일수 (주말 + 공휴일)
+        excluded_days = weekend_days + len(holidays_in_period)
+        
         return {
             "start_date": start_date_str,
             "lecture_end_date": lecture_end_date.strftime('%Y-%m-%d'),
@@ -3009,7 +3051,15 @@ async def calculate_course_dates(data: dict):
             "lecture_days": lecture_days,
             "project_days": project_days,
             "internship_days": intern_days,
-            "work_days": lecture_days + project_days + intern_days
+            "work_days": lecture_days + project_days + intern_days,
+            "weekend_days": weekend_days,
+            "holiday_count": len(holidays_in_period),
+            "excluded_days": excluded_days,
+            "holidays_formatted": ", ".join(holiday_strings) if holiday_strings else "없음",
+            "lecture_hours": lecture_hours,
+            "project_hours": project_hours,
+            "internship_hours": internship_hours,
+            "total_hours": lecture_hours + project_hours + internship_hours
         }
         
     except Exception as e:
