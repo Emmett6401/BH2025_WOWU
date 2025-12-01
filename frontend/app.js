@@ -7096,11 +7096,14 @@ function renderCourseDetail(course) {
     const lectureHours = course.lecture_hours || 0;
     const projectHours = course.project_hours || 0;
     const internHours = course.internship_hours || 0;
+    const morningHours = course.morning_hours || 4;
+    const afternoonHours = course.afternoon_hours || 4;
+    const dailyHours = morningHours + afternoonHours;
     
-    // 일수 계산 (8시간 = 1일 기준)
-    const lectureDays = lectureHours > 0 ? Math.ceil(lectureHours / 8) : 0;
-    const projectDays = projectHours > 0 ? Math.ceil(projectHours / 8) : 0;
-    const internDays = internHours > 0 ? Math.ceil(internHours / 8) : 0;
+    // 일수 계산 (실제 일일 수업시간 기준)
+    const lectureDays = lectureHours > 0 ? Math.ceil(lectureHours / dailyHours) : 0;
+    const projectDays = projectHours > 0 ? Math.ceil(projectHours / dailyHours) : 0;
+    const internDays = internHours > 0 ? Math.ceil(internHours / dailyHours) : 0;
     
     // 퍼센트 계산
     const lecturePercent = totalDays > 0 ? Math.floor((lectureDays / totalDays) * 100) : 0;
@@ -7204,18 +7207,18 @@ function renderCourseDetail(course) {
                     </div>
                     <div class="text-center p-3 bg-white rounded shadow-sm">
                         <div class="text-xs text-gray-500 mb-1">일일 수업</div>
-                        <div class="text-xl font-bold text-purple-600">8시간</div>
-                        <div class="text-xs text-gray-600 mt-1">오전 4시간 + 오후 4시간</div>
+                        <div class="text-xl font-bold text-purple-600">${dailyHours}시간</div>
+                        <div class="text-xs text-gray-600 mt-1">오전 ${morningHours}시간 + 오후 ${afternoonHours}시간</div>
                     </div>
                 </div>
                 <div class="bg-blue-50 p-3 rounded">
                     <div class="flex items-center justify-center text-sm">
                         <i class="fas fa-clock mr-2 text-blue-600"></i>
                         <span class="font-semibold">수업 시간:</span>
-                        <span class="ml-2 text-blue-600">오전 09:00~13:00 (4시간) / 오후 14:00~18:00 (4시간)</span>
+                        <span class="ml-2 text-blue-600">오전 (${morningHours}시간) / 오후 (${afternoonHours}시간)</span>
                         <span class="ml-4 text-gray-600">|</span>
                         <span class="ml-4 font-semibold">주간 수업:</span>
-                        <span class="ml-2 text-green-600">40시간 (월~금, 주 5일)</span>
+                        <span class="ml-2 text-green-600">${dailyHours * 5}시간 (월~금, 주 5일)</span>
                     </div>
                 </div>
             </div>
@@ -7619,6 +7622,9 @@ window.autoCalculateDates = async function() {
     const lectureHours = parseInt(document.getElementById('form-course-lecture-hours').value) || 0;
     const projectHours = parseInt(document.getElementById('form-course-project-hours').value) || 0;
     const internshipHours = parseInt(document.getElementById('form-course-internship-hours').value) || 0;
+    const morningHours = parseInt(document.getElementById('form-course-morning-hours').value) || 4;
+    const afternoonHours = parseInt(document.getElementById('form-course-afternoon-hours').value) || 4;
+    const dailyHours = morningHours + afternoonHours;
     
     if (!startDate) {
         window.showAlert('시작일을 먼저 입력해주세요.', 'error');
@@ -7627,6 +7633,11 @@ window.autoCalculateDates = async function() {
     
     if (lectureHours === 0 && projectHours === 0 && internshipHours === 0) {
         window.showAlert('강의시간, 프로젝트시간, 인턴시간 중 하나 이상을 입력해주세요.', 'error');
+        return;
+    }
+    
+    if (dailyHours === 0) {
+        window.showAlert('일일 수업시간을 입력해주세요. (오전+오후 시간)', 'error');
         return;
     }
     
@@ -7641,7 +7652,10 @@ window.autoCalculateDates = async function() {
             start_date: startDate,
             lecture_hours: lectureHours,
             project_hours: projectHours,
-            internship_hours: internshipHours
+            internship_hours: internshipHours,
+            daily_hours: dailyHours,
+            morning_hours: morningHours,
+            afternoon_hours: afternoonHours
         });
         
         const result = response.data;
@@ -7657,8 +7671,11 @@ window.autoCalculateDates = async function() {
         const startDateFormatted = result.start_date.replace(/-/g, '.');
         const endDateFormatted = result.final_end_date.replace(/-/g, '.');
         
+        // 주간 수업시간 계산 (일일시간 × 5일)
+        const weeklyHours = dailyHours * 5;
+        
         const notesText = `1. 교육기간 : ${startDateFormatted} ~ ${endDateFormatted} (공휴일 : ${result.holidays_formatted})
-2. 일8시간 / 주40시간 수업
+2. 일${dailyHours}시간 (오전 ${morningHours}시간, 오후 ${afternoonHours}시간) / 주${weeklyHours}시간 수업
 3. 총 교육시간 : ${result.total_hours}시간 (이론 ${result.lecture_hours}시간, 프로젝트 ${result.project_hours}시간, 현장실습 ${result.internship_hours}시간)
 4. 총 교육일수 : ${result.total_days}일 (근무일 ${result.work_days}일, 제외일 ${result.excluded_days}일)`;
         

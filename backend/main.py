@@ -2958,16 +2958,19 @@ async def calculate_course_dates(data: dict):
         lecture_hours = int(data.get('lecture_hours', 0))
         project_hours = int(data.get('project_hours', 0))
         internship_hours = int(data.get('internship_hours', 0))
+        daily_hours = int(data.get('daily_hours', 8))  # 일일 수업시간 (기본값 8시간)
+        morning_hours = int(data.get('morning_hours', 4))
+        afternoon_hours = int(data.get('afternoon_hours', 4))
         
         if not start_date_str:
             raise HTTPException(status_code=400, detail="시작일은 필수입니다.")
         
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
         
-        # 시간을 일수로 변환 (8시간 = 1일)
-        lecture_days = (lecture_hours + 7) // 8  # 올림 처리
-        project_days = (project_hours + 7) // 8
-        intern_days = (internship_hours + 7) // 8
+        # 시간을 일수로 변환 (입력된 일일 시간 기준)
+        lecture_days = (lecture_hours + daily_hours - 1) // daily_hours  # 올림 처리
+        project_days = (project_hours + daily_hours - 1) // daily_hours
+        intern_days = (internship_hours + daily_hours - 1) // daily_hours
         
         # 공휴일 가져오기
         conn = get_db_connection()
