@@ -9738,9 +9738,9 @@ function renderTimetables() {
                                 <td class="px-3 py-2 text-xs">${tt.subject_name || tt.subject_code || '-'}</td>
                                 <td class="px-3 py-2 text-xs">${tt.instructor_name || tt.instructor_code || '-'}</td>
                                 <td class="px-3 py-2 text-xs">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
-                                <td class="px-3 py-2 text-xs font-semibold">${dailyHours}h</td>
+                                <td class="px-3 py-2 text-xs font-semibold">${Math.round(dailyHours * 10) / 10}h</td>
                                 <td class="px-3 py-2 text-xs ${isCompleted ? 'text-green-600 font-semibold' : 'text-blue-600'}">
-                                    ${accumulatedHours}/${subjectTotalHours}h (${progressPercent}%)
+                                    ${Math.round(accumulatedHours * 10) / 10}h / ${Math.round(subjectTotalHours * 10) / 10}h (${progressPercent}%)
                                 </td>
                                 <td class="px-3 py-2 text-xs">
                                     <span class="px-2 py-1 rounded text-xs ${tt.type === 'lecture' ? 'bg-blue-100 text-blue-800' : tt.type === 'project' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
