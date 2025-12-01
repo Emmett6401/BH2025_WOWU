@@ -7070,6 +7070,31 @@ async function loadCourses() {
     }
 }
 
+// 과정 기간 내 공휴일 가져오기
+async function getCourseHolidays(startDate, endDate) {
+    if (!startDate || !endDate) return [];
+    
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/holidays`);
+        const allHolidays = response.data;
+        
+        // 과정 기간 내 공휴일만 필터링
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        const courseHolidays = allHolidays.filter(h => {
+            const holidayDate = new Date(h.holiday_date);
+            return holidayDate >= start && holidayDate <= end;
+        });
+        
+        console.log('과정 기간 내 공휴일:', courseHolidays);
+        return courseHolidays;
+    } catch (error) {
+        console.error('공휴일 조회 실패:', error);
+        return [];
+    }
+}
+
 function renderCourseDetail(course) {
     console.log(`📝 renderCourseDetail 호출 - 과정: ${course.code}, courseSubjects:`, courseSubjects);
     
@@ -7228,8 +7253,8 @@ function renderCourseDetail(course) {
                 <h3 class="font-bold text-lg mb-2">
                     <i class="fas fa-calendar-times mr-2 text-red-600"></i>과정 기간 내 공휴일
                 </h3>
-                <div class="text-sm text-red-600">
-                    12-25(성탄절), 01-01(신정), 02-16(설날 연휴), 02-17(설날), 02-18(설날 연휴)
+                <div id="course-holidays-${course.code}" class="text-sm text-red-600">
+                    공휴일 정보를 불러오는 중...
                 </div>
             </div>
             
@@ -7336,6 +7361,27 @@ function renderCourseDetail(course) {
             </div>
         </div>
     `;
+    
+    // 공휴일 비동기 로드
+    (async () => {
+        const holidays = await getCourseHolidays(course.start_date, course.final_end_date);
+        const holidayElement = document.getElementById(`course-holidays-${course.code}`);
+        
+        if (holidayElement) {
+            if (holidays.length === 0) {
+                holidayElement.innerHTML = '<span class="text-gray-500">등록된 공휴일이 없습니다</span>';
+            } else {
+                // MM-DD(공휴일명) 형식으로 표시
+                const holidayTexts = holidays.map(h => {
+                    const date = new Date(h.holiday_date);
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    return `${month}-${day}(${h.name})`;
+                });
+                holidayElement.textContent = holidayTexts.join(', ');
+            }
+        }
+    })();
     
     // updateSubjectArea는 renderCourses에서 호출됨
 }
