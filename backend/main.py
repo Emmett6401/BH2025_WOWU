@@ -3651,6 +3651,16 @@ async def calculate_course_dates(data: dict):
             if course_code:
                 # 시간표 자동 생성 호출
                 try:
+                    # 과정에 배정된 교과목 자동 조회
+                    conn_temp = get_db_connection()
+                    cursor_temp = conn_temp.cursor(pymysql.cursors.DictCursor)
+                    cursor_temp.execute("""
+                        SELECT subject_code FROM course_subjects 
+                        WHERE course_code = %s
+                    """, (course_code,))
+                    subject_codes = [row['subject_code'] for row in cursor_temp.fetchall()]
+                    conn_temp.close()
+                    
                     timetable_data = {
                         'course_code': course_code,
                         'start_date': start_date_str,
@@ -3659,7 +3669,7 @@ async def calculate_course_dates(data: dict):
                         'internship_hours': internship_hours,
                         'morning_hours': morning_hours,
                         'afternoon_hours': afternoon_hours,
-                        'subject_codes': data.get('subject_codes', [])
+                        'subject_codes': subject_codes
                     }
                     # 시간표 생성 로직 호출 (동일 함수 재사용)
                     from fastapi.responses import Response
@@ -5648,7 +5658,7 @@ async def auto_generate_timetables(data: dict):
         if not course_instructors:
             cursor.execute("""
                 SELECT code FROM instructors 
-                WHERE instructor_type_name = '주강사' 
+                WHERE instructor_type = '주강사' 
                 ORDER BY code 
                 LIMIT 3
             """)
@@ -5732,31 +5742,33 @@ async def auto_generate_timetables(data: dict):
                 # 일일 강사 배정 (하루에 1명, 과정 교과목 주강사 로테이션)
                 daily_instructor = course_instructors[instructor_idx % len(course_instructors)]
                 
-                # 오전
-                if remaining_hours >= morning_hours:
+                # 오전 (남은 시간이 있으면 무조건 배정)
+                if remaining_hours > 0:
+                    hours_to_use = min(morning_hours, remaining_hours)
                     timetables.append({
                         'course_code': course_code,
                         'subject_code': None,
                         'class_date': current_date,
                         'start_time': '09:00:00',
-                        'end_time': f'{9 + morning_hours:02d}:00:00',
+                        'end_time': f'{9 + int(hours_to_use):02d}:00:00',
                         'instructor_code': daily_instructor,
                         'type': 'project'
                     })
-                    remaining_hours -= morning_hours
+                    remaining_hours -= hours_to_use
                 
-                # 오후
-                if remaining_hours >= afternoon_hours:
+                # 오후 (남은 시간이 있으면 무조건 배정)
+                if remaining_hours > 0:
+                    hours_to_use = min(afternoon_hours, remaining_hours)
                     timetables.append({
                         'course_code': course_code,
                         'subject_code': None,
                         'class_date': current_date,
                         'start_time': '14:00:00',
-                        'end_time': f'{14 + afternoon_hours:02d}:00:00',
+                        'end_time': f'{14 + int(hours_to_use):02d}:00:00',
                         'instructor_code': daily_instructor,
                         'type': 'project'
                     })
-                    remaining_hours -= afternoon_hours
+                    remaining_hours -= hours_to_use
                 
                 instructor_idx += 1  # 다음 강사로
                 current_date += timedelta(days=1)
@@ -5773,31 +5785,33 @@ async def auto_generate_timetables(data: dict):
                 # 일일 강사 배정 (하루에 1명, 과정 교과목 주강사 로테이션)
                 daily_instructor = course_instructors[instructor_idx % len(course_instructors)]
                 
-                # 오전
-                if remaining_hours >= morning_hours:
+                # 오전 (남은 시간이 있으면 무조건 배정)
+                if remaining_hours > 0:
+                    hours_to_use = min(morning_hours, remaining_hours)
                     timetables.append({
                         'course_code': course_code,
                         'subject_code': None,
                         'class_date': current_date,
                         'start_time': '09:00:00',
-                        'end_time': f'{9 + morning_hours:02d}:00:00',
+                        'end_time': f'{9 + int(hours_to_use):02d}:00:00',
                         'instructor_code': daily_instructor,
                         'type': 'internship'
                     })
-                    remaining_hours -= morning_hours
+                    remaining_hours -= hours_to_use
                 
-                # 오후
-                if remaining_hours >= afternoon_hours:
+                # 오후 (남은 시간이 있으면 무조건 배정)
+                if remaining_hours > 0:
+                    hours_to_use = min(afternoon_hours, remaining_hours)
                     timetables.append({
                         'course_code': course_code,
                         'subject_code': None,
                         'class_date': current_date,
                         'start_time': '14:00:00',
-                        'end_time': f'{14 + afternoon_hours:02d}:00:00',
+                        'end_time': f'{14 + int(hours_to_use):02d}:00:00',
                         'instructor_code': daily_instructor,
                         'type': 'internship'
                     })
-                    remaining_hours -= afternoon_hours
+                    remaining_hours -= hours_to_use
                 
                 instructor_idx += 1  # 다음 강사로
                 current_date += timedelta(days=1)
