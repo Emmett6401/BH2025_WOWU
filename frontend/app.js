@@ -7733,13 +7733,6 @@ window.showCalculationResult = function(result, startDate, endDate) {
             </div>
             ` : ''}
             
-            <div class="bg-yellow-50 p-3 rounded-lg border-l-4 border-yellow-500">
-                <div class="flex items-center text-yellow-800">
-                    <i class="fas fa-info-circle mr-2"></i>
-                    <span class="text-sm font-semibold">비고란에 자동으로 입력되었습니다!</span>
-                </div>
-            </div>
-            
             <!-- 시간표 생성 패널 제거됨: 이제 상단 버튼에서 생성 -->
         </div>
     `;
