@@ -5285,6 +5285,26 @@ async def auto_generate_timetables(data: dict):
         else:
             subjects = []
         
+        # 이 과정 교과목들의 주강사 추출 (중복 제거)
+        course_instructors = []
+        seen_instructors = set()
+        for subj in subjects:
+            if subj['main_instructor'] and subj['main_instructor'] not in seen_instructors:
+                course_instructors.append(subj['main_instructor'])
+                seen_instructors.add(subj['main_instructor'])
+        
+        # 주강사가 없으면 기본값 사용
+        if not course_instructors:
+            cursor.execute("""
+                SELECT code FROM instructors 
+                WHERE instructor_type_name = '주강사' 
+                ORDER BY code 
+                LIMIT 3
+            """)
+            course_instructors = [row['code'] for row in cursor.fetchall()]
+        
+        print(f"📋 과정 {course_code}의 주강사: {course_instructors}")
+        
         # 시간표 생성 헬퍼 함수
         def is_weekend(date_obj):
             return date_obj.weekday() >= 5  # 5=토, 6=일
@@ -5375,8 +5395,8 @@ async def auto_generate_timetables(data: dict):
                     current_date += pd.Timedelta(days=1)
                     continue
                 
-                # 일일 강사 배정 (하루에 1명)
-                daily_instructor = main_instructors[instructor_idx % len(main_instructors)]
+                # 일일 강사 배정 (하루에 1명, 과정 교과목 주강사 로테이션)
+                daily_instructor = course_instructors[instructor_idx % len(course_instructors)]
                 
                 # 오전
                 if remaining_hours >= morning_hours:
@@ -5423,8 +5443,8 @@ async def auto_generate_timetables(data: dict):
                     current_date += pd.Timedelta(days=1)
                     continue
                 
-                # 일일 강사 배정 (하루에 1명)
-                daily_instructor = main_instructors[instructor_idx % len(main_instructors)]
+                # 일일 강사 배정 (하루에 1명, 과정 교과목 주강사 로테이션)
+                daily_instructor = course_instructors[instructor_idx % len(course_instructors)]
                 
                 # 오전
                 if remaining_hours >= morning_hours:
