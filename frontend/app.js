@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.39'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.40'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -7452,30 +7452,47 @@ async function updateSubjectArea(courseCode, updatedSubjectsInfo = null) {
                         <i class="fas fa-edit mr-1"></i>교과목 수정
                     </button>
                 </div>
-                <div class="bg-white p-3 rounded border border-green-200">
-                    <ul class="space-y-2" id="selected-subjects-${courseCode}">
+                <div class="bg-white rounded border border-green-200 overflow-hidden">
+                    <!-- 헤더 -->
+                    <div class="bg-gray-50 px-3 py-2 border-b border-gray-200">
+                        <div class="flex items-center text-xs font-semibold text-gray-600">
+                            <div class="w-7 mr-3"></div>
+                            <div class="flex-1 grid grid-cols-12 gap-2">
+                                <div class="col-span-2">코드</div>
+                                <div class="col-span-5">교과목</div>
+                                <div class="col-span-3">강사</div>
+                                <div class="col-span-2 text-right">요일</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 목록 -->
+                    <ul class="p-3 space-y-2" id="selected-subjects-${courseCode}">
                         ${selectedSubjects.map((code, index) => {
                             const subject = allSubjects.find(s => s.code === code);
                             const name = subject ? subject.name : '(교과목명 없음)';
                             const instructorName = subject?.instructor_name || '(미지정)';
                             const dayOfWeek = subject?.day_of_week;
-                            const dayNames = ['', '월', '화', '수', '목', '금', '토', '일'];
-                            const dayName = dayOfWeek ? dayNames[dayOfWeek] : '(미지정)';
+                            // 1=월요일, 2=화요일, 3=수요일, 4=목요일, 5=금요일, 6=토요일, 0=일요일
+                            const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+                            const dayName = (dayOfWeek !== null && dayOfWeek !== undefined) ? dayNames[dayOfWeek] : '(미지정)';
                             
                             return `
-                                <li class="flex items-start text-sm border-b border-gray-100 pb-2 last:border-0">
-                                    <span class="inline-flex items-center justify-center w-6 h-6 bg-green-600 text-white rounded-full text-xs font-bold mr-3 flex-shrink-0">
+                                <li class="flex items-start text-sm border-b border-gray-100 pb-3 last:border-0 last:pb-0">
+                                    <span class="inline-flex items-center justify-center w-7 h-7 bg-green-600 text-white rounded-full text-xs font-bold mr-3 flex-shrink-0">
                                         ${index + 1}
                                     </span>
-                                    <div class="flex-1">
-                                        <div class="text-gray-700">
+                                    <div class="flex-1 grid grid-cols-12 gap-2 items-center">
+                                        <div class="col-span-2">
                                             <span class="font-bold text-blue-700">${code}</span>
-                                            <span class="mx-2 text-gray-400">|</span>
-                                            <span class="font-semibold">${name}</span>
-                                            <span class="mx-2 text-gray-400">|</span>
+                                        </div>
+                                        <div class="col-span-5">
+                                            <span class="font-semibold text-gray-800">${name}</span>
+                                        </div>
+                                        <div class="col-span-3">
                                             <span class="text-gray-600">${instructorName}</span>
-                                            <span class="mx-2 text-gray-400">|</span>
-                                            <span class="text-green-700 font-semibold">${dayName}요일</span>
+                                        </div>
+                                        <div class="col-span-2 text-right">
+                                            <span class="inline-block px-2 py-1 rounded-full text-xs font-bold ${dayName === '(미지정)' ? 'bg-gray-200 text-gray-600' : 'bg-green-100 text-green-700'}">${dayName}요일</span>
                                         </div>
                                     </div>
                                 </li>
