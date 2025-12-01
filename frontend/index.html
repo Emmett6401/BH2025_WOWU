@@ -434,18 +434,18 @@
             <div id="student-detail" class="hidden"></div>
             
             <!-- 예쁜 알림 모달 -->
-            <div id="alert-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
-                <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
-                    <div id="alert-header" class="p-6 rounded-t-2xl">
+            <div id="alert-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col transform transition-all">
+                    <div id="alert-header" class="p-6 rounded-t-2xl flex-shrink-0">
                         <div class="flex items-center gap-4">
                             <div id="alert-icon" class="text-4xl"></div>
                             <h3 id="alert-title" class="text-xl font-bold text-white"></h3>
                         </div>
                     </div>
-                    <div class="p-6">
+                    <div class="overflow-y-auto flex-1 px-6 py-4">
                         <p id="alert-message" class="text-gray-700 text-lg leading-relaxed whitespace-pre-line"></p>
                     </div>
-                    <div class="p-6 pt-0 flex justify-end gap-3">
+                    <div class="p-6 pt-4 flex justify-end gap-3 flex-shrink-0 border-t border-gray-200">
                         <button id="alert-cancel-btn" class="hidden px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-semibold transition-colors">
                             취소
                         </button>
