@@ -5859,19 +5859,26 @@ async def auto_generate_timetables(data: dict):
                     # 이론이 오전에 끝남 → 오후부터 프로젝트 시작
                     afternoon_slot_available = True
                     break
-                
-                # 오전 교과목이 완료되면 available_subjects에서 제거
-                if subject_remaining[subj['subject_code']] <= 0:
-                    available_subjects = [s for s in available_subjects if s['subject_code'] != subj['subject_code']]
             
             # 오후 슬롯 - 이론이 아직 남아있는 경우에만
             if total_remaining > 0:
-                # 남은 시수 재정렬 (오전에 사용된 교과목 제외)
-                available_subjects = [s for s in available_subjects if subject_remaining.get(s['subject_code'], 0) > 0]
+                # ★★★ 핵심: 오후 슬롯은 요일 배정 무시하고 남은 시수가 가장 많은 과목으로 채우기 ★★★
+                afternoon_available = []
+                for assignment in course_subject_assignments:
+                    if subject_remaining.get(assignment['subject_code'], 0) > 0:
+                        afternoon_available.append({
+                            'subject_code': assignment['subject_code'],
+                            'is_biweekly': 0,
+                            'week_offset': 0,
+                            'name': assignment['name'],
+                            'hours': assignment['hours'],
+                            'instructor': assignment['main_instructor']
+                        })
                 
-                if available_subjects:
-                    available_subjects.sort(key=lambda s: subject_remaining.get(s['subject_code'], 0), reverse=True)
-                    subj = available_subjects[0]
+                if afternoon_available:
+                    # 남은 시수가 가장 많은 과목 선택
+                    afternoon_available.sort(key=lambda s: subject_remaining.get(s['subject_code'], 0), reverse=True)
+                    subj = afternoon_available[0]
                     
                     hours_to_use = min(afternoon_hours, subject_remaining[subj['subject_code']], total_remaining)
                     
