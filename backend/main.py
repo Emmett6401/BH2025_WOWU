@@ -7,7 +7,7 @@ import pymysql
 import pandas as pd
 import io
 import os
-from datetime import datetime, date
+from datetime import datetime, timedelta, date
 from openai import OpenAI
 from dotenv import load_dotenv
 import requests
@@ -1273,7 +1273,7 @@ async def delete_holiday(holiday_id: int):
 @app.post("/api/holidays/auto-add/{year}")
 async def auto_add_holidays(year: int):
     """법정공휴일 자동 추가"""
-    from datetime import datetime
+    from datetime import datetime, timedelta
     import korean_lunar_calendar
     
     conn = get_db_connection()
@@ -5270,8 +5270,8 @@ async def auto_generate_timetables(data: dict):
         cursor.execute("DELETE FROM timetables WHERE course_code = %s", (course_code,))
         
         # 공휴일 목록 가져오기
-        cursor.execute("SELECT date FROM holidays ORDER BY date")
-        holidays = [row['date'] for row in cursor.fetchall()]
+        cursor.execute("SELECT holiday_date FROM holidays ORDER BY holiday_date")
+        holidays = [row['holiday_date'] for row in cursor.fetchall()]
         
         # 교과목 정보 가져오기
         if subject_codes:
@@ -5314,8 +5314,6 @@ async def auto_generate_timetables(data: dict):
         
         timetables = []
         current_date = start_date
-        week_number = 1
-        day_number = 1
         
         # 1단계: 이론 (lecture)
         if lecture_hours > 0 and subjects:
@@ -5323,13 +5321,13 @@ async def auto_generate_timetables(data: dict):
             subject_idx = 0
             subject_remaining = subjects[subject_idx]['hours'] if subjects else 0
             
-            while remaining_hours > 0:
+            while remaining_hours > 0 and subject_idx < len(subjects):
                 if is_weekend(current_date) or is_holiday(current_date):
-                    current_date += pd.Timedelta(days=1)
+                    current_date += timedelta(days=1)
                     continue
                 
                 # 오전 수업
-                if remaining_hours >= morning_hours and subject_remaining > 0:
+                if remaining_hours > 0 and subject_remaining > 0:
                     hours_to_use = min(morning_hours, subject_remaining, remaining_hours)
                     timetables.append({
                         'course_code': course_code,
@@ -5338,15 +5336,13 @@ async def auto_generate_timetables(data: dict):
                         'start_time': '09:00:00',
                         'end_time': f'{9 + hours_to_use:02d}:00:00',
                         'instructor_code': subjects[subject_idx]['main_instructor'],
-                        'type': 'lecture',
-                        'week_number': week_number,
-                        'day_number': day_number
+                        'type': 'lecture'
                     })
                     remaining_hours -= hours_to_use
                     subject_remaining -= hours_to_use
                 
                 # 오후 수업
-                if remaining_hours >= afternoon_hours and subject_remaining > 0:
+                if remaining_hours > 0 and subject_remaining > 0:
                     hours_to_use = min(afternoon_hours, subject_remaining, remaining_hours)
                     timetables.append({
                         'course_code': course_code,
@@ -5355,9 +5351,7 @@ async def auto_generate_timetables(data: dict):
                         'start_time': '14:00:00',
                         'end_time': f'{14 + hours_to_use:02d}:00:00',
                         'instructor_code': subjects[subject_idx]['main_instructor'],
-                        'type': 'lecture',
-                        'week_number': week_number,
-                        'day_number': day_number
+                        'type': 'lecture'
                     })
                     remaining_hours -= hours_to_use
                     subject_remaining -= hours_to_use
@@ -5367,23 +5361,12 @@ async def auto_generate_timetables(data: dict):
                     subject_idx += 1
                     if subject_idx < len(subjects):
                         subject_remaining = subjects[subject_idx]['hours']
+                    else:
+                        break  # 모든 교과목 소진
                 
-                current_date += pd.Timedelta(days=1)
-                if current_date.weekday() == 0:  # 월요일
-                    week_number += 1
-                day_number += 1
+                current_date += timedelta(days=1)
         
-        # 주강사 3명 가져오기
-        cursor.execute("""
-            SELECT code FROM instructors 
-            WHERE instructor_type_name = '주강사' 
-            ORDER BY code 
-            LIMIT 3
-        """)
-        main_instructors = [row['code'] for row in cursor.fetchall()]
-        if not main_instructors:
-            main_instructors = ['T-001', 'T-002', 'T-004']  # 기본값
-        
+        # 프로젝트/현장실습에서는 course_instructors를 그대로 사용
         instructor_idx = 0  # 로테이션 인덱스
         
         # 2단계: 프로젝트 (project) - 주강사 3명 로테이션
@@ -5392,7 +5375,7 @@ async def auto_generate_timetables(data: dict):
             
             while remaining_hours > 0:
                 if is_weekend(current_date) or is_holiday(current_date):
-                    current_date += pd.Timedelta(days=1)
+                    current_date += timedelta(days=1)
                     continue
                 
                 # 일일 강사 배정 (하루에 1명, 과정 교과목 주강사 로테이션)
@@ -5407,9 +5390,7 @@ async def auto_generate_timetables(data: dict):
                         'start_time': '09:00:00',
                         'end_time': f'{9 + morning_hours:02d}:00:00',
                         'instructor_code': daily_instructor,
-                        'type': 'project',
-                        'week_number': week_number,
-                        'day_number': day_number
+                        'type': 'project'
                     })
                     remaining_hours -= morning_hours
                 
@@ -5422,17 +5403,12 @@ async def auto_generate_timetables(data: dict):
                         'start_time': '14:00:00',
                         'end_time': f'{14 + afternoon_hours:02d}:00:00',
                         'instructor_code': daily_instructor,
-                        'type': 'project',
-                        'week_number': week_number,
-                        'day_number': day_number
+                        'type': 'project'
                     })
                     remaining_hours -= afternoon_hours
                 
                 instructor_idx += 1  # 다음 강사로
-                current_date += pd.Timedelta(days=1)
-                if current_date.weekday() == 0:
-                    week_number += 1
-                day_number += 1
+                current_date += timedelta(days=1)
         
         # 3단계: 현장실습 (internship) - 주강사 3명 로테이션
         if internship_hours > 0:
@@ -5440,7 +5416,7 @@ async def auto_generate_timetables(data: dict):
             
             while remaining_hours > 0:
                 if is_weekend(current_date) or is_holiday(current_date):
-                    current_date += pd.Timedelta(days=1)
+                    current_date += timedelta(days=1)
                     continue
                 
                 # 일일 강사 배정 (하루에 1명, 과정 교과목 주강사 로테이션)
@@ -5455,9 +5431,7 @@ async def auto_generate_timetables(data: dict):
                         'start_time': '09:00:00',
                         'end_time': f'{9 + morning_hours:02d}:00:00',
                         'instructor_code': daily_instructor,
-                        'type': 'internship',
-                        'week_number': week_number,
-                        'day_number': day_number
+                        'type': 'internship'
                     })
                     remaining_hours -= morning_hours
                 
@@ -5470,24 +5444,19 @@ async def auto_generate_timetables(data: dict):
                         'start_time': '14:00:00',
                         'end_time': f'{14 + afternoon_hours:02d}:00:00',
                         'instructor_code': daily_instructor,
-                        'type': 'internship',
-                        'week_number': week_number,
-                        'day_number': day_number
+                        'type': 'internship'
                     })
                     remaining_hours -= afternoon_hours
                 
                 instructor_idx += 1  # 다음 강사로
-                current_date += pd.Timedelta(days=1)
-                if current_date.weekday() == 0:
-                    week_number += 1
-                day_number += 1
+                current_date += timedelta(days=1)
         
         # DB에 삽입
         insert_query = """
             INSERT INTO timetables 
             (course_code, subject_code, class_date, start_time, end_time, 
-             instructor_code, type, week_number, day_number)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+             instructor_code, type)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         
         for tt in timetables:
@@ -5498,9 +5467,7 @@ async def auto_generate_timetables(data: dict):
                 tt['start_time'],
                 tt['end_time'],
                 tt['instructor_code'],
-                tt['type'],
-                tt['week_number'],
-                tt['day_number']
+                tt['type']
             ))
         
         conn.commit()
