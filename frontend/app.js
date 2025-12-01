@@ -7071,6 +7071,8 @@ async function loadCourses() {
 }
 
 function renderCourseDetail(course) {
+    console.log(`📝 renderCourseDetail 호출 - 과정: ${course.code}, courseSubjects:`, courseSubjects);
+    
     // 날짜 포맷 헬퍼 함수 (YYYY-MM-DD -> M월 D일)
     const formatDate = (dateStr) => {
         if (!dateStr) return '-';
@@ -7244,8 +7246,15 @@ function renderCourseDetail(course) {
                         <textarea id="course-notes" rows="3" class="w-full px-3 py-2 border rounded" 
                                   onchange="window.updateCourseInfo('${course.code}')">${course.notes || ''}</textarea>
                     </div>
-                    <div class="bg-green-100 p-3 rounded" id="subject-area-${course.code}">
-                        <!-- 내용은 JavaScript로 동적 생성 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-book mr-1 text-green-600"></i>교과목
+                        </label>
+                        <div class="bg-green-100 p-3 rounded" id="subject-area-${course.code}">
+                            <div class="text-center text-gray-500 text-sm">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>교과목 로딩 중...
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -7311,56 +7320,97 @@ function renderCourseDetail(course) {
     `;
     
     // 과목 영역 업데이트 (DOM이 생성된 후)
+    console.log(`⏱️ updateSubjectArea 예약 - 과정: ${course.code}`);
     setTimeout(() => {
+        console.log(`⏰ updateSubjectArea 실행 시작 - 과정: ${course.code}`);
         updateSubjectArea(course.code);
-    }, 0);
+    }, 100);
 }
 
 // 과목 영역 업데이트 함수
 async function updateSubjectArea(courseCode) {
+    console.log(`📚 updateSubjectArea 시작 - 과정: ${courseCode}`);
+    
     const subjectArea = document.getElementById(`subject-area-${courseCode}`);
-    if (!subjectArea) return;
+    if (!subjectArea) {
+        console.log(`⚠️ subject-area-${courseCode} 엘리먼트를 찾을 수 없음`);
+        return;
+    }
     
     const selectedSubjects = courseSubjects[courseCode] || [];
+    console.log(`📚 과정 ${courseCode}의 교과목:`, selectedSubjects);
     const hasSubjects = selectedSubjects.length > 0;
     
     if (hasSubjects) {
         // 교과목 정보 가져오기
         try {
+            console.log(`🔍 교과목 상세 정보 조회 중...`);
             const response = await axios.get(`${API_BASE_URL}/api/subjects`);
             const allSubjects = response.data;
+            console.log(`✅ 교과목 상세 정보 로드 완료:`, allSubjects.length, '개');
             
             // 선택된 과목이 있는 경우
             subjectArea.innerHTML = `
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-sm font-semibold">선택된 과목: <span id="subject-count-${courseCode}" class="text-green-700">(${selectedSubjects.length}개)</span></div>
+                <div class="flex items-center justify-between mb-3">
+                    <div class="text-sm font-semibold text-green-800">
+                        <i class="fas fa-check-circle mr-1"></i>선택된 과목: 
+                        <span class="text-green-700 font-bold">${selectedSubjects.length}개</span>
+                    </div>
                     <button onclick="window.showSubjectSelector('${courseCode}')" 
-                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs">
-                        <i class="fas fa-list mr-1"></i>교과목 선택
+                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs shadow-sm">
+                        <i class="fas fa-edit mr-1"></i>교과목 수정
                     </button>
                 </div>
-                <ul class="text-xs space-y-1" id="selected-subjects-${courseCode}">
-                    ${selectedSubjects.map(code => {
-                        const subject = allSubjects.find(s => s.code === code);
-                        const name = subject ? subject.name : '과목명';
-                        return `<li>• ${code}: ${name}</li>`;
-                    }).join('')}
-                </ul>
+                <div class="bg-white p-3 rounded border border-green-200">
+                    <ul class="space-y-2" id="selected-subjects-${courseCode}">
+                        ${selectedSubjects.map((code, index) => {
+                            const subject = allSubjects.find(s => s.code === code);
+                            const name = subject ? subject.name : '(교과목명 없음)';
+                            return `
+                                <li class="flex items-start text-sm">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 bg-green-600 text-white rounded-full text-xs font-bold mr-2 flex-shrink-0">
+                                        ${index + 1}
+                                    </span>
+                                    <div class="flex-1">
+                                        <span class="font-semibold text-gray-700">${code}</span>
+                                        <span class="text-gray-600 ml-2">${name}</span>
+                                    </div>
+                                </li>
+                            `;
+                        }).join('')}
+                    </ul>
+                </div>
             `;
+            console.log(`✅ 교과목 영역 렌더링 완료`);
         } catch (error) {
-            console.error('교과목 정보 로드 실패:', error);
+            console.error('❌ 교과목 정보 로드 실패:', error);
+            subjectArea.innerHTML = `
+                <div class="text-sm text-red-600 p-2 bg-red-50 rounded">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    교과목 정보를 불러오는데 실패했습니다.
+                </div>
+            `;
         }
     } else {
+        console.log(`⚠️ 과정 ${courseCode}에 선택된 교과목이 없음`);
         // 선택된 과목이 없는 경우
         subjectArea.innerHTML = `
             <div class="flex items-center justify-between mb-2">
-                <div class="text-sm font-semibold text-gray-600">선택된 과목: <span class="text-gray-500">(0개)</span></div>
+                <div class="text-sm font-semibold text-gray-600">
+                    <i class="fas fa-info-circle mr-1"></i>선택된 과목: 
+                    <span class="text-gray-500">0개</span>
+                </div>
                 <button onclick="window.showSubjectSelector('${courseCode}')" 
-                        class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs">
-                    <i class="fas fa-list mr-1"></i>교과목 선택
+                        class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs shadow-sm">
+                    <i class="fas fa-plus mr-1"></i>교과목 선택
                 </button>
             </div>
-            <p class="text-xs text-gray-500 italic">교과목 선택 버튼을 클릭하여 과목을 추가하세요.</p>
+            <div class="bg-white p-3 rounded border border-green-200">
+                <p class="text-sm text-gray-500 text-center py-2">
+                    <i class="fas fa-folder-open text-2xl mb-2 block"></i>
+                    교과목 선택 버튼을 클릭하여 과목을 추가하세요.
+                </p>
+            </div>
         `;
     }
 }
