@@ -1,5 +1,6 @@
 // API 베이스 URL - 백엔드 포트로 변경
-const API_BASE_URL = window.location.origin.replace('3000', '8000');
+// 프록시를 통해 백엔드와 통신하므로 API_BASE_URL은 빈 문자열
+const API_BASE_URL = '';
 window.API_BASE_URL = API_BASE_URL; // 전역으로 노출
 
 // ==================== 로컬 캐싱 유틸리티 ====================
