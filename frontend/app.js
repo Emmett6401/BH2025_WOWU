@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.40'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.41'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -7272,7 +7272,7 @@ function renderCourseDetail(course) {
                 <h3 class="font-bold text-lg mb-4">
                     <i class="fas fa-info-circle mr-2"></i>기본 정보
                 </h3>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4 auto-rows-auto">
                     <div>
                         <label class="block text-sm text-gray-600 mb-1">코드:</label>
                         <input type="text" id="course-code" value="${course.code}" readonly
@@ -7293,16 +7293,16 @@ function renderCourseDetail(course) {
                         <input type="text" id="course-location" value="${course.location || ''}" 
                                class="w-full px-3 py-2 border rounded" onchange="window.updateCourseInfo('${course.code}')">
                     </div>
-                    <div>
+                    <div class="flex flex-col min-h-[400px]">
                         <label class="block text-sm text-gray-600 mb-1">특이 사항:</label>
-                        <textarea id="course-notes" rows="3" class="w-full px-3 py-2 border rounded" 
+                        <textarea id="course-notes" class="w-full px-3 py-2 border rounded flex-1 resize-none" 
                                   onchange="window.updateCourseInfo('${course.code}')">${course.notes || ''}</textarea>
                     </div>
-                    <div>
+                    <div class="flex flex-col min-h-[400px]">
                         <label class="block text-sm font-semibold text-gray-700 mb-2">
                             <i class="fas fa-book mr-1 text-green-600"></i>교과목
                         </label>
-                        <div class="bg-green-100 p-3 rounded" id="subject-area-${course.code}">
+                        <div class="bg-green-100 p-3 rounded flex-1 overflow-y-auto" id="subject-area-${course.code}">
                             <div class="text-center text-gray-500 text-sm">
                                 <i class="fas fa-spinner fa-spin mr-2"></i>교과목 로딩 중...
                             </div>
