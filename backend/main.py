@@ -1463,6 +1463,17 @@ async def create_course(data: dict):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        
+        # 이모지 제거 (utf8mb4 미지원 DB 컬럼 대응)
+        def remove_emoji(text):
+            if not text:
+                return text
+            try:
+                # 4바이트 UTF-8 문자 모두 제거 (이모지 포함)
+                return ''.join(c for c in text if len(c.encode('utf-8')) < 4)
+            except:
+                return text
+        
         # morning_hours, afternoon_hours 컬럼이 없으면 추가
         try:
             cursor.execute("""
@@ -1480,6 +1491,9 @@ async def create_course(data: dict):
         except:
             pass  # 이미 존재하면 무시
         
+        # notes 필드 이모지 제거
+        notes_cleaned = remove_emoji(data.get('notes'))
+        
         query = """
             INSERT INTO courses (code, name, lecture_hours, project_hours, internship_hours,
                                 capacity, location, notes, start_date, lecture_end_date,
@@ -1490,7 +1504,7 @@ async def create_course(data: dict):
         cursor.execute(query, (
             data['code'], data['name'], data['lecture_hours'], data['project_hours'],
             data['internship_hours'], data['capacity'], data.get('location'),
-            data.get('notes'), data.get('start_date'), data.get('lecture_end_date'),
+            notes_cleaned, data.get('start_date'), data.get('lecture_end_date'),
             data.get('project_end_date'), data.get('internship_end_date'),
             data.get('final_end_date'), data.get('total_days'),
             data.get('morning_hours', 4), data.get('afternoon_hours', 4)
