@@ -3162,13 +3162,101 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
                                   lecture_end_date, project_end_date, internship_end_date,
                                   lecture_days, project_days, intern_days,
                                   weekend_days, holiday_count):
-    """상세 계산 과정 생성"""
+    """상세 계산 과정 생성 - 오전/오후 분할 고려"""
     from datetime import timedelta
+    from collections import defaultdict
     
     # 날짜 형식 헬퍼
     def format_date(d):
         weekdays = ['월', '화', '수', '목', '금', '토', '일']
         return f"{d.year}-{d.month:02d}-{d.day:02d} ({weekdays[d.weekday()]})"
+    
+    # 공휴일 set 생성
+    holidays_set = set([h['date'] for h in holidays_detail]) if holidays_detail else set()
+    
+    def is_workday(date):
+        return date.weekday() < 5 and date not in holidays_set
+    
+    # 상세 계산 로직 (오전/오후 분할 정확 처리)
+    def calculate_stage_detail(stage_name, start, hours, morning_h, afternoon_h, start_at_afternoon=False):
+        current = start
+        remaining = hours
+        monthly_hours = defaultdict(lambda: {'days': 0, 'hours': 0, 'detail': []})
+        
+        # 첫날 오후부터 시작하는 경우
+        first_day = True
+        
+        while remaining > 0:
+            if not is_workday(current):
+                current += timedelta(days=1)
+                continue
+            
+            month_key = f"{current.year}년 {current.month}월"
+            day_hours = 0
+            
+            # 첫날이고 오후부터 시작하는 경우
+            if first_day and start_at_afternoon:
+                # 오후만
+                if remaining >= afternoon_h:
+                    day_hours = afternoon_h
+                    remaining -= afternoon_h
+                else:
+                    day_hours = remaining
+                    remaining = 0
+                first_day = False
+            else:
+                # 일반적인 경우: 오전 + 오후
+                # 오전
+                if remaining >= morning_h:
+                    day_hours += morning_h
+                    remaining -= morning_h
+                elif remaining > 0:
+                    day_hours += remaining
+                    remaining = 0
+                
+                # 오후
+                if remaining >= afternoon_h:
+                    day_hours += afternoon_h
+                    remaining -= afternoon_h
+                elif remaining > 0:
+                    day_hours += remaining
+                    remaining = 0
+                
+                first_day = False
+            
+            if day_hours > 0:
+                monthly_hours[month_key]['hours'] += day_hours
+                monthly_hours[month_key]['days'] += 1
+            
+            current += timedelta(days=1)
+        
+        # 종료일 찾기
+        end_date = current - timedelta(days=1)
+        while not is_workday(end_date):
+            end_date -= timedelta(days=1)
+        
+        # 종료 시간 판단 (마지막 날의 시간으로)
+        last_day_hours = hours % (morning_h + afternoon_h)
+        if last_day_hours == 0:
+            end_time = "18:00"
+        elif last_day_hours <= morning_h:
+            end_time = "13:00"
+        else:
+            end_time = "18:00"
+        
+        # 월별 요약 생성
+        summary = f"\n【{stage_name}: {hours}시간】\n"
+        summary += f"  • 시작: {format_date(start)} {'14:00' if start_at_afternoon else '09:00'}\n"
+        summary += f"  • 종료: {format_date(end_date)} {end_time}\n\n"
+        
+        for month, data in sorted(monthly_hours.items()):
+            summary += f"  {month}:\n"
+            summary += f"    - 근무일: {data['days']}일\n"
+            summary += f"    - 수업시간: {data['hours']}시간\n"
+        
+        summary += f"\n  ✅ 총: {hours}시간 완료\n"
+        
+        return summary, end_date, (last_day_hours > morning_h if last_day_hours > 0 else True)
     
     # 공휴일 정보 포맷팅
     holidays_str = ""
@@ -3176,7 +3264,42 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
         for h in holidays_detail:
             holidays_str += f"\n  - {h['date'].year}-{h['date'].month:02d}-{h['date'].day:02d} ({h['weekday']}): {h['name']}"
     else:
-        holidays_str = "\n  없음"
+        holidays_str += "\n  없음"
+    
+    # 각 단계별 상세 계산
+    lecture_detail, lecture_actual_end, lecture_ends_afternoon = calculate_stage_detail(
+        "1단계: 이론", start_date, lecture_hours, morning_hours, afternoon_hours, False
+    )
+    
+    # 프로젝트 시작일 결정
+    if lecture_ends_afternoon:
+        # 이론이 하루 전체를 사용했다면 다음날부터
+        project_start = lecture_actual_end + timedelta(days=1)
+        while not is_workday(project_start):
+            project_start += timedelta(days=1)
+        project_starts_afternoon = False
+    else:
+        # 이론이 오전만 사용했다면 같은 날 오후부터
+        project_start = lecture_actual_end
+        project_starts_afternoon = True
+    
+    project_detail, project_actual_end, project_ends_afternoon = calculate_stage_detail(
+        "2단계: 프로젝트", project_start, project_hours, morning_hours, afternoon_hours, project_starts_afternoon
+    )
+    
+    # 현장실습 시작일 결정
+    if project_ends_afternoon:
+        intern_start = project_actual_end + timedelta(days=1)
+        while not is_workday(intern_start):
+            intern_start += timedelta(days=1)
+        intern_starts_afternoon = False
+    else:
+        intern_start = project_actual_end
+        intern_starts_afternoon = True
+    
+    intern_detail, intern_actual_end, _ = calculate_stage_detail(
+        "3단계: 현장실습", intern_start, internship_hours, morning_hours, afternoon_hours, intern_starts_afternoon
+    )
     
     details = f"""
 📊 과정 자동 계산 상세 내역
@@ -3200,33 +3323,18 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, inte
 
 🧮 단계별 계산 과정
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-【1단계: 이론 {lecture_hours}시간】
-  • 시작: {format_date(start_date)} 09:00
-  • 종료: {format_date(lecture_end_date)} 18:00
-  • 근무일: {lecture_days}일
-  • 계산: {lecture_hours}시간 ÷ {morning_hours + afternoon_hours}시간/일 = {lecture_days}일
-
-【2단계: 프로젝트 {project_hours}시간】
-  • 시작: {format_date(lecture_end_date + timedelta(days=1))} 09:00
-  • 종료: {format_date(project_end_date)} 18:00
-  • 근무일: {project_days}일
-  • 계산: {project_hours}시간 ÷ {morning_hours + afternoon_hours}시간/일 = {project_days}일
-
-【3단계: 현장실습 {internship_hours}시간】
-  • 시작: {format_date(project_end_date + timedelta(days=1))} 09:00
-  • 종료: {format_date(internship_end_date)} 18:00
-  • 근무일: {intern_days}일
-  • 계산: {internship_hours}시간 ÷ {morning_hours + afternoon_hours}시간/일 = {intern_days}일
+{lecture_detail}
+{project_detail}
+{intern_detail}
 
 📊 최종 요약
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• 교육 기간: {format_date(start_date)} ~ {format_date(internship_end_date)}
+• 교육 기간: {format_date(start_date)} ~ {format_date(intern_actual_end)}
 • 총 교육시간: {lecture_hours + project_hours + internship_hours}시간
 • 총 근무일: {lecture_days + project_days + intern_days}일
 • 주말 제외: {weekend_days}일
 • 공휴일 제외: {holiday_count}일
-• 실제 경과일: {(internship_end_date - start_date).days + 1}일
+• 실제 경과일: {(intern_actual_end - start_date).days + 1}일
 """
     
     return details
