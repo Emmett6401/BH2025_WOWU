@@ -7715,9 +7715,9 @@ window.autoCalculateDates = async function() {
     }
 }
 
-// 요일 번호를 한글로 변환
+// 요일 번호를 한글로 변환 (0=월요일, 1=화요일, ...)
 function getDayNameFromNumber(dayNum) {
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const days = ['월', '화', '수', '목', '금', '토', '일'];
     return dayNum !== null && dayNum !== undefined ? days[dayNum] : '-';
 }
 
@@ -7736,62 +7736,69 @@ window.showSubjectSelector = async function(courseCode) {
         const allSubjects = subjectsRes.data;
         const allInstructors = instructorsRes.data;
         
+        // 주강사만 필터링
+        const mainInstructors = allInstructors.filter(inst => inst.type === '주강사' || inst.type === 'main');
+        
         // 현재 과정에 선택된 과목 목록
         const selectedSubjects = courseSubjects[courseCode] || [];
         
         content.innerHTML = `
-            <h3 class="text-xl font-bold mb-4 text-gray-800">
+            <h3 class="text-2xl font-bold mb-4 text-gray-800">
                 <i class="fas fa-list mr-2"></i>교과목 선택 - ${courseCode}
             </h3>
-            <p class="text-sm text-gray-600 mb-4">
+            <p class="text-base text-gray-600 mb-6">
                 과정에 포함할 교과목을 선택하고, 요일/격주/담당강사를 수정할 수 있습니다.
             </p>
-            <div class="max-h-[500px] overflow-y-auto border rounded p-4">
+            <div class="max-h-[600px] overflow-y-auto border rounded p-4">
                 <table class="min-w-full table-fixed">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
-                            <th class="w-12 px-2 py-2 text-left text-xs">선택</th>
-                            <th class="w-20 px-2 py-2 text-left text-xs">과목코드</th>
-                            <th class="w-40 px-2 py-2 text-left text-xs">과목명</th>
-                            <th class="w-16 px-2 py-2 text-left text-xs">시수</th>
-                            <th class="w-24 px-2 py-2 text-left text-xs">요일</th>
-                            <th class="w-20 px-2 py-2 text-left text-xs">격주</th>
-                            <th class="w-40 px-2 py-2 text-left text-xs">담당강사</th>
+                            <th class="w-16 px-3 py-3 text-left text-sm font-semibold">선택</th>
+                            <th class="w-24 px-3 py-3 text-left text-sm font-semibold">과목코드</th>
+                            <th class="w-64 px-3 py-3 text-left text-sm font-semibold">과목명</th>
+                            <th class="w-20 px-3 py-3 text-left text-sm font-semibold">시수</th>
+                            <th class="w-28 px-3 py-3 text-left text-sm font-semibold">요일</th>
+                            <th class="w-24 px-3 py-3 text-left text-sm font-semibold">격주</th>
+                            <th class="w-48 px-3 py-3 text-left text-sm font-semibold">담당강사</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${allSubjects.map(s => {
                             const isSelected = selectedSubjects.includes(s.code);
+                            // 현재 강사명 찾기
+                            const currentInstructor = allInstructors.find(inst => inst.code === s.instructor_code);
+                            const instructorPlaceholder = currentInstructor ? currentInstructor.name : '강사 선택';
+                            
                             return `
                             <tr class="border-t hover:bg-gray-50" data-subject-code="${s.code}">
-                                <td class="px-2 py-2">
-                                    <input type="checkbox" class="subject-checkbox" value="${s.code}" 
+                                <td class="px-3 py-3">
+                                    <input type="checkbox" class="subject-checkbox w-4 h-4" value="${s.code}" 
                                            id="subject-${s.code}" ${isSelected ? 'checked' : ''}>
                                 </td>
-                                <td class="px-2 py-2 text-xs">${s.code}</td>
-                                <td class="px-2 py-2 text-xs">${s.name}</td>
-                                <td class="px-2 py-2 text-xs">${s.hours || '-'}시간</td>
-                                <td class="px-2 py-2">
-                                    <select class="subject-day-select text-xs border rounded px-1 py-1 w-full" data-subject-code="${s.code}">
-                                        <option value="0" ${s.day_of_week === 0 ? 'selected' : ''}>일</option>
-                                        <option value="1" ${s.day_of_week === 1 ? 'selected' : ''}>월</option>
-                                        <option value="2" ${s.day_of_week === 2 ? 'selected' : ''}>화</option>
-                                        <option value="3" ${s.day_of_week === 3 ? 'selected' : ''}>수</option>
-                                        <option value="4" ${s.day_of_week === 4 ? 'selected' : ''}>목</option>
-                                        <option value="5" ${s.day_of_week === 5 ? 'selected' : ''}>금</option>
-                                        <option value="6" ${s.day_of_week === 6 ? 'selected' : ''}>토</option>
+                                <td class="px-3 py-3 text-sm">${s.code}</td>
+                                <td class="px-3 py-3 text-sm font-medium">${s.name}</td>
+                                <td class="px-3 py-3 text-sm">${s.hours || '-'}시간</td>
+                                <td class="px-3 py-3">
+                                    <select class="subject-day-select text-sm border rounded px-2 py-2 w-full" data-subject-code="${s.code}">
+                                        <option value="0" ${s.day_of_week === 0 ? 'selected' : ''}>월</option>
+                                        <option value="1" ${s.day_of_week === 1 ? 'selected' : ''}>화</option>
+                                        <option value="2" ${s.day_of_week === 2 ? 'selected' : ''}>수</option>
+                                        <option value="3" ${s.day_of_week === 3 ? 'selected' : ''}>목</option>
+                                        <option value="4" ${s.day_of_week === 4 ? 'selected' : ''}>금</option>
+                                        <option value="5" ${s.day_of_week === 5 ? 'selected' : ''}>토</option>
+                                        <option value="6" ${s.day_of_week === 6 ? 'selected' : ''}>일</option>
                                     </select>
                                 </td>
-                                <td class="px-2 py-2">
-                                    <select class="subject-biweekly-select text-xs border rounded px-1 py-1 w-full" data-subject-code="${s.code}">
+                                <td class="px-3 py-3">
+                                    <select class="subject-biweekly-select text-sm border rounded px-2 py-2 w-full" data-subject-code="${s.code}">
                                         <option value="0" ${!s.is_biweekly || s.is_biweekly === 0 ? 'selected' : ''}>매주</option>
                                         <option value="1" ${s.is_biweekly === 1 ? 'selected' : ''}>격주</option>
                                     </select>
                                 </td>
-                                <td class="px-2 py-2">
-                                    <select class="subject-instructor-select text-xs border rounded px-1 py-1 w-full" data-subject-code="${s.code}">
-                                        <option value="">선택</option>
-                                        ${allInstructors.map(inst => `
+                                <td class="px-3 py-3">
+                                    <select class="subject-instructor-select text-sm border rounded px-2 py-2 w-full" data-subject-code="${s.code}">
+                                        <option value="" disabled>${instructorPlaceholder}</option>
+                                        ${mainInstructors.map(inst => `
                                             <option value="${inst.code}" ${s.instructor_code === inst.code ? 'selected' : ''}>
                                                 ${inst.name}
                                             </option>
@@ -7804,11 +7811,11 @@ window.showSubjectSelector = async function(courseCode) {
                     </tbody>
                 </table>
             </div>
-            <div class="mt-6 flex justify-end space-x-2">
-                <button onclick="window.hideSubjectSelector()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded">
+            <div class="mt-8 flex justify-end space-x-3">
+                <button onclick="window.hideSubjectSelector()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-8 py-3 rounded text-base font-semibold">
                     <i class="fas fa-times mr-2"></i>취소
                 </button>
-                <button onclick="window.saveSelectedSubjects('${courseCode}')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
+                <button onclick="window.saveSelectedSubjects('${courseCode}')" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded text-base font-semibold">
                     <i class="fas fa-save mr-2"></i>저장 및 적용
                 </button>
             </div>
