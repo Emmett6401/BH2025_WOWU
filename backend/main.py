@@ -5781,7 +5781,8 @@ async def auto_generate_timetables(data: dict):
                 continue
             
             # 오늘 요일에 배정된 교과목 찾기
-            today_weekday = current_date.weekday()
+            # subjects 테이블의 day_of_week는 1(월)~7(일)이므로 weekday()+1로 변환
+            today_weekday = current_date.weekday() + 1  # 0(월)~6(일) → 1(월)~7(일)
             if today_weekday not in day_subject_map:
                 current_date += timedelta(days=1)
                 afternoon_slot_available = False
