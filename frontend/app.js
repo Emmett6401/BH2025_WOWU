@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.44'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.46'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -2626,6 +2626,11 @@ window.showTab = function(tab, addToHistory = true) {
             stopDashboardAutoRefresh();
             removeDashboardActivityListeners();
             loadNotices();
+            break;
+        case 'backup-manager':
+            stopDashboardAutoRefresh();
+            removeDashboardActivityListeners();
+            loadBackupManager();
             break;
         default:
             // 대시보드가 아닌 모든 탭에서는 자동 새로고침 중지
@@ -16197,3 +16202,165 @@ if (document.readyState === 'loading') {
     window.restoreBGMSettings(); // BGM 설정 복원 (헤더)
     autoPlayBGM(); // BGM 자동 재생
 }
+
+// ==================== DB 백업 관리 ====================
+async function loadBackupManager() {
+    const content = document.getElementById('content');
+    content.innerHTML = `
+        <div class="max-w-6xl mx-auto p-6">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-database mr-2 text-blue-600"></i>
+                        데이터베이스 백업 관리
+                    </h2>
+                    <button onclick="createBackupNow()" class="btn-primary px-6 py-2 rounded-lg">
+                        <i class="fas fa-plus mr-2"></i>백업 생성
+                    </button>
+                </div>
+
+                <!-- 백업 설정 -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold text-gray-700 mb-3">
+                        <i class="fas fa-cog mr-2"></i>백업 설정
+                    </h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                백업 보관 기간 (일)
+                            </label>
+                            <input type="number" id="backup-keep-days" value="7" min="1" max="30" 
+                                class="w-full px-3 py-2 border rounded-lg" />
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="cleanupOldBackups()" class="btn-secondary px-4 py-2 rounded-lg">
+                                <i class="fas fa-trash mr-2"></i>오래된 백업 정리
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 백업 목록 -->
+                <div id="backup-list" class="space-y-3">
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-spinner fa-spin text-4xl mb-3"></i>
+                        <p>백업 목록을 불러오는 중...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 백업 목록 로드
+    await refreshBackupList();
+}
+
+async function refreshBackupList() {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/backup/list`);
+        const backups = response.data.backups;
+
+        const listContainer = document.getElementById('backup-list');
+        
+        if (backups.length === 0) {
+            listContainer.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-inbox text-4xl mb-3"></i>
+                    <p>백업 파일이 없습니다</p>
+                </div>
+            `;
+            return;
+        }
+
+        listContainer.innerHTML = backups.map(backup => {
+            const sizeMB = (backup.size / 1024 / 1024).toFixed(2);
+            const date = new Date(backup.created_at);
+            const dateStr = date.toLocaleString('ko-KR');
+
+            return `
+                <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-file-archive text-3xl text-blue-500"></i>
+                        <div>
+                            <p class="font-semibold text-gray-800">${backup.filename}</p>
+                            <p class="text-sm text-gray-500">
+                                <i class="fas fa-clock mr-1"></i>${dateStr}
+                                <span class="mx-2">|</span>
+                                <i class="fas fa-hdd mr-1"></i>${sizeMB} MB
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="deleteBackup('${backup.filename}')" 
+                            class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                            <i class="fas fa-trash mr-1"></i>삭제
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('백업 목록 로드 실패:', error);
+        showAlert('백업 목록을 불러오지 못했습니다', 'error');
+    }
+}
+
+async function createBackupNow() {
+    if (!confirm('현재 데이터베이스의 백업을 생성하시겠습니까?')) {
+        return;
+    }
+
+    try {
+        showLoading('백업 생성 중...');
+        const response = await axios.post(`${API_BASE_URL}/api/backup/create`);
+        
+        hideLoading();
+        
+        if (response.data.success) {
+            showAlert(`백업 생성 완료!\n총 레코드: ${response.data.total_records}개\n파일 크기: ${(response.data.file_size / 1024 / 1024).toFixed(2)} MB`, 'success');
+            await refreshBackupList();
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('백업 생성 실패:', error);
+        showAlert('백업 생성에 실패했습니다', 'error');
+    }
+}
+
+async function deleteBackup(filename) {
+    if (!confirm(`백업 파일 "${filename}"을(를) 삭제하시겠습니까?`)) {
+        return;
+    }
+
+    try {
+        await axios.delete(`${API_BASE_URL}/api/backup/delete/${filename}`);
+        showAlert('백업 파일이 삭제되었습니다', 'success');
+        await refreshBackupList();
+    } catch (error) {
+        console.error('백업 삭제 실패:', error);
+        showAlert('백업 삭제에 실패했습니다', 'error');
+    }
+}
+
+async function cleanupOldBackups() {
+    const keepDays = parseInt(document.getElementById('backup-keep-days').value);
+    
+    if (!confirm(`${keepDays}일 이전의 백업 파일을 모두 삭제하시겠습니까?`)) {
+        return;
+    }
+
+    try {
+        showLoading('오래된 백업 정리 중...');
+        const response = await axios.post(`${API_BASE_URL}/api/backup/auto-cleanup?keep_days=${keepDays}`);
+        hideLoading();
+        
+        showAlert(response.data.message, 'success');
+        await refreshBackupList();
+    } catch (error) {
+        hideLoading();
+        console.error('백업 정리 실패:', error);
+        showAlert('백업 정리에 실패했습니다', 'error');
+    }
+}
+
