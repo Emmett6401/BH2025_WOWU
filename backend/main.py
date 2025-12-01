@@ -3157,6 +3157,80 @@ def generate_calculation_pdf(calculation_result: dict, course_code: str):
         print(traceback.format_exc())
         raise
 
+def generate_detailed_calculation(start_date, lecture_hours, project_hours, internship_hours,
+                                  morning_hours, afternoon_hours, holidays_detail,
+                                  lecture_end_date, project_end_date, internship_end_date,
+                                  lecture_days, project_days, intern_days,
+                                  weekend_days, holiday_count):
+    """상세 계산 과정 생성"""
+    from datetime import timedelta
+    
+    # 날짜 형식 헬퍼
+    def format_date(d):
+        weekdays = ['월', '화', '수', '목', '금', '토', '일']
+        return f"{d.year}-{d.month:02d}-{d.day:02d} ({weekdays[d.weekday()]})"
+    
+    # 공휴일 정보 포맷팅
+    holidays_str = ""
+    if holidays_detail:
+        for h in holidays_detail:
+            holidays_str += f"\n  - {h['date'].year}-{h['date'].month:02d}-{h['date'].day:02d} ({h['weekday']}): {h['name']}"
+    else:
+        holidays_str = "\n  없음"
+    
+    details = f"""
+📊 과정 자동 계산 상세 내역
+
+📋 기본 정보
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• 시작일: {format_date(start_date)}
+• 일일 수업: 오전 {morning_hours}시간 + 오후 {afternoon_hours}시간 = {morning_hours + afternoon_hours}시간
+• 주간 수업: {(morning_hours + afternoon_hours) * 5}시간 (월~금)
+
+🎯 교육 단계별 시간
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• 이론: {lecture_hours}시간
+• 프로젝트: {project_hours}시간
+• 현장실습: {internship_hours}시간
+• 총: {lecture_hours + project_hours + internship_hours}시간
+
+📅 공휴일 (과정 기간 내)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{holidays_str}
+• 총 공휴일: {holiday_count}일
+
+🧮 단계별 계산 과정
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【1단계: 이론 {lecture_hours}시간】
+  • 시작: {format_date(start_date)} 09:00
+  • 종료: {format_date(lecture_end_date)} 18:00
+  • 근무일: {lecture_days}일
+  • 계산: {lecture_hours}시간 ÷ {morning_hours + afternoon_hours}시간/일 = {lecture_days}일
+
+【2단계: 프로젝트 {project_hours}시간】
+  • 시작: {format_date(lecture_end_date + timedelta(days=1))} 09:00
+  • 종료: {format_date(project_end_date)} 18:00
+  • 근무일: {project_days}일
+  • 계산: {project_hours}시간 ÷ {morning_hours + afternoon_hours}시간/일 = {project_days}일
+
+【3단계: 현장실습 {internship_hours}시간】
+  • 시작: {format_date(project_end_date + timedelta(days=1))} 09:00
+  • 종료: {format_date(internship_end_date)} 18:00
+  • 근무일: {intern_days}일
+  • 계산: {internship_hours}시간 ÷ {morning_hours + afternoon_hours}시간/일 = {intern_days}일
+
+📊 최종 요약
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• 교육 기간: {format_date(start_date)} ~ {format_date(internship_end_date)}
+• 총 교육시간: {lecture_hours + project_hours + internship_hours}시간
+• 총 근무일: {lecture_days + project_days + intern_days}일
+• 주말 제외: {weekend_days}일
+• 공휴일 제외: {holiday_count}일
+• 실제 경과일: {(internship_end_date - start_date).days + 1}일
+"""
+    
+    return details
+
 @app.post("/api/courses/calculate-dates")
 async def calculate_course_dates(data: dict):
     """
@@ -3227,13 +3301,35 @@ async def calculate_course_dates(data: dict):
         # 총 일수 계산 (실제 캘린더 일수)
         total_days = (internship_end_date - start_date).days
         
-        # 과정 기간 내 공휴일 목록 생성
+        # 과정 기간 내 공휴일 목록 생성 (상세)
         holidays_in_period = []
+        holidays_detail = []  # 상세 정보 저장
         current = start_date
+        
+        # 공휴일 이름 조회를 위한 DB 연결
+        conn_holiday = get_db_connection()
+        cursor_holiday = conn_holiday.cursor(pymysql.cursors.DictCursor)
+        
         while current <= internship_end_date:
             if current in holidays:
+                # 공휴일 이름 조회
+                cursor_holiday.execute(
+                    "SELECT name FROM holidays WHERE holiday_date = %s",
+                    (current,)
+                )
+                holiday_info = cursor_holiday.fetchone()
+                holiday_name = holiday_info['name'] if holiday_info else '공휴일'
+                
                 holidays_in_period.append(current)
+                holidays_detail.append({
+                    'date': current,
+                    'name': holiday_name,
+                    'weekday': ['월', '화', '수', '목', '금', '토', '일'][current.weekday()]
+                })
             current += timedelta(days=1)
+        
+        cursor_holiday.close()
+        conn_holiday.close()
         
         # 공휴일을 그룹화 (연속된 날짜는 범위로 표시)
         holiday_strings = []
@@ -3269,6 +3365,15 @@ async def calculate_course_dates(data: dict):
         # 제외 일수 (주말 + 공휴일)
         excluded_days = weekend_days + len(holidays_in_period)
         
+        # 상세 계산 과정 생성
+        calculation_details = generate_detailed_calculation(
+            start_date, lecture_hours, project_hours, internship_hours,
+            morning_hours, afternoon_hours, holidays_detail,
+            lecture_end_date, project_end_date, internship_end_date,
+            lecture_days, project_days, intern_days,
+            weekend_days, len(holidays_in_period)
+        )
+        
         result = {
             "start_date": start_date_str,
             "lecture_end_date": lecture_end_date.strftime('%Y-%m-%d'),
@@ -3284,6 +3389,7 @@ async def calculate_course_dates(data: dict):
             "holiday_count": len(holidays_in_period),
             "excluded_days": excluded_days,
             "holidays_formatted": ", ".join(holiday_strings) if holiday_strings else "없음",
+            "holidays_detail": holidays_detail,
             "lecture_hours": lecture_hours,
             "project_hours": project_hours,
             "internship_hours": internship_hours,
@@ -3291,7 +3397,8 @@ async def calculate_course_dates(data: dict):
             "morning_hours": morning_hours,
             "afternoon_hours": afternoon_hours,
             "daily_hours": daily_hours,
-            "course_code": data.get('course_code', '')
+            "course_code": data.get('course_code', ''),
+            "calculation_details": calculation_details
         }
         
         # 자동 저장 옵션이 있으면 시간표도 생성

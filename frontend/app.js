@@ -7665,6 +7665,15 @@ window.showCalculationResult = function(result, startDate, endDate) {
                 <div class="text-red-700 font-semibold">${result.holidays_formatted}</div>
             </div>
             
+            ${result.calculation_details ? `
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-300 max-h-96 overflow-y-auto">
+                <div class="font-semibold text-gray-900 mb-2 flex items-center">
+                    <i class="fas fa-calculator mr-2"></i>상세 계산 과정
+                </div>
+                <pre class="text-xs text-gray-700 font-mono whitespace-pre-wrap">${result.calculation_details}</pre>
+            </div>
+            ` : ''}
+            
             <div class="bg-yellow-50 p-3 rounded-lg border-l-4 border-yellow-500">
                 <div class="flex items-center text-yellow-800">
                     <i class="fas fa-info-circle mr-2"></i>
@@ -7716,15 +7725,18 @@ window.generateTimetable = async function(courseCode, calculationResult) {
         return;
     }
     
-    // 확인 대화상자
-    const confirmed = confirm(`${courseCode} 과정의 시간표를 자동으로 생성하시겠습니까?\n\n⚠️ 기존 시간표가 있다면 모두 삭제됩니다!`);
+    // 확인 모달
+    const confirmed = await window.showConfirm(
+        `📅 ${courseCode} 과정의 시간표를 자동으로 생성하시겠습니까?\n\n` +
+        `⚠️ 기존 시간표가 있다면 모두 삭제됩니다!`
+    );
     if (!confirmed) return;
     
     try {
         window.showLoading('시간표를 생성하는 중...');
         
         // 과정 정보 가져오기
-        const courseRes = await axios.get(`${API_BASE_URL}/api/courses`);
+        const courseRes = await axios.get(`/api/courses`);
         const course = courseRes.data.find(c => c.code === courseCode);
         
         if (!course) {
@@ -7735,7 +7747,7 @@ window.generateTimetable = async function(courseCode, calculationResult) {
         const subjectCodes = course.subjects || [];
         
         // 시간표 자동 생성 API 호출
-        const response = await axios.post(`${API_BASE_URL}/api/timetables/auto-generate`, {
+        const response = await axios.post(`/api/timetables/auto-generate`, {
             course_code: courseCode,
             start_date: course.start_date,
             lecture_hours: course.lecture_hours || 0,
@@ -8283,7 +8295,7 @@ window.showCourseForm = function(code = null) {
                 <i class="fas fa-times mr-2"></i>취소
             </button>
             <button type="button" onclick="window.saveCourse('${code || ''}')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
-                <i class="fas fa-save mr-2"></i>${code ? '수정' : '추가'}
+                <i class="fas fa-save mr-2"></i>저장
             </button>
         </div>
     `;
