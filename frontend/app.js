@@ -7769,11 +7769,11 @@ window.showSubjectSelector = async function(courseCode) {
                             const mainInstructorCode = s.main_instructor;
                             const mainInstructorInfo = allInstructors.find(inst => inst.code === mainInstructorCode);
                             
-                            // 기본 표시 텍스트: "주강사명-전공" 형식 (major 필드 사용)
-                            let defaultInstructorText = '강사 선택';
+                            // 현재 교과목에 지정된 강사 표시 (이름-전공 형식)
+                            let currentInstructorDisplay = '지정 안됨';
                             if (mainInstructorInfo) {
                                 const major = mainInstructorInfo.major || '전공미지정';
-                                defaultInstructorText = `${mainInstructorInfo.name}-${major}`;
+                                currentInstructorDisplay = `${mainInstructorInfo.name}-${major}`;
                             }
                             
                             return `
@@ -7803,16 +7803,20 @@ window.showSubjectSelector = async function(courseCode) {
                                     </select>
                                 </td>
                                 <td class="px-3 py-3">
-                                    <select class="subject-instructor-select text-sm border rounded px-2 py-2 w-full" data-subject-code="${s.code}">
-                                        ${mainInstructors.map(inst => {
-                                            const major = inst.major || '전공미지정';
-                                            const isMainInstructor = mainInstructorCode === inst.code;
-                                            return `
-                                            <option value="${inst.code}" ${isMainInstructor ? 'selected' : ''}>
-                                                ${inst.name}-${major}
-                                            </option>
-                                        `}).join('')}
-                                    </select>
+                                    <div class="flex flex-col gap-1">
+                                        <div class="text-xs text-gray-500">현재: ${currentInstructorDisplay}</div>
+                                        <select class="subject-instructor-select text-sm border rounded px-2 py-1 w-full" data-subject-code="${s.code}">
+                                            <option value="">선택 안함 (현재 유지)</option>
+                                            ${mainInstructors.map(inst => {
+                                                const major = inst.major || '전공미지정';
+                                                const isCurrentInstructor = mainInstructorCode === inst.code;
+                                                return `
+                                                <option value="${inst.code}" ${isCurrentInstructor ? 'selected' : ''}>
+                                                    ${inst.name}-${major}
+                                                </option>
+                                            `}).join('')}
+                                        </select>
+                                    </div>
                                 </td>
                             </tr>
                         `;
