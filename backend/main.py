@@ -1587,13 +1587,31 @@ async def update_course(code: str, data: dict):
 
 @app.delete("/api/courses/{code}")
 async def delete_course(code: str):
-    """과정 삭제"""
+    """과정 삭제 (관련 데이터 cascade)"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        
+        # 1. 시간표 삭제
+        cursor.execute("DELETE FROM timetables WHERE course_code = %s", (code,))
+        
+        # 2. 훈련일지 삭제
+        cursor.execute("DELETE FROM training_logs WHERE course_code = %s", (code,))
+        
+        # 3. 과정-교과목 연결 삭제
+        cursor.execute("DELETE FROM course_subjects WHERE course_code = %s", (code,))
+        
+        # 4. 과정 삭제
         cursor.execute("DELETE FROM courses WHERE code = %s", (code,))
+        
         conn.commit()
-        return {"message": "과정이 삭제되었습니다"}
+        return {"message": "과정 및 관련 데이터가 삭제되었습니다"}
+    except Exception as e:
+        conn.rollback()
+        import traceback
+        print(f"과정 삭제 오류: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"과정 삭제 실패: {str(e)}")
     finally:
         conn.close()
 

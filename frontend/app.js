@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.48'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.52'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -9928,8 +9928,7 @@ function renderTimetables() {
                 <table class="min-w-full bg-white" id="timetable-list">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="px-3 py-2 text-left text-xs">날짜</th>
-                            <th class="px-3 py-2 text-left text-xs">주차</th>
+                            <th class="px-3 py-2 text-left text-xs">날짜(요일)</th>
                             <th class="px-3 py-2 text-left text-xs">일차</th>
                             <th class="px-3 py-2 text-left text-xs">과목</th>
                             <th class="px-3 py-2 text-left text-xs">강사</th>
@@ -9994,11 +9993,15 @@ function renderTimetables() {
                                 const progressPercent = subjectTotalHours > 0 ? Math.round((accumulatedHours / subjectTotalHours) * 100) : 0;
                                 const isCompleted = accumulatedHours >= subjectTotalHours && subjectTotalHours > 0;
                             
+                            // 요일 계산
+                            const classDate = new Date(tt.class_date);
+                            const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+                            const dayOfWeek = dayNames[classDate.getDay()];
+                            
                             return `
                             <tr class="border-t hover:bg-gray-50 ${isToday ? 'bg-yellow-100 border-l-4 border-yellow-500' : ''}" ${isToday ? 'id="today-timetable-row"' : ''}>
-                                <td class="px-3 py-2 text-xs ${isToday ? 'font-bold text-yellow-900' : ''}">${tt.class_date}${isToday ? ' <span class="text-yellow-600">(오늘)</span>' : ''}</td>
-                                <td class="px-3 py-2 text-xs">${tt.week_number || '-'}주차</td>
-                                <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
+                                <td class="px-3 py-2 text-xs ${isToday ? 'font-bold text-yellow-900' : ''}">${tt.class_date} (${dayOfWeek})${isToday ? ' <span class="text-yellow-600">(오늘)</span>' : ''}</td>
+                                <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일참</td>
                                 <td class="px-3 py-2 text-xs">${tt.subject_name || tt.subject_code || '-'}</td>
                                 <td class="px-3 py-2 text-xs">${tt.instructor_name || tt.instructor_code || '-'}</td>
                                 <td class="px-3 py-2 text-xs">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
@@ -10558,7 +10561,6 @@ function renderTrainingLogsTable(timetables) {
                     <tr>
                         <th class="px-2 py-2 text-center text-xs w-12">사진</th>
                         <th class="px-3 py-2 text-left text-xs">날짜</th>
-                        <th class="px-3 py-2 text-left text-xs">주차</th>
                         <th class="px-3 py-2 text-left text-xs">일차</th>
                         <th class="px-3 py-2 text-left text-xs">강의시수</th>
                         <th class="px-3 py-2 text-left text-xs">과목</th>
@@ -10585,11 +10587,6 @@ function renderTrainingLogsTable(timetables) {
                         const classDate = new Date(tt.class_date);
                         const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
                         const dayOfWeek = dayNames[classDate.getDay()];
-                        
-                        // 주차 계산 (2024-11-07 기준)
-                        const diffTime = classDate - courseStartDate;
-                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                        const weekNumber = Math.floor(diffDays / 7) + 1;
                         
                         // 강의시수 계산 (현재시수/총시수)
                         let hoursDisplay = '-';
@@ -10619,7 +10616,6 @@ function renderTrainingLogsTable(timetables) {
                                     `}
                                 </td>
                                 <td class="px-3 py-2 text-xs">${tt.class_date} (${dayOfWeek})</td>
-                                <td class="px-3 py-2 text-xs">${weekNumber}주차</td>
                                 <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
                                 <td class="px-3 py-2 text-xs font-semibold text-blue-600">${hoursDisplay}</td>
                                 <td class="px-3 py-2 text-xs">${tt.subject_name || '-'}</td>
