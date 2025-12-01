@@ -7671,6 +7671,23 @@ window.showCalculationResult = function(result, startDate, endDate) {
                     <span class="text-sm font-semibold">비고란에 자동으로 입력되었습니다!</span>
                 </div>
             </div>
+            
+            <div class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <i class="fas fa-calendar-plus text-blue-600 text-2xl mr-3"></i>
+                        <div>
+                            <div class="font-semibold text-gray-800">시간표 자동 생성</div>
+                            <div class="text-sm text-gray-600">계산된 일정으로 시간표를 자동으로 생성합니다</div>
+                        </div>
+                    </div>
+                    <button onclick="window.generateTimetable('${result.course_code}', ${JSON.stringify(result).replace(/"/g, '&quot;')})" 
+                            class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-lg font-semibold transition-all shadow-lg flex items-center">
+                        <i class="fas fa-magic mr-2"></i>
+                        시간표 생성
+                    </button>
+                </div>
+            </div>
         </div>
     `;
     
@@ -7685,6 +7702,78 @@ window.showCalculationResult = function(result, startDate, endDate) {
     
     // 모달 표시
     modal.classList.remove('hidden');
+}
+
+// 시간표 자동 생성
+window.generateTimetable = async function(courseCode, calculationResult) {
+    if (!courseCode) {
+        // 현재 편집 중인 과정에서 course_code 가져오기
+        courseCode = document.getElementById('form-course-code')?.value;
+    }
+    
+    if (!courseCode) {
+        window.showAlert('과정 코드를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    // 확인 대화상자
+    const confirmed = confirm(`${courseCode} 과정의 시간표를 자동으로 생성하시겠습니까?\n\n⚠️ 기존 시간표가 있다면 모두 삭제됩니다!`);
+    if (!confirmed) return;
+    
+    try {
+        window.showLoading('시간표를 생성하는 중...');
+        
+        // 과정 정보 가져오기
+        const courseRes = await axios.get(`${API_BASE_URL}/api/courses`);
+        const course = courseRes.data.find(c => c.code === courseCode);
+        
+        if (!course) {
+            throw new Error('과정 정보를 찾을 수 없습니다.');
+        }
+        
+        // 교과목 코드 가져오기
+        const subjectCodes = course.subjects || [];
+        
+        // 시간표 자동 생성 API 호출
+        const response = await axios.post(`${API_BASE_URL}/api/timetables/auto-generate`, {
+            course_code: courseCode,
+            start_date: course.start_date,
+            lecture_hours: course.lecture_hours || 0,
+            project_hours: course.project_hours || 0,
+            internship_hours: course.internship_hours || 0,
+            morning_hours: course.morning_hours || 4,
+            afternoon_hours: course.afternoon_hours || 4,
+            subject_codes: subjectCodes
+        });
+        
+        window.hideLoading();
+        
+        // 결과 표시
+        window.showAlert(
+            `✅ 시간표 자동 생성 완료!\n\n` +
+            `생성된 시간표: ${response.data.generated_count}개\n\n` +
+            `시간표 메뉴에서 확인하세요.`,
+            'success'
+        );
+        
+        // 모달 닫기
+        const modal = document.getElementById('alert-modal');
+        if (modal) modal.classList.add('hidden');
+        
+        // 시간표 새로고침 (시간표 탭이 열려있다면)
+        if (typeof loadTimetables === 'function') {
+            await loadTimetables();
+        }
+        
+    } catch (error) {
+        window.hideLoading();
+        console.error('시간표 생성 실패:', error);
+        window.showAlert(
+            '❌ 시간표 생성 실패\n\n' + 
+            (error.response?.data?.detail || error.message),
+            'error'
+        );
+    }
 }
 
 // 자동계산 버튼 클릭 시 날짜 자동 계산

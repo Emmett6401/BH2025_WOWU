@@ -5032,6 +5032,247 @@ async def text_to_speech(data: dict):
         print(f"TTS 오류 스택: {error_trace}")
         raise HTTPException(status_code=500, detail=f"TTS 생성 실패: {str(e)}")
 
+@app.post("/api/timetables/auto-generate")
+async def auto_generate_timetables(data: dict):
+    """시간표 자동 생성
+    
+    Args:
+        course_code: 과정 코드
+        start_date: 시작일
+        lecture_hours: 이론 시간
+        project_hours: 프로젝트 시간
+        internship_hours: 현장실습 시간
+        morning_hours: 오전 시간 (기본 4)
+        afternoon_hours: 오후 시간 (기본 4)
+        subject_codes: 교과목 코드 리스트
+    """
+    conn = get_db_connection()
+    try:
+        course_code = data['course_code']
+        start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+        lecture_hours = data['lecture_hours']
+        project_hours = data['project_hours']
+        internship_hours = data['internship_hours']
+        morning_hours = data.get('morning_hours', 4)
+        afternoon_hours = data.get('afternoon_hours', 4)
+        daily_hours = morning_hours + afternoon_hours
+        subject_codes = data.get('subject_codes', [])
+        
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 기존 시간표 삭제
+        cursor.execute("DELETE FROM timetables WHERE course_code = %s", (course_code,))
+        
+        # 공휴일 목록 가져오기
+        cursor.execute("SELECT date FROM holidays ORDER BY date")
+        holidays = [row['date'] for row in cursor.fetchall()]
+        
+        # 교과목 정보 가져오기
+        if subject_codes:
+            placeholders = ','.join(['%s'] * len(subject_codes))
+            cursor.execute(f"""
+                SELECT code, name, hours, main_instructor
+                FROM subjects
+                WHERE code IN ({placeholders})
+            """, subject_codes)
+            subjects = cursor.fetchall()
+        else:
+            subjects = []
+        
+        # 시간표 생성 헬퍼 함수
+        def is_weekend(date_obj):
+            return date_obj.weekday() >= 5  # 5=토, 6=일
+        
+        def is_holiday(date_obj):
+            return date_obj in holidays
+        
+        timetables = []
+        current_date = start_date
+        week_number = 1
+        day_number = 1
+        
+        # 1단계: 이론 (lecture)
+        if lecture_hours > 0 and subjects:
+            remaining_hours = lecture_hours
+            subject_idx = 0
+            subject_remaining = subjects[subject_idx]['hours'] if subjects else 0
+            
+            while remaining_hours > 0:
+                if is_weekend(current_date) or is_holiday(current_date):
+                    current_date += pd.Timedelta(days=1)
+                    continue
+                
+                # 오전 수업
+                if remaining_hours >= morning_hours and subject_remaining > 0:
+                    hours_to_use = min(morning_hours, subject_remaining, remaining_hours)
+                    timetables.append({
+                        'course_code': course_code,
+                        'subject_code': subjects[subject_idx]['code'],
+                        'class_date': current_date,
+                        'start_time': '09:00:00',
+                        'end_time': f'{9 + hours_to_use:02d}:00:00',
+                        'instructor_code': subjects[subject_idx]['main_instructor'],
+                        'type': 'lecture',
+                        'week_number': week_number,
+                        'day_number': day_number
+                    })
+                    remaining_hours -= hours_to_use
+                    subject_remaining -= hours_to_use
+                
+                # 오후 수업
+                if remaining_hours >= afternoon_hours and subject_remaining > 0:
+                    hours_to_use = min(afternoon_hours, subject_remaining, remaining_hours)
+                    timetables.append({
+                        'course_code': course_code,
+                        'subject_code': subjects[subject_idx]['code'],
+                        'class_date': current_date,
+                        'start_time': '14:00:00',
+                        'end_time': f'{14 + hours_to_use:02d}:00:00',
+                        'instructor_code': subjects[subject_idx]['main_instructor'],
+                        'type': 'lecture',
+                        'week_number': week_number,
+                        'day_number': day_number
+                    })
+                    remaining_hours -= hours_to_use
+                    subject_remaining -= hours_to_use
+                
+                # 다음 교과목으로
+                if subject_remaining <= 0:
+                    subject_idx += 1
+                    if subject_idx < len(subjects):
+                        subject_remaining = subjects[subject_idx]['hours']
+                
+                current_date += pd.Timedelta(days=1)
+                if current_date.weekday() == 0:  # 월요일
+                    week_number += 1
+                day_number += 1
+        
+        # 2단계: 프로젝트 (project)
+        if project_hours > 0:
+            remaining_hours = project_hours
+            
+            while remaining_hours > 0:
+                if is_weekend(current_date) or is_holiday(current_date):
+                    current_date += pd.Timedelta(days=1)
+                    continue
+                
+                # 오전
+                if remaining_hours >= morning_hours:
+                    timetables.append({
+                        'course_code': course_code,
+                        'subject_code': None,
+                        'class_date': current_date,
+                        'start_time': '09:00:00',
+                        'end_time': f'{9 + morning_hours:02d}:00:00',
+                        'instructor_code': None,
+                        'type': 'project',
+                        'week_number': week_number,
+                        'day_number': day_number
+                    })
+                    remaining_hours -= morning_hours
+                
+                # 오후
+                if remaining_hours >= afternoon_hours:
+                    timetables.append({
+                        'course_code': course_code,
+                        'subject_code': None,
+                        'class_date': current_date,
+                        'start_time': '14:00:00',
+                        'end_time': f'{14 + afternoon_hours:02d}:00:00',
+                        'instructor_code': None,
+                        'type': 'project',
+                        'week_number': week_number,
+                        'day_number': day_number
+                    })
+                    remaining_hours -= afternoon_hours
+                
+                current_date += pd.Timedelta(days=1)
+                if current_date.weekday() == 0:
+                    week_number += 1
+                day_number += 1
+        
+        # 3단계: 현장실습 (internship)
+        if internship_hours > 0:
+            remaining_hours = internship_hours
+            
+            while remaining_hours > 0:
+                if is_weekend(current_date) or is_holiday(current_date):
+                    current_date += pd.Timedelta(days=1)
+                    continue
+                
+                # 오전
+                if remaining_hours >= morning_hours:
+                    timetables.append({
+                        'course_code': course_code,
+                        'subject_code': None,
+                        'class_date': current_date,
+                        'start_time': '09:00:00',
+                        'end_time': f'{9 + morning_hours:02d}:00:00',
+                        'instructor_code': None,
+                        'type': 'internship',
+                        'week_number': week_number,
+                        'day_number': day_number
+                    })
+                    remaining_hours -= morning_hours
+                
+                # 오후
+                if remaining_hours >= afternoon_hours:
+                    timetables.append({
+                        'course_code': course_code,
+                        'subject_code': None,
+                        'class_date': current_date,
+                        'start_time': '14:00:00',
+                        'end_time': f'{14 + afternoon_hours:02d}:00:00',
+                        'instructor_code': None,
+                        'type': 'internship',
+                        'week_number': week_number,
+                        'day_number': day_number
+                    })
+                    remaining_hours -= afternoon_hours
+                
+                current_date += pd.Timedelta(days=1)
+                if current_date.weekday() == 0:
+                    week_number += 1
+                day_number += 1
+        
+        # DB에 삽입
+        insert_query = """
+            INSERT INTO timetables 
+            (course_code, subject_code, class_date, start_time, end_time, 
+             instructor_code, type, week_number, day_number)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        for tt in timetables:
+            cursor.execute(insert_query, (
+                tt['course_code'],
+                tt['subject_code'],
+                tt['class_date'],
+                tt['start_time'],
+                tt['end_time'],
+                tt['instructor_code'],
+                tt['type'],
+                tt['week_number'],
+                tt['day_number']
+            ))
+        
+        conn.commit()
+        
+        return {
+            "success": True,
+            "generated_count": len(timetables),
+            "message": f"{len(timetables)}개의 시간표가 생성되었습니다."
+        }
+        
+    except Exception as e:
+        conn.rollback()
+        import traceback
+        print(f"시간표 자동 생성 오류: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"시간표 자동 생성 실패: {str(e)}")
+    finally:
+        conn.close()
+
 if __name__ == "__main__":
     import uvicorn
     # 파일 업로드 크기 제한 100MB로 증가
