@@ -6651,19 +6651,109 @@ async function loadHolidays() {
 }
 
 function renderHolidays() {
+    // 현재 필터 값 가져오기
+    const filterYear = window.holidayFilterYear || 'all';
+    const filterType = window.holidayFilterType || 'all';
+    const searchText = window.holidaySearchText || '';
+    
+    // 필터링 적용
+    let filteredHolidays = holidays.filter(h => {
+        // 연도 필터
+        if (filterYear !== 'all') {
+            const year = h.holiday_date.substring(0, 4);
+            if (year !== filterYear) return false;
+        }
+        
+        // 구분 필터 (법정/일반)
+        if (filterType === 'legal' && !h.is_legal) return false;
+        if (filterType === 'normal' && h.is_legal) return false;
+        
+        // 검색어 필터
+        if (searchText) {
+            const searchLower = searchText.toLowerCase();
+            return h.name.toLowerCase().includes(searchLower) || 
+                   h.holiday_date.includes(searchText);
+        }
+        
+        return true;
+    });
+    
+    // 연도 목록 추출 (중복 제거)
+    const years = [...new Set(holidays.map(h => h.holiday_date.substring(0, 4)))].sort().reverse();
+    
     const app = document.getElementById('app');
     app.innerHTML = `
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">
-                    <i class="fas fa-calendar-alt mr-2"></i>공휴일 관리 (총 ${holidays.length}일)
+                    <i class="fas fa-calendar-alt mr-2"></i>공휴일 관리
                 </h2>
                 <button onclick="window.showHolidayForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
                     <i class="fas fa-plus mr-2"></i>공휴일 추가
                 </button>
             </div>
             
-            <div id="holiday-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg"></div>
+            <!-- 필터 섹션 -->
+            <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <!-- 검색 -->
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">
+                            <i class="fas fa-search mr-1"></i>검색
+                        </label>
+                        <input type="text" id="holiday-search" 
+                               value="${searchText}"
+                               placeholder="공휴일명 또는 날짜" 
+                               class="w-full px-3 py-2 border rounded text-sm"
+                               oninput="window.filterHolidays()">
+                    </div>
+                    
+                    <!-- 연도 필터 -->
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">
+                            <i class="fas fa-calendar mr-1"></i>연도
+                        </label>
+                        <select id="holiday-year-filter" 
+                                class="w-full px-3 py-2 border rounded text-sm"
+                                onchange="window.filterHolidays()">
+                            <option value="all" ${filterYear === 'all' ? 'selected' : ''}>전체</option>
+                            ${years.map(year => `
+                                <option value="${year}" ${filterYear === year ? 'selected' : ''}>${year}년</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    
+                    <!-- 구분 필터 -->
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">
+                            <i class="fas fa-filter mr-1"></i>구분
+                        </label>
+                        <select id="holiday-type-filter" 
+                                class="w-full px-3 py-2 border rounded text-sm"
+                                onchange="window.filterHolidays()">
+                            <option value="all" ${filterType === 'all' ? 'selected' : ''}>전체</option>
+                            <option value="legal" ${filterType === 'legal' ? 'selected' : ''}>법정공휴일</option>
+                            <option value="normal" ${filterType === 'normal' ? 'selected' : ''}>일반</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 필터 초기화 -->
+                    <div class="flex items-end">
+                        <button onclick="window.resetHolidayFilters()" 
+                                class="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-2 rounded text-sm">
+                            <i class="fas fa-redo mr-1"></i>필터 초기화
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 필터 결과 표시 -->
+                <div class="mt-3 text-sm text-gray-600">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    전체 ${holidays.length}개 중 ${filteredHolidays.length}개 표시
+                </div>
+            </div>
+            
+            <div id="holiday-form" class="hidden mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200"></div>
             
             <div class="overflow-x-auto">
                 <table class="min-w-full bg-white border">
@@ -6676,25 +6766,36 @@ function renderHolidays() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${holidays.map(h => `
+                        ${filteredHolidays.length > 0 ? filteredHolidays.map(h => `
                             <tr class="border-t hover:bg-gray-50">
-                                <td class="px-4 py-2 text-xs">${h.holiday_date}</td>
-                                <td class="px-4 py-2 text-xs font-semibold">${h.name}</td>
+                                <td class="px-4 py-2 text-sm">${h.holiday_date}</td>
+                                <td class="px-4 py-2 text-sm font-semibold">${h.name}</td>
                                 <td class="px-4 py-2 text-xs">
                                     <span class="${h.is_legal ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'} px-2 py-1 rounded text-xs">
                                         ${h.is_legal ? '법정공휴일' : '일반'}
                                     </span>
                                 </td>
                                 <td class="px-4 py-2 text-xs">
-                                    <button onclick="window.editHoliday(${h.id})" class="text-blue-600 hover:text-blue-800 mr-2">
+                                    <button onclick="window.editHoliday(${h.id})" 
+                                            class="text-blue-600 hover:text-blue-800 mr-2"
+                                            title="수정">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button onclick="window.deleteHoliday(${h.id})" class="text-red-600 hover:text-red-800">
+                                    <button onclick="window.deleteHoliday(${h.id})" 
+                                            class="text-red-600 hover:text-red-800"
+                                            title="삭제">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </td>
                             </tr>
-                        `).join('')}
+                        `).join('') : `
+                            <tr>
+                                <td colspan="4" class="px-4 py-8 text-center text-gray-500">
+                                    <i class="fas fa-inbox text-3xl mb-2"></i>
+                                    <p>필터 조건에 맞는 공휴일이 없습니다.</p>
+                                </td>
+                            </tr>
+                        `}
                     </tbody>
                 </table>
             </div>
@@ -6778,6 +6879,26 @@ window.deleteHoliday = async function(id) {
     } catch (error) {
         window.showAlert('❌ 삭제 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
+}
+
+// 공휴일 필터 함수
+window.filterHolidays = function() {
+    // 현재 필터 값 저장
+    window.holidaySearchText = document.getElementById('holiday-search')?.value || '';
+    window.holidayFilterYear = document.getElementById('holiday-year-filter')?.value || 'all';
+    window.holidayFilterType = document.getElementById('holiday-type-filter')?.value || 'all';
+    
+    // 다시 렌더링
+    renderHolidays();
+}
+
+// 공휴일 필터 초기화
+window.resetHolidayFilters = function() {
+    window.holidaySearchText = '';
+    window.holidayFilterYear = 'all';
+    window.holidayFilterType = 'all';
+    
+    renderHolidays();
 }
 
 // ==================== 과정 관리 ====================
