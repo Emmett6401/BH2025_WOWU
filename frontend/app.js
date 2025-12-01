@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.36'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.37'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -7865,7 +7865,9 @@ window.autoCalculateDates = async function() {
         // 주간 수업시간 계산 (일일시간 × 5일)
         const weeklyHours = dailyHours * 5;
         
-        const notesText = `1. 교육기간 : ${startDateFormatted} ~ ${endDateFormatted} (공휴일 : ${result.holidays_formatted})
+        // 백엔드에서 상세 계산 과정을 비고란에 저장했으므로, 
+        // calculation_details를 비고란에 표시
+        const notesText = result.calculation_details || `1. 교육기간 : ${startDateFormatted} ~ ${endDateFormatted} (공휴일 : ${result.holidays_formatted})
 2. 일${dailyHours}시간 (오전 ${morningHours}시간, 오후 ${afternoonHours}시간) / 주${weeklyHours}시간 수업
 3. 총 교육시간 : ${result.total_hours}시간 (이론 ${result.lecture_hours}시간, 프로젝트 ${result.project_hours}시간, 현장실습 ${result.internship_hours}시간)
 4. 총 교육일수 : ${result.total_days}일 (근무일 ${result.work_days}일, 제외일 ${result.excluded_days}일)`;

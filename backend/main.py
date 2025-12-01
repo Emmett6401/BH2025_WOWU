@@ -3570,9 +3570,46 @@ async def calculate_course_dates(data: dict):
             "calculation_details": calculation_details
         }
         
+        # course_code가 있으면 비고란에 상세 계산 과정 저장
+        course_code = data.get('course_code')
+        if course_code:
+            try:
+                import re
+                conn_update = get_db_connection()
+                cursor_update = conn_update.cursor()
+                
+                # 이모지 및 4바이트 UTF-8 문자 제거 (utf8mb4 미지원 DB 컬럼 대응)
+                def remove_emoji(text):
+                    # 4바이트 UTF-8 문자 모두 제거 (이모지 포함)
+                    # UTF-8에서 4바이트는 \xF0-\xF7로 시작
+                    try:
+                        # 각 문자를 검사하여 4바이트 문자 제거
+                        return ''.join(c for c in text if len(c.encode('utf-8')) < 4)
+                    except:
+                        return text
+                
+                notes_text = remove_emoji(calculation_details)
+                
+                # 과정의 비고란(notes)에 상세 계산 과정 저장
+                cursor_update.execute("""
+                    UPDATE courses 
+                    SET notes = %s
+                    WHERE code = %s
+                """, (notes_text, course_code))
+                conn_update.commit()
+                cursor_update.close()
+                conn_update.close()
+                
+                result['notes_updated'] = True
+            except Exception as e:
+                print(f"비고란 업데이트 실패: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+                result['notes_updated'] = False
+                result['notes_error'] = str(e)
+        
         # 자동 저장 옵션이 있으면 시간표도 생성
         if data.get('auto_save_timetable', False):
-            course_code = data.get('course_code')
             if course_code:
                 # 시간표 자동 생성 호출
                 try:
