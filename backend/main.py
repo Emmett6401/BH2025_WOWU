@@ -4277,6 +4277,7 @@ async def download_image(url: str = Query(..., description="FTP URL to download"
         raise HTTPException(status_code=500, detail=f"이미지 다운로드 실패: {str(e)}")
 
 @app.get("/api/thumbnail")
+@app.head("/api/thumbnail")
 async def get_thumbnail(url: str = Query(..., description="FTP URL")):
     """
     이미지 썸네일 제공 API
