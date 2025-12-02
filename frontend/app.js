@@ -9982,7 +9982,7 @@ function renderTimetables() {
                         <option value="">전체</option>
                         <option value="lecture">교과</option>
                         <option value="project">프로젝트</option>
-                        <option value="workship">현장실습</option>
+                        <option value="practice">현장실습</option>
                     </select>
                 </div>
                 <div>
@@ -10382,7 +10382,7 @@ window.showTimetableForm = function(id = null) {
                 <select id="tt-type" class="w-full border rounded px-3 py-2" required>
                     <option value="lecture" ${existing && existing.type === 'lecture' ? 'selected' : ''}>강의</option>
                     <option value="project" ${existing && existing.type === 'project' ? 'selected' : ''}>프로젝트</option>
-                    <option value="workship" ${existing && existing.type === 'workship' ? 'selected' : ''}>현장실습</option>
+                    <option value="practice" ${existing && existing.type === 'practice' ? 'selected' : ''}>현장실습</option>
                 </select>
             </div>
             <div>
