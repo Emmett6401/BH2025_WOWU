@@ -651,6 +651,12 @@
             });
         };
         
+        // showConfirmModal 별칭 추가
+        window.showConfirmModal = window.showConfirm;
+        
+        // showCustomAlert 별칭 추가  
+        window.showCustomAlert = window.showAlert;
+        
         // ==================== 로딩 모달 ====================
         window.showLoading = function(message = '로딩 중...') {
             let loadingModal = document.getElementById('loading-modal');
@@ -919,14 +925,14 @@
         window.editNote = async function(noteId) {
             const note = allNotes.find(n => n.id === noteId);
             if (!note) {
-                window.showAlert('메모를 찾을 수 없습니다. 목록을 새로고침합니다.', 'warning');
+                window.showCustomAlert('메모를 찾을 수 없습니다. 목록을 새로고침합니다.', 'warning');
                 loadAllNotes();
                 return;
             }
             
             document.getElementById('modal-title').textContent = '수업 메모 수정';
             document.getElementById('edit-note-id').value = note.id;
-            document.getElementById('modal-note-date').value = note.note_date;
+            document.getElementById('modal-note-date').value = note.note_date || '';
             document.getElementById('modal-note-content').value = note.content || '';
             
             // 상담 신청 초기화 (수정 시에는 상담 신청 불가)
@@ -1054,18 +1060,31 @@
         
         // 메모 삭제
         window.deleteNote = async function(noteId) {
-            if (!confirm('이 메모를 삭제하시겠습니까?')) return;
+            if (!noteId) {
+                window.showCustomAlert('삭제할 메모를 찾을 수 없습니다.', 'error');
+                return;
+            }
+            
+            // 커스텀 확인 모달 표시
+            const confirmed = await window.showConfirmModal(
+                '메모 삭제',
+                '이 메모를 삭제하시겠습니까?',
+                '삭제',
+                '취소'
+            );
+            
+            if (!confirmed) return;
             
             try {
                 const response = await axios.delete(`${API_BASE_URL}/api/class-notes/${noteId}`);
                 
                 if (response.data.success) {
-                    window.showAlert('✅ 메모가 삭제되었습니다', 'success');
+                    window.showCustomAlert('✅ 메모가 삭제되었습니다', 'success');
                     loadAllNotes();
                 }
             } catch (error) {
                 console.error('메모 삭제 실패:', error);
-                window.showAlert('❌ 삭제에 실패했습니다', 'error');
+                window.showCustomAlert('❌ 삭제에 실패했습니다', 'error');
             }
         };
         
