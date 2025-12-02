@@ -5301,6 +5301,8 @@ async def upload_note_file(
     """
     conn = get_db_connection()
     try:
+        print(f"🔍 upload-note-file 시작: note_id={note_id}, filename={file.filename}")
+        
         # 파일 업로드 (기존 upload-image 로직 재사용)
         allowed_extensions = [
             '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp',  # 이미지
@@ -5317,9 +5319,10 @@ async def upload_note_file(
             )
         
         # 파일 크기 체크 (100MB)
-        await file.seek(0, 2)
-        file_size = await file.tell()
-        await file.seek(0)
+        # UploadFile은 seek()가 동기 함수입니다
+        file.file.seek(0, 2)
+        file_size = file.file.tell()
+        file.file.seek(0)
         
         if file_size > 100 * 1024 * 1024:
             raise HTTPException(
@@ -5372,6 +5375,8 @@ async def upload_note_file(
         )
         conn.commit()
         
+        print(f"✅ upload-note-file 성공: note_id={note_id}, url={file_url}")
+        
         return {
             "success": True,
             "url": file_url,
@@ -5382,6 +5387,9 @@ async def upload_note_file(
     except HTTPException:
         raise
     except Exception as e:
+        print(f"❌ upload-note-file 에러: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"파일 업로드 실패: {str(e)}")
     finally:
         conn.close()
