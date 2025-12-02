@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.57'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.70'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -9995,6 +9995,8 @@ function renderTimetables() {
                     <label class="block text-gray-700 mb-2">과목 선택</label>
                     <select id="tt-subject" class="w-full border rounded px-3 py-2" onchange="window.filterTimetables()">
                         <option value="">-- 전체 과목 --</option>
+                        <option value="PROJECT">프로젝트 (PROJECT)</option>
+                        <option value="WORKSHIP">현장실습 (WORKSHIP)</option>
                         ${subjects.map(s => `<option value="${s.code}">${s.name} (${s.code})</option>`).join('')}
                     </select>
                 </div>
