@@ -579,6 +579,22 @@
         </div>
     </div>
 
+    <!-- 프로그레스바 모달 -->
+    <div id="progress-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4 w-full">
+            <div class="mb-4">
+                <div class="flex items-center gap-3 mb-3">
+                    <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
+                    <p id="progress-message" class="text-gray-800 font-semibold">저장 중...</p>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div id="progress-bar" class="bg-blue-500 h-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="progress-detail" class="text-xs text-gray-500 mt-2">메모를 저장하고 있습니다...</p>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     <script>
         const API_BASE_URL = '';
@@ -682,6 +698,40 @@
         
         // showCustomAlert 별칭 추가  
         window.showCustomAlert = window.showAlert;
+        
+        // ==================== 프로그레스바 ====================
+        window.showProgress = function(message = '저장 중...', detail = '', progress = 0) {
+            const modal = document.getElementById('progress-modal');
+            const messageEl = document.getElementById('progress-message');
+            const detailEl = document.getElementById('progress-detail');
+            const barEl = document.getElementById('progress-bar');
+            
+            messageEl.textContent = message;
+            detailEl.textContent = detail;
+            barEl.style.width = progress + '%';
+            
+            modal.classList.remove('hidden');
+        };
+        
+        window.updateProgress = function(progress, detail = '') {
+            const detailEl = document.getElementById('progress-detail');
+            const barEl = document.getElementById('progress-bar');
+            
+            barEl.style.width = progress + '%';
+            if (detail) {
+                detailEl.textContent = detail;
+            }
+        };
+        
+        window.hideProgress = function() {
+            const modal = document.getElementById('progress-modal');
+            modal.classList.add('hidden');
+            
+            // 리셋
+            setTimeout(() => {
+                document.getElementById('progress-bar').style.width = '0%';
+            }, 300);
+        };
         
         // ==================== 로딩 모달 ====================
         window.showLoading = function(message = '로딩 중...') {
@@ -1039,10 +1089,16 @@
         // 파일 업로드
         async function uploadNoteFiles(noteId) {
             try {
-                for (const file of noteAttachedFiles) {
+                const totalFiles = noteAttachedFiles.length;
+                for (let i = 0; i < totalFiles; i++) {
+                    const file = noteAttachedFiles[i];
                     const formData = new FormData();
                     formData.append('file', file);
                     formData.append('note_id', noteId);
+                    
+                    // 진행률 계산 (60% ~ 90% 구간)
+                    const fileProgress = 60 + Math.floor((i / totalFiles) * 30);
+                    window.updateProgress(fileProgress, `파일 업로드 중... (${i + 1}/${totalFiles}) ${file.name}`);
                     
                     await axios.post(`${API_BASE_URL}/api/upload-note-file`, formData, {
                         headers: {
@@ -1056,7 +1112,7 @@
                 document.getElementById('note-file-list').innerHTML = '';
             } catch (error) {
                 console.error('파일 업로드 실패:', error);
-                window.showAlert('⚠️ 일부 파일 업로드에 실패했습니다', 'error');
+                throw error; // 에러를 상위로 전달
             }
         }
         
@@ -1089,6 +1145,9 @@
             }
             
             try {
+                // 프로그레스바 시작
+                window.showProgress('메모 저장 중...', '메모를 저장하고 있습니다...', 20);
+                
                 const data = {
                     student_id: student.id,
                     note_date: noteDate,
@@ -1105,9 +1164,16 @@
                 if (response.data.success) {
                     const savedNoteId = response.data.id || noteId;
                     
+                    // 진행률 업데이트
+                    window.updateProgress(50, '메모 저장 완료!');
+                    
                     // 파일이 있으면 업로드
                     if (noteAttachedFiles.length > 0 && savedNoteId) {
+                        window.updateProgress(60, `파일 업로드 중... (${noteAttachedFiles.length}개)`);
                         await uploadNoteFiles(savedNoteId);
+                        window.updateProgress(90, '파일 업로드 완료!');
+                    } else {
+                        window.updateProgress(90, '마무리 중...');
                     }
                     
                     if (requestCounseling) {
@@ -1115,12 +1181,19 @@
                         await createCounselingRequest(student, noteDate, content);
                     }
                     
+                    window.updateProgress(100, '모든 작업 완료!');
+                    
+                    // 잠깐 100% 보여주기
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    window.hideProgress();
                     window.showAlert('✅ SSIRN메모가 저장되었습니다', 'success');
                     closeNoteModal();
                     loadAllNotes();
                 }
             } catch (error) {
                 console.error('메모 저장 실패:', error);
+                window.hideProgress();
                 window.showAlert('❌ 저장에 실패했습니다', 'error');
             }
         };

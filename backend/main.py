@@ -5161,12 +5161,13 @@ async def get_class_note_by_id(note_id: int):
 
 @app.post("/api/class-notes")
 async def create_class_note(data: dict):
-    """수업일지 생성"""
+    """수업일지 생성 또는 수정"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         ensure_class_notes_table(cursor)
         
+        note_id = data.get('id')  # ID가 있으면 수정
         student_id = data.get('student_id')
         instructor_code = data.get('instructor_code')
         note_date = data.get('note_date')
@@ -5180,13 +5181,25 @@ async def create_class_note(data: dict):
         if not student_id and not instructor_code:
             raise HTTPException(status_code=400, detail="student_id 또는 instructor_code가 필요합니다")
         
-        # INSERT 쿼리
-        cursor.execute(
-            """INSERT INTO class_notes (student_id, instructor_code, note_date, content, photo_urls) 
-               VALUES (%s, %s, %s, %s, %s)""",
-            (student_id, instructor_code, note_date, content, photo_urls)
-        )
-        note_id = cursor.lastrowid
+        # ID가 있으면 UPDATE, 없으면 INSERT
+        if note_id:
+            cursor.execute(
+                """UPDATE class_notes 
+                   SET student_id = %s, instructor_code = %s, note_date = %s, content = %s, photo_urls = %s
+                   WHERE id = %s""",
+                (student_id, instructor_code, note_date, content, photo_urls, note_id)
+            )
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=404, detail="수업일지를 찾을 수 없습니다")
+        else:
+            # INSERT 쿼리
+            cursor.execute(
+                """INSERT INTO class_notes (student_id, instructor_code, note_date, content, photo_urls) 
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (student_id, instructor_code, note_date, content, photo_urls)
+            )
+            note_id = cursor.lastrowid
+        
         conn.commit()
         
         # 저장된 일지 반환
@@ -5198,7 +5211,7 @@ async def create_class_note(data: dict):
             if isinstance(value, (datetime, date)):
                 note[key] = value.isoformat()
         
-        return {"success": True, "message": "수업일지가 저장되었습니다", "note": note}
+        return {"success": True, "message": "수업일지가 저장되었습니다", "note": note, "id": note_id}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))
