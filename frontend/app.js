@@ -16482,3 +16482,242 @@ async function cleanupOldBackups() {
     }
 }
 
+// ==================== Web Speech API 음성 인식 ====================
+// 브라우저 내장 음성 인식 (무료, 서버 불필요)
+
+// 음성 인식 전역 객체
+window.speechRecognition = null;
+window.isSpeechRecognitionActive = false;
+
+/**
+ * 음성 인식 초기화
+ * @returns {Object|null} SpeechRecognition 객체 또는 null (지원하지 않는 경우)
+ */
+window.initSpeechRecognition = function() {
+    // 브라우저 지원 확인
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+        console.warn('❌ 이 브라우저는 Web Speech API를 지원하지 않습니다.');
+        console.warn('Chrome, Edge, Safari를 사용하세요. Firefox는 제한적으로 지원합니다.');
+        return null;
+    }
+    
+    // HTTPS 확인
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        console.warn('⚠️ 음성 인식은 HTTPS 환경에서만 작동합니다.');
+        console.warn('현재 프로토콜:', window.location.protocol);
+        return null;
+    }
+    
+    // SpeechRecognition 객체 생성
+    const recognition = new SpeechRecognition();
+    
+    // 기본 설정
+    recognition.continuous = false;      // 연속 인식 비활성화 (한 번만 인식)
+    recognition.lang = 'ko-KR';         // 한국어
+    recognition.interimResults = false; // 중간 결과 비활성화
+    recognition.maxAlternatives = 1;    // 최대 대안 1개만
+    
+    console.log('✅ Web Speech API 초기화 완료');
+    console.log('- 언어: 한국어 (ko-KR)');
+    console.log('- 연속 인식: 비활성화');
+    console.log('- HTTPS:', window.location.protocol === 'https:');
+    
+    return recognition;
+};
+
+/**
+ * 음성 인식 시작
+ * @param {Function} onResult - 인식 결과를 받을 콜백 함수
+ * @param {Function} onError - 에러 발생 시 콜백 함수
+ * @param {Function} onStart - 인식 시작 시 콜백 함수
+ * @param {Function} onEnd - 인식 종료 시 콜백 함수
+ */
+window.startSpeechRecognition = function(onResult, onError, onStart, onEnd) {
+    // 이미 실행 중이면 중단
+    if (window.isSpeechRecognitionActive) {
+        console.log('⚠️ 음성 인식이 이미 실행 중입니다.');
+        return;
+    }
+    
+    // 음성 인식 초기화
+    const recognition = window.initSpeechRecognition();
+    if (!recognition) {
+        if (onError) {
+            onError('브라우저가 음성 인식을 지원하지 않습니다.');
+        }
+        return;
+    }
+    
+    window.speechRecognition = recognition;
+    
+    // 이벤트 핸들러 설정
+    recognition.onstart = () => {
+        window.isSpeechRecognitionActive = true;
+        console.log('🎤 음성 인식 시작...');
+        if (onStart) onStart();
+    };
+    
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        const confidence = event.results[0][0].confidence;
+        
+        console.log('✅ 인식 결과:', transcript);
+        console.log('신뢰도:', (confidence * 100).toFixed(1) + '%');
+        
+        if (onResult) onResult(transcript, confidence);
+    };
+    
+    recognition.onerror = (event) => {
+        console.error('❌ 음성 인식 오류:', event.error);
+        
+        let errorMessage = '음성 인식 오류가 발생했습니다.';
+        switch (event.error) {
+            case 'no-speech':
+                errorMessage = '음성이 감지되지 않았습니다. 다시 시도해주세요.';
+                break;
+            case 'audio-capture':
+                errorMessage = '마이크를 찾을 수 없습니다.';
+                break;
+            case 'not-allowed':
+                errorMessage = '마이크 권한이 거부되었습니다. 브라우저 설정에서 마이크 권한을 허용해주세요.';
+                break;
+            case 'network':
+                errorMessage = '네트워크 연결을 확인해주세요.';
+                break;
+            case 'aborted':
+                errorMessage = '음성 인식이 중단되었습니다.';
+                break;
+        }
+        
+        if (onError) onError(errorMessage);
+    };
+    
+    recognition.onend = () => {
+        window.isSpeechRecognitionActive = false;
+        console.log('🎤 음성 인식 종료');
+        if (onEnd) onEnd();
+    };
+    
+    // 음성 인식 시작
+    try {
+        recognition.start();
+    } catch (error) {
+        console.error('음성 인식 시작 실패:', error);
+        window.isSpeechRecognitionActive = false;
+        if (onError) onError('음성 인식을 시작할 수 없습니다.');
+    }
+};
+
+/**
+ * 음성 인식 중지
+ */
+window.stopSpeechRecognition = function() {
+    if (window.speechRecognition && window.isSpeechRecognitionActive) {
+        window.speechRecognition.stop();
+        console.log('🛑 음성 인식 중지됨');
+    }
+};
+
+/**
+ * 음성 검색 기능 (검색창에 음성으로 입력)
+ * @param {string} inputSelector - 검색 입력 필드의 CSS 셀렉터 (기본: '#search-input')
+ */
+window.voiceSearch = function(inputSelector = '#search-input') {
+    const searchInput = document.querySelector(inputSelector);
+    
+    if (!searchInput) {
+        console.error('❌ 검색 입력 필드를 찾을 수 없습니다:', inputSelector);
+        showAlert('검색 입력 필드를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    // 음성 인식 시작
+    window.startSpeechRecognition(
+        // onResult: 인식 성공 시
+        (transcript, confidence) => {
+            searchInput.value = transcript;
+            searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+            
+            showAlert(`음성 인식: "${transcript}" (${(confidence * 100).toFixed(0)}%)`, 'success');
+        },
+        // onError: 에러 발생 시
+        (errorMessage) => {
+            showAlert(errorMessage, 'error');
+        },
+        // onStart: 시작 시
+        () => {
+            searchInput.placeholder = '🎤 듣고 있습니다...';
+            searchInput.classList.add('border-red-500');
+        },
+        // onEnd: 종료 시
+        () => {
+            searchInput.placeholder = '검색...';
+            searchInput.classList.remove('border-red-500');
+        }
+    );
+};
+
+/**
+ * 특정 필드에 음성으로 입력
+ * @param {string} fieldSelector - 입력 필드의 CSS 셀렉터
+ */
+window.voiceInput = function(fieldSelector) {
+    const inputField = document.querySelector(fieldSelector);
+    
+    if (!inputField) {
+        console.error('❌ 입력 필드를 찾을 수 없습니다:', fieldSelector);
+        showAlert('입력 필드를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    // 음성 인식 시작
+    window.startSpeechRecognition(
+        // onResult: 인식 성공 시
+        (transcript) => {
+            // 기존 값에 추가 (textarea) 또는 덮어쓰기 (input)
+            if (inputField.tagName === 'TEXTAREA') {
+                const cursorPos = inputField.selectionStart;
+                const textBefore = inputField.value.substring(0, cursorPos);
+                const textAfter = inputField.value.substring(cursorPos);
+                inputField.value = textBefore + transcript + textAfter;
+            } else {
+                inputField.value = transcript;
+            }
+            
+            inputField.dispatchEvent(new Event('input', { bubbles: true }));
+            inputField.focus();
+        },
+        // onError: 에러 발생 시
+        (errorMessage) => {
+            showAlert(errorMessage, 'error');
+        },
+        // onStart: 시작 시
+        () => {
+            const originalPlaceholder = inputField.placeholder;
+            inputField.placeholder = '🎤 듣고 있습니다...';
+            inputField.dataset.originalPlaceholder = originalPlaceholder;
+            inputField.classList.add('border-red-500');
+        },
+        // onEnd: 종료 시
+        () => {
+            inputField.placeholder = inputField.dataset.originalPlaceholder || '';
+            delete inputField.dataset.originalPlaceholder;
+            inputField.classList.remove('border-red-500');
+        }
+    );
+};
+
+// 초기화 로그
+console.log('✅ Web Speech API 모듈 로드 완료');
+console.log('사용 가능한 함수:');
+console.log('- startSpeechRecognition(onResult, onError, onStart, onEnd)');
+console.log('- stopSpeechRecognition()');
+console.log('- voiceSearch(inputSelector)');
+console.log('- voiceInput(fieldSelector)');
+console.log('');
+console.log('예시:');
+console.log('  voiceSearch("#search-input")  // 검색창에 음성 입력');
+console.log('  voiceInput("#student-name")   // 학생 이름 필드에 음성 입력');
+
