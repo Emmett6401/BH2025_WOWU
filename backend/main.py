@@ -2039,6 +2039,11 @@ async def update_timetable(timetable_id: int, data: dict):
         ))
         conn.commit()
         return {"id": timetable_id}
+    except Exception as e:
+        conn.rollback()
+        print(f"시간표 수정 에러: {str(e)}")
+        print(f"데이터: {data}")
+        raise HTTPException(status_code=500, detail=f"시간표 수정 실패: {str(e)}")
     finally:
         conn.close()
 
