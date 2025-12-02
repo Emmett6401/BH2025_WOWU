@@ -5265,6 +5265,108 @@ async def delete_class_note(note_id: int):
     finally:
         conn.close()
 
+@app.post("/api/upload-note-file")
+async def upload_note_file(
+    file: UploadFile = File(...),
+    note_id: int = Form(...)
+):
+    """
+    수업메모 파일 업로드 (사진, 문서 등)
+    
+    Args:
+        file: 업로드할 파일
+        note_id: 수업메모 ID
+    
+    Returns:
+        업로드된 파일 정보
+    """
+    conn = get_db_connection()
+    try:
+        # 파일 업로드 (기존 upload-image 로직 재사용)
+        allowed_extensions = [
+            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp',  # 이미지
+            '.pdf',  # PDF
+            '.doc', '.docx',  # Word
+            '.xls', '.xlsx'  # Excel
+        ]
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        
+        if file_ext not in allowed_extensions:
+            raise HTTPException(
+                status_code=400,
+                detail=f"허용되지 않는 파일 형식입니다. 허용: {', '.join(allowed_extensions)}"
+            )
+        
+        # 파일 크기 체크 (100MB)
+        await file.seek(0, 2)
+        file_size = await file.tell()
+        await file.seek(0)
+        
+        if file_size > 100 * 1024 * 1024:
+            raise HTTPException(
+                status_code=413,
+                detail=f"파일 크기는 100MB 이하여야 합니다 (현재: {file_size / 1024 / 1024:.2f}MB)"
+            )
+        
+        # 파일명 생성
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_id = str(uuid.uuid4())[:8]
+        original_name = os.path.splitext(file.filename)[0]
+        
+        # 안전한 파일명
+        safe_name = ""
+        for c in original_name:
+            if c.isascii() and (c.isalnum() or c in ('-', '_', '.')):
+                safe_name += c
+            else:
+                safe_name += '_'
+        
+        import re
+        safe_name = re.sub(r'_+', '_', safe_name).strip('_')[:50]
+        if not safe_name:
+            safe_name = "file"
+        
+        new_filename = f"{timestamp}_{unique_id}_{safe_name}{file_ext}"
+        
+        # FTP 업로드 (student 카테고리)
+        file_url = await upload_stream_to_ftp(file, new_filename, "student")
+        
+        # DB에 파일 URL 추가
+        cursor = conn.cursor()
+        cursor.execute("SELECT photo_urls FROM class_notes WHERE id = %s", (note_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
+        
+        existing_urls = result[0] if result[0] else ""
+        
+        # URL 목록 업데이트 (콤마로 구분)
+        if existing_urls:
+            new_urls = f"{existing_urls},{file_url}"
+        else:
+            new_urls = file_url
+        
+        cursor.execute(
+            "UPDATE class_notes SET photo_urls = %s WHERE id = %s",
+            (new_urls, note_id)
+        )
+        conn.commit()
+        
+        return {
+            "success": True,
+            "url": file_url,
+            "filename": new_filename,
+            "note_id": note_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"파일 업로드 실패: {str(e)}")
+    finally:
+        conn.close()
+
 # ==================== 강사 SSIRN 메모 관리 ====================
 def ensure_instructor_notes_table(cursor):
     """instructor_notes 테이블이 없으면 생성"""
