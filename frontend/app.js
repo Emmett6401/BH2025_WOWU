@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.73'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.74'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -10370,12 +10370,16 @@ window.showTimetableForm = function(id = null) {
                 <input type="date" id="tt-class-date" value="${existing ? existing.class_date : ''}" class="w-full border rounded px-3 py-2" required>
             </div>
             <div>
-                <label class="block text-sm text-gray-700 mb-1">시작 시간 *</label>
-                <input type="time" id="tt-start-time" value="${existing ? formatTime(existing.start_time) : ''}" class="w-full border rounded px-3 py-2" required>
+                <label class="block text-sm text-gray-700 mb-1">시작 시간 * <span class="text-xs text-gray-500">(예: 09:00 또는 0900)</span></label>
+                <input type="text" id="tt-start-time" value="${existing ? formatTime(existing.start_time) : ''}" 
+                       placeholder="09:00" pattern="[0-9]{1,2}:?[0-9]{2}" 
+                       class="w-full border rounded px-3 py-2" required>
             </div>
             <div>
-                <label class="block text-sm text-gray-700 mb-1">종료 시간 *</label>
-                <input type="time" id="tt-end-time" value="${existing ? formatTime(existing.end_time) : ''}" class="w-full border rounded px-3 py-2" required>
+                <label class="block text-sm text-gray-700 mb-1">종료 시간 * <span class="text-xs text-gray-500">(예: 18:00 또는 1800)</span></label>
+                <input type="text" id="tt-end-time" value="${existing ? formatTime(existing.end_time) : ''}" 
+                       placeholder="18:00" pattern="[0-9]{1,2}:?[0-9]{2}" 
+                       class="w-full border rounded px-3 py-2" required>
             </div>
             <div>
                 <label class="block text-sm text-gray-700 mb-1">타입 *</label>
@@ -10407,6 +10411,21 @@ window.hideTimetableForm = function() {
 
 window.saveTimetable = async function(id) {
     // 시간 입력값을 HH:MM:SS 형식으로 변환
+    const formatTimeInput = (value) => {
+        // "09:00", "0900", "9:00" 등을 "09:00:00"으로 변환
+        const cleaned = value.replace(/:/g, '').trim();
+        if (cleaned.length === 3) {
+            // "900" -> "09:00:00"
+            return `0${cleaned[0]}:${cleaned.slice(1)}:00`;
+        } else if (cleaned.length === 4) {
+            // "0900" -> "09:00:00"
+            return `${cleaned.slice(0, 2)}:${cleaned.slice(2)}:00`;
+        } else {
+            // 이미 "09:00" 형식이면 ":00" 추가
+            return value.includes(':') ? `${value}:00` : value;
+        }
+    };
+    
     const startTimeValue = document.getElementById('tt-start-time').value;
     const endTimeValue = document.getElementById('tt-end-time').value;
     
@@ -10415,8 +10434,8 @@ window.saveTimetable = async function(id) {
         subject_code: document.getElementById('tt-subject-code').value,
         instructor_code: document.getElementById('tt-instructor-code').value,
         class_date: document.getElementById('tt-class-date').value,
-        start_time: startTimeValue + ':00',  // "HH:MM" -> "HH:MM:SS" 형식으로 변환
-        end_time: endTimeValue + ':00',      // "HH:MM" -> "HH:MM:SS" 형식으로 변환
+        start_time: formatTimeInput(startTimeValue),
+        end_time: formatTimeInput(endTimeValue),
         type: document.getElementById('tt-type').value,
         notes: document.getElementById('tt-notes').value
     };

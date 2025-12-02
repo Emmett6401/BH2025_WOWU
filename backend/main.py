@@ -1674,12 +1674,18 @@ async def delete_course(code: str):
         cursor.execute("SELECT COUNT(*) as count FROM training_logs WHERE course_code = %s", (code,))
         training_log_count = cursor.fetchone()['count']
         
-        # 중요한 과정(C-001, C-002) 삭제 방지
-        if code in ['C-001', 'C-002']:
-            raise HTTPException(
-                status_code=403, 
-                detail=f"❌ 주요 과정({code})은 삭제할 수 없습니다. 관리자에게 문의하세요."
-            )
+        # 모든 과정 삭제 차단 (데이터 보호)
+        raise HTTPException(
+            status_code=403, 
+            detail=f"❌ 과정 삭제 기능이 비활성화되었습니다. 데이터 손실 방지를 위해 관리자에게 문의하세요. (과정: {code}, 영향: 시간표 {timetable_count}건, 훈련일지 {training_log_count}건)"
+        )
+        
+        # 삭제가 정말 필요한 경우, 아래 주석을 해제하고 위 raise를 주석 처리
+        # if code in ['C-001', 'C-002']:
+        #     raise HTTPException(
+        #         status_code=403, 
+        #         detail=f"❌ 주요 과정({code})은 삭제할 수 없습니다. 관리자에게 문의하세요."
+        #     )
         
         # 데이터가 많을 경우 경고 로그
         if timetable_count > 0 or training_log_count > 0:
@@ -2025,6 +2031,10 @@ async def get_timetable(timetable_id: int):
 @app.post("/api/timetables")
 async def create_timetable(data: dict):
     """시간표 생성"""
+    # 디버깅: 받은 데이터 로깅
+    print(f"[DEBUG] 시간표 추가 데이터: {data}")
+    print(f"[DEBUG] type 값: '{data.get('type')}' (타입: {type(data.get('type'))})")
+    
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
@@ -2040,6 +2050,9 @@ async def create_timetable(data: dict):
         ))
         conn.commit()
         return {"id": cursor.lastrowid}
+    except Exception as e:
+        print(f"[ERROR] 시간표 추가 실패: {e}")
+        raise
     finally:
         conn.close()
 
