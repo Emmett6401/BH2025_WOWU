@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.72'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.73'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -1789,7 +1789,7 @@ async function loadDashboard() {
                 const hours = calcHours(tt);
                 if (tt.type === 'lecture') lectureCompleted += hours;
                 else if (tt.type === 'project') projectCompleted += hours;
-                else if (tt.type === 'workship') workshipCompleted += hours;
+                else if (tt.type === 'practice') workshipCompleted += hours;
             });
             
             // 훈련일지 작성률 계산 (오늘 이전까지)
@@ -10514,7 +10514,7 @@ function renderTrainingLogsSelection(courses) {
                         <option value="" selected>전체</option>
                         <option value="lecture">교과</option>
                         <option value="project">프로젝트</option>
-                        <option value="workship">현장실습</option>
+                        <option value="practice">현장실습</option>
                     </select>
                 </div>
                 <div>
