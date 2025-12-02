@@ -384,13 +384,17 @@
             <div class="p-6">
                 <input type="hidden" id="edit-note-id">
                 
-                <!-- 날짜 -->
+                <!-- 날짜 및 시간 -->
                 <div class="mb-4">
                     <label class="block text-gray-700 font-semibold mb-2">
-                        <i class="fas fa-calendar mr-2 text-blue-500"></i>날짜
+                        <i class="fas fa-calendar mr-2 text-blue-500"></i>날짜 및 시간
                     </label>
-                    <input type="date" id="modal-note-date" 
-                           class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="date" id="modal-note-date" 
+                               class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <input type="time" id="modal-note-time" 
+                               class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
                 </div>
                 
                 <!-- 내용 -->
@@ -965,14 +969,21 @@
                 const preview = note.content.substring(0, 100) + (note.content.length > 100 ? '...' : '');
                 const dateObj = new Date(note.note_date);
                 const dateStr = dateObj.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+                const timeStr = dateObj.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
                 
                 return `
                     <div class="border rounded-lg p-4 hover:shadow-lg transition-shadow bg-white relative">
                         <div class="flex justify-between items-start mb-2">
-                            <h4 class="font-bold text-gray-800 flex items-center cursor-pointer" onclick="showNoteDetail(${note.id})">
-                                <i class="fas fa-calendar-day mr-2 text-blue-500"></i>
-                                ${dateStr}
-                            </h4>
+                            <div class="cursor-pointer" onclick="showNoteDetail(${note.id})">
+                                <h4 class="font-bold text-gray-800 flex items-center">
+                                    <i class="fas fa-calendar-day mr-2 text-blue-500"></i>
+                                    ${dateStr}
+                                </h4>
+                                <p class="text-xs text-gray-500 mt-1 ml-6">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    ${timeStr}
+                                </p>
+                            </div>
                             <div class="flex gap-2">
                                 <button onclick="event.stopPropagation(); editNote(${note.id})" 
                                         class="text-blue-500 hover:text-blue-700 transition-colors p-1"
@@ -988,8 +999,8 @@
                         </div>
                         <p class="text-gray-600 text-sm line-clamp-3 cursor-pointer" onclick="showNoteDetail(${note.id})">${preview}</p>
                         <div class="mt-2 text-xs text-gray-400">
-                            <i class="fas fa-clock mr-1"></i>
-                            ${new Date(note.created_at).toLocaleString('ko-KR')}
+                            <i class="fas fa-history mr-1"></i>
+                            작성: ${new Date(note.created_at).toLocaleString('ko-KR')}
                         </div>
                     </div>
                 `;
@@ -1030,9 +1041,11 @@
         
         // 새 메모 모달 열기
         window.showNewNoteModal = function() {
-            document.getElementById('modal-title').textContent = '수업 메모 작성';
+            document.getElementById('modal-title').textContent = '무형식주의 메모작성';
             document.getElementById('edit-note-id').value = '';
-            document.getElementById('modal-note-date').value = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            document.getElementById('modal-note-date').value = now.toISOString().split('T')[0];
+            document.getElementById('modal-note-time').value = now.toTimeString().slice(0, 5); // HH:MM
             document.getElementById('modal-note-content').value = '';
             
             // 상담 신청 초기화
@@ -1057,13 +1070,10 @@
             document.getElementById('modal-title').textContent = '수업 메모 수정';
             document.getElementById('edit-note-id').value = note.id;
             
-            // 날짜 포맷 변환 (YYYY-MM-DD 형식으로)
-            let dateValue = note.note_date;
-            if (dateValue && !dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                // ISO 형식이면 날짜 부분만 추출
-                dateValue = dateValue.split('T')[0];
-            }
-            document.getElementById('modal-note-date').value = dateValue || '';
+            // 날짜와 시간 포맷 변환
+            const noteDate = new Date(note.note_date);
+            document.getElementById('modal-note-date').value = noteDate.toISOString().split('T')[0];
+            document.getElementById('modal-note-time').value = noteDate.toTimeString().slice(0, 5); // HH:MM
             document.getElementById('modal-note-content').value = note.content || '';
             
             // 상담 신청 초기화 (수정 시에는 상담 신청 불가)
@@ -1171,13 +1181,17 @@
             if (!student) return;
             
             const noteId = document.getElementById('edit-note-id').value;
-            const noteDate = document.getElementById('modal-note-date').value;
+            const noteDateValue = document.getElementById('modal-note-date').value;
+            const noteTimeValue = document.getElementById('modal-note-time').value || '00:00';
             let content = document.getElementById('modal-note-content').value;
             
-            if (!noteDate) {
+            if (!noteDateValue) {
                 window.showAlert('날짜를 선택하세요', 'error');
                 return;
             }
+            
+            // 날짜와 시간을 합쳐서 ISO 형식으로
+            const noteDate = `${noteDateValue}T${noteTimeValue}:00`;
             
             // 상담 신청 체크 여부 확인
             const requestCounseling = document.getElementById('request-counseling').checked;
@@ -1550,8 +1564,12 @@
                 day: 'numeric',
                 weekday: 'long'
             });
+            const timeStr = dateObj.toLocaleTimeString('ko-KR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
             
-            document.getElementById('detail-note-date').textContent = dateStr;
+            document.getElementById('detail-note-date').textContent = `${dateStr} ${timeStr}`;
             document.getElementById('detail-note-content').innerHTML = renderMarkdown(note.content);
             document.getElementById('note-detail-modal').classList.remove('hidden');
         };
