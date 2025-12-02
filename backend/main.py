@@ -194,7 +194,7 @@ def create_thumbnail(file_data: bytes, filename: str) -> str:
 
 def upload_to_ftp(file_data: bytes, filename: str, category: str) -> str:
     """
-    FTP 서버에 파일 업로드 및 썸네일 생성
+    FTP 서버에 파일 업로드 및 썸네일 생성 (기존 함수 - base64 업로드용)
     
     Args:
         file_data: 파일 바이트 데이터
@@ -249,6 +249,74 @@ def upload_to_ftp(file_data: bytes, filename: str, category: str) -> str:
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"FTP 업로드 실패: {str(e)}")
+
+
+async def upload_stream_to_ftp(file: UploadFile, filename: str, category: str) -> str:
+    """
+    FTP 서버에 파일 스트리밍 업로드 (메모리 절약형 - 대용량 파일용)
+    
+    Args:
+        file: FastAPI UploadFile 객체
+        filename: 저장할 파일명 (확장자 포함)
+        category: 카테고리 (guidance, train, student, teacher)
+    
+    Returns:
+        업로드된 파일의 FTP URL
+    """
+    try:
+        # FTP 연결
+        ftp = FTP()
+        ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
+        ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
+        ftp.encoding = 'utf-8'
+        
+        # 경로 이동
+        target_path = FTP_PATHS.get(category)
+        if not target_path:
+            raise ValueError(f"Invalid category: {category}")
+        
+        try:
+            ftp.cwd(target_path)
+        except:
+            # 경로가 없으면 생성
+            path_parts = target_path.split('/')
+            current_path = ''
+            for part in path_parts:
+                if not part:
+                    continue
+                current_path += '/' + part
+                try:
+                    ftp.cwd(current_path)
+                except:
+                    ftp.mkd(current_path)
+                    ftp.cwd(current_path)
+        
+        # 파일 스트리밍 업로드 (1MB 청크 단위로 읽어서 전송)
+        # 메모리에 전체 파일을 올리지 않음
+        await file.seek(0)  # 파일 포인터를 처음으로
+        ftp.storbinary(f'STOR {filename}', file.file, blocksize=1024*1024)
+        
+        # URL 생성 (FTP URL)
+        file_url = f"ftp://{FTP_CONFIG['host']}:{FTP_CONFIG['port']}{target_path}/{filename}"
+        
+        ftp.quit()
+        
+        # 썸네일 생성 (백그라운드에서, 실패해도 무시)
+        # 이미지 파일인 경우에만 썸네일 생성 시도
+        if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp')):
+            try:
+                # 썸네일용으로 파일 일부만 읽기 (처음 10MB만)
+                await file.seek(0)
+                thumbnail_data = await file.read(10 * 1024 * 1024)
+                if thumbnail_data:
+                    create_thumbnail(thumbnail_data, filename)
+            except Exception as e:
+                print(f"썸네일 생성 실패: {str(e)}")
+        
+        return file_url
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"FTP 스트리밍 업로드 실패: {str(e)}")
 
 # ==================== 학생 관리 API ====================
 
@@ -3959,12 +4027,13 @@ async def upload_image(
                 detail=f"허용되지 않는 파일 형식입니다. 허용 형식: {', '.join(allowed_extensions)}"
             )
         
-        # 파일 읽기
-        file_data = await file.read()
+        # 파일 크기 체크 (100MB 제한 - 메모리에 올리지 않고 크기만 확인)
+        await file.seek(0, 2)  # 파일 끝으로 이동
+        file_size = await file.tell()  # 현재 위치 = 파일 크기
+        await file.seek(0)  # 파일 처음으로 되돌림
         
-        # 파일 크기 체크 (100MB 제한 - 413 에러 방지)
-        if len(file_data) > 100 * 1024 * 1024:
-            raise HTTPException(status_code=413, detail=f"파일 크기는 100MB를 초과할 수 없습니다 (현재: {len(file_data) / 1024 / 1024:.2f}MB)")
+        if file_size > 100 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail=f"파일 크기는 100MB를 초과할 수 없습니다 (현재: {file_size / 1024 / 1024:.2f}MB)")
         
         # 원본 파일명 보존 (타임스탬프 접두어로 중복 방지)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -3997,15 +4066,15 @@ async def upload_image(
         
         new_filename = f"{timestamp}_{unique_id}_{safe_name}{file_ext}"
         
-        # FTP 업로드
-        file_url = upload_to_ftp(file_data, new_filename, category)
+        # 스트리밍 FTP 업로드 (메모리 절약)
+        file_url = await upload_stream_to_ftp(file, new_filename, category)
         
         return {
             "success": True,
             "url": file_url,
             "filename": new_filename,
             "original_filename": file.filename,  # 원본 파일명 추가
-            "size": len(file_data)
+            "size": file_size
         }
         
     except HTTPException:
