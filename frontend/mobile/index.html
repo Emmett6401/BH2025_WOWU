@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="description" content="바이오헬스 교육 관리 모바일 앱">
     <meta name="theme-color" content="#3B82F6">
     
@@ -222,6 +225,10 @@
 
     <script>
         // API Base URL
+        // 버전 정보
+        const APP_VERSION = 'v2.0.91';
+        console.log(`%c🚀 Dashboard ${APP_VERSION} 로드됨`, 'color: #10b981; font-weight: bold; font-size: 14px;');
+
         const API_BASE_URL = '';
         
         let currentUser = null;

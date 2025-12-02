@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SSIRN - 바이오헬스교육관리</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>SSIRN - 바이오헬스교육관리 (v2.0.91)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
@@ -311,6 +314,10 @@
                 }, duration);
             }
         }
+        // 버전 정보
+        const APP_VERSION = 'v2.0.91';
+        console.log(`%c🚀 SSIRN ${APP_VERSION} 로드됨`, 'color: #10b981; font-weight: bold; font-size: 14px;');
+        
         const API_BASE_URL = '';
         let currentUser = null;
         let userType = null;
