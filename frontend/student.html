@@ -1075,8 +1075,8 @@
                                     
                                     filesHTML += `
                                         <a href="${convertedUrl}" 
-                                           download="${fileName}"
-                                           class="flex flex-col items-center gap-2 px-3 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 text-xs transition-colors min-w-[100px] max-w-[140px]"
+                                           onclick="event.preventDefault(); event.stopPropagation(); downloadFile('${convertedUrl}', '${fileName}'); return false;"
+                                           class="flex flex-col items-center gap-2 px-3 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 text-xs transition-colors min-w-[100px] max-w-[140px] cursor-pointer"
                                            title="${fileName}">
                                             <i class="fas ${iconClass} text-2xl"></i>
                                             <span class="text-center break-all line-clamp-2">${fileName}</span>
@@ -1747,22 +1747,84 @@
         };
         
         // 이미지 미리보기 모달
-        window.showImagePreview = function(url, filename) {
-            const modal = document.getElementById('image-preview-modal');
-            const img = document.getElementById('preview-image');
-            const filenameEl = document.getElementById('preview-filename');
+        window.showImagePreview = async function(url, filename) {
+            // 프로그래스바 표시
+            window.showLoading('이미지를 불러오는 중...');
+            window.updateProgress(10, '이미지 로드 중...');
             
-            img.src = url;
-            filenameEl.textContent = filename || '';
-            
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            try {
+                const modal = document.getElementById('image-preview-modal');
+                const img = document.getElementById('preview-image');
+                const filenameEl = document.getElementById('preview-filename');
+                
+                // 이미지 프리로드
+                await new Promise((resolve, reject) => {
+                    const tempImg = new Image();
+                    tempImg.onload = () => {
+                        window.updateProgress(80, '이미지 로드 완료');
+                        img.src = url;
+                        filenameEl.textContent = filename || '';
+                        resolve();
+                    };
+                    tempImg.onerror = reject;
+                    tempImg.src = url;
+                });
+                
+                window.updateProgress(100, '완료!');
+                
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                
+                setTimeout(() => window.hideLoading(), 300);
+            } catch (error) {
+                console.error('이미지 로드 실패:', error);
+                window.hideLoading();
+                window.showAlert('이미지를 불러오는데 실패했습니다', 'error');
+            }
         };
         
         window.closeImagePreview = function() {
             const modal = document.getElementById('image-preview-modal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+        };
+        
+        // 파일 다운로드 함수
+        window.downloadFile = async function(url, filename) {
+            window.showLoading('파일 다운로드 중...');
+            window.updateProgress(10, '다운로드 준비 중...');
+            
+            try {
+                window.updateProgress(30, '파일 다운로드 중...');
+                
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('다운로드 실패');
+                
+                window.updateProgress(70, '파일 저장 중...');
+                
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                
+                window.updateProgress(90, '거의 완료...');
+                
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+                
+                window.updateProgress(100, '다운로드 완료!');
+                setTimeout(() => {
+                    window.hideLoading();
+                    window.showAlert('다운로드가 완료되었습니다', 'success');
+                }, 500);
+            } catch (error) {
+                console.error('다운로드 실패:', error);
+                window.hideLoading();
+                window.showAlert('파일 다운로드에 실패했습니다', 'error');
+            }
         };
         
         // ESC 키로 이미지 미리보기 닫기

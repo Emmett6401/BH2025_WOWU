@@ -216,6 +216,13 @@
             <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-500 mb-4"></div>
             <p id="loadingText" class="text-lg font-semibold text-gray-800 mb-2">처리 중...</p>
             <p id="loadingSubtext" class="text-sm text-gray-600">잠시만 기다려주세요</p>
+            <!-- Progress Bar -->
+            <div class="mt-4">
+                <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div id="progressBar" class="bg-green-500 h-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="progressPercent" class="text-xs text-gray-500 mt-2"></p>
+            </div>
         </div>
     </div>
     <!-- Toast Message Container -->
@@ -236,6 +243,28 @@
         }
 
         function hideLoading() {
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.classList.add("hidden");
+            overlay.classList.remove("flex");
+        }
+        
+        // Progress bar functions
+        function showProgress(text = "처리 중...") {
+            document.getElementById("loadingText").textContent = text;
+            document.getElementById("loadingSubtext").textContent = "잠시만 기다려주세요";
+            document.getElementById("progressBar").style.width = "0%";
+            document.getElementById("progressPercent").textContent = "";
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.classList.remove("hidden");
+            overlay.classList.add("flex");
+        }
+        
+        function updateProgress(percent) {
+            document.getElementById("progressBar").style.width = percent + "%";
+            document.getElementById("progressPercent").textContent = percent + "%";
+        }
+        
+        function hideProgress() {
             const overlay = document.getElementById("loadingOverlay");
             overlay.classList.add("hidden");
             overlay.classList.remove("flex");
@@ -501,9 +530,8 @@
                                     
                                     filesHTML += `
                                         <a href="${convertedUrl}" 
-                                           download="${fileName}"
-                                           onclick="event.stopPropagation();"
-                                           class="flex flex-col items-center gap-2 px-3 py-3 bg-gray-50 active:bg-gray-200 rounded-lg border border-gray-200 text-xs transition-colors min-w-[90px] max-w-[120px]">
+                                           onclick="event.preventDefault(); event.stopPropagation(); downloadFile('${convertedUrl}', '${fileName}'); return false;"
+                                           class="flex flex-col items-center gap-2 px-3 py-3 bg-gray-50 active:bg-gray-200 rounded-lg border border-gray-200 text-xs transition-colors min-w-[90px] max-w-[120px] cursor-pointer">
                                             <i class="fas ${iconClass} text-2xl flex-shrink-0"></i>
                                             <span class="text-center break-all line-clamp-2 text-xs">${fileName}</span>
                                             <span class="px-2 py-1 bg-gray-200 rounded text-xs font-semibold">${ext}</span>
@@ -870,17 +898,81 @@
             document.getElementById('memoModal').classList.remove('flex');
         }
 
-        // Show photo modal
-        function showPhotoModal(url) {
+        // Show photo modal with progress bar
+        async function showPhotoModal(url) {
             event.stopPropagation();
-            document.getElementById('photoModalImg').src = url;
-            document.getElementById('photoModal').classList.remove('hidden');
-            document.getElementById('photoModal').classList.add('flex');
             
-            // History API를 사용하여 뒤로가기 감지
-            history.pushState({ photoModal: true }, '');
+            // Show progress
+            showProgress('이미지 로드 중...');
+            updateProgress(10);
+            
+            try {
+                // Preload image
+                await new Promise((resolve, reject) => {
+                    const tempImg = new Image();
+                    tempImg.onload = () => {
+                        updateProgress(80);
+                        document.getElementById('photoModalImg').src = url;
+                        resolve();
+                    };
+                    tempImg.onerror = reject;
+                    tempImg.src = url;
+                });
+                
+                updateProgress(100);
+                
+                document.getElementById('photoModal').classList.remove('hidden');
+                document.getElementById('photoModal').classList.add('flex');
+                
+                // History API를 사용하여 뒤로가기 감지
+                history.pushState({ photoModal: true }, '');
+                
+                setTimeout(() => hideProgress(), 300);
+            } catch (error) {
+                console.error('이미지 로드 실패:', error);
+                hideProgress();
+                alert('이미지를 불러오는데 실패했습니다');
+            }
         }
 
+        // Download file with progress bar
+        async function downloadFile(url, filename) {
+            showProgress('다운로드 중...');
+            updateProgress(10);
+            
+            try {
+                updateProgress(30);
+                
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('다운로드 실패');
+                
+                updateProgress(70);
+                
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                
+                updateProgress(90);
+                
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+                
+                updateProgress(100);
+                setTimeout(() => {
+                    hideProgress();
+                    alert('다운로드 완료!');
+                }, 500);
+            } catch (error) {
+                console.error('다운로드 실패:', error);
+                hideProgress();
+                alert('파일 다운로드에 실패했습니다');
+            }
+        }
+        
         // Close photo modal
         function closePhotoModal() {
             document.getElementById('photoModal').classList.add('hidden');
