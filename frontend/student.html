@@ -971,64 +971,106 @@
                 const dateStr = dateObj.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
                 const timeStr = dateObj.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
                 
-                // 첨부파일 처리
+                // 첨부파일 처리 (개선된 파싱)
                 let attachmentsHTML = '';
                 if (note.photo_urls) {
                     try {
-                        const fileUrls = typeof note.photo_urls === 'string' 
-                            ? note.photo_urls.split(',').filter(url => url.trim())
-                            : Array.isArray(note.photo_urls) 
-                            ? note.photo_urls 
-                            : [];
+                        let fileUrls = [];
+                        
+                        // JSON 배열 형태 파싱 시도
+                        if (typeof note.photo_urls === 'string') {
+                            // "[]" 같은 빈 배열 문자열 제거
+                            const cleanedUrls = note.photo_urls.replace(/\[\]/g, '').trim();
+                            
+                            if (cleanedUrls.startsWith('[') && cleanedUrls.endsWith(']')) {
+                                // JSON 배열 파싱
+                                try {
+                                    fileUrls = JSON.parse(cleanedUrls);
+                                } catch (e) {
+                                    // JSON 파싱 실패 시 쉼표로 분리
+                                    fileUrls = cleanedUrls.slice(1, -1).split(',').map(url => url.trim().replace(/^"|"$/g, ''));
+                                }
+                            } else {
+                                // 쉼표로 분리된 URL
+                                fileUrls = cleanedUrls.split(',').map(url => url.trim());
+                            }
+                        } else if (Array.isArray(note.photo_urls)) {
+                            fileUrls = note.photo_urls;
+                        }
+                        
+                        // 유효한 URL만 필터링 (빈 문자열, "[]", 너무 짧은 URL 제외)
+                        fileUrls = fileUrls.filter(url => {
+                            if (!url || url === '[]' || url.length < 10) return false;
+                            // ftp:// 또는 http:// 로 시작하는 URL만
+                            return url.startsWith('ftp://') || url.startsWith('http://') || url.startsWith('https://');
+                        });
                         
                         if (fileUrls.length > 0) {
-                            attachmentsHTML = '<div class="mt-3 border-t pt-3">';
-                            attachmentsHTML += '<p class="text-xs text-gray-500 mb-2"><i class="fas fa-paperclip mr-1"></i>첨부파일 (' + fileUrls.length + '개)</p>';
-                            attachmentsHTML += '<div class="flex flex-wrap gap-2">';
+                            let validFileCount = 0;
+                            let filesHTML = '';
                             
                             fileUrls.forEach(url => {
                                 const urlLower = url.toLowerCase();
-                                const fileName = url.split('/').pop();
+                                const fileName = decodeURIComponent(url.split('/').pop());
+                                const ext = fileName.split('.').pop().toUpperCase();
+                                
+                                // 알려진 파일 확장자만 표시
+                                const knownExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'hwp'];
+                                if (!knownExtensions.includes(ext.toLowerCase())) {
+                                    console.warn('알 수 없는 파일 형식:', fileName);
+                                    return; // 알 수 없는 파일 건너뛰기
+                                }
+                                
+                                validFileCount++;
                                 
                                 // 이미지 파일 확인
                                 if (urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/i)) {
-                                    attachmentsHTML += `
-                                        <div class="relative group">
-                                            <img src="${url}" 
-                                                 class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
-                                                 onclick="window.open('${url}', '_blank')"
-                                                 onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22%3E이미지%3C/text%3E%3C/svg%3E';"
-                                                 title="${fileName}">
-                                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded transition-all"></div>
+                                    filesHTML += \`
+                                        <div class="flex flex-col items-center">
+                                            <div class="relative group">
+                                                <img src="\${url}" 
+                                                     class="w-20 h-20 object-cover rounded-lg border-2 border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                                                     onclick="window.open('\${url}', '_blank')"
+                                                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-size=%2212%22%3E이미지%3C/text%3E%3C/svg%3E';"
+                                                     title="\${fileName}">
+                                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all"></div>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-1 max-w-[80px] truncate" title="\${fileName}">\${fileName}</p>
                                         </div>
-                                    `;
+                                    \`;
                                 } else {
-                                    // 기타 파일 - 다운로드 버튼
-                                    const ext = fileName.split('.').pop().toUpperCase();
+                                    // 기타 파일 - 다운로드 버튼 (파일명 + 확장자 표시)
                                     const iconClass = 
                                         urlLower.endsWith('.pdf') ? 'fa-file-pdf text-red-500' :
                                         urlLower.match(/\.(doc|docx)$/i) ? 'fa-file-word text-blue-500' :
                                         urlLower.match(/\.(xls|xlsx)$/i) ? 'fa-file-excel text-green-500' :
                                         urlLower.match(/\.(ppt|pptx)$/i) ? 'fa-file-powerpoint text-orange-500' :
+                                        urlLower.endsWith('.hwp') ? 'fa-file-alt text-blue-400' :
                                         'fa-file text-gray-500';
                                     
-                                    attachmentsHTML += `
-                                        <a href="${url}" 
-                                           download="${fileName}"
-                                           class="flex items-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded border text-xs transition-colors"
-                                           title="${fileName}">
-                                            <i class="fas ${iconClass}"></i>
-                                            <span class="max-w-[100px] truncate">${fileName}</span>
-                                            <i class="fas fa-download text-gray-400"></i>
+                                    filesHTML += \`
+                                        <a href="\${url}" 
+                                           download="\${fileName}"
+                                           class="flex flex-col items-center gap-2 px-3 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 text-xs transition-colors min-w-[100px] max-w-[140px]"
+                                           title="\${fileName}">
+                                            <i class="fas \${iconClass} text-2xl"></i>
+                                            <span class="text-center break-all line-clamp-2">\${fileName}</span>
+                                            <span class="px-2 py-1 bg-gray-200 rounded text-xs font-semibold">\${ext}</span>
                                         </a>
-                                    `;
+                                    \`;
                                 }
                             });
                             
-                            attachmentsHTML += '</div></div>';
+                            if (validFileCount > 0) {
+                                attachmentsHTML = '<div class="mt-3 border-t pt-3">';
+                                attachmentsHTML += '<p class="text-xs text-gray-600 mb-2 font-semibold"><i class="fas fa-paperclip mr-1"></i>첨부파일 (' + validFileCount + '개)</p>';
+                                attachmentsHTML += '<div class="flex flex-wrap gap-3">';
+                                attachmentsHTML += filesHTML;
+                                attachmentsHTML += '</div></div>';
+                            }
                         }
                     } catch (error) {
-                        console.error('첨부파일 파싱 오류:', error);
+                        console.error('첨부파일 파싱 오류:', error, note.photo_urls);
                     }
                 }
                 
