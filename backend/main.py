@@ -2560,7 +2560,7 @@ async def generate_training_content(data: dict):
             }
             
             payload = {
-                "model": "llama-3.1-70b-versatile",
+                "model": "llama-3.3-70b-versatile",  # 업데이트된 모델로 변경
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
@@ -2671,6 +2671,9 @@ async def generate_training_content(data: dict):
             "class_date": class_date
         }
     except Exception as e:
+        print(f"[ERROR] AI 생성 실패 상세: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"AI 생성 실패: {str(e)}")
 
 # ==================== AI 생기부 작성 API ====================
