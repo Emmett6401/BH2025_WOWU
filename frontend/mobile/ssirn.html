@@ -899,7 +899,7 @@
         }
 
         // Show photo modal with progress bar
-        async function showPhotoModal(event, url) {
+        window.showPhotoModal = async function(event, url) {
             if (event) {
                 event.stopPropagation();
                 event.preventDefault();
@@ -936,10 +936,10 @@
                 hideProgress();
                 alert('이미지를 불러오는데 실패했습니다');
             }
-        }
+        };
 
         // Download file with progress bar
-        async function downloadFile(url, filename) {
+        window.downloadFile = async function(url, filename) {
             showProgress('다운로드 중...');
             updateProgress(10);
             
@@ -974,7 +974,7 @@
                 hideProgress();
                 alert('파일 다운로드에 실패했습니다');
             }
-        }
+        };
         
         // Close photo modal
         function closePhotoModal() {
