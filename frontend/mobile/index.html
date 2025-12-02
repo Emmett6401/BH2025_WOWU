@@ -297,32 +297,9 @@
                 }
             ],
             
-            // 학생 전용 메뉴
+            // 학생 전용 메뉴 (학생은 common 메뉴만 사용)
             student: [
-                {
-                    id: 'counseling',
-                    title: '상담신청',
-                    icon: 'fa-comments',
-                    color: 'from-orange-500 to-orange-600',
-                    page: 'counseling.html',
-                    description: '상담 신청'
-                },
-                {
-                    id: 'training',
-                    title: '훈련일지',
-                    icon: 'fa-clipboard-list',
-                    color: 'from-indigo-500 to-indigo-600',
-                    page: 'training.html',
-                    description: '일지 작성'
-                },
-                {
-                    id: 'team',
-                    title: '팀 활동',
-                    icon: 'fa-users',
-                    color: 'from-pink-500 to-pink-600',
-                    page: 'team.html',
-                    description: '팀 프로젝트'
-                }
+                // 학생은 '내 정보', 'SSIRN메모장', '공지사항'만 표시 (common 메뉴)
             ]
         };
         
@@ -620,7 +597,8 @@
                     </div>
                 </div>
                 
-                <!-- 상단 통계 카드 (6개) -->
+                ${userType === 'instructor' ? `
+                <!-- 상단 통계 카드 (6개) - 강사 전용 -->
                 <div class="grid grid-cols-2 gap-3 mb-4">
                     <!-- 학생 -->
                     <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-4 text-white">
@@ -676,8 +654,31 @@
                         <p class="text-xs text-pink-100">활동팀</p>
                     </div>
                 </div>
+                ` : `
+                <!-- 상단 통계 카드 (2개) - 학생 전용 -->
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <!-- 오늘 수업 -->
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-4 text-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fas fa-calendar-day text-2xl"></i>
+                            <p class="text-3xl font-bold">${todayTimetables.length}</p>
+                        </div>
+                        <p class="text-xs text-blue-100">오늘 수업</p>
+                    </div>
+                    
+                    <!-- 공지사항 -->
+                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-4 text-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fas fa-bullhorn text-2xl"></i>
+                            <p class="text-3xl font-bold">${activeNotices.length}</p>
+                        </div>
+                        <p class="text-xs text-purple-100">활성 공지사항</p>
+                    </div>
+                </div>
+                `}
                 
-                <!-- 차트 섹션 (3개 차트) -->
+                ${userType === 'instructor' ? `
+                <!-- 차트 섹션 (3개 차트) - 강사 전용 -->
                 <div class="grid grid-cols-1 gap-4 mb-4">
                     <!-- 진로 결정 현황 -->
                     <div class="bg-white rounded-xl shadow-lg p-4 fade-in">
@@ -751,6 +752,7 @@
                         </div>
                     </div>
                 </div>
+                ` : ''}
                 
                 <!-- 오늘 시간표 -->
                 <div class="bg-white rounded-xl shadow-lg p-4 mb-4 fade-in" style="animation-delay: 0.3s">
@@ -792,7 +794,8 @@
                     </div>
                 </div>
                 
-                <!-- 최근 상담 -->
+                ${userType === 'instructor' ? `
+                <!-- 최근 상담 (강사 전용) -->
                 <div class="bg-white rounded-xl shadow-lg p-4 mb-4 fade-in" style="animation-delay: 0.4s">
                     <div class="flex items-center justify-between mb-3">
                         <h3 class="text-sm font-bold text-gray-800">
@@ -820,7 +823,7 @@
                     </div>
                 </div>
                 
-                <!-- 최근 훈련일지 -->
+                <!-- 최근 훈련일지 (강사 전용) -->
                 <div class="bg-white rounded-xl shadow-lg p-4 mb-4 fade-in" style="animation-delay: 0.5s">
                     <div class="flex items-center justify-between mb-3">
                         <h3 class="text-sm font-bold text-gray-800">
@@ -853,7 +856,7 @@
                     </div>
                 </div>
                 
-                <!-- 최근 팀 활동일지 -->
+                <!-- 최근 팀 활동일지 (강사 전용) -->
                 <div class="bg-white rounded-xl shadow-lg p-4 mb-4 fade-in" style="animation-delay: 0.6s">
                     <div class="flex items-center justify-between mb-3">
                         <h3 class="text-sm font-bold text-gray-800">
@@ -876,6 +879,7 @@
                         `).join('') : '<p class="text-center py-8 text-gray-500">최근 팀 활동일지가 없습니다</p>'}
                     </div>
                 </div>
+                ` : ''}
                 
                 <!-- 활성 공지사항 -->
                 <div class="bg-white rounded-xl shadow-lg p-4 mb-4 fade-in" style="animation-delay: 0.7s">
