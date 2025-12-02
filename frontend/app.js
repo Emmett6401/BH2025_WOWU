@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.71'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.72'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -9838,6 +9838,11 @@ function renderTimetableList() {
     tbody.innerHTML = paginatedData.map((tt, index) => {
         const duration = calculateDuration(tt.start_time, tt.end_time);
         const isToday = tt.class_date === today;
+        
+        // 디버깅: 훈련일지 ID 확인
+        if (index === 0) {
+            console.log('[시간표 디버깅] training_log_id:', tt.training_log_id, '| 시간표 ID:', tt.id);
+        }
         
         // 요일 계산 로직 추가
         let dayOfWeek = '';
