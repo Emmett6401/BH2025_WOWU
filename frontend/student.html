@@ -487,6 +487,55 @@
                                 <option value="">선택하지 않음</option>
                             </select>
                         </div>
+                        
+                        <!-- 상담 내용 입력 (음성인식 지원) -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-sm text-gray-700">상담 내용 (선택)</label>
+                                <button type="button" id="voice-recognition-btn" 
+                                        onclick="toggleVoiceRecognition()"
+                                        class="flex items-center gap-1 px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-xs transition-colors">
+                                    <i class="fas fa-microphone"></i>
+                                    <span id="voice-btn-text">음성 인식</span>
+                                </button>
+                            </div>
+                            <textarea id="counseling-content" rows="4"
+                                      class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500"
+                                      placeholder="상담하고 싶은 내용을 입력하거나 음성으로 말씀하세요..."></textarea>
+                            <p id="voice-status" class="text-xs text-gray-500 mt-1 hidden">
+                                <i class="fas fa-circle animate-pulse text-red-500 mr-1"></i>
+                                <span>듣고 있습니다...</span>
+                            </p>
+                        </div>
+                        
+                        <!-- 사진 첨부 -->
+                        <div>
+                            <label class="block text-sm text-gray-700 mb-2">사진 첨부 (선택)</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" onclick="document.getElementById('counseling-camera-input').click()"
+                                        class="flex items-center justify-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm">
+                                    <i class="fas fa-camera"></i>
+                                    <span>사진 촬영</span>
+                                </button>
+                                <button type="button" onclick="document.getElementById('counseling-file-input').click()"
+                                        class="flex items-center justify-center gap-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm">
+                                    <i class="fas fa-image"></i>
+                                    <span>갤러리</span>
+                                </button>
+                            </div>
+                            
+                            <!-- Hidden file inputs -->
+                            <input type="file" id="counseling-camera-input" accept="image/*" capture="environment" 
+                                   multiple class="hidden" onchange="handleCounselingFiles(this.files)">
+                            <input type="file" id="counseling-file-input" accept="image/*" 
+                                   multiple class="hidden" onchange="handleCounselingFiles(this.files)">
+                            
+                            <!-- 첨부된 사진 목록 -->
+                            <div id="counseling-file-list" class="mt-2 space-y-2">
+                                <!-- 파일 목록이 여기에 동적으로 추가됩니다 -->
+                            </div>
+                        </div>
+                        
                         <p class="text-xs text-gray-500">
                             <i class="fas fa-info-circle mr-1"></i>
                             정보를 입력하지 않으면 담당 선생님이 적절한 시간에 연락드립니다
@@ -1204,12 +1253,16 @@
                 const counselingDate = document.getElementById('counseling-date').value || noteDate;
                 const counselingTime = document.getElementById('counseling-time').value;
                 const preferredInstructorCode = document.getElementById('preferred-instructor').value;
+                const userCounselingContent = document.getElementById('counseling-content').value;
                 
                 // 상담 내용 구성
                 let counselingContent = '';
                 
-                // 메모 내용이 있으면 포함, 없으면 "상담신청"
-                if (noteContent && noteContent.trim()) {
+                // 사용자가 입력한 상담 내용 우선
+                if (userCounselingContent && userCounselingContent.trim()) {
+                    counselingContent = userCounselingContent.trim();
+                } else if (noteContent && noteContent.trim()) {
+                    // 메모 내용이 있으면 포함
                     counselingContent = `[학생 메모에서 상담 신청]\n\n`;
                     counselingContent += `메모 내용:\n${noteContent.substring(0, 200)}${noteContent.length > 200 ? '...' : ''}\n\n`;
                 } else {
@@ -1217,19 +1270,20 @@
                 }
                 
                 if (counselingTime) {
-                    counselingContent += `희망 시간: ${counselingTime}\n`;
+                    counselingContent += `\n\n희망 시간: ${counselingTime}`;
                 }
                 if (preferredInstructorCode) {
                     // 선생님 이름 찾기
                     const instructorSelect = document.getElementById('preferred-instructor');
                     const selectedOption = instructorSelect.options[instructorSelect.selectedIndex];
                     const instructorName = selectedOption.text;
-                    counselingContent += `희망 선생님: ${instructorName}\n`;
+                    counselingContent += `\n희망 선생님: ${instructorName}`;
                 }
                 
+                // 먼저 상담일지 생성
                 const counselingData = {
                     student_id: student.id,
-                    instructor_code: preferredInstructorCode || null, // 선택한 선생님 또는 미정
+                    instructor_code: preferredInstructorCode || null,
                     consultation_date: counselingDate,
                     consultation_type: '학생요청',
                     content: counselingContent,
@@ -1237,11 +1291,47 @@
                     photo_urls: '[]'
                 };
                 
-                await axios.post(`${API_BASE_URL}/api/counselings`, counselingData);
+                const response = await axios.post(`${API_BASE_URL}/api/counselings`, counselingData);
                 console.log('✅ 상담 신청 등록 완료');
+                
+                // 파일이 있으면 업로드
+                if (counselingAttachedFiles.length > 0 && response.data.id) {
+                    await uploadCounselingFiles(response.data.id);
+                }
+                
+                // 파일 목록 초기화
+                counselingAttachedFiles = [];
+                document.getElementById('counseling-file-list').innerHTML = '';
+                
             } catch (error) {
                 console.error('상담 신청 등록 실패:', error);
                 // 에러가 나도 메모 저장은 성공했으므로 사용자에게 알리지 않음
+            }
+        }
+        
+        // 상담 파일 업로드
+        async function uploadCounselingFiles(counselingId) {
+            try {
+                for (const file of counselingAttachedFiles) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('category', 'guidance'); // 상담일지 카테고리
+                    
+                    const uploadResponse = await axios.post(`${API_BASE_URL}/api/upload-image`, formData, {
+                        headers: {
+                            'Content-Type': 'multipart/form-data'
+                        }
+                    });
+                    
+                    if (uploadResponse.data.success) {
+                        // 상담일지에 사진 URL 추가
+                        await axios.post(`${API_BASE_URL}/api/counselings/${counselingId}/add-photo`, {
+                            photo_url: uploadResponse.data.url
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('상담 파일 업로드 실패:', error);
             }
         }
         
@@ -1254,6 +1344,163 @@
                 detailsDiv.classList.add('hidden');
             }
         };
+        
+        // 상담 파일 첨부 처리
+        let counselingAttachedFiles = [];
+        
+        window.handleCounselingFiles = function(files) {
+            const fileList = document.getElementById('counseling-file-list');
+            
+            Array.from(files).forEach((file) => {
+                // 파일 크기 체크 (100MB)
+                if (file.size > 100 * 1024 * 1024) {
+                    window.showAlert(`파일이 너무 큽니다: ${file.name} (최대 100MB)`, 'error');
+                    return;
+                }
+                
+                // 파일 목록에 추가
+                counselingAttachedFiles.push(file);
+                
+                // UI에 파일 표시
+                const fileItem = document.createElement('div');
+                fileItem.className = 'flex items-center justify-between p-2 bg-white border border-gray-300 rounded-lg';
+                fileItem.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-image text-blue-500"></i>
+                        <div>
+                            <p class="text-xs font-medium text-gray-800">${file.name}</p>
+                            <p class="text-xs text-gray-500">${(file.size / 1024).toFixed(1)} KB</p>
+                        </div>
+                    </div>
+                    <button onclick="removeCounselingFile(${counselingAttachedFiles.length - 1})" 
+                            class="text-red-500 hover:text-red-700 transition-colors text-sm">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        };
+        
+        window.removeCounselingFile = function(index) {
+            counselingAttachedFiles.splice(index, 1);
+            const fileList = document.getElementById('counseling-file-list');
+            fileList.innerHTML = '';
+            
+            // 남은 파일들 다시 렌더링
+            counselingAttachedFiles.forEach((file, idx) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'flex items-center justify-between p-2 bg-white border border-gray-300 rounded-lg';
+                fileItem.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-image text-blue-500"></i>
+                        <div>
+                            <p class="text-xs font-medium text-gray-800">${file.name}</p>
+                            <p class="text-xs text-gray-500">${(file.size / 1024).toFixed(1)} KB</p>
+                        </div>
+                    </div>
+                    <button onclick="removeCounselingFile(${idx})" 
+                            class="text-red-500 hover:text-red-700 transition-colors text-sm">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        };
+        
+        // 음성 인식
+        let recognition = null;
+        let isRecognizing = false;
+        
+        window.toggleVoiceRecognition = function() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                window.showAlert('이 브라우저는 음성 인식을 지원하지 않습니다', 'error');
+                return;
+            }
+            
+            if (isRecognizing) {
+                stopVoiceRecognition();
+            } else {
+                startVoiceRecognition();
+            }
+        };
+        
+        function startVoiceRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            
+            recognition.lang = 'ko-KR';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            
+            const textarea = document.getElementById('counseling-content');
+            const voiceBtn = document.getElementById('voice-recognition-btn');
+            const voiceBtnText = document.getElementById('voice-btn-text');
+            const voiceStatus = document.getElementById('voice-status');
+            
+            let finalTranscript = textarea.value;
+            
+            recognition.onstart = function() {
+                isRecognizing = true;
+                voiceBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                voiceBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+                voiceBtnText.textContent = '중지';
+                voiceStatus.classList.remove('hidden');
+            };
+            
+            recognition.onresult = function(event) {
+                let interimTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                textarea.value = finalTranscript + interimTranscript;
+                textarea.scrollTop = textarea.scrollHeight;
+            };
+            
+            recognition.onerror = function(event) {
+                console.error('음성 인식 오류:', event.error);
+                if (event.error !== 'no-speech') {
+                    window.showAlert('음성 인식 오류: ' + event.error, 'error');
+                }
+                stopVoiceRecognition();
+            };
+            
+            recognition.onend = function() {
+                if (isRecognizing) {
+                    // 자동으로 재시작 (continuous 효과)
+                    recognition.start();
+                }
+            };
+            
+            try {
+                recognition.start();
+            } catch (error) {
+                console.error('음성 인식 시작 실패:', error);
+                window.showAlert('음성 인식을 시작할 수 없습니다', 'error');
+            }
+        }
+        
+        function stopVoiceRecognition() {
+            if (recognition) {
+                isRecognizing = false;
+                recognition.stop();
+                
+                const voiceBtn = document.getElementById('voice-recognition-btn');
+                const voiceBtnText = document.getElementById('voice-btn-text');
+                const voiceStatus = document.getElementById('voice-status');
+                
+                voiceBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                voiceBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+                voiceBtnText.textContent = '음성 인식';
+                voiceStatus.classList.add('hidden');
+            }
+        }
         
         // 메모 삭제
         window.deleteNote = async function(noteId) {
@@ -1333,6 +1580,18 @@
             document.getElementById('note-file-list').innerHTML = '';
             document.getElementById('note-camera-input').value = '';
             document.getElementById('note-file-input').value = '';
+            
+            // 상담 관련 초기화
+            counselingAttachedFiles = [];
+            document.getElementById('counseling-file-list').innerHTML = '';
+            document.getElementById('counseling-camera-input').value = '';
+            document.getElementById('counseling-file-input').value = '';
+            document.getElementById('counseling-content').value = '';
+            
+            // 음성 인식 중지
+            if (isRecognizing) {
+                stopVoiceRecognition();
+            }
         };
         
         window.closeDetailModal = function() {
