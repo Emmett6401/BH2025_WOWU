@@ -376,8 +376,8 @@
         <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl">
                 <h3 class="text-2xl font-bold flex items-center">
-                    <i class="fas fa-edit mr-3"></i>
-                    <span id="modal-title">SSIRN메모장 작성</span>
+                    <i class="fas fa-pen-fancy mr-3"></i>
+                    <span id="modal-title">무형식주의 메모작성</span>
                 </h3>
             </div>
             
@@ -415,6 +415,40 @@
                     <!-- 미리보기 -->
                     <div id="modal-preview-container" class="hidden border rounded-lg p-4 bg-gray-50 max-h-96 overflow-y-auto">
                         <div id="modal-markdown-preview" class="prose max-w-none"></div>
+                    </div>
+                </div>
+                
+                <!-- 파일 첨부 -->
+                <div class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <label class="block text-gray-700 font-semibold mb-3">
+                        <i class="fas fa-paperclip mr-2 text-purple-500"></i>파일 첨부
+                    </label>
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <!-- 사진 촬영 버튼 -->
+                        <button type="button" onclick="document.getElementById('note-camera-input').click()"
+                                class="flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-camera text-xl"></i>
+                            <span class="font-medium">사진 촬영</span>
+                        </button>
+                        
+                        <!-- 파일 선택 버튼 -->
+                        <button type="button" onclick="document.getElementById('note-file-input').click()"
+                                class="flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                            <i class="fas fa-folder-open text-xl"></i>
+                            <span class="font-medium">파일 선택</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Hidden file inputs -->
+                    <input type="file" id="note-camera-input" accept="image/*" capture="environment" 
+                           multiple class="hidden" onchange="handleNoteFiles(this.files)">
+                    <input type="file" id="note-file-input" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" 
+                           multiple class="hidden" onchange="handleNoteFiles(this.files)">
+                    
+                    <!-- 첨부된 파일 목록 -->
+                    <div id="note-file-list" class="space-y-2">
+                        <!-- 파일 목록이 여기에 동적으로 추가됩니다 -->
                     </div>
                 </div>
                 
@@ -940,6 +974,92 @@
             document.getElementById('note-modal').classList.remove('hidden');
         };
         
+        // 파일 첨부 처리
+        let noteAttachedFiles = [];
+        
+        window.handleNoteFiles = function(files) {
+            const fileList = document.getElementById('note-file-list');
+            
+            Array.from(files).forEach((file, index) => {
+                // 파일 크기 체크 (100MB)
+                if (file.size > 100 * 1024 * 1024) {
+                    window.showAlert(`파일이 너무 큽니다: ${file.name} (최대 100MB)`, 'error');
+                    return;
+                }
+                
+                // 파일 목록에 추가
+                noteAttachedFiles.push(file);
+                
+                // UI에 파일 표시
+                const fileItem = document.createElement('div');
+                fileItem.className = 'flex items-center justify-between p-3 bg-white border border-gray-300 rounded-lg';
+                fileItem.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <i class="fas ${file.type.startsWith('image/') ? 'fa-image text-blue-500' : 'fa-file text-gray-500'} text-xl"></i>
+                        <div>
+                            <p class="text-sm font-medium text-gray-800">${file.name}</p>
+                            <p class="text-xs text-gray-500">${(file.size / 1024).toFixed(1)} KB</p>
+                        </div>
+                    </div>
+                    <button onclick="removeNoteFile(${noteAttachedFiles.length - 1})" 
+                            class="text-red-500 hover:text-red-700 transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        };
+        
+        window.removeNoteFile = function(index) {
+            noteAttachedFiles.splice(index, 1);
+            const fileList = document.getElementById('note-file-list');
+            fileList.innerHTML = '';
+            
+            // 남은 파일들 다시 렌더링
+            noteAttachedFiles.forEach((file, idx) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'flex items-center justify-between p-3 bg-white border border-gray-300 rounded-lg';
+                fileItem.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <i class="fas ${file.type.startsWith('image/') ? 'fa-image text-blue-500' : 'fa-file text-gray-500'} text-xl"></i>
+                        <div>
+                            <p class="text-sm font-medium text-gray-800">${file.name}</p>
+                            <p class="text-xs text-gray-500">${(file.size / 1024).toFixed(1)} KB</p>
+                        </div>
+                    </div>
+                    <button onclick="removeNoteFile(${idx})" 
+                            class="text-red-500 hover:text-red-700 transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        };
+        
+        // 파일 업로드
+        async function uploadNoteFiles(noteId) {
+            try {
+                for (const file of noteAttachedFiles) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('note_id', noteId);
+                    
+                    await axios.post(`${API_BASE_URL}/api/upload-note-file`, formData, {
+                        headers: {
+                            'Content-Type': 'multipart/form-data'
+                        }
+                    });
+                }
+                
+                // 업로드 완료 후 파일 목록 초기화
+                noteAttachedFiles = [];
+                document.getElementById('note-file-list').innerHTML = '';
+            } catch (error) {
+                console.error('파일 업로드 실패:', error);
+                window.showAlert('⚠️ 일부 파일 업로드에 실패했습니다', 'error');
+            }
+        }
+        
         // 모달에서 저장
         window.saveNoteFromModal = async function() {
             const student = JSON.parse(sessionStorage.getItem('student'));
@@ -983,6 +1103,12 @@
                 const response = await axios.post(`${API_BASE_URL}/api/class-notes`, data);
                 
                 if (response.data.success) {
+                    const savedNoteId = response.data.id || noteId;
+                    
+                    // 파일이 있으면 업로드
+                    if (noteAttachedFiles.length > 0 && savedNoteId) {
+                        await uploadNoteFiles(savedNoteId);
+                    }
                     
                     if (requestCounseling) {
                         // 상담 신청 등록
@@ -1128,6 +1254,12 @@
             document.getElementById('modal-editor-container').classList.remove('hidden');
             document.getElementById('modal-preview-container').classList.add('hidden');
             document.getElementById('modal-preview-toggle-text').textContent = '미리보기';
+            
+            // 파일 목록 초기화
+            noteAttachedFiles = [];
+            document.getElementById('note-file-list').innerHTML = '';
+            document.getElementById('note-camera-input').value = '';
+            document.getElementById('note-file-input').value = '';
         };
         
         window.closeDetailModal = function() {
