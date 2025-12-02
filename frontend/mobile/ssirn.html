@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SSIRN메모장 - 바이오헬스교육관리</title>
+    <title>SSIRN - 바이오헬스교육관리</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
@@ -92,7 +92,7 @@
             <button onclick="goBack()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-all">
                 <i class="fas fa-arrow-left text-xl"></i>
             </button>
-            <h1 class="text-xl font-bold">SSIRN메모장</h1>
+            <h1 class="text-xl font-bold">SSIRN</h1>
             <button onclick="showCreateModal()" class="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-all">
                 <i class="fas fa-plus text-xl"></i>
             </button>
@@ -165,15 +165,24 @@
                 <!-- Media Upload -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-camera mr-2 text-green-500"></i>사진 첨부
+                        <i class="fas fa-paperclip mr-2 text-green-500"></i>파일 첨부
                     </label>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                        <input type="file" id="mediaInput" accept="image/*" multiple class="hidden" onchange="handleMediaSelect(event)">
-                        <button type="button" onclick="document.getElementById('mediaInput').click()"
-                                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-all">
-                            <i class="fas fa-camera mr-2"></i>사진 촬영/선택
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                        <!-- 사진 촬영 (카메라 직접 실행) -->
+                        <input type="file" id="cameraInput" accept="image/*" capture="environment" multiple class="hidden" onchange="handleMediaSelect(event)">
+                        <button type="button" onclick="document.getElementById('cameraInput').click()"
+                                class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg transition-all mb-2">
+                            <i class="fas fa-camera mr-2"></i>사진 촬영
                         </button>
-                        <p class="text-xs text-gray-500 mt-2">최대 5개까지 업로드 가능 (고압축)</p>
+                        
+                        <!-- 파일 첨부 (갤러리/파일 선택) -->
+                        <input type="file" id="fileInput" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" multiple class="hidden" onchange="handleMediaSelect(event)">
+                        <button type="button" onclick="document.getElementById('fileInput').click()"
+                                class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg transition-all">
+                            <i class="fas fa-paperclip mr-2"></i>파일 첨부
+                        </button>
+                        
+                        <p class="text-xs text-gray-500 mt-2 text-center">최대 5개까지 업로드 가능 (이미지, PDF, 문서 등)</p>
                     </div>
                     <div id="mediaPreviewContainer" class="mt-3 grid grid-cols-4 gap-2"></div>
                 </div>
@@ -409,17 +418,68 @@
             memos.sort((a, b) => new Date(b.note_date) - new Date(a.note_date));
 
             container.innerHTML = memos.map(memo => {
-                const photos = memo.photo_urls ? JSON.parse(memo.photo_urls) : [];
-                const photoHtml = photos.length > 0 ? `
-                    <div class="flex space-x-2 mt-3 overflow-x-auto">
-                        ${photos.slice(0, 3).map(url => {
-                            const convertedUrl = convertFtpUrl(url);
-                            if (!convertedUrl) return '';
-                            return `<img src="${convertedUrl}" class="photo-thumbnail cursor-pointer" onclick="showPhotoModal('${convertedUrl}')">`;
-                        }).join('')}
-                        ${photos.length > 3 ? `<div class="photo-thumbnail bg-gray-200 flex items-center justify-center text-gray-600 font-semibold">+${photos.length - 3}</div>` : ''}
-                    </div>
-                ` : '';
+                // 첨부파일 처리 (개선)
+                let attachmentsHTML = '';
+                if (memo.photo_urls) {
+                    try {
+                        const fileUrls = typeof memo.photo_urls === 'string' 
+                            ? (memo.photo_urls.startsWith('[') ? JSON.parse(memo.photo_urls) : memo.photo_urls.split(',').filter(url => url.trim()))
+                            : Array.isArray(memo.photo_urls) 
+                            ? memo.photo_urls 
+                            : [];
+                        
+                        if (fileUrls.length > 0) {
+                            attachmentsHTML = '<div class="mt-4 pt-3 border-t border-gray-100">';
+                            attachmentsHTML += '<p class="text-xs text-gray-500 mb-2"><i class="fas fa-paperclip mr-1"></i>첨부파일 (' + fileUrls.length + '개)</p>';
+                            attachmentsHTML += '<div class="flex flex-wrap gap-2">';
+                            
+                            fileUrls.forEach(url => {
+                                const convertedUrl = convertFtpUrl(url);
+                                if (!convertedUrl) return;
+                                
+                                const urlLower = convertedUrl.toLowerCase();
+                                const fileName = convertedUrl.split('/').pop();
+                                
+                                // 이미지 파일 확인
+                                if (urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/i)) {
+                                    attachmentsHTML += `
+                                        <div class="relative group">
+                                            <img src="${convertedUrl}" 
+                                                 class="w-20 h-20 object-cover rounded-lg border-2 border-gray-200 cursor-pointer active:scale-95 transition-transform"
+                                                 onclick="event.stopPropagation(); showPhotoModal('${convertedUrl}')"
+                                                 onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-size=%2212%22%3E이미지%3C/text%3E%3C/svg%3E';"
+                                                 title="${fileName}">
+                                        </div>
+                                    `;
+                                } else {
+                                    // 기타 파일 - 다운로드 버튼 (모바일 최적화)
+                                    const ext = fileName.split('.').pop().toUpperCase();
+                                    const iconClass = 
+                                        urlLower.endsWith('.pdf') ? 'fa-file-pdf text-red-500' :
+                                        urlLower.match(/\.(doc|docx)$/i) ? 'fa-file-word text-blue-500' :
+                                        urlLower.match(/\.(xls|xlsx)$/i) ? 'fa-file-excel text-green-500' :
+                                        urlLower.match(/\.(ppt|pptx)$/i) ? 'fa-file-powerpoint text-orange-500' :
+                                        'fa-file text-gray-500';
+                                    
+                                    attachmentsHTML += `
+                                        <a href="${convertedUrl}" 
+                                           download="${fileName}"
+                                           onclick="event.stopPropagation();"
+                                           class="flex items-center gap-2 px-3 py-2 bg-gray-50 active:bg-gray-200 rounded-lg border border-gray-200 text-xs transition-colors min-w-0">
+                                            <i class="fas ${iconClass} flex-shrink-0"></i>
+                                            <span class="truncate max-w-[120px]">${fileName}</span>
+                                            <i class="fas fa-download text-gray-400 flex-shrink-0 text-xs"></i>
+                                        </a>
+                                    `;
+                                }
+                            });
+                            
+                            attachmentsHTML += '</div></div>';
+                        }
+                    } catch (error) {
+                        console.error('첨부파일 파싱 오류:', error);
+                    }
+                }
 
                 // 날짜/시간 포맷팅
                 const formatDateTime = (dateStr) => {
@@ -434,20 +494,20 @@
                 };
 
                 return `
-                    <div class="memo-card bg-white rounded-2xl shadow-md p-5 cursor-pointer hover:shadow-lg"
+                    <div class="memo-card bg-white rounded-2xl shadow-md p-5 cursor-pointer active:shadow-lg active:scale-[0.99] transition-all"
                          onclick="editMemo(${memo.id})">
                         <div class="flex items-start justify-between mb-3">
-                            <div class="flex items-center space-x-2">
-                                <i class="fas fa-clock text-green-500"></i>
-                                <span class="text-sm font-semibold text-gray-600">${formatDateTime(memo.note_date)}</span>
+                            <div class="flex items-center space-x-2 min-w-0 flex-1">
+                                <i class="fas fa-clock text-green-500 flex-shrink-0"></i>
+                                <span class="text-sm font-semibold text-gray-600 truncate">${formatDateTime(memo.note_date)}</span>
                             </div>
                             <button onclick="event.stopPropagation(); deleteMemo(${memo.id})" 
-                                    class="text-red-500 hover:text-red-700 p-2">
+                                    class="text-red-500 hover:text-red-700 active:scale-90 p-2 ml-2 flex-shrink-0 transition-transform">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
-                        <p class="text-gray-800 whitespace-pre-wrap">${memo.content}</p>
-                        ${photoHtml}
+                        <p class="text-gray-800 whitespace-pre-wrap leading-relaxed">${memo.content}</p>
+                        ${attachmentsHTML}
                     </div>
                 `;
             }).join('');

@@ -63,7 +63,7 @@
                     <button onclick="showTab('notes')" 
                             id="tab-notes"
                             class="px-6 py-3 font-semibold transition-all border-b-2 border-green-500 text-green-600">
-                        <i class="fas fa-book-open mr-2"></i>SSIRN메모장(수업,기억,정보,etc)
+                        <i class="fas fa-book-open mr-2"></i>SSIRN
                     </button>
                     <button onclick="showTab('notices')" 
                             id="tab-notices"
@@ -78,16 +78,16 @@
     <!-- 메인 컨텐츠 -->
     <main class="container mx-auto px-4 py-8">
         <div class="max-w-4xl mx-auto">
-            <!-- SSIRN메모장(수업,기억,정보,etc) 섹션 -->
+            <!-- SSIRN 섹션 -->
             <div id="section-notes">
-            <!-- SSIRN메모장(수업,기억,정보,etc) 카드 -->
+            <!-- SSIRN 카드 -->
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
                 <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
                     <div class="flex justify-between items-center">
                         <div>
                             <h2 class="text-2xl font-bold flex items-center">
                                 <i class="fas fa-book-open mr-3"></i>
-                                SSIRN메모장(수업,기억,정보,etc)
+                                SSIRN
                             </h2>
                             <p class="text-blue-100 mt-2 text-sm">수업 내용을 기록하고 관리하세요</p>
                         </div>
@@ -138,7 +138,7 @@
                 </div>
             </div>
             </div>
-            <!-- SSIRN메모장(수업,기억,정보,etc) 섹션 끝 -->
+            <!-- SSIRN 섹션 끝 -->
             
             <!-- 프로필 섹션 -->
             <div id="section-profile" class="hidden">
@@ -371,7 +371,7 @@
         </div>
     </main>
 
-    <!-- SSIRN메모장(수업,기억,정보,etc) 작성/편집 모달 -->
+    <!-- SSIRN 작성/편집 모달 -->
     <div id="note-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl">
@@ -567,7 +567,7 @@
         </div>
     </div>
     
-    <!-- SSIRN메모장(수업,기억,정보,etc) 상세보기 모달 -->
+    <!-- SSIRN 상세보기 모달 -->
     <div id="note-detail-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl">
@@ -575,7 +575,7 @@
                     <div>
                         <h3 class="text-2xl font-bold flex items-center mb-2">
                             <i class="fas fa-book-open mr-3"></i>
-                            SSIRN메모장
+                            SSIRN
                         </h3>
                         <p class="text-blue-100 text-sm" id="detail-note-date"></p>
                     </div>
@@ -861,7 +861,7 @@
             return url.split('#')[0];
         };
         
-        // ==================== SSIRN메모장(수업,기억,정보,etc) 관련 함수 ====================
+        // ==================== SSIRN 관련 함수 ====================
         
         let allNotes = [];
         let currentNoteId = null;
@@ -971,6 +971,67 @@
                 const dateStr = dateObj.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
                 const timeStr = dateObj.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
                 
+                // 첨부파일 처리
+                let attachmentsHTML = '';
+                if (note.photo_urls) {
+                    try {
+                        const fileUrls = typeof note.photo_urls === 'string' 
+                            ? note.photo_urls.split(',').filter(url => url.trim())
+                            : Array.isArray(note.photo_urls) 
+                            ? note.photo_urls 
+                            : [];
+                        
+                        if (fileUrls.length > 0) {
+                            attachmentsHTML = '<div class="mt-3 border-t pt-3">';
+                            attachmentsHTML += '<p class="text-xs text-gray-500 mb-2"><i class="fas fa-paperclip mr-1"></i>첨부파일 (' + fileUrls.length + '개)</p>';
+                            attachmentsHTML += '<div class="flex flex-wrap gap-2">';
+                            
+                            fileUrls.forEach(url => {
+                                const urlLower = url.toLowerCase();
+                                const fileName = url.split('/').pop();
+                                
+                                // 이미지 파일 확인
+                                if (urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/i)) {
+                                    attachmentsHTML += `
+                                        <div class="relative group">
+                                            <img src="${url}" 
+                                                 class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                                                 onclick="window.open('${url}', '_blank')"
+                                                 onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22%3E이미지%3C/text%3E%3C/svg%3E';"
+                                                 title="${fileName}">
+                                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded transition-all"></div>
+                                        </div>
+                                    `;
+                                } else {
+                                    // 기타 파일 - 다운로드 버튼
+                                    const ext = fileName.split('.').pop().toUpperCase();
+                                    const iconClass = 
+                                        urlLower.endsWith('.pdf') ? 'fa-file-pdf text-red-500' :
+                                        urlLower.match(/\.(doc|docx)$/i) ? 'fa-file-word text-blue-500' :
+                                        urlLower.match(/\.(xls|xlsx)$/i) ? 'fa-file-excel text-green-500' :
+                                        urlLower.match(/\.(ppt|pptx)$/i) ? 'fa-file-powerpoint text-orange-500' :
+                                        'fa-file text-gray-500';
+                                    
+                                    attachmentsHTML += `
+                                        <a href="${url}" 
+                                           download="${fileName}"
+                                           class="flex items-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded border text-xs transition-colors"
+                                           title="${fileName}">
+                                            <i class="fas ${iconClass}"></i>
+                                            <span class="max-w-[100px] truncate">${fileName}</span>
+                                            <i class="fas fa-download text-gray-400"></i>
+                                        </a>
+                                    `;
+                                }
+                            });
+                            
+                            attachmentsHTML += '</div></div>';
+                        }
+                    } catch (error) {
+                        console.error('첨부파일 파싱 오류:', error);
+                    }
+                }
+                
                 return `
                     <div class="border rounded-lg p-4 hover:shadow-lg transition-shadow bg-white relative">
                         <div class="flex justify-between items-start mb-2">
@@ -998,6 +1059,7 @@
                             </div>
                         </div>
                         <p class="text-gray-600 text-sm line-clamp-3 cursor-pointer" onclick="showNoteDetail(${note.id})">${preview}</p>
+                        ${attachmentsHTML}
                         <div class="mt-2 text-xs text-gray-400">
                             <i class="fas fa-history mr-1"></i>
                             작성: ${new Date(note.created_at).toLocaleString('ko-KR')}

@@ -253,7 +253,7 @@
                 },
                 {
                     id: 'ssirn',
-                    title: 'SSIRN메모장',
+                    title: 'SSIRN',
                     icon: 'fa-book-open',
                     color: 'from-green-500 to-green-600',
                     page: 'ssirn.html',
@@ -299,7 +299,7 @@
             
             // 학생 전용 메뉴 (학생은 common 메뉴만 사용)
             student: [
-                // 학생은 '내 정보', 'SSIRN메모장', '공지사항'만 표시 (common 메뉴)
+                // 학생은 '내 정보', 'SSIRN', '공지사항'만 표시 (common 메뉴)
             ]
         };
         
@@ -1091,7 +1091,7 @@
             ];
             
             menuGrid.innerHTML = menus.map((menu, index) => `
-                <div class="menu-card bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer fade-in"
+                <div class="menu-card bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer fade-in active:scale-95 active:shadow-xl transition-all"
                      style="animation-delay: ${index * 0.1}s"
                      onclick="navigateToPageFromMenu('${menu.page}')">
                     <div class="bg-gradient-to-br ${menu.color} p-6 text-white">
