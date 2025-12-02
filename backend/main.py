@@ -5174,6 +5174,8 @@ async def create_class_note(data: dict):
         content = data.get('content', '')
         photo_urls = data.get('photo_urls', '[]')
         
+        print(f"🔍 class-notes 데이터 수신: id={note_id}, student_id={student_id}, note_date={note_date}, content_len={len(content)}")
+        
         if not note_date:
             raise HTTPException(status_code=400, detail="note_date는 필수입니다")
         
@@ -5214,6 +5216,10 @@ async def create_class_note(data: dict):
         return {"success": True, "message": "수업일지가 저장되었습니다", "note": note, "id": note_id}
     except Exception as e:
         conn.rollback()
+        print(f"❌ class-notes 저장 에러: {str(e)}")
+        print(f"   데이터: id={note_id}, student_id={student_id}, note_date={note_date}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
