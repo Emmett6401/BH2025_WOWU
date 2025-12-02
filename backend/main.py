@@ -3962,9 +3962,9 @@ async def upload_image(
         # 파일 읽기
         file_data = await file.read()
         
-        # 파일 크기 체크 (5MB 제한 - 413 에러 방지)
-        if len(file_data) > 5 * 1024 * 1024:
-            raise HTTPException(status_code=413, detail=f"파일 크기는 5MB를 초과할 수 없습니다 (현재: {len(file_data) / 1024 / 1024:.2f}MB)")
+        # 파일 크기 체크 (100MB 제한 - 413 에러 방지)
+        if len(file_data) > 100 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail=f"파일 크기는 100MB를 초과할 수 없습니다 (현재: {len(file_data) / 1024 / 1024:.2f}MB)")
         
         # 원본 파일명 보존 (타임스탬프 접두어로 중복 방지)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -4050,9 +4050,9 @@ async def upload_image_base64(data: dict):
         # Base64 디코딩
         file_data = base64.b64decode(base64_data)
         
-        # 파일 크기 체크 (5MB 제한 - 413 에러 방지)
-        if len(file_data) > 5 * 1024 * 1024:
-            raise HTTPException(status_code=413, detail=f"파일 크기는 5MB를 초과할 수 없습니다 (현재: {len(file_data) / 1024 / 1024:.2f}MB)")
+        # 파일 크기 체크 (100MB 제한 - 413 에러 방지)
+        if len(file_data) > 100 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail=f"파일 크기는 100MB를 초과할 수 없습니다 (현재: {len(file_data) / 1024 / 1024:.2f}MB)")
         
         # 고유한 파일명 생성
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
