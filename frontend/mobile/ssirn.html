@@ -634,7 +634,44 @@
             document.getElementById('memoContent').value = memo.content;
             
             selectedPhotos = [];
-            existingPhotoUrls = memo.photo_urls ? JSON.parse(memo.photo_urls) : [];
+            
+            // 기존 첨부파일 파싱 (renderMemos와 동일한 로직)
+            existingPhotoUrls = [];
+            if (memo.photo_urls) {
+                try {
+                    let fileUrls = [];
+                    
+                    if (typeof memo.photo_urls === 'string') {
+                        // "[]" 같은 빈 배열 문자열 제거
+                        const cleanedUrls = memo.photo_urls.replace(/\[\]/g, '').trim();
+                        
+                        if (cleanedUrls.startsWith('[') && cleanedUrls.endsWith(']')) {
+                            // JSON 배열 파싱
+                            try {
+                                fileUrls = JSON.parse(cleanedUrls);
+                            } catch (e) {
+                                // JSON 파싱 실패 시 쉼표로 분리
+                                fileUrls = cleanedUrls.slice(1, -1).split(',').map(url => url.trim().replace(/^"|"$/g, ''));
+                            }
+                        } else {
+                            // 쉼표로 분리된 URL
+                            fileUrls = cleanedUrls.split(',').map(url => url.trim());
+                        }
+                    } else if (Array.isArray(memo.photo_urls)) {
+                        fileUrls = memo.photo_urls;
+                    }
+                    
+                    // 유효한 URL만 필터링하고 FTP URL 변환
+                    existingPhotoUrls = fileUrls
+                        .filter(url => url && url !== '[]' && url.length >= 10 && 
+                                      (url.startsWith('ftp://') || url.startsWith('http://') || url.startsWith('https://')))
+                        .map(url => convertFtpUrl(url));
+                } catch (error) {
+                    console.error('기존 첨부파일 파싱 오류:', error);
+                    existingPhotoUrls = [];
+                }
+            }
+            
             voiceRecordingCount = 0; // 녹음 카운터 초기화
             
             renderMediaPreview();
@@ -1152,6 +1189,14 @@
 
         // Go back
         function goBack() {
+            // 학생은 뒤로가기 시 로그아웃 (대시보드가 없으므로)
+            if (userType === 'student') {
+                sessionStorage.clear();
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // 강사는 기존 로직
             const fromPage = sessionStorage.getItem('fromPage');
             if (fromPage === 'menu') {
                 // 메뉴에서 온 경우 메뉴 페이지로 이동
