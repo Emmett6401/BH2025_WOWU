@@ -12,7 +12,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '2.0.74'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '2.0.75'; // 캐시 버전 (업데이트 시 증가)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
@@ -10384,7 +10384,7 @@ window.showTimetableForm = function(id = null) {
             <div>
                 <label class="block text-sm text-gray-700 mb-1">타입 *</label>
                 <select id="tt-type" class="w-full border rounded px-3 py-2" required>
-                    <option value="lecture" ${existing && existing.type === 'lecture' ? 'selected' : ''}>강의</option>
+                    <option value="lecture" ${!existing || existing.type === 'lecture' ? 'selected' : ''}>강의</option>
                     <option value="project" ${existing && existing.type === 'project' ? 'selected' : ''}>프로젝트</option>
                     <option value="practice" ${existing && existing.type === 'practice' ? 'selected' : ''}>현장실습</option>
                 </select>
