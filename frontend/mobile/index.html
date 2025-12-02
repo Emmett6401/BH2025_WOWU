@@ -1073,16 +1073,15 @@
             // 스와이프 초기화
             initSwipe();
             
-            // 메뉴 생성
-            renderMenus(userType);
-            
-            // 강사만 대시보드 데이터 로드, 학생은 대시보드 숨김
-            if (userType === 'instructor') {
-                await loadDashboardData();
-            } else {
-                // 학생은 대시보드 숨김
-                document.getElementById('dashboardContainer').style.display = 'none';
+            // 학생은 바로 SSIRN 페이지로 리다이렉트
+            if (userType === 'student') {
+                window.location.href = 'ssirn.html';
+                return;
             }
+            
+            // 강사만 메뉴 생성 및 대시보드 로드
+            renderMenus(userType);
+            await loadDashboardData();
         }
         
         // 메뉴 렌더링
