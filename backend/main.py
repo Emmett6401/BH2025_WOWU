@@ -1662,10 +1662,28 @@ async def update_course(code: str, data: dict):
 
 @app.delete("/api/courses/{code}")
 async def delete_course(code: str):
-    """과정 삭제 (관련 데이터 cascade)"""
+    """과정 삭제 (관련 데이터 cascade) - ⚠️ 위험: 시간표, 훈련일지 모두 삭제됨!"""
     conn = get_db_connection()
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 삭제될 데이터 개수 확인 (경고용)
+        cursor.execute("SELECT COUNT(*) as count FROM timetables WHERE course_code = %s", (code,))
+        timetable_count = cursor.fetchone()['count']
+        
+        cursor.execute("SELECT COUNT(*) as count FROM training_logs WHERE course_code = %s", (code,))
+        training_log_count = cursor.fetchone()['count']
+        
+        # 중요한 과정(C-001, C-002) 삭제 방지
+        if code in ['C-001', 'C-002']:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"❌ 주요 과정({code})은 삭제할 수 없습니다. 관리자에게 문의하세요."
+            )
+        
+        # 데이터가 많을 경우 경고 로그
+        if timetable_count > 0 or training_log_count > 0:
+            print(f"⚠️ 과정 삭제 경고: {code} - 시간표 {timetable_count}건, 훈련일지 {training_log_count}건 함께 삭제됨!")
         
         # 1. 시간표 삭제
         cursor.execute("DELETE FROM timetables WHERE course_code = %s", (code,))
@@ -1680,7 +1698,13 @@ async def delete_course(code: str):
         cursor.execute("DELETE FROM courses WHERE code = %s", (code,))
         
         conn.commit()
-        return {"message": "과정 및 관련 데이터가 삭제되었습니다"}
+        return {
+            "message": "과정 및 관련 데이터가 삭제되었습니다",
+            "deleted": {
+                "timetables": timetable_count,
+                "training_logs": training_log_count
+            }
+        }
     except Exception as e:
         conn.rollback()
         import traceback
