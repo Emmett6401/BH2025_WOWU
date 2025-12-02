@@ -482,7 +482,7 @@
     
     <!-- SSIRN메모장(수업,기억,정보,etc) 상세보기 모달 -->
     <div id="note-detail-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white rounded-t-2xl">
                 <div class="flex justify-between items-start">
                     <div>
@@ -498,22 +498,14 @@
                 </div>
             </div>
             
-            <div class="p-6">
-                <div class="prose max-w-none mb-6" id="detail-note-content">
+            <div class="p-8">
+                <div class="prose max-w-none text-lg" id="detail-note-content" style="min-height: 300px;">
                     <!-- 렌더링된 마크다운 내용 -->
                 </div>
                 
-                <div class="flex gap-2 border-t pt-4">
-                    <button type="button" onclick="editNoteFromDetail()" 
-                            class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
-                        <i class="fas fa-edit mr-2"></i>수정
-                    </button>
-                    <button type="button" onclick="deleteNoteFromDetail()" 
-                            class="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 font-semibold">
-                        <i class="fas fa-trash mr-2"></i>삭제
-                    </button>
+                <div class="flex justify-center border-t pt-6 mt-8">
                     <button type="button" onclick="closeDetailModal()" 
-                            class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">
+                            class="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold text-lg">
                         <i class="fas fa-times mr-2"></i>닫기
                     </button>
                 </div>
@@ -849,17 +841,8 @@
                                 <i class="fas fa-calendar-day mr-2 text-blue-500"></i>
                                 ${dateStr}
                             </h4>
-                            <div class="flex gap-1">
-                                <button onclick="event.stopPropagation(); editNote(${note.id})" 
-                                        class="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                        title="수정">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button onclick="event.stopPropagation(); deleteNote(${note.id})" 
-                                        class="p-1 text-red-600 hover:bg-red-50 rounded"
-                                        title="삭제">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                            <div class="text-blue-600">
+                                <i class="fas fa-chevron-right"></i>
                             </div>
                         </div>
                         <p class="text-gray-600 text-sm line-clamp-3">${preview}</p>
@@ -932,7 +915,14 @@
             
             document.getElementById('modal-title').textContent = '수업 메모 수정';
             document.getElementById('edit-note-id').value = note.id;
-            document.getElementById('modal-note-date').value = note.note_date || '';
+            
+            // 날짜 포맷 변환 (YYYY-MM-DD 형식으로)
+            let dateValue = note.note_date;
+            if (dateValue && !dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                // ISO 형식이면 날짜 부분만 추출
+                dateValue = dateValue.split('T')[0];
+            }
+            document.getElementById('modal-note-date').value = dateValue || '';
             document.getElementById('modal-note-content').value = note.content || '';
             
             // 상담 신청 초기화 (수정 시에는 상담 신청 불가)
