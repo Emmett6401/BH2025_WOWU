@@ -311,7 +311,7 @@
                 }, duration);
             }
         }
-        const API_BASE_URL = window.location.origin.replace('3000', '8000');
+        const API_BASE_URL = '';
         let currentUser = null;
         let userType = null;
         let allMemos = [];
@@ -394,8 +394,10 @@
             userType = sessionStorage.getItem('user_type');
             
             if (!userStr || !userType) {
-                alert('로그인이 필요합니다.');
-                window.location.href = 'login.html';
+                showToast('로그인이 필요합니다.', 'warning');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 1000);
                 return;
             }
 
@@ -934,7 +936,7 @@
             } catch (error) {
                 console.error('이미지 로드 실패:', error);
                 hideProgress();
-                alert('이미지를 불러오는데 실패했습니다');
+                showToast('이미지를 불러오는데 실패했습니다', 'error');
             }
         };
 
@@ -967,12 +969,12 @@
                 updateProgress(100);
                 setTimeout(() => {
                     hideProgress();
-                    alert('다운로드 완료!');
+                    showToast('다운로드 완료!', 'success');
                 }, 500);
             } catch (error) {
                 console.error('다운로드 실패:', error);
                 hideProgress();
-                alert('파일 다운로드에 실패했습니다');
+                showToast('파일 다운로드에 실패했습니다', 'error');
             }
         };
         
