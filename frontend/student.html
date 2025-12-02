@@ -863,6 +863,15 @@
         
         // ==================== SSIRN 관련 함수 ====================
         
+        // FTP URL을 HTTP 프록시 URL로 변환
+        function convertFtpUrl(url) {
+            if (!url || typeof url !== 'string') return url;
+            if (url.startsWith('ftp://')) {
+                return `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
+            }
+            return url;
+        }
+        
         let allNotes = [];
         let currentNoteId = null;
         
@@ -1023,14 +1032,17 @@
                                 
                                 validFileCount++;
                                 
+                                // FTP URL을 HTTP로 변환
+                                const convertedUrl = convertFtpUrl(url);
+                                
                                 // 이미지 파일 확인
                                 if (urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/i)) {
                                     filesHTML += `
                                         <div class="flex flex-col items-center">
                                             <div class="relative group">
-                                                <img src="${url}" 
+                                                <img src="${convertedUrl}" 
                                                      class="w-20 h-20 object-cover rounded-lg border-2 border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
-                                                     onclick="window.open('${url}', '_blank')"
+                                                     onclick="window.open('${convertedUrl}', '_blank')"
                                                      onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-size=%2212%22%3E이미지%3C/text%3E%3C/svg%3E';"
                                                      title="${fileName}">
                                                 <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all"></div>
@@ -1049,7 +1061,7 @@
                                         'fa-file text-gray-500';
                                     
                                     filesHTML += `
-                                        <a href="${url}" 
+                                        <a href="${convertedUrl}" 
                                            download="${fileName}"
                                            class="flex flex-col items-center gap-2 px-3 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 text-xs transition-colors min-w-[100px] max-w-[140px]"
                                            title="${fileName}">
