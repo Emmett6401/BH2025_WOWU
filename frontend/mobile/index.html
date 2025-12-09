@@ -1080,15 +1080,19 @@
             // 스와이프 초기화
             initSwipe();
             
-            // 학생은 바로 SSIRN 페이지로 리다이렉트
-            if (userType === 'student') {
-                window.location.href = 'ssirn.html';
-                return;
-            }
-            
-            // 강사만 메뉴 생성 및 대시보드 로드
+            // 학생/강사 모두 메뉴 생성
             renderMenus(userType);
-            await loadDashboardData();
+            
+            // 학생은 즉시 메뉴 페이지로 전환 (대시보드 숨김)
+            if (userType === 'student') {
+                // 대시보드 숨김
+                document.getElementById('dashboardContainer').style.display = 'none';
+                // 메뉴 페이지로 즉시 전환
+                switchPage('menu');
+            } else {
+                // 강사는 대시보드 로드
+                await loadDashboardData();
+            }
         }
         
         // 메뉴 렌더링

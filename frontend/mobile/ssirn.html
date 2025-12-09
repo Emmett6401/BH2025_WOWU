@@ -1272,10 +1272,10 @@
 
         // Go back
         function goBack() {
-            // 학생은 뒤로가기 시 로그아웃 (대시보드가 없으므로)
+            // 학생은 뒤로가기 시 메뉴 페이지로 이동 (대시보드 없음)
             if (userType === 'student') {
-                sessionStorage.clear();
-                window.location.href = 'login.html';
+                sessionStorage.setItem('returnToMenu', 'true');
+                window.location.href = 'index.html';
                 return;
             }
             

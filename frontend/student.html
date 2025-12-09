@@ -2271,15 +2271,23 @@
                     fileDiv.innerHTML = `
                         <img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(url)}" 
                              alt="파일 ${index + 1}" 
-                             class="w-16 h-16 object-cover rounded border"
+                             class="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80 transition"
+                             onclick="window.showImagePreview('${url.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${window.getFilenameFromUrl(url).replace(/'/g, "\\'").replace(/"/g, '&quot;')}')"
+                             title="클릭하여 크게 보기"
                              onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2764%27 height=%2764%27%3E%3Crect fill=%27%23f0f0f0%27 width=%2764%27 height=%2764%27/%3E%3Ctext fill=%27%23999%27 font-family=%27sans-serif%27 font-size=%2712%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27%3EError%3C/text%3E%3C/svg%3E'">
                         <div class="flex-1">
                             <p class="text-sm text-gray-800 font-medium truncate" title="${window.getFilenameFromUrl(url)}">${window.getFilenameFromUrl(url)}</p>
-                            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" 
-                               target="_blank" 
-                               class="text-xs text-blue-500 hover:underline">
-                                <i class="fas fa-external-link-alt mr-1"></i>보기
-                            </a>
+                            <button type="button" 
+                                    onclick="window.showImagePreview('${url.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${window.getFilenameFromUrl(url).replace(/'/g, "\\'").replace(/"/g, '&quot;')}')"
+                                    class="text-xs text-blue-500 hover:underline hover:text-blue-700">
+                                <i class="fas fa-eye mr-1"></i>미리보기
+                            </button>
+                            <span class="text-gray-300 mx-1">|</span>
+                            <button type="button" 
+                                    onclick="window.downloadFile('${url.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${window.getFilenameFromUrl(url).replace(/'/g, "\\'").replace(/"/g, '&quot;')}')"
+                                    class="text-xs text-green-500 hover:underline hover:text-green-700">
+                                <i class="fas fa-download mr-1"></i>다운로드
+                            </button>
                         </div>
                         <button type="button" 
                                 onclick="removeStudentFile(${index})" 
@@ -2290,16 +2298,18 @@
                 } else {
                     const icon = getFileIcon(fileExt);
                     fileDiv.innerHTML = `
-                        <div class="w-16 h-16 flex items-center justify-center bg-gray-100 rounded border">
+                        <div class="w-16 h-16 flex items-center justify-center bg-gray-100 rounded border cursor-pointer hover:bg-gray-200 transition"
+                             onclick="window.downloadFile('${url.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${window.getFilenameFromUrl(url).replace(/'/g, "\\'").replace(/"/g, '&quot;')}')"
+                             title="클릭하여 다운로드">
                             <i class="${icon} text-3xl text-gray-500"></i>
                         </div>
                         <div class="flex-1">
                             <p class="text-sm text-gray-800 font-medium truncate" title="${window.getFilenameFromUrl(url)}">${window.getFilenameFromUrl(url)}</p>
-                            <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(url)}" 
-                               target="_blank" 
-                               class="text-xs text-blue-500 hover:underline">
+                            <button type="button" 
+                                    onclick="window.downloadFile('${url.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${window.getFilenameFromUrl(url).replace(/'/g, "\\'").replace(/"/g, '&quot;')}')"
+                                    class="text-xs text-green-500 hover:underline hover:text-green-700">
                                 <i class="fas fa-download mr-1"></i>다운로드
-                            </a>
+                            </button>
                         </div>
                         <button type="button" 
                                 onclick="removeStudentFile(${index})" 
