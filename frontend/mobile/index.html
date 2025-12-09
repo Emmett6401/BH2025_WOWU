@@ -1198,28 +1198,39 @@
                 const menuPage = document.getElementById('menuPage');
                 const pageIndicator = document.querySelector('.page-indicator');
                 
+                console.log('🎯 학생 모드 초기화 시작...');
+                console.log('- swipeContainer:', swipeContainer);
+                console.log('- dashboardPage:', dashboardPage);
+                console.log('- menuPage:', menuPage);
+                
                 // 대시보드 제거
                 if (dashboardPage) {
                     dashboardPage.remove();
+                    console.log('✅ 대시보드 제거 완료');
                 }
                 
-                // 메뉴 페이지를 100% 너비로 설정
+                // 메뉴 페이지를 100% 너비로 설정 (important 사용)
                 if (menuPage) {
-                    menuPage.style.width = '100%';
+                    menuPage.style.cssText = 'width: 100% !important; min-height: 100vh;';
+                    console.log('✅ 메뉴 페이지 너비 100% 설정');
                 }
                 
-                // 스와이프 컨테이너를 정적 레이아웃으로 변경
+                // 스와이프 컨테이너를 정적 레이아웃으로 변경 (important 사용)
                 if (swipeContainer) {
-                    swipeContainer.style.transform = 'none';
-                    swipeContainer.style.display = 'block';
+                    swipeContainer.style.cssText = 'width: 100% !important; display: block !important; transform: none !important;';
+                    console.log('✅ 스와이프 컨테이너 정적 레이아웃 설정');
                 }
                 
                 // 페이지 인디케이터 숨김
                 if (pageIndicator) {
                     pageIndicator.style.display = 'none';
+                    console.log('✅ 페이지 인디케이터 숨김');
                 }
+                
+                console.log('✅ 학생 모드 초기화 완료!');
             } else {
                 // 강사는 스와이프 초기화 및 대시보드 로드
+                console.log('👨‍🏫 강사 모드 - 대시보드 로드');
                 initSwipe();
                 await loadDashboardData();
             }
@@ -1234,6 +1245,13 @@
                 ...MENUS.common,
                 ...(userType === 'instructor' ? MENUS.instructor : MENUS.student)
             ];
+            
+            console.log(`📋 메뉴 렌더링 - 사용자 타입: ${userType}, 메뉴 개수: ${menus.length}`, menus);
+            
+            if (!menuGrid) {
+                console.error('❌ menuGrid 요소를 찾을 수 없습니다!');
+                return;
+            }
             
             menuGrid.innerHTML = menus.map((menu, index) => `
                 <div class="menu-card bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer fade-in active:scale-95 active:shadow-xl transition-all"
