@@ -16309,16 +16309,11 @@ window.restoreBGMSettings = function() {
         dashboardVolumeValue.textContent = savedVolume + '%';
     }
     
-    // BGM이 꺼져있으면 패널 숨김
+    // BGM 패널은 항상 표시 (사용자가 직접 BGM을 켜고 끌 수 있도록)
     if (bgmPanel) {
-        if (savedGenre) {
-            bgmPanel.classList.remove('hidden');
-            bgmPanel.classList.add('flex');
-        } else {
-            bgmPanel.classList.remove('flex');
-            bgmPanel.classList.add('hidden');
-        }
-        console.log('🎵 BGM 패널 표시 상태:', savedGenre ? '표시' : '숨김');
+        bgmPanel.classList.remove('hidden');
+        bgmPanel.classList.add('flex');
+        console.log('🎵 BGM 패널 항상 표시');
     }
 }
 
