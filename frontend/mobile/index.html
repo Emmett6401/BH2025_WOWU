@@ -1190,15 +1190,34 @@
             // 학생/강사 모두 메뉴 생성
             renderMenus(userType);
             
-            // 학생은 즉시 메뉴 페이지로 전환 (대시보드 불필요)
+            // 학생은 메뉴만 표시 (대시보드 불필요)
             if (userType === 'student') {
-                // 대시보드 페이지 완전히 숨김
+                // 학생용: 대시보드 완전히 제거하고 메뉴만 표시
+                const swipeContainer = document.getElementById('swipeContainer');
                 const dashboardPage = document.getElementById('dashboardPage');
+                const menuPage = document.getElementById('menuPage');
+                const pageIndicator = document.querySelector('.page-indicator');
+                
+                // 대시보드 제거
                 if (dashboardPage) {
-                    dashboardPage.style.display = 'none';
+                    dashboardPage.remove();
                 }
-                // 메뉴 페이지로 즉시 전환
-                switchPage('menu');
+                
+                // 메뉴 페이지를 100% 너비로 설정
+                if (menuPage) {
+                    menuPage.style.width = '100%';
+                }
+                
+                // 스와이프 컨테이너를 정적 레이아웃으로 변경
+                if (swipeContainer) {
+                    swipeContainer.style.transform = 'none';
+                    swipeContainer.style.display = 'block';
+                }
+                
+                // 페이지 인디케이터 숨김
+                if (pageIndicator) {
+                    pageIndicator.style.display = 'none';
+                }
             } else {
                 // 강사는 스와이프 초기화 및 대시보드 로드
                 initSwipe();
