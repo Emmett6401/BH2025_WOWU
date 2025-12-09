@@ -893,34 +893,90 @@
             renderMediaPreview();
         }
 
-        // Render photo preview (images only)
+        // Render photo preview (images and files)
         function renderMediaPreview() {
             const container = document.getElementById('mediaPreviewContainer');
             
             const existingHtml = existingPhotoUrls.map((url, index) => {
                 if (!url || typeof url !== 'string') return '';
-                return `
-                <div class="relative">
-                    <img src="${url}" class="w-full h-20 object-cover rounded-lg">
-                    <button type="button" onclick="removeExistingMedia(${index})"
-                            class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                `;
-            }).join('');
-
-            const newHtml = selectedPhotos.map((file, index) => {
-                const url = URL.createObjectURL(file);
-                return `
+                
+                // URL에서 파일명 추출
+                const fileName = decodeURIComponent(url.split('/').pop().split('?')[0]);
+                const fileExt = fileName.split('.').pop().toLowerCase();
+                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(fileExt);
+                
+                if (isImage) {
+                    return `
                     <div class="relative">
                         <img src="${url}" class="w-full h-20 object-cover rounded-lg">
-                        <button type="button" onclick="removeNewMedia(${index})"
+                        <button type="button" onclick="removeExistingMedia(${index})"
                                 class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                `;
+                    `;
+                } else {
+                    // 파일 아이콘 표시
+                    const iconClass = 
+                        fileExt === 'pdf' ? 'fa-file-pdf text-red-500' :
+                        ['doc', 'docx'].includes(fileExt) ? 'fa-file-word text-blue-500' :
+                        ['xls', 'xlsx'].includes(fileExt) ? 'fa-file-excel text-green-500' :
+                        ['ppt', 'pptx'].includes(fileExt) ? 'fa-file-powerpoint text-orange-500' :
+                        fileExt === 'hwp' ? 'fa-file-alt text-blue-400' :
+                        fileExt === 'txt' ? 'fa-file-alt text-gray-500' :
+                        'fa-file text-gray-500';
+                    
+                    return `
+                    <div class="relative flex flex-col items-center p-2 bg-gray-50 rounded-lg border border-gray-200">
+                        <i class="fas ${iconClass} text-3xl mb-1"></i>
+                        <p class="text-xs text-gray-600 truncate max-w-[80px]" title="${fileName}">${fileName}</p>
+                        <button type="button" onclick="removeExistingMedia(${index})"
+                                class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    `;
+                }
+            }).join('');
+
+            const newHtml = selectedPhotos.map((file, index) => {
+                const fileName = file.name;
+                const fileExt = fileName.split('.').pop().toLowerCase();
+                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(fileExt);
+                
+                if (isImage) {
+                    const url = URL.createObjectURL(file);
+                    return `
+                        <div class="relative">
+                            <img src="${url}" class="w-full h-20 object-cover rounded-lg">
+                            <button type="button" onclick="removeNewMedia(${index})"
+                                    class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    // 파일 아이콘 표시
+                    const iconClass = 
+                        fileExt === 'pdf' ? 'fa-file-pdf text-red-500' :
+                        ['doc', 'docx'].includes(fileExt) ? 'fa-file-word text-blue-500' :
+                        ['xls', 'xlsx'].includes(fileExt) ? 'fa-file-excel text-green-500' :
+                        ['ppt', 'pptx'].includes(fileExt) ? 'fa-file-powerpoint text-orange-500' :
+                        fileExt === 'hwp' ? 'fa-file-alt text-blue-400' :
+                        fileExt === 'txt' ? 'fa-file-alt text-gray-500' :
+                        'fa-file text-gray-500';
+                    
+                    return `
+                        <div class="relative flex flex-col items-center p-2 bg-gray-50 rounded-lg border border-gray-200">
+                            <i class="fas ${iconClass} text-3xl mb-1"></i>
+                            <p class="text-xs text-gray-600 truncate max-w-[80px]" title="${fileName}">${fileName}</p>
+                            <button type="button" onclick="removeNewMedia(${index})"
+                                    class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `;
+                }
             }).join('');
 
             container.innerHTML = existingHtml + newHtml;
@@ -1116,8 +1172,30 @@
             }
         });
 
-        // Upload photo (images only with compression)
+        // Upload photo (images with compression, other files without compression)
         async function uploadMedia(file) {
+            // 파일 확장자 확인
+            const fileName = file.name;
+            const fileExt = fileName.split('.').pop().toLowerCase();
+            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(fileExt);
+            
+            // 이미지가 아닌 파일은 압축 없이 직접 업로드
+            if (!isImage) {
+                const formData = new FormData();
+                formData.append('file', file, fileName); // 원본 파일명 유지
+                
+                try {
+                    const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                    return response.data.url;
+                } catch (error) {
+                    console.error('파일 업로드 실패:', fileName, error);
+                    throw error;
+                }
+            }
+            
+            // 이미지는 압축 후 업로드
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = async (e) => {
@@ -1149,7 +1227,7 @@
 
                             canvas.toBlob(async (blob) => {
                                 const formData = new FormData();
-                                formData.append('file', blob, file.name);
+                                formData.append('file', blob, fileName); // 원본 파일명 유지
 
                                 const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
                                     headers: { 'Content-Type': 'multipart/form-data' }
@@ -1158,11 +1236,16 @@
                                 resolve(response.data.url);
                             }, 'image/jpeg', 0.5);
                         };
+                        img.onerror = () => {
+                            // 이미지 로드 실패 시 원본 파일 그대로 업로드
+                            reject(new Error('이미지 로드 실패'));
+                        };
                         img.src = e.target.result;
                     } catch (error) {
                         reject(error);
                     }
                 };
+                reader.onerror = () => reject(new Error('파일 읽기 실패'));
                 reader.readAsDataURL(file);
             });
         }
