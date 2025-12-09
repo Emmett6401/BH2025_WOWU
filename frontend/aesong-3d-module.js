@@ -6,8 +6,8 @@ let aesongScene, aesongCamera, aesongRenderer, aesongModel, aesongAnimationId, a
 let isRecording = false;
 let recognition = null;
 let synthesis = window.speechSynthesis;
-let currentCharacter = 'aesong'; // 기본 캐릭터 (애송이)
-let currentCharacterName = '애송이'; // 현재 캐릭터 이름
+let currentCharacter = 'aesong'; // 기본 캐릭터 (예진이)
+let currentCharacterName = '예진이'; // 현재 캐릭터 이름
 let isDragging = false;
 let previousMousePosition = { x: 0, y: 0 };
 let userRotation = { x: 0, y: 0, z: 0 }; // 사용자가 설정한 회전 값 저장
@@ -390,7 +390,7 @@ function loadCharacter(characterType) {
     
     if (characterType === 'aesong') {
         modelPath = '/AEsong.glb';
-        modelName = '애송이';
+        modelName = '예진이';
         scale = 1.5; // 적당한 크기
         positionY = -0.2; // 가운데 위치
     } else if (characterType === 'david') {

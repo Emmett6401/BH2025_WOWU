@@ -5667,12 +5667,12 @@ async def delete_notice(notice_id: int):
     finally:
         conn.close()
 
-# ==================== 애송이 챗봇 API ====================
+# ==================== 예진이 챗봇 API ====================
 @app.post("/api/aesong-chat")
 async def aesong_chat(data: dict):
-    """애송이 AI 챗봇 - GROQ 또는 Gemini API 사용"""
+    """예진이 AI 챗봇 - GROQ 또는 Gemini API 사용"""
     message = data.get('message', '')
-    character = data.get('character', '애송이')  # 캐릭터 이름 받기
+    character = data.get('character', '예진이')  # 캐릭터 이름 받기
     model = data.get('model', 'groq')  # 사용할 모델 (groq 또는 gemini)
     
     if not message:
@@ -5719,7 +5719,7 @@ async def aesong_chat(data: dict):
 - 학생들의 프로젝트 진행 및 팀 협업 지원
 - 실무 중심의 조언자"""
         else:
-            system_prompt = """당신은 '애송이'라는 이름의 친근하고 귀여운 AI 비서입니다.
+            system_prompt = """당신은 '예진이'라는 이름의 친근하고 귀여운 AI 비서입니다.
 우송대학교의 마스코트로, 학생들을 돕는 역할을 합니다.
 
 특징:
@@ -5729,7 +5729,7 @@ async def aesong_chat(data: dict):
 - 학생들의 고민과 질문에 공감하며 답변합니다
 - 짧고 명확하게 답변합니다 (2-3문장)
 
-중요: 당신의 이름은 '애송이'입니다. 절대 다른 이름을 사용하지 마세요.
+중요: 당신의 이름은 '예진이'입니다. 절대 다른 이름을 사용하지 마세요.
 
 역할:
 - 우송대학교 바이오헬스 교육 관리 시스템의 도우미
@@ -5818,7 +5818,7 @@ async def aesong_chat(data: dict):
             }
         
     except Exception as e:
-        print(f"애송이 챗봇 오류: {str(e)}")
+        print(f"예진이 챗봇 오류: {str(e)}")
         # 오류 시 기본 응답
         return {
             "response": "죄송합니다. 지금은 답변하기 어려워요. 잠시 후 다시 말씀해주세요.",
@@ -5831,7 +5831,7 @@ async def aesong_chat(data: dict):
 async def text_to_speech(data: dict):
     """Google Cloud TTS - 텍스트를 음성으로 변환 (개선된 파라미터)"""
     text = data.get('text', '')
-    character = data.get('character', '애송이')
+    character = data.get('character', '예진이')
     
     if not text:
         raise HTTPException(status_code=400, detail="텍스트가 필요합니다")

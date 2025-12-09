@@ -1,5 +1,5 @@
 /**
- * 애송이 AI 챗봇 (우송대학교 마스코트)
+ * 예진이 AI 챗봇 (우송대학교 마스코트)
  * GROQ API 기반 AI 도우미
  */
 
@@ -28,8 +28,8 @@ class AesongChatbot {
         // 로컬 이미지 사용 (캐시 무효화를 위한 타임스탬프 추가)
         this.aesongImageUrl = '/aesong-character.png?v=' + Date.now();
         
-        console.log('🐶 애송이 챗봇 API URL:', this.apiUrl);
-        console.log('🐶 애송이 이미지 URL:', this.aesongImageUrl);
+        console.log('🐶 예진이 챗봇 API URL:', this.apiUrl);
+        console.log('🐶 예진이 이미지 URL:', this.aesongImageUrl);
         
         // 애니메이션 배열
         this.animations = ['aesong-bounce', 'aesong-shake', 'aesong-wiggle', 'aesong-float'];
@@ -162,12 +162,12 @@ class AesongChatbot {
 
     createChatbotUI() {
         const chatbotHTML = `
-            <!-- 애송이 플로팅 버튼 -->
+            <!-- 예진이 플로팅 버튼 -->
             <div id="aesong-floating-btn" class="fixed bottom-6 right-6 z-50 aesong-bounce">
                 <button onclick="window.aesongBot.toggle()" 
                         class="bg-gradient-to-br from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600 rounded-full p-3 shadow-2xl transition-all duration-300 hover:scale-110 relative">
                     <img src="${this.aesongImageUrl}" 
-                         alt="애송이" 
+                         alt="예진이" 
                          class="w-16 h-16 rounded-full border-4 border-white">
                     <div class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center aesong-pulse">
                         💬
@@ -175,7 +175,7 @@ class AesongChatbot {
                 </button>
             </div>
 
-            <!-- 애송이 챗봇 창 -->
+            <!-- 예진이 챗봇 창 -->
             <div id="aesong-chat" class="fixed bottom-0 right-0 w-full md:w-96 h-[600px] bg-white rounded-t-3xl shadow-2xl transform translate-y-full transition-transform duration-300 z-40">
                 <!-- 헤더 -->
                 <div class="bg-gradient-to-r from-pink-400 via-purple-400 to-pink-500 p-4 rounded-t-3xl flex items-center justify-between">
@@ -183,7 +183,7 @@ class AesongChatbot {
                         <img src="${this.aesongImageUrl}" 
                              class="w-12 h-12 rounded-full border-2 border-white shadow-lg aesong-header-avatar">
                         <div>
-                            <h3 class="text-white font-bold text-lg">애송이</h3>
+                            <h3 class="text-white font-bold text-lg">예진이</h3>
                             <p class="text-white text-xs flex items-center gap-1">
                                 <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                                 우송대 AI 도우미 🎓
@@ -201,7 +201,7 @@ class AesongChatbot {
                     <div class="flex gap-3 mb-4 animate-fade-in">
                         <img src="${this.aesongImageUrl}" class="w-10 h-10 rounded-full shadow aesong-avatar">
                         <div class="bg-white p-4 rounded-2xl rounded-tl-none shadow-md max-w-[80%] border border-pink-100">
-                            <p class="text-sm text-gray-800 mb-2">안녕하세요! 우송대학교 애송이입니다! 🐶✨</p>
+                            <p class="text-sm text-gray-800 mb-2">안녕하세요! 우송대학교 예진이입니다! 🐶✨</p>
                             <p class="text-sm text-gray-600">
                                 훈련일지, 상담일지, 시스템 사용법 등<br>
                                 무엇이든 물어보세요!
@@ -225,7 +225,7 @@ class AesongChatbot {
                     <div class="flex gap-2">
                         <input type="text" 
                                id="aesong-input" 
-                               placeholder="애송이에게 물어보세요... 🐾"
+                               placeholder="예진이에게 물어보세요... 🐾"
                                class="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent"
                                onkeypress="if(event.key==='Enter') window.aesongBot.sendMessage()">
                         <button onclick="window.aesongBot.sendMessage()" 
@@ -243,7 +243,7 @@ class AesongChatbot {
     addSystemPrompt() {
         this.chatHistory.push({
             role: 'system',
-            content: `당신은 우송대학교의 귀여운 마스코트 '애송이'입니다. 🐶
+            content: `당신은 우송대학교의 귀여운 마스코트 '예진이'입니다. 🐶
 
 # 당신의 역할
 - 바이오헬스AI 실무활용 과정 학생들을 도와주는 친근한 AI 도우미
@@ -340,7 +340,9 @@ class AesongChatbot {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    messages: this.chatHistory
+                    message: message,
+                    character: '예진이',
+                    model: 'groq'
                 })
             });
             
@@ -364,7 +366,7 @@ class AesongChatbot {
             });
             
         } catch (error) {
-            console.error('애송이 챗봇 오류:', error);
+            console.error('예진이 챗봇 오류:', error);
             this.removeLoadingMessage();
             this.addMessageToUI('ai', '아이고! 일시적인 문제가 발생했어요 😢\n잠시 후 다시 시도해주세요!');
         }
@@ -435,5 +437,5 @@ class AesongChatbot {
 // 전역 인스턴스 생성
 document.addEventListener('DOMContentLoaded', () => {
     window.aesongBot = new AesongChatbot();
-    console.log('🐶 애송이 챗봇이 준비되었습니다!');
+    console.log('🐶 예진이 챗봇이 준비되었습니다!');
 });
