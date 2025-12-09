@@ -2057,6 +2057,10 @@
             document.getElementById('course-name').textContent = student.course_name || '미배정';
             if (student.start_date && student.end_date) {
                 document.getElementById('course-period').textContent = `${student.start_date} ~ ${student.end_date}`;
+            } else if (student.start_date) {
+                document.getElementById('course-period').textContent = `${student.start_date} ~`;
+            } else {
+                document.getElementById('course-period').textContent = '미정';
             }
         });
         

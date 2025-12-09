@@ -268,9 +268,9 @@
                     <div id="attachmentModalFile" class="text-center py-12 hidden">
                         <i class="fas fa-file text-6xl text-gray-400 mb-4"></i>
                         <p class="text-gray-600">이미지가 아닌 파일은 미리보기를 지원하지 않습니다.</p>
-                        <a id="attachmentDownloadLink" href="" target="_blank" class="inline-block mt-4 bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-600 transition-all">
+                        <button id="attachmentDownloadBtn" onclick="downloadAttachment()" class="inline-block mt-4 bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-600 transition-all active:scale-95">
                             <i class="fas fa-download mr-2"></i>다운로드
-                        </a>
+                        </button>
                     </div>
                     <div class="flex space-x-3 mt-4">
                         <button onclick="closeAttachmentModal()" 
@@ -294,6 +294,13 @@
             <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
             <p id="loadingText" class="text-lg font-semibold text-gray-800 mb-2">처리 중...</p>
             <p id="loadingSubtext" class="text-sm text-gray-600">잠시만 기다려주세요</p>
+            <!-- Progress Bar -->
+            <div class="mt-4">
+                <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div id="progressBar" class="bg-indigo-500 h-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="progressPercent" class="text-xs text-gray-500 mt-2"></p>
+            </div>
         </div>
     </div>
     <!-- Toast Message Container -->
@@ -315,6 +322,28 @@
         }
 
         function hideLoading() {
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.classList.add("hidden");
+            overlay.classList.remove("flex");
+        }
+        
+        // Progress bar functions
+        function showProgress(text = "처리 중...") {
+            document.getElementById("loadingText").textContent = text;
+            document.getElementById("loadingSubtext").textContent = "잠시만 기다려주세요";
+            document.getElementById("progressBar").style.width = "0%";
+            document.getElementById("progressPercent").textContent = "";
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.classList.remove("hidden");
+            overlay.classList.add("flex");
+        }
+        
+        function updateProgress(percent) {
+            document.getElementById("progressBar").style.width = percent + "%";
+            document.getElementById("progressPercent").textContent = percent + "%";
+        }
+        
+        function hideProgress() {
             const overlay = document.getElementById("loadingOverlay");
             overlay.classList.add("hidden");
             overlay.classList.remove("flex");
@@ -649,11 +678,64 @@
             } else {
                 img.classList.add('hidden');
                 fileDiv.classList.remove('hidden');
-                downloadLink.href = url;
+                // downloadLink는 더 이상 필요 없음 (버튼 onclick으로 처리)
             }
             
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+        }
+        
+        // Download attachment with progress bar
+        async function downloadAttachment() {
+            if (!currentAttachmentUrl) return;
+            
+            showProgress('다운로드 중...');
+            updateProgress(10);
+            
+            try {
+                // 파일명 추출
+                let fileName = 'download';
+                try {
+                    if (currentAttachmentUrl.includes('proxy-image?url=')) {
+                        const originalUrl = decodeURIComponent(currentAttachmentUrl.split('proxy-image?url=')[1]);
+                        fileName = originalUrl.split('/').pop().split('?')[0];
+                    } else {
+                        fileName = currentAttachmentUrl.split('/').pop().split('?')[0];
+                    }
+                } catch (e) {
+                    fileName = 'download';
+                }
+                
+                updateProgress(30);
+                
+                const response = await fetch(currentAttachmentUrl);
+                if (!response.ok) throw new Error('다운로드 실패');
+                
+                updateProgress(70);
+                
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                
+                updateProgress(90);
+                
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+                
+                updateProgress(100);
+                setTimeout(() => {
+                    hideProgress();
+                    showToast('다운로드 완료!', 'success');
+                }, 500);
+            } catch (error) {
+                console.error('다운로드 실패:', error);
+                hideProgress();
+                showToast('파일 다운로드에 실패했습니다', 'error');
+            }
         }
         
         // Close attachment modal
