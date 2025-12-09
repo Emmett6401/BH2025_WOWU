@@ -1862,9 +1862,6 @@ async function loadDashboard() {
                                 </option>
                             `).join('')}
                         </select>
-                        <div class="text-sm text-gray-600">
-                            <i class="fas fa-calendar-day mr-1"></i>${formatDateWithDay(todayDate)}
-                        </div>
                     </div>
                 </div>
 
