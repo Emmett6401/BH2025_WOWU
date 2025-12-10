@@ -1597,6 +1597,10 @@ async function loadDashboard() {
             counselings: counselingsData.length
         });
         
+        // 기본 과정 (localStorage에서 마지막 선택 복원 또는 첫 번째 과정)
+        const savedCourseCode = localStorage.getItem('dashboard_selected_course');
+        const mainCourse = (savedCourseCode ? coursesData.find(c => c.code === savedCourseCode) : null) || coursesData[0];
+        
         // 선택된 과정의 학생들
         const courseStudents = studentsData.filter(s => s.course_code === mainCourse.code);
         const courseStudentIds = courseStudents.map(s => s.id);
@@ -1839,9 +1843,7 @@ async function loadDashboard() {
             };
         };
         
-        // 기본 과정 (localStorage에서 마지막 선택 복원 또는 첫 번째 과정)
-        const savedCourseCode = localStorage.getItem('dashboard_selected_course');
-        const mainCourse = (savedCourseCode ? coursesData.find(c => c.code === savedCourseCode) : null) || coursesData[0];
+        // 진도율 계산
         const progress = window.calculateProgress(mainCourse.code);
         
         // 대시보드 렌더링
