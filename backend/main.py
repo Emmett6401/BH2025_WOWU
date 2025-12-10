@@ -3870,6 +3870,7 @@ async def generate_ai_training_logs(data: dict):
     """AI 훈련일지 자동 생성"""
     timetable_ids = data.get('timetable_ids', [])
     prompt_guide = data.get('prompt', '')
+    delete_before_create = data.get('delete_before_create', False)
     
     if not timetable_ids:
         raise HTTPException(status_code=400, detail="시간표 ID가 필요합니다")
@@ -3899,6 +3900,12 @@ async def generate_ai_training_logs(data: dict):
                 if not timetable:
                     failed_count += 1
                     continue
+                
+                # 삭제 후 작성 옵션이 활성화된 경우, 기존 훈련일지 삭제
+                if delete_before_create:
+                    cursor.execute("""
+                        DELETE FROM training_logs WHERE timetable_id = %s
+                    """, (timetable_id,))
                 
                 # AI로 훈련일지 내용 생성 (실제로는 GPT API를 사용하지만, 여기서는 템플릿 사용)
                 content = f"""[{timetable['class_date']}] {timetable['subject_name'] or '과목'} 수업

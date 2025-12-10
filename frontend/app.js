@@ -11650,6 +11650,16 @@ function renderAITrainingLog() {
                     </p>
                 </div>
                 
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg mt-4">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="delete-before-create" class="mr-3 w-4 h-4">
+                        <span class="text-gray-700">
+                            <i class="fas fa-trash-restore mr-2 text-yellow-600"></i>
+                            <strong>기존 훈련일지 삭제 후 작성</strong> (이미 작성된 훈련일지가 있으면 삭제하고 새로 작성합니다)
+                        </span>
+                    </label>
+                </div>
+                
                 <div class="mt-4 flex space-x-2">
                     <button onclick="window.generateAITrainingLogs()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg">
                         <i class="fas fa-robot mr-2"></i>선택된 훈련일지 AI 작성 (<span id="selected-count">0</span>건)
@@ -11900,20 +11910,23 @@ window.generateAITrainingLogs = async function() {
     }
     
     const prompt = document.getElementById('ai-prompt').value.trim();
+    const deleteBeforeCreate = document.getElementById('delete-before-create').checked;
     
     const confirmed = await window.showConfirm(
         `선택된 ${selectedAITimetables.length}건의 훈련일지를 AI로 작성하시겠습니까?\n\n` +
+        (deleteBeforeCreate ? `⚠️ 기존 훈련일지가 있으면 삭제하고 새로 작성합니다.\n\n` : '') +
         `이 작업은 몇 분이 소요될 수 있습니다.`
     );
     
     if (!confirmed) return;
     
     try {
-        window.showLoading(`AI가 훈련일지를 작성하는 중... (${selectedAITimetables.length}건)`);
+        window.showLoading(`AI가 훈련일지를 ${deleteBeforeCreate ? '삭제 후 ' : ''}작성하는 중... (${selectedAITimetables.length}건)`);
         
         const response = await axios.post(`${API_BASE_URL}/api/ai/generate-training-logs`, {
             timetable_ids: selectedAITimetables,
-            prompt: prompt || null
+            prompt: prompt || null,
+            delete_before_create: deleteBeforeCreate
         });
         
         window.hideLoading();
