@@ -1597,8 +1597,13 @@ async function loadDashboard() {
             counselings: counselingsData.length
         });
         
-        // 최근 상담 (최근 5건)
+        // 선택된 과정의 학생들
+        const courseStudents = studentsData.filter(s => s.course_code === mainCourse.code);
+        const courseStudentIds = courseStudents.map(s => s.id);
+        
+        // 최근 상담 (선택된 과정 학생만, 최근 5건)
         const recentCounselings = counselingsData
+            .filter(c => courseStudentIds.includes(c.student_id))
             .sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date))
             .slice(0, 5);
         
@@ -1608,7 +1613,7 @@ async function loadDashboard() {
                       String(now.getMonth() + 1).padStart(2, '0') + '-' + 
                       String(now.getDate()).padStart(2, '0');
         const todayTimetables = timetablesData
-            .filter(t => t.class_date === today)
+            .filter(t => t.class_date === today && t.course_code === mainCourse.code)
             .map(t => {
                 // 해당 과정 찾기
                 const course = coursesData.find(c => c.code === t.course_code);
@@ -1645,8 +1650,12 @@ async function loadDashboard() {
                 };
             });
         
-        // 최근 훈련일지 (최근 5건)
+        // 최근 훈련일지 (선택된 과정 학생만, 최근 5건)
         const recentTrainingLogs = trainingLogsData
+            .filter(log => {
+                const studentId = log.student_id || log['s.id'];
+                return courseStudentIds.includes(studentId);
+            })
             .sort((a, b) => {
                 const dateA = new Date(a['t.class_date'] || a.class_date || 0);
                 const dateB = new Date(b['t.class_date'] || b.class_date || 0);
@@ -1654,8 +1663,13 @@ async function loadDashboard() {
             })
             .slice(0, 5);
         
-        // 최근 팀 활동일지 (최근 5건)
+        // 선택된 과정의 프로젝트들
+        const courseProjects = projectsData.filter(p => p.course_code === mainCourse.code);
+        const courseProjectIds = courseProjects.map(p => p.id);
+        
+        // 최근 팀 활동일지 (선택된 과정 프로젝트만, 최근 5건)
         const recentTeamActivityLogs = teamActivityLogsData
+            .filter(log => courseProjectIds.includes(log.project_id))
             .sort((a, b) => new Date(b.activity_date) - new Date(a.activity_date))
             .slice(0, 5)
             .map(log => {
@@ -1677,15 +1691,16 @@ async function loadDashboard() {
         
         const todayCounselings = counselingsData.filter(c => {
             const consultDate = c.consultation_date ? c.consultation_date.split('T')[0].split(' ')[0] : '';
-            return consultDate === todayDate;
+            return consultDate === todayDate && courseStudentIds.includes(c.student_id);
         }).length;
         const thisWeekCounselings = counselingsData.filter(c => {
             const consultDate = c.consultation_date ? c.consultation_date.split('T')[0].split(' ')[0] : '';
-            return consultDate >= thisWeekStartStr;
+            return consultDate >= thisWeekStartStr && courseStudentIds.includes(c.student_id);
         }).length;
         const todayTrainingLogs = trainingLogsData.filter(t => {
             const logDate = (t['t.class_date'] || t.class_date || '').split('T')[0].split(' ')[0];
-            return logDate === todayDate;
+            const studentId = t.student_id || t['s.id'];
+            return logDate === todayDate && courseStudentIds.includes(studentId);
         }).length;
         
         // 과정별 학생 수 계산
@@ -1707,7 +1722,7 @@ async function loadDashboard() {
                 count: counselingsData.filter(c => {
                     // consultation_date는 "2025-11-17T00:00:00" 형식이므로 날짜 부분만 추출하여 비교
                     const consultDate = c.consultation_date ? c.consultation_date.split('T')[0].split(' ')[0] : '';
-                    return consultDate === dateStr;
+                    return consultDate === dateStr && courseStudentIds.includes(c.student_id);
                 }).length
             });
         }
@@ -1715,7 +1730,7 @@ async function loadDashboard() {
         // 진로 결정 현황 계산 (학생별 마지막 상담의 career_decision 기반)
         const careerCounts = { study: 0, employed: 0, startup: 0, undecided: 0, other: 0 };
         
-        studentsData.forEach(student => {
+        courseStudents.forEach(student => {
             // 해당 학생의 모든 상담 찾기
             const studentCounselings = counselingsData.filter(c => c.student_id === student.id);
             
@@ -1747,9 +1762,13 @@ async function loadDashboard() {
         const careerUndecided = careerCounts.undecided;
         const careerOther = careerCounts.other;
         
-        // 강사 유형별 통계
+        // 강사 유형별 통계 (선택된 과정)
+        const courseInstructors = instructorsData.filter(i => 
+            i.course_codes?.includes(mainCourse.code) || 
+            i.course_codes?.split(',').map(c => c.trim()).includes(mainCourse.code)
+        );
         const instructorsByType = {};
-        instructorsData.forEach(i => {
+        courseInstructors.forEach(i => {
             const typeName = i.instructor_type_name || '미분류';
             instructorsByType[typeName] = (instructorsByType[typeName] || 0) + 1;
         });
@@ -1871,27 +1890,27 @@ async function loadDashboard() {
                     <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('students')">
                         <div class="flex items-center justify-between mb-1">
                             <i class="fas fa-user-graduate text-xl"></i>
-                            <p class="text-2xl font-bold">${studentsData.length}</p>
+                            <p class="text-2xl font-bold">${courseStudents.length}</p>
                         </div>
-                        <p class="text-xs text-blue-100">전체 학생</p>
+                        <p class="text-xs text-blue-100">과정 학생</p>
                     </div>
                     
                     <!-- 강사 -->
                     <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('instructors')">
                         <div class="flex items-center justify-between mb-1">
                             <i class="fas fa-chalkboard-teacher text-xl"></i>
-                            <p class="text-2xl font-bold">${instructorsData.length}</p>
+                            <p class="text-2xl font-bold">${instructorsData.filter(i => i.course_codes?.includes(mainCourse.code) || i.course_codes?.split(',').includes(mainCourse.code)).length}</p>
                         </div>
-                        <p class="text-xs text-green-100">전체 강사</p>
+                        <p class="text-xs text-green-100">과정 강사</p>
                     </div>
                     
                     <!-- 과정 -->
                     <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('courses')">
                         <div class="flex items-center justify-between mb-1">
                             <i class="fas fa-school text-xl"></i>
-                            <p class="text-2xl font-bold">${coursesData.length}</p>
+                            <p class="text-2xl font-bold">1</p>
                         </div>
-                        <p class="text-xs text-purple-100">운영 과정</p>
+                        <p class="text-xs text-purple-100">선택 과정</p>
                     </div>
                     
                     <!-- 오늘 수업 -->
@@ -1907,18 +1926,18 @@ async function loadDashboard() {
                     <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('counselings')">
                         <div class="flex items-center justify-between mb-1">
                             <i class="fas fa-comments text-xl"></i>
-                            <p class="text-2xl font-bold">${todayCounselings}</p>
+                            <p class="text-2xl font-bold">${recentCounselings.length}</p>
                         </div>
-                        <p class="text-xs text-orange-100">오늘 상담 (총 ${counselingsData.length})</p>
+                        <p class="text-xs text-orange-100">최근 상담</p>
                     </div>
                     
                     <!-- 팀 구성원 수 -->
                     <div class="bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('projects')">
                         <div class="flex items-center justify-between mb-1">
                             <i class="fas fa-users text-xl"></i>
-                            <p class="text-2xl font-bold">${projectsData.length}</p>
+                            <p class="text-2xl font-bold">${courseProjects.length}</p>
                         </div>
-                        <p class="text-xs text-pink-100">활동팀</p>
+                        <p class="text-xs text-pink-100">과정 팀</p>
                     </div>
                 </div>
                 
