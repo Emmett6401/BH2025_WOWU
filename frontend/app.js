@@ -1597,14 +1597,22 @@ async function loadDashboard() {
             counselings: counselingsData.length
         });
         
-        // 기본 과정 (localStorage에서 마지막 선택 복원 또는 C-001, 없으면 첫 번째 과정)
+        // 기본 과정 (localStorage에서 마지막 선택 복원 또는 '전체', 없으면 C-001 또는 첫 번째 과정)
         const savedCourseCode = localStorage.getItem('dashboard_selected_course');
-        const mainCourse = (savedCourseCode ? coursesData.find(c => c.code === savedCourseCode) : null) 
+        let mainCourse;
+        let isAllCourses = false;
+        
+        if (savedCourseCode === 'ALL') {
+            isAllCourses = true;
+            mainCourse = { code: 'ALL', name: '전체 과정' };
+        } else {
+            mainCourse = (savedCourseCode ? coursesData.find(c => c.code === savedCourseCode) : null) 
                         || coursesData.find(c => c.code === 'C-001') 
                         || coursesData[0];
+        }
         
-        // 선택된 과정의 학생들
-        const courseStudents = studentsData.filter(s => s.course_code === mainCourse.code);
+        // 선택된 과정의 학생들 (전체 과정이면 모든 학생)
+        const courseStudents = isAllCourses ? studentsData : studentsData.filter(s => s.course_code === mainCourse.code);
         const courseStudentIds = courseStudents.map(s => s.id);
         
         // 총 상담 (선택된 과정 학생만)
@@ -1896,6 +1904,9 @@ async function loadDashboard() {
                                 <i class="fas fa-filter mr-1 text-blue-600"></i>과정 선택:
                             </label>
                             <select id="dashboard-course-filter" class="px-4 py-2 border-2 border-blue-500 rounded-lg text-base font-semibold bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-600 transition" onchange="window.filterDashboard(this.value)">
+                                <option value="ALL" ${mainCourse.code === 'ALL' ? 'selected' : ''}>
+                                    🌐 전체 과정
+                                </option>
                                 ${coursesData.map(c => `
                                     <option value="${c.code}" ${c.code === mainCourse.code ? 'selected' : ''}>
                                         ${c.name || c.code}
@@ -1914,7 +1925,7 @@ async function loadDashboard() {
                             <i class="fas fa-user-graduate text-xl"></i>
                             <p class="text-2xl font-bold">${courseStudents.length}</p>
                         </div>
-                        <p class="text-xs text-blue-100">과정 학생</p>
+                        <p class="text-xs text-blue-100">${isAllCourses ? '전체' : '과정'} 학생</p>
                     </div>
                     
                     <!-- 강사 -->
@@ -2477,7 +2488,7 @@ async function loadDashboard() {
             
             window.showLoading();
             setTimeout(() => {
-                window.showDashboard();
+                loadDashboard();
             }, 100);
         };
         
