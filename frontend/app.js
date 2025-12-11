@@ -12563,7 +12563,8 @@ window.replaceAITimetable = async function() {
         `${originalDate}의 시간표 ${dateTimetables.length}건을 ${replacementDate}로 변경하시겠습니까?\n\n` +
         `✅ ${originalDate} 시간표 삭제 후 ${replacementDate}로 대체\n` +
         `✅ ${originalDate}를 "공강/대체(${replacementDate})" 공휴일로 등록\n\n` +
-        `이 작업은 되돌릴 수 없습니다.`
+        `이 작업은 되돌릴 수 없습니다.`,
+        '시간표 대체 확인'
     );
     
     if (!confirmed) return;
@@ -12579,14 +12580,14 @@ window.replaceAITimetable = async function() {
         
         window.hideLoading();
         
-        window.showAlert(
+        await window.showAlert(
             `✅ 시간표 대체가 완료되었습니다!\n\n` +
             `- 변경된 시간표: ${response.data.timetables_updated}건\n` +
             `- 등록된 공휴일: ${originalDate} (공강/대체(${replacementDate}))`
         );
         
-        // 페이지 새로고침
-        loadAITimetable();
+        // 페이지 완전 새로고침으로 데이터 갱신
+        location.reload();
         
     } catch (error) {
         window.hideLoading();
