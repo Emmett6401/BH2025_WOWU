@@ -637,22 +637,32 @@
                     instructorsByType[typeName] = (instructorsByType[typeName] || 0) + 1;
                 });
                 
-                // 기본 과정 (localStorage에서 복원 또는 C-001, 없으면 첫 번째)
+                // 기본 과정 (localStorage에서 복원 또는 '전체', 없으면 C-001 또는 첫 번째)
                 const savedCourseCode = localStorage.getItem('mobile_dashboard_selected_course');
-                const mainCourse = (savedCourseCode ? coursesData.find(c => c.code === savedCourseCode) : null) 
+                let mainCourse;
+                let isAllCourses = false;
+                
+                if (savedCourseCode === 'ALL') {
+                    isAllCourses = true;
+                    mainCourse = { code: 'ALL', name: '전체 과정' };
+                } else {
+                    mainCourse = (savedCourseCode ? coursesData.find(c => c.code === savedCourseCode) : null) 
                                 || coursesData.find(c => c.code === 'C-001') 
                                 || coursesData[0];
+                }
                 
-                // 선택된 과정의 학생들
-                const courseStudents = studentsData.filter(s => s.course_code === mainCourse.code);
+                // 선택된 과정의 학생들 (전체 과정이면 모든 학생)
+                const courseStudents = isAllCourses ? studentsData : studentsData.filter(s => s.course_code === mainCourse.code);
                 const courseStudentIds = courseStudents.map(s => s.id);
                 
-                // 오늘 시간표 (선택된 과정만)
-                const todayTimetables = timetablesData.filter(t => t.class_date === today && t.course_code === mainCourse.code);
+                // 오늘 시간표 (전체 과정이면 모든 시간표, 아니면 선택된 과정만)
+                const todayTimetables = isAllCourses 
+                    ? timetablesData.filter(t => t.class_date === today)
+                    : timetablesData.filter(t => t.class_date === today && t.course_code === mainCourse.code);
                 
-                // 최근 상담 (선택된 과정 학생만, 최근 5건)
+                // 최근 상담 (전체 과정이면 모든 상담, 아니면 선택된 과정 학생만, 최근 5건)
                 const recentCounselings = counselingsData
-                    .filter(c => courseStudentIds.includes(c.student_id))
+                    .filter(c => isAllCourses || courseStudentIds.includes(c.student_id))
                     .sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date))
                     .slice(0, 5);
                 
@@ -678,7 +688,9 @@
                     careerCounts,
                     instructorsByType,
                     mainCourse,
-                    today
+                    today,
+                    isAllCourses,
+                    courseStudents
                 });
                 
             } catch (error) {
@@ -714,7 +726,9 @@
                 careerCounts,
                 instructorsByType,
                 mainCourse,
-                today
+                today,
+                isAllCourses,
+                courseStudents
             } = data;
             
             const container = document.getElementById('dashboardContent');
@@ -727,6 +741,9 @@
                     <select id="mobile-course-filter" 
                             class="w-full px-4 py-3 border-2 border-blue-500 rounded-lg text-base font-semibold bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-600" 
                             onchange="window.filterMobileDashboard(this.value)">
+                        <option value="ALL" ${mainCourse.code === 'ALL' ? 'selected' : ''}>
+                            🌐 전체 과정
+                        </option>
                         ${coursesData.map(c => `
                             <option value="${c.code}" ${c.code === mainCourse.code ? 'selected' : ''}>
                                 ${c.name || c.code}
@@ -749,9 +766,9 @@
                     <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-4 text-white">
                         <div class="flex items-center justify-between mb-2">
                             <i class="fas fa-user-graduate text-2xl"></i>
-                            <p class="text-3xl font-bold">${studentsData.length}</p>
+                            <p class="text-3xl font-bold">${courseStudents.length}</p>
                         </div>
-                        <p class="text-xs text-blue-100">전체 학생</p>
+                        <p class="text-xs text-blue-100">${isAllCourses ? '전체' : '과정'} 학생</p>
                     </div>
                     
                     <!-- 강사 -->

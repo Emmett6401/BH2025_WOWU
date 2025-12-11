@@ -1932,7 +1932,7 @@ async function loadDashboard() {
                             <i class="fas fa-school text-xl"></i>
                             <p class="text-2xl font-bold">${coursesData.length}</p>
                         </div>
-                        <p class="text-xs text-purple-100">총 과정수</p>
+                        <p class="text-xs text-purple-100">총 과정</p>
                     </div>
                     
                     <!-- 오늘 수업 -->
