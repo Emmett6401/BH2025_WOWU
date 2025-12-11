@@ -530,13 +530,7 @@
                               String(now.getMonth() + 1).padStart(2, '0') + '-' + 
                               String(now.getDate()).padStart(2, '0');
                 
-                // 오늘 시간표
-                const todayTimetables = timetablesData.filter(t => t.class_date === today);
-                
-                // 최근 상담 (최근 5건)
-                const recentCounselings = counselingsData
-                    .sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date))
-                    .slice(0, 5);
+
                 
                 // 최근 훈련일지 (최근 5건)
                 const recentTrainingLogs = trainingLogsData
@@ -643,8 +637,24 @@
                     instructorsByType[typeName] = (instructorsByType[typeName] || 0) + 1;
                 });
                 
-                // 기본 과정
-                const mainCourse = coursesData.find(c => c.name === '2025-우송1반') || coursesData[0];
+                // 기본 과정 (localStorage에서 복원 또는 C-001, 없으면 첫 번째)
+                const savedCourseCode = localStorage.getItem('mobile_dashboard_selected_course');
+                const mainCourse = (savedCourseCode ? coursesData.find(c => c.code === savedCourseCode) : null) 
+                                || coursesData.find(c => c.code === 'C-001') 
+                                || coursesData[0];
+                
+                // 선택된 과정의 학생들
+                const courseStudents = studentsData.filter(s => s.course_code === mainCourse.code);
+                const courseStudentIds = courseStudents.map(s => s.id);
+                
+                // 오늘 시간표 (선택된 과정만)
+                const todayTimetables = timetablesData.filter(t => t.class_date === today && t.course_code === mainCourse.code);
+                
+                // 최근 상담 (선택된 과정 학생만, 최근 5건)
+                const recentCounselings = counselingsData
+                    .filter(c => courseStudentIds.includes(c.student_id))
+                    .sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date))
+                    .slice(0, 5);
                 
                 // 대시보드 렌더링
                 renderDashboard({
@@ -709,6 +719,22 @@
             
             const container = document.getElementById('dashboardContent');
             container.innerHTML = `
+                <!-- 과정 선택 드롭다운 -->
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-filter mr-1 text-blue-600"></i>과정 선택
+                    </label>
+                    <select id="mobile-course-filter" 
+                            class="w-full px-4 py-3 border-2 border-blue-500 rounded-lg text-base font-semibold bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-600" 
+                            onchange="window.filterMobileDashboard(this.value)">
+                        ${coursesData.map(c => `
+                            <option value="${c.code}" ${c.code === mainCourse.code ? 'selected' : ''}>
+                                ${c.name || c.code}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                
                 <!-- 상단 날짜 정보 -->
                 <div class="flex justify-between items-center mb-4">
                     <div class="text-sm text-gray-600">
@@ -932,7 +958,7 @@
                                         'bg-gray-200 text-gray-800'
                                     }">${c.status || '미정'}</span>
                                 </div>
-                                <p class="text-xs text-gray-600 mb-2">${c.consultation_content?.substring(0, 50) || '내용 없음'}...</p>
+                                <p class="text-xs text-gray-600 mb-2">${c.content?.substring(0, 50) || '내용 없음'}...</p>
                                 <div class="flex items-center gap-2 text-xs text-gray-500">
                                     <i class="fas fa-calendar-alt"></i>
                                     <span>${new Date(c.consultation_date).toLocaleDateString('ko-KR')}</span>
@@ -1168,6 +1194,14 @@
                 }
             });
         }
+        
+        // 모바일 대시보드 과정 필터
+        window.filterMobileDashboard = function(courseCode) {
+            // 선택된 과정 코드를 localStorage에 저장
+            localStorage.setItem('mobile_dashboard_selected_course', courseCode);
+            // 대시보드 데이터 다시 로드
+            loadDashboardData();
+        };
         
         // 페이지 초기화
         async function initializePage() {
