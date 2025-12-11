@@ -4045,6 +4045,97 @@ async def generate_ai_counseling(data: dict):
     finally:
         conn.close()
 
+@app.post("/api/ai/replace-timetable")
+async def replace_timetable(data: dict):
+    """AI 시간표 대체: 시간표 날짜 변경 및 원래 날짜를 공휴일로 등록"""
+    course_code = data.get('course_code')
+    original_date = data.get('original_date')
+    replacement_date = data.get('replacement_date')
+    
+    if not course_code or not original_date or not replacement_date:
+        raise HTTPException(status_code=400, detail="모든 필드가 필요합니다")
+    
+    if original_date == replacement_date:
+        raise HTTPException(status_code=400, detail="원래 날짜와 대체 날짜가 같습니다")
+    
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 1. 해당 날짜의 시간표 개수 확인
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM timetables
+            WHERE course_code = %s AND class_date = %s
+        """, (course_code, original_date))
+        count_result = cursor.fetchone()
+        timetables_count = count_result['count']
+        
+        if timetables_count == 0:
+            raise HTTPException(status_code=404, detail="해당 날짜에 시간표가 없습니다")
+        
+        # 2. 시간표 날짜 업데이트
+        cursor.execute("""
+            UPDATE timetables
+            SET class_date = %s
+            WHERE course_code = %s AND class_date = %s
+        """, (replacement_date, course_code, original_date))
+        
+        updated_count = cursor.rowcount
+        
+        # 3. 원래 날짜를 공휴일로 등록
+        # 공휴일명: "공강/대체(대체날짜)"
+        holiday_name = f"공강/대체({replacement_date})"
+        
+        # 기존 공휴일이 있는지 확인
+        cursor.execute("""
+            SELECT id FROM holidays
+            WHERE holiday_date = %s
+        """, (original_date,))
+        existing_holiday = cursor.fetchone()
+        
+        if existing_holiday:
+            # 기존 공휴일 업데이트
+            cursor.execute("""
+                UPDATE holidays
+                SET name = %s
+                WHERE holiday_date = %s
+            """, (holiday_name, original_date))
+        else:
+            # 새 공휴일 등록
+            cursor.execute("""
+                INSERT INTO holidays (holiday_date, name, is_legal)
+                VALUES (%s, %s, 0)
+            """, (original_date, holiday_name))
+        
+        conn.commit()
+        
+        return {
+            "success": True,
+            "timetables_updated": updated_count,
+            "original_date": original_date,
+            "replacement_date": replacement_date,
+            "holiday_created": {
+                "date": original_date,
+                "name": holiday_name,
+                "category": "일반"
+            }
+        }
+        
+    except HTTPException as he:
+        conn.rollback()
+        raise he
+    except Exception as e:
+        conn.rollback()
+        import traceback
+        error_detail = f"{type(e).__name__}: {str(e)}"
+        print(f"❌ 시간표 대체 실패: {error_detail}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"시간표 대체 실패: {error_detail}")
+    finally:
+        if conn:
+            conn.close()
+
 @app.post("/api/upload-image")
 async def upload_image(
     file: UploadFile = File(...),
