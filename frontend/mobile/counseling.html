@@ -314,7 +314,7 @@
                         <button type="button" 
                                 id="voiceInputBtn"
                                 onclick="startVoiceInput()"
-                                class="absolute bottom-3 right-3 bg-red-500 hover:bg-red-600 text-white p-3 rounded-full transition-all shadow-lg">
+                                class="absolute bottom-3 right-3 bg-green-500 hover:bg-green-600 text-white p-3 rounded-full transition-all shadow-lg">
                             <i class="fas fa-microphone text-lg"></i>
                         </button>
                     </div>
@@ -1275,15 +1275,17 @@
                 
                 recognition.onstart = function() {
                     isRecording = true;
-                    btn.classList.remove('bg-red-500', 'hover:bg-red-600');
-                    btn.classList.add('bg-green-500', 'hover:bg-green-600', 'animate-pulse');
+                    btn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                    btn.classList.add('bg-red-500', 'hover:bg-red-600', 'animate-pulse');
+                    btn.innerHTML = '<i class="fas fa-circle text-lg"></i>';
                     showToast('음성 인식 시작...', 'success');
                 };
                 
                 recognition.onend = function() {
                     isRecording = false;
-                    btn.classList.remove('bg-green-500', 'hover:bg-green-600', 'animate-pulse');
-                    btn.classList.add('bg-red-500', 'hover:bg-red-600');
+                    btn.classList.remove('bg-red-500', 'hover:bg-red-600', 'animate-pulse');
+                    btn.classList.add('bg-green-500', 'hover:bg-green-600');
+                    btn.innerHTML = '<i class="fas fa-microphone text-lg"></i>';
                 };
                 
                 recognition.onresult = function(event) {
@@ -1309,8 +1311,9 @@
                 recognition.onerror = function(event) {
                     console.error('음성 인식 오류:', event.error);
                     isRecording = false;
-                    btn.classList.remove('bg-green-500', 'hover:bg-green-600', 'animate-pulse');
-                    btn.classList.add('bg-red-500', 'hover:bg-red-600');
+                    btn.classList.remove('bg-red-500', 'hover:bg-red-600', 'animate-pulse');
+                    btn.classList.add('bg-green-500', 'hover:bg-green-600');
+                    btn.innerHTML = '<i class="fas fa-microphone text-lg"></i>';
                     
                     if (event.error === 'no-speech') {
                         showToast('음성이 감지되지 않았습니다', 'error');

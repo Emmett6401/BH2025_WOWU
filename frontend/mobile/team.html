@@ -211,6 +211,10 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                         <i class="fas fa-edit mr-2 text-pink-500"></i>활동 내용
+                        <button type="button" id="voiceBtn1" onclick="toggleVoice('activityContent', 1)"
+                                class="ml-2 bg-green-500 hover:bg-green-600 text-white rounded-lg p-2 transition-all">
+                            <i class="fas fa-microphone text-sm"></i>
+                        </button>
                     </label>
                     <textarea id="activityContent" rows="4" required
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
@@ -221,6 +225,10 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                         <i class="fas fa-trophy mr-2 text-pink-500"></i>성과
+                        <button type="button" id="voiceBtn2" onclick="toggleVoice('activityAchievements', 2)"
+                                class="ml-2 bg-green-500 hover:bg-green-600 text-white rounded-lg p-2 transition-all">
+                            <i class="fas fa-microphone text-sm"></i>
+                        </button>
                     </label>
                     <textarea id="activityAchievements" rows="3"
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
@@ -231,6 +239,10 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                         <i class="fas fa-tasks mr-2 text-pink-500"></i>다음 계획
+                        <button type="button" id="voiceBtn3" onclick="toggleVoice('activityNextPlan', 3)"
+                                class="ml-2 bg-green-500 hover:bg-green-600 text-white rounded-lg p-2 transition-all">
+                            <i class="fas fa-microphone text-sm"></i>
+                        </button>
                     </label>
                     <textarea id="activityNextPlan" rows="2"
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
@@ -241,6 +253,10 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                         <i class="fas fa-sticky-note mr-2 text-pink-500"></i>비고
+                        <button type="button" id="voiceBtn4" onclick="toggleVoice('activityNotes', 4)"
+                                class="ml-2 bg-green-500 hover:bg-green-600 text-white rounded-lg p-2 transition-all">
+                            <i class="fas fa-microphone text-sm"></i>
+                        </button>
                     </label>
                     <textarea id="activityNotes" rows="2"
                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
@@ -253,11 +269,18 @@
                         <i class="fas fa-camera mr-2 text-pink-500"></i>사진 첨부
                     </label>
                     <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                        <input type="file" id="photoInput" accept="image/*" multiple class="hidden" onchange="handlePhotoSelect(event)">
-                        <button type="button" onclick="document.getElementById('photoInput').click()"
-                                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-all">
-                            <i class="fas fa-camera mr-2"></i>사진 촬영/선택
-                        </button>
+                        <input type="file" id="photoCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoSelect(event)">
+                        <input type="file" id="photoFileInput" accept="image/*" multiple class="hidden" onchange="handlePhotoSelect(event)">
+                        <div class="flex justify-center gap-2">
+                            <button type="button" onclick="document.getElementById('photoCameraInput').click()"
+                                    class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-all">
+                                <i class="fas fa-camera mr-2"></i>사진 촬영
+                            </button>
+                            <button type="button" onclick="document.getElementById('photoFileInput').click()"
+                                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-all">
+                                <i class="fas fa-folder mr-2"></i>파일 선택
+                            </button>
+                        </div>
                         <p class="text-xs text-gray-500 mt-2">최대 5장까지 업로드 가능</p>
                     </div>
                     <div id="photoPreviewContainer" class="grid grid-cols-3 gap-2 mt-3"></div>
@@ -981,6 +1004,93 @@
                 };
                 reader.readAsDataURL(file);
             });
+        }
+        
+        // Voice recognition for team activity
+        let currentRecognition = null;
+        let currentTargetField = null;
+        let currentBtnId = null;
+        
+        function toggleVoice(fieldId, btnNum) {
+            if (!window.isSecureContext) {
+                showToast('HTTPS 환경에서만 음성 인식을 사용할 수 있습니다', 'error');
+                return;
+            }
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                showToast('이 브라우저는 음성 인식을 지원하지 않습니다', 'error');
+                return;
+            }
+            
+            // 이미 녹음 중이면 중지
+            if (currentRecognition) {
+                currentRecognition.stop();
+                return;
+            }
+            
+            // 새로운 음성 인식 시작
+            currentTargetField = fieldId;
+            currentBtnId = btnNum;
+            currentRecognition = new SpeechRecognition();
+            currentRecognition.lang = 'ko-KR';
+            currentRecognition.continuous = true;
+            currentRecognition.interimResults = true;
+            
+            const btn = document.getElementById('voiceBtn' + btnNum);
+            const textarea = document.getElementById(fieldId);
+            
+            currentRecognition.onstart = function() {
+                showToast('음성 인식 시작', 'info');
+                btn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                btn.classList.add('bg-red-500', 'hover:bg-red-600');
+                btn.innerHTML = '<i class="fas fa-circle text-sm animate-pulse"></i>';
+            };
+            
+            currentRecognition.onend = function() {
+                btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                btn.classList.add('bg-green-500', 'hover:bg-green-600');
+                btn.innerHTML = '<i class="fas fa-microphone text-sm"></i>';
+                showToast('음성 인식 중지', 'info');
+                currentRecognition = null;
+                currentTargetField = null;
+                currentBtnId = null;
+            };
+            
+            currentRecognition.onresult = function(event) {
+                let interimTranscript = '';
+                let finalTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                if (finalTranscript) {
+                    textarea.value += finalTranscript;
+                }
+            };
+            
+            currentRecognition.onerror = function(event) {
+                console.error('Speech recognition error:', event.error);
+                if (event.error === 'no-speech') {
+                    showToast('음성이 감지되지 않았습니다', 'warning');
+                } else if (event.error === 'not-allowed') {
+                    showToast('마이크 권한이 필요합니다', 'error');
+                } else {
+                    showToast('음성 인식 오류: ' + event.error, 'error');
+                }
+                btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                btn.classList.add('bg-green-500', 'hover:bg-green-600');
+                btn.innerHTML = '<i class="fas fa-microphone text-sm"></i>';
+                currentRecognition = null;
+            };
+            
+            currentRecognition.start();
         }
         
         // Initialize on load
