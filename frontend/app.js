@@ -13625,7 +13625,7 @@ async function updateHeader() {
         // 제목 업데이트 (버전 포함)
         const titleElement = document.getElementById('system-title-header');
         if (titleElement) {
-            titleElement.innerHTML = `<i class="fas fa-school mr-3"></i>${settings.system_title || '바이오헬스교육관리시스템'}<span class="ml-3 text-sm font-normal bg-blue-500 text-white px-2 py-1 rounded">v2.0.114</span>`;
+            titleElement.innerHTML = `<i class="fas fa-school mr-3"></i>${settings.system_title || '바이오헬스교육관리시스템'}<span class="ml-3 text-sm font-normal bg-blue-500 text-white px-2 py-1 rounded">v2.0.120</span>`;
         }
         
         // 부제목 1 업데이트

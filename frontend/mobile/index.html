@@ -1244,7 +1244,16 @@
             
             // 사용자 정보 표시
             const userName = user.name || '사용자';
-            const userRole = userType === 'instructor' ? '강사' : '학생';
+            let userRole = '';
+            
+            if (userType === 'instructor') {
+                // 강사일 경우: 이름(역할, 전공과목)
+                const instructorTypeName = user.instructor_type_name || '강사';
+                const majorSubject = user.major_subject || '';
+                userRole = majorSubject ? `${instructorTypeName}, ${majorSubject}` : instructorTypeName;
+            } else {
+                userRole = '학생';
+            }
             
             document.getElementById('userInfo').textContent = `${userName} (${userRole})`;
             
