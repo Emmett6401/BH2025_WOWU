@@ -478,6 +478,8 @@
                 dot1.classList.remove('active');
                 dot2.classList.add('active');
                 currentPage = 'menu';
+                // 메뉴로 전환 시 페이지를 맨 위로 스크롤
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
                 container.classList.remove('menu-active');
                 dot1.classList.add('active');
