@@ -12375,10 +12375,11 @@ async function loadAITimetable() {
             axios.get(`${API_BASE_URL}/api/holidays`)
         ]);
         courses = coursesRes.data;
-        const timetables = timetablesRes.data;
-        const holidays = holidaysRes.data;
+        window.aiTimetablesData = timetablesRes.data;
+        window.aiHolidaysData = holidaysRes.data;
         
-        renderAITimetable(timetables, holidays);
+        renderAITimetable(window.aiTimetablesData, window.aiHolidaysData);
+        renderAITimetableHistory();
         window.hideLoading();
     } catch (error) {
         window.hideLoading();
@@ -12447,8 +12448,8 @@ function renderAITimetable(timetables, holidays) {
                 <h3 class="text-lg font-semibold text-gray-800 mb-3">
                     <i class="fas fa-history mr-2 text-gray-600"></i>최근 대체 이력
                 </h3>
-                <div class="bg-gray-50 p-4 rounded-lg text-center text-gray-500">
-                    아직 대체 이력이 없습니다.
+                <div id="ai-tt-history-content" class="bg-gray-50 p-4 rounded-lg">
+                    <div class="text-center text-gray-500">대체 이력을 불러오는 중...</div>
                 </div>
             </div>
         </div>
@@ -12595,6 +12596,74 @@ window.replaceAITimetable = async function() {
         window.showAlert('시간표 대체 실패: ' + (error.response?.data?.detail || error.message));
     }
 };
+
+// AI 시간표 대체 이력 렌더링
+function renderAITimetableHistory() {
+    const historyDiv = document.getElementById('ai-tt-history-content');
+    if (!historyDiv) return;
+    
+    const holidays = window.aiHolidaysData || [];
+    
+    // 대체 이력만 필터링 (공강/대체로 시작하는 공휴일)
+    const replacementHistory = holidays
+        .filter(h => h.name && h.name.startsWith('공강/대체'))
+        .sort((a, b) => new Date(b.holiday_date) - new Date(a.holiday_date));
+    
+    if (replacementHistory.length === 0) {
+        historyDiv.innerHTML = `
+            <div class="text-center text-gray-500">
+                <i class="fas fa-info-circle mr-2"></i>
+                아직 대체 이력이 없습니다.
+            </div>
+        `;
+        return;
+    }
+    
+    // 대체 날짜 추출 (공강/대체(2026-01-10) → 2026-01-10)
+    const parseReplacementDate = (name) => {
+        const match = name.match(/공강\/대체\(([0-9-]+)\)/);
+        return match ? match[1] : '알 수 없음';
+    };
+    
+    historyDiv.innerHTML = `
+        <div class="space-y-2">
+            ${replacementHistory.map(h => {
+                const replacementDate = parseReplacementDate(h.name);
+                const originalDate = h.holiday_date;
+                
+                return `
+                    <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-exchange-alt text-indigo-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-gray-800">
+                                        <span class="text-red-600">${originalDate}</span>
+                                        <i class="fas fa-arrow-right mx-2 text-gray-400"></i>
+                                        <span class="text-green-600">${replacementDate}</span>
+                                    </div>
+                                    <div class="text-sm text-gray-500 mt-1">
+                                        원래 날짜가 공휴일로 등록되었습니다
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-400">
+                                ${new Date(h.created_at).toLocaleString('ko-KR')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+        
+        <div class="mt-4 text-sm text-gray-500 text-center">
+            <i class="fas fa-info-circle mr-1"></i>
+            총 ${replacementHistory.length}건의 대체 이력
+        </div>
+    `;
+}
 
 console.log('App script loaded successfully');
 
