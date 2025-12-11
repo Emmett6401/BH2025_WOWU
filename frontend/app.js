@@ -1597,9 +1597,11 @@ async function loadDashboard() {
             counselings: counselingsData.length
         });
         
-        // 기본 과정 (localStorage에서 마지막 선택 복원 또는 첫 번째 과정)
+        // 기본 과정 (localStorage에서 마지막 선택 복원 또는 C-001, 없으면 첫 번째 과정)
         const savedCourseCode = localStorage.getItem('dashboard_selected_course');
-        const mainCourse = (savedCourseCode ? coursesData.find(c => c.code === savedCourseCode) : null) || coursesData[0];
+        const mainCourse = (savedCourseCode ? coursesData.find(c => c.code === savedCourseCode) : null) 
+                        || coursesData.find(c => c.code === 'C-001') 
+                        || coursesData[0];
         
         // 선택된 과정의 학생들
         const courseStudents = studentsData.filter(s => s.course_code === mainCourse.code);
@@ -1889,13 +1891,18 @@ async function loadDashboard() {
                             <span id="dashboard-volume-value" class="text-xs text-pink-600 min-w-[2rem]">30%</span>
                         </div>
                         
-                        <select id="dashboard-course-filter" class="px-4 py-2 border rounded text-base font-semibold" onchange="window.filterDashboard(this.value)">
-                            ${coursesData.map(c => `
-                                <option value="${c.code}" ${c.code === mainCourse.code ? 'selected' : ''}>
-                                    ${c.name || c.code}
-                                </option>
-                            `).join('')}
-                        </select>
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm font-semibold text-gray-700">
+                                <i class="fas fa-filter mr-1 text-blue-600"></i>과정 선택:
+                            </label>
+                            <select id="dashboard-course-filter" class="px-4 py-2 border-2 border-blue-500 rounded-lg text-base font-semibold bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-600 transition" onchange="window.filterDashboard(this.value)">
+                                ${coursesData.map(c => `
+                                    <option value="${c.code}" ${c.code === mainCourse.code ? 'selected' : ''}>
+                                        ${c.name || c.code}
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -1943,7 +1950,7 @@ async function loadDashboard() {
                             <i class="fas fa-comments text-xl"></i>
                             <p class="text-2xl font-bold">${todayCounselings}</p>
                         </div>
-                        <p class="text-xs text-orange-100">오늘상담 (총 ${totalCourseCounselings.length}건)</p>
+                        <p class="text-xs text-orange-100">오늘 (총 ${totalCourseCounselings.length}건)</p>
                     </div>
                     
                     <!-- 팀 구성원 수 -->
@@ -2015,7 +2022,7 @@ async function loadDashboard() {
                     <!-- 최근 7일 상담 추이 (라인 차트) -->
                     <div class="bg-white rounded-lg shadow p-3">
                         <h3 class="text-sm font-bold text-gray-800 mb-2 flex items-center">
-                            <i class="fas fa-chart-line mr-2 text-orange-600"></i>최근 7일 상담 추이
+                            <i class="fas fa-chart-line mr-2 text-orange-600"></i>최근 7일 상담 추이 (전체 강사)
                         </h3>
                         <canvas id="counselingTrendChart" class="w-full" style="max-height: 120px;"></canvas>
                         <div class="mt-2 flex justify-between text-xs text-gray-600">
@@ -2148,7 +2155,7 @@ async function loadDashboard() {
                     <div class="bg-white rounded-lg shadow p-3">
                         <div class="flex items-center justify-between mb-2">
                             <h3 class="text-sm font-bold text-gray-800">
-                                <i class="fas fa-comments mr-2 text-green-600"></i>최근 상담
+                                <i class="fas fa-comments mr-2 text-green-600"></i>최근 상담 (전체 강사)
                             </h3>
                             <button onclick="showTab('counselings')" class="text-green-600 hover:text-green-700 text-xs font-semibold">
                                 전체 <i class="fas fa-arrow-right ml-1"></i>
@@ -2193,7 +2200,7 @@ async function loadDashboard() {
                     <div class="bg-white rounded-lg shadow p-3">
                         <div class="flex items-center justify-between mb-2">
                             <h3 class="text-sm font-bold text-gray-800">
-                                <i class="fas fa-clipboard-list mr-2 text-indigo-600"></i>훈련일지
+                                <i class="fas fa-clipboard-list mr-2 text-indigo-600"></i>훈련일지 (전체 강사)
                             </h3>
                             <button onclick="showTab('training-logs')" class="text-indigo-600 hover:text-indigo-700 text-xs font-semibold">
                                 전체 <i class="fas fa-arrow-right ml-1"></i>
