@@ -1399,7 +1399,7 @@ function startDashboardAutoRefresh() {
     const intervalMs = getRefreshInterval();
     const intervalMin = Math.floor(intervalMs / 60000);
     
-    console.log(`⏰ 대시보드 자동 새로고침 시작 (${intervalMin}분 간격)`);
+    // 자동 새로고침 시작 (로그 제거)
     
     // 다음 새로고침 시간 설정
     dashboardRefreshTime = Date.now() + intervalMs;
@@ -1427,7 +1427,7 @@ function stopDashboardAutoRefresh() {
         clearInterval(dashboardRefreshInterval);
         dashboardRefreshInterval = null;
         dashboardRefreshTime = null;
-        console.log('⏰ 대시보드 자동 새로고침 중지');
+        // 자동 새로고침 중지 (로그 제거)
     }
 }
 
@@ -1439,7 +1439,7 @@ let activityCheckInterval = null;
 function resetDashboardAutoRefresh(eventType = '활동') {
     if (currentTab === 'dashboard' && dashboardRefreshInterval) {
         lastActivityTime = Date.now();
-        console.log(`👆 ${eventType} 감지 - 자동 새로고침 타이머 리셋`);
+        // 사용자 활동 감지 (로그 제거)
         stopDashboardAutoRefresh();
         startDashboardAutoRefresh();
     }
@@ -1559,7 +1559,7 @@ function removeDashboardActivityListeners() {
         mouseMoveThrottle = null;
     }
     
-    console.log('👀 대시보드 활동 감지 중지');
+    // 대시보드 활동 감지 중지 (로그 제거)
 }
 
 // ==================== 대시보드 ====================
@@ -1605,9 +1605,12 @@ async function loadDashboard() {
         const courseStudents = studentsData.filter(s => s.course_code === mainCourse.code);
         const courseStudentIds = courseStudents.map(s => s.id);
         
-        // 최근 상담 (선택된 과정 학생만, 최근 5건)
-        const recentCounselings = counselingsData
-            .filter(c => courseStudentIds.includes(c.student_id))
+        // 총 상담 (선택된 과정 학생만)
+        const totalCourseCounselings = counselingsData
+            .filter(c => courseStudentIds.includes(c.student_id));
+        
+        // 최근 상담 (선택된 과정 학생만, 최근 5건 - 대시보드 하단 표시용)
+        const recentCounselings = totalCourseCounselings
             .sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date))
             .slice(0, 5);
         
@@ -1654,18 +1657,32 @@ async function loadDashboard() {
                 };
             });
         
-        // 최근 훈련일지 (선택된 과정 학생만, 최근 5건)
-        const recentTrainingLogs = trainingLogsData
-            .filter(log => {
-                const studentId = log.student_id || log['s.id'];
-                return courseStudentIds.includes(studentId);
-            })
+        // 최근 2일치 시간표 (선택된 과정, 오늘 포함)
+        const twoDaysAgo = new Date(today);
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 1); // 오늘 포함 2일
+        const twoDaysAgoStr = twoDaysAgo.getFullYear() + '-' + 
+                                String(twoDaysAgo.getMonth() + 1).padStart(2, '0') + '-' + 
+                                String(twoDaysAgo.getDate()).padStart(2, '0');
+        
+        // 최근 2일치 시간표 가져오기
+        const recent3DaysTimetables = timetablesData
+            .filter(t => t.course_code === mainCourse.code && t.class_date >= twoDaysAgoStr && t.class_date <= today)
             .sort((a, b) => {
-                const dateA = new Date(a['t.class_date'] || a.class_date || 0);
-                const dateB = new Date(b['t.class_date'] || b.class_date || 0);
-                return dateB - dateA;
-            })
-            .slice(0, 5);
+                const dateCompare = b.class_date.localeCompare(a.class_date);
+                if (dateCompare !== 0) return dateCompare;
+                return b.start_time.localeCompare(a.start_time);
+            });
+        
+        // 시간표별 훈련일지 작성 여부 확인
+        const recentTrainingLogs = recent3DaysTimetables.map(tt => {
+            const log = trainingLogsData.find(log => log.timetable_id === tt.id);
+            return {
+                ...tt,
+                hasLog: !!log,
+                logContent: log?.content || null,
+                logId: log?.id || null
+            };
+        });
         
         // 선택된 과정의 프로젝트들
         const courseProjects = projectsData.filter(p => p.course_code === mainCourse.code);
@@ -1766,13 +1783,9 @@ async function loadDashboard() {
         const careerUndecided = careerCounts.undecided;
         const careerOther = careerCounts.other;
         
-        // 강사 유형별 통계 (선택된 과정)
-        const courseInstructors = instructorsData.filter(i => 
-            i.course_codes?.includes(mainCourse.code) || 
-            i.course_codes?.split(',').map(c => c.trim()).includes(mainCourse.code)
-        );
+        // 강사 유형별 통계 (전체 강사)
         const instructorsByType = {};
-        courseInstructors.forEach(i => {
+        instructorsData.forEach(i => {
             const typeName = i.instructor_type_name || '미분류';
             instructorsByType[typeName] = (instructorsByType[typeName] || 0) + 1;
         });
@@ -1876,7 +1889,7 @@ async function loadDashboard() {
                             <span id="dashboard-volume-value" class="text-xs text-pink-600 min-w-[2rem]">30%</span>
                         </div>
                         
-                        <select id="dashboard-course-filter" class="px-3 py-1 border rounded text-sm" onchange="window.filterDashboard(this.value)">
+                        <select id="dashboard-course-filter" class="px-4 py-2 border rounded text-base font-semibold" onchange="window.filterDashboard(this.value)">
                             ${coursesData.map(c => `
                                 <option value="${c.code}" ${c.code === mainCourse.code ? 'selected' : ''}>
                                     ${c.name || c.code}
@@ -1901,18 +1914,18 @@ async function loadDashboard() {
                     <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('instructors')">
                         <div class="flex items-center justify-between mb-1">
                             <i class="fas fa-chalkboard-teacher text-xl"></i>
-                            <p class="text-2xl font-bold">${instructorsData.filter(i => i.course_codes?.includes(mainCourse.code) || i.course_codes?.split(',').includes(mainCourse.code)).length}</p>
+                            <p class="text-2xl font-bold">${instructorsData.length}</p>
                         </div>
-                        <p class="text-xs text-green-100">과정 강사</p>
+                        <p class="text-xs text-green-100">전체 강사</p>
                     </div>
                     
                     <!-- 과정 -->
                     <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('courses')">
                         <div class="flex items-center justify-between mb-1">
                             <i class="fas fa-school text-xl"></i>
-                            <p class="text-2xl font-bold">1</p>
+                            <p class="text-2xl font-bold">${coursesData.length}</p>
                         </div>
-                        <p class="text-xs text-purple-100">선택 과정</p>
+                        <p class="text-xs text-purple-100">전체 과정</p>
                     </div>
                     
                     <!-- 오늘 수업 -->
@@ -1928,9 +1941,9 @@ async function loadDashboard() {
                     <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow p-3 text-white cursor-pointer hover:shadow-lg transition" onclick="showTab('counselings')">
                         <div class="flex items-center justify-between mb-1">
                             <i class="fas fa-comments text-xl"></i>
-                            <p class="text-2xl font-bold">${recentCounselings.length}</p>
+                            <p class="text-2xl font-bold">${todayCounselings}</p>
                         </div>
-                        <p class="text-xs text-orange-100">최근 상담</p>
+                        <p class="text-xs text-orange-100">오늘상담 (총 ${totalCourseCounselings.length}건)</p>
                     </div>
                     
                     <!-- 팀 구성원 수 -->
@@ -2187,22 +2200,50 @@ async function loadDashboard() {
                             </button>
                         </div>
                         <div class="space-y-1.5">
-                            ${recentTrainingLogs.length > 0 ? recentTrainingLogs.slice(0, 4).map(t => `
-                                <div class="p-2 bg-gray-50 rounded hover:bg-gray-100 transition">
+                            ${recentTrainingLogs.length > 0 ? recentTrainingLogs.map(t => {
+                                const dateObj = new Date(t.class_date);
+                                const isToday = t.class_date === today;
+                                
+                                // 오늘은 '수업중', 그 외 날짜는 작성/미작성 표시
+                                let statusBadge;
+                                if (isToday) {
+                                    statusBadge = '<span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">수업중</span>';
+                                } else {
+                                    statusBadge = t.hasLog 
+                                        ? '<span class="px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded">작성</span>'
+                                        : '<span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded">미작성</span>';
+                                }
+                                
+                                return `
+                                <div class="p-2 ${isToday ? 'bg-yellow-50' : 'bg-gray-50'} rounded hover:bg-gray-100 transition">
                                     <div class="flex items-start justify-between mb-0.5">
-                                        <p class="text-xs font-semibold text-gray-800">${new Date(t['t.class_date'] || t.class_date).getMonth()+1}/${new Date(t['t.class_date'] || t.class_date).getDate()}</p>
-                                        <span class="text-xs text-gray-500 truncate ml-2">${(t.subject_name || t.timetable_subject_name || '').substring(0, 8)}</span>
+                                        <p class="text-xs font-semibold text-gray-800">${dateObj.getMonth()+1}/${dateObj.getDate()} ${isToday ? '(오늘)' : ''}</p>
+                                        <div class="flex items-center gap-1">
+                                            ${statusBadge}
+                                            <span class="text-xs text-gray-500 truncate">${(t.subject_name || '').substring(0, 8)}</span>
+                                        </div>
                                     </div>
-                                    <p class="text-xs text-green-600 truncate">
+                                    <p class="text-xs text-blue-600 truncate">
                                         <i class="fas fa-chalkboard-teacher mr-1"></i>${t.instructor_name || '미정'}
                                     </p>
-                                    <p class="text-xs text-gray-600 truncate mt-0.5">
-                                        ${t.content ? (t.content.length > 35 ? t.content.substring(0, 35) + '...' : t.content) : '내용 없음'}
-                                    </p>
+                                    ${isToday ? `
+                                        <p class="text-xs text-blue-500 truncate mt-0.5">
+                                            <i class="fas fa-clock mr-1"></i>수업 진행 중
+                                        </p>
+                                    ` : t.hasLog ? `
+                                        <p class="text-xs text-gray-600 truncate mt-0.5">
+                                            ${t.logContent ? (t.logContent.length > 35 ? t.logContent.substring(0, 35) + '...' : t.logContent) : '내용 없음'}
+                                        </p>
+                                    ` : `
+                                        <p class="text-xs text-red-500 truncate mt-0.5">
+                                            <i class="fas fa-exclamation-circle mr-1"></i>작성 필요
+                                        </p>
+                                    `}
                                 </div>
-                            `).join('') : `
+                                `;
+                            }).join('') : `
                                 <div class="text-center py-4 text-gray-400">
-                                    <p class="text-xs">훈련일지 없음</p>
+                                    <p class="text-xs">최근 2일 시간표 없음</p>
                                 </div>
                             `}
                         </div>
@@ -2518,7 +2559,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 탭 전환
 window.showTab = function(tab, addToHistory = true) {
-    console.log('Switching to tab:', tab);
+    // 탭 전환 (로그 제거)
     currentTab = tab;
     
     // 히스토리에 추가 (뒤로가기 지원)
@@ -2619,6 +2660,11 @@ window.showTab = function(tab, addToHistory = true) {
             stopDashboardAutoRefresh();
             removeDashboardActivityListeners();
             renderAIReport();
+            break;
+        case 'ai-timetable':
+            stopDashboardAutoRefresh();
+            removeDashboardActivityListeners();
+            loadAITimetable();
             break;
         case 'ai-training-log':
             stopDashboardAutoRefresh();
@@ -5599,6 +5645,7 @@ window.showInstructorCodeForm = function(code = null) {
         { id: 'timetables', name: '시간표', icon: 'fa-clock' },
         { id: 'training-logs', name: '훈련일지 관리', icon: 'fa-clipboard-list' },
         { id: 'ai-report', name: 'AI 생기부', icon: 'fa-file-alt' },
+        { id: 'ai-timetable', name: 'AI 시간표', icon: 'fa-calendar-alt' },
         { id: 'ai-training-log', name: 'AI 훈련일지', icon: 'fa-brain' },
         { id: 'ai-counseling', name: 'AI 상담일지', icon: 'fa-comments' },
         { id: 'aesong-3d-chat', name: '🐶 예진이 만나기', icon: 'fa-robot' },
@@ -10531,9 +10578,13 @@ function renderTrainingLogsSelection(courses) {
             </h2>
             
             <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
-                <p class="text-blue-700">
+                <p class="text-blue-700 mb-2">
                     <i class="fas fa-info-circle mr-2"></i>
                     과정, 강사, 기간을 선택하여 훈련일지를 조회하세요
+                </p>
+                <p class="text-blue-600 text-sm">
+                    <i class="fas fa-calendar-alt mr-2"></i>
+                    기본적으로 <strong>최근 3일치 (오늘 포함)</strong>가 표시됩니다. 년도/월/작성상태를 선택하면 전체 기간 조회됩니다.
                 </p>
             </div>
             
@@ -10669,6 +10720,19 @@ window.filterTrainingLogs = async function() {
                     return !hasLog && isBeforeToday;
                 }
                 return true;
+            });
+        }
+        
+        // 기본적으로 최근 3일치만 표시 (year, month, status 필터가 없을 때)
+        if (!year && !month && !status) {
+            const today = new Date();
+            const threeDaysAgo = new Date(today);
+            threeDaysAgo.setDate(today.getDate() - 2); // 오늘 포함 3일
+            const threeDaysAgoStr = threeDaysAgo.toISOString().split('T')[0];
+            const todayStr = today.toISOString().split('T')[0];
+            
+            filteredTimetables = filteredTimetables.filter(tt => {
+                return tt.class_date >= threeDaysAgoStr && tt.class_date <= todayStr;
             });
         }
         
@@ -12300,6 +12364,236 @@ window.generateAICounselingLogs = async function() {
         window.showAlert('AI 상담일지 작성 실패: ' + (error.response?.data?.detail || error.message));
     }
 }
+
+// ==================== AI 시간표 대체 ====================
+async function loadAITimetable() {
+    try {
+        window.showLoading('데이터를 불러오는 중...');
+        const [coursesRes, timetablesRes, holidaysRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/api/courses`),
+            axios.get(`${API_BASE_URL}/api/timetables`),
+            axios.get(`${API_BASE_URL}/api/holidays`)
+        ]);
+        courses = coursesRes.data;
+        const timetables = timetablesRes.data;
+        const holidays = holidaysRes.data;
+        
+        renderAITimetable(timetables, holidays);
+        window.hideLoading();
+    } catch (error) {
+        window.hideLoading();
+        console.error('AI 시간표 로드 실패:', error);
+        document.getElementById('app').innerHTML = '<div class="text-red-600 p-4">데이터를 불러오는데 실패했습니다.</div>';
+    }
+}
+
+function renderAITimetable(timetables, holidays) {
+    const app = document.getElementById('app');
+    const today = new Date().toISOString().split('T')[0];
+    
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                    <i class="fas fa-calendar-alt mr-2 text-indigo-600"></i>AI 시간표 대체
+                </h2>
+                <p class="text-gray-600">시간표 날짜를 변경하고 원래 날짜를 공휴일로 자동 등록합니다.</p>
+            </div>
+            
+            <!-- 필터 영역 -->
+            <div class="bg-blue-50 border-l-4 border-indigo-400 p-4 mb-6">
+                <p class="text-indigo-700 mb-4">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    과정과 원래 날짜를 선택한 후, 대체할 날짜를 선택하세요
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-semibold">과정 선택 *</label>
+                        <select id="ai-tt-course" class="w-full border rounded px-3 py-2" onchange="window.filterAITimetableDates()">
+                            <option value="">-- 과정 선택 --</option>
+                            ${courses.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-semibold">원래 날짜 선택 *</label>
+                        <select id="ai-tt-original-date" class="w-full border rounded px-3 py-2" onchange="window.showAITimetablePreview()">
+                            <option value="">-- 원래 날짜 선택 --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-semibold">대체 날짜 선택 *</label>
+                        <input type="date" id="ai-tt-replacement-date" class="w-full border rounded px-3 py-2" min="${today}">
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button onclick="window.replaceAITimetable()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg">
+                        <i class="fas fa-exchange-alt mr-2"></i>시간표 대체 실행
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 미리보기 영역 -->
+            <div id="ai-tt-preview" class="hidden mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">
+                    <i class="fas fa-eye mr-2 text-indigo-600"></i>시간표 미리보기
+                </h3>
+                <div id="ai-tt-preview-content" class="bg-gray-50 p-4 rounded-lg"></div>
+            </div>
+            
+            <!-- 최근 대체 이력 -->
+            <div id="ai-tt-history" class="mt-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">
+                    <i class="fas fa-history mr-2 text-gray-600"></i>최근 대체 이력
+                </h3>
+                <div class="bg-gray-50 p-4 rounded-lg text-center text-gray-500">
+                    아직 대체 이력이 없습니다.
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 전역 변수에 저장
+    window.aiTimetablesData = timetables;
+    window.aiHolidaysData = holidays;
+}
+
+// 과정 선택 시 날짜 목록 업데이트
+window.filterAITimetableDates = function() {
+    const courseCode = document.getElementById('ai-tt-course').value;
+    const originalDateSelect = document.getElementById('ai-tt-original-date');
+    
+    if (!courseCode) {
+        originalDateSelect.innerHTML = '<option value="">-- 원래 날짜 선택 --</option>';
+        return;
+    }
+    
+    // 해당 과정의 시간표 날짜 추출 (중복 제거)
+    const courseTimetables = window.aiTimetablesData.filter(t => t.course_code === courseCode);
+    const uniqueDates = [...new Set(courseTimetables.map(t => t.class_date))].sort();
+    
+    originalDateSelect.innerHTML = `
+        <option value="">-- 원래 날짜 선택 --</option>
+        ${uniqueDates.map(date => {
+            const dateObj = new Date(date);
+            const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+            const dayOfWeek = dayNames[dateObj.getDay()];
+            const count = courseTimetables.filter(t => t.class_date === date).length;
+            return `<option value="${date}">${date} (${dayOfWeek}) - ${count}개 시간표</option>`;
+        }).join('')}
+    `;
+};
+
+// 시간표 미리보기
+window.showAITimetablePreview = function() {
+    const courseCode = document.getElementById('ai-tt-course').value;
+    const originalDate = document.getElementById('ai-tt-original-date').value;
+    const previewSection = document.getElementById('ai-tt-preview');
+    const previewContent = document.getElementById('ai-tt-preview-content');
+    
+    if (!courseCode || !originalDate) {
+        previewSection.classList.add('hidden');
+        return;
+    }
+    
+    // 해당 날짜의 시간표 조회
+    const dateTimetables = window.aiTimetablesData.filter(
+        t => t.course_code === courseCode && t.class_date === originalDate
+    );
+    
+    if (dateTimetables.length === 0) {
+        previewContent.innerHTML = '<p class="text-gray-500">해당 날짜에 시간표가 없습니다.</p>';
+        previewSection.classList.remove('hidden');
+        return;
+    }
+    
+    previewContent.innerHTML = `
+        <div class="space-y-2">
+            <p class="font-semibold text-gray-800 mb-3">총 ${dateTimetables.length}개의 시간표가 선택되었습니다.</p>
+            ${dateTimetables.map((tt, idx) => `
+                <div class="flex items-center justify-between p-3 bg-white rounded border">
+                    <div class="flex-1">
+                        <p class="font-semibold text-gray-800">${idx + 1}. ${tt.subject_name || tt.subject_code || '과목 미정'}</p>
+                        <p class="text-sm text-gray-600">
+                            <i class="fas fa-clock mr-1"></i>${tt.start_time} ~ ${tt.end_time}
+                            <span class="mx-2">|</span>
+                            <i class="fas fa-chalkboard-teacher mr-1"></i>${tt.instructor_name || tt.instructor_code || '강사 미정'}
+                        </p>
+                    </div>
+                    <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded text-sm font-semibold">
+                        ${tt.type === 'lecture' ? '교과' : tt.type === 'project' ? '프로젝트' : '현장실습'}
+                    </span>
+                </div>
+            `).join('')}
+        </div>
+        <div class="mt-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+            <p class="text-yellow-700 text-sm">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <strong>주의:</strong> 원래 날짜 ${originalDate}는 "공강/대체(대체날짜)" 공휴일로 자동 등록됩니다.
+            </p>
+        </div>
+    `;
+    
+    previewSection.classList.remove('hidden');
+};
+
+// 시간표 대체 실행
+window.replaceAITimetable = async function() {
+    const courseCode = document.getElementById('ai-tt-course').value;
+    const originalDate = document.getElementById('ai-tt-original-date').value;
+    const replacementDate = document.getElementById('ai-tt-replacement-date').value;
+    
+    if (!courseCode || !originalDate || !replacementDate) {
+        window.showAlert('모든 필드를 입력해주세요.');
+        return;
+    }
+    
+    if (originalDate === replacementDate) {
+        window.showAlert('원래 날짜와 대체 날짜가 같습니다.');
+        return;
+    }
+    
+    // 해당 날짜의 시간표 수 확인
+    const dateTimetables = window.aiTimetablesData.filter(
+        t => t.course_code === courseCode && t.class_date === originalDate
+    );
+    
+    const confirmed = await window.showConfirm(
+        `${originalDate}의 시간표 ${dateTimetables.length}건을 ${replacementDate}로 변경하시겠습니까?\n\n` +
+        `✅ ${originalDate} 시간표 삭제 후 ${replacementDate}로 대체\n` +
+        `✅ ${originalDate}를 "공강/대체(${replacementDate})" 공휴일로 등록\n\n` +
+        `이 작업은 되돌릴 수 없습니다.`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        window.showLoading('시간표를 대체하는 중...');
+        
+        const response = await axios.post(`${API_BASE_URL}/api/ai/replace-timetable`, {
+            course_code: courseCode,
+            original_date: originalDate,
+            replacement_date: replacementDate
+        });
+        
+        window.hideLoading();
+        
+        window.showAlert(
+            `✅ 시간표 대체가 완료되었습니다!\n\n` +
+            `- 변경된 시간표: ${response.data.timetables_updated}건\n` +
+            `- 등록된 공휴일: ${originalDate} (공강/대체(${replacementDate}))`
+        );
+        
+        // 페이지 새로고침
+        loadAITimetable();
+        
+    } catch (error) {
+        window.hideLoading();
+        console.error('시간표 대체 실패:', error);
+        window.showAlert('시간표 대체 실패: ' + (error.response?.data?.detail || error.message));
+    }
+};
 
 console.log('App script loaded successfully');
 
@@ -16348,16 +16642,6 @@ window.restoreBGMSettings = function() {
     }
 }
 
-// 대시보드 로드 시 자동으로 BGM 재생
-function autoPlayBGM() {
-    const savedGenre = localStorage.getItem('bgm_genre');
-    if (savedGenre) {
-        setTimeout(() => {
-            window.searchYouTubeBGM();
-        }, 2000); // 2초 대기 후 재생
-    }
-}
-
 // ==================== 페이지 로드 시 헤더 업데이트 및 권한 체크 ====================
 // 페이지가 완전히 로드된 후 헤더 업데이트 및 메뉴 권한 체크 실행
 if (document.readyState === 'loading') {
@@ -16365,14 +16649,12 @@ if (document.readyState === 'loading') {
         updateHeader();
         applyMenuPermissions();
         window.restoreBGMSettings(); // BGM 설정 복원 (헤더)
-        autoPlayBGM(); // BGM 자동 재생
     });
 } else {
     // 이미 로드된 경우 즉시 실행
     updateHeader();
     applyMenuPermissions();
     window.restoreBGMSettings(); // BGM 설정 복원 (헤더)
-    autoPlayBGM(); // BGM 자동 재생
 }
 
 // ==================== DB 백업 관리 ====================
