@@ -547,10 +547,12 @@
                     .slice(0, 5)
                     .map(log => {
                         const project = projectsData.find(p => p.id === log.project_id);
+                        const instructor = instructorsData.find(i => i.code === log.instructor_code);
                         return {
                             ...log,
                             project_name: project?.name || '프로젝트명 없음',
-                            project_code: project?.code || ''
+                            project_code: project?.code || '',
+                            instructor_name: instructor?.name || '강사명 없음'
                         };
                     });
                 
@@ -975,6 +977,9 @@
                                         'bg-gray-200 text-gray-800'
                                     }">${c.status || '미정'}</span>
                                 </div>
+                                <p class="text-xs text-gray-600 mb-1">
+                                    <i class="fas fa-chalkboard-teacher mr-1"></i>${c.instructor_name || '강사명 없음'}
+                                </p>
                                 <p class="text-xs text-gray-600 mb-2">${c.content?.substring(0, 50) || '내용 없음'}...</p>
                                 <div class="flex items-center gap-2 text-xs text-gray-500">
                                     <i class="fas fa-calendar-alt"></i>
@@ -1032,6 +1037,9 @@
                                     <p class="text-sm font-bold text-gray-800">${t.project_name}</p>
                                     <span class="text-xs text-gray-500">${t.activity_type || '유형 없음'}</span>
                                 </div>
+                                <p class="text-xs text-gray-600 mb-1">
+                                    <i class="fas fa-chalkboard-teacher mr-1"></i>${t.instructor_name || '강사명 없음'}
+                                </p>
                                 <p class="text-xs text-gray-600 mb-2">${t.content?.substring(0, 50) || '내용 없음'}...</p>
                                 <div class="flex items-center gap-2 text-xs text-gray-500">
                                     <i class="fas fa-calendar-alt"></i>
