@@ -211,56 +211,64 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                         <i class="fas fa-edit mr-2 text-pink-500"></i>활동 내용
-                        <button type="button" id="voiceBtn1" onclick="toggleVoice('activityContent', 1)"
-                                class="ml-2 bg-green-500 hover:bg-green-600 text-white rounded-lg p-2 transition-all">
-                            <i class="fas fa-microphone text-sm"></i>
-                        </button>
                     </label>
-                    <textarea id="activityContent" rows="4" required
-                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
-                              placeholder="활동 내용을 입력하세요..."></textarea>
+                    <div class="relative">
+                        <textarea id="activityContent" rows="4" required
+                                  class="w-full px-4 py-3 pr-14 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
+                                  placeholder="활동 내용을 입력하세요..."></textarea>
+                        <button type="button" id="voiceBtn1" onclick="toggleVoice('activityContent', 1)"
+                                class="absolute bottom-3 right-3 bg-green-500 hover:bg-green-600 text-white p-2 rounded-full transition-all shadow-lg">
+                            <i class="fas fa-microphone text-lg"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Achievements -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                         <i class="fas fa-trophy mr-2 text-pink-500"></i>성과
-                        <button type="button" id="voiceBtn2" onclick="toggleVoice('activityAchievements', 2)"
-                                class="ml-2 bg-green-500 hover:bg-green-600 text-white rounded-lg p-2 transition-all">
-                            <i class="fas fa-microphone text-sm"></i>
-                        </button>
                     </label>
-                    <textarea id="activityAchievements" rows="3"
-                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
-                              placeholder="활동 성과를 입력하세요..."></textarea>
+                    <div class="relative">
+                        <textarea id="activityAchievements" rows="3"
+                                  class="w-full px-4 py-3 pr-14 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
+                                  placeholder="활동 성과를 입력하세요..."></textarea>
+                        <button type="button" id="voiceBtn2" onclick="toggleVoice('activityAchievements', 2)"
+                                class="absolute bottom-3 right-3 bg-green-500 hover:bg-green-600 text-white p-2 rounded-full transition-all shadow-lg">
+                            <i class="fas fa-microphone text-lg"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Next Plan -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                         <i class="fas fa-tasks mr-2 text-pink-500"></i>다음 계획
-                        <button type="button" id="voiceBtn3" onclick="toggleVoice('activityNextPlan', 3)"
-                                class="ml-2 bg-green-500 hover:bg-green-600 text-white rounded-lg p-2 transition-all">
-                            <i class="fas fa-microphone text-sm"></i>
-                        </button>
                     </label>
-                    <textarea id="activityNextPlan" rows="2"
-                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
-                              placeholder="다음 계획을 입력하세요..."></textarea>
+                    <div class="relative">
+                        <textarea id="activityNextPlan" rows="2"
+                                  class="w-full px-4 py-3 pr-14 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
+                                  placeholder="다음 계획을 입력하세요..."></textarea>
+                        <button type="button" id="voiceBtn3" onclick="toggleVoice('activityNextPlan', 3)"
+                                class="absolute bottom-3 right-3 bg-green-500 hover:bg-green-600 text-white p-2 rounded-full transition-all shadow-lg">
+                            <i class="fas fa-microphone text-lg"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Notes -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                         <i class="fas fa-sticky-note mr-2 text-pink-500"></i>비고
-                        <button type="button" id="voiceBtn4" onclick="toggleVoice('activityNotes', 4)"
-                                class="ml-2 bg-green-500 hover:bg-green-600 text-white rounded-lg p-2 transition-all">
-                            <i class="fas fa-microphone text-sm"></i>
-                        </button>
                     </label>
-                    <textarea id="activityNotes" rows="2"
-                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
-                              placeholder="비고 사항을 입력하세요..."></textarea>
+                    <div class="relative">
+                        <textarea id="activityNotes" rows="2"
+                                  class="w-full px-4 py-3 pr-14 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
+                                  placeholder="비고 사항을 입력하세요..."></textarea>
+                        <button type="button" id="voiceBtn4" onclick="toggleVoice('activityNotes', 4)"
+                                class="absolute bottom-3 right-3 bg-green-500 hover:bg-green-600 text-white p-2 rounded-full transition-all shadow-lg">
+                            <i class="fas fa-microphone text-lg"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Photo Upload -->
