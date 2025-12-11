@@ -1624,13 +1624,13 @@ async function loadDashboard() {
             .sort((a, b) => new Date(b.consultation_date) - new Date(a.consultation_date))
             .slice(0, 5);
         
-        // 오늘 시간표 (로컬 시간 기준)
+        // 오늘 시간표 (로컬 시간 기준, 전체 과정이면 모든 시간표)
         const now = new Date();
         const today = now.getFullYear() + '-' + 
                       String(now.getMonth() + 1).padStart(2, '0') + '-' + 
                       String(now.getDate()).padStart(2, '0');
         const todayTimetables = timetablesData
-            .filter(t => t.class_date === today && t.course_code === mainCourse.code)
+            .filter(t => t.class_date === today && (isAllCourses || t.course_code === mainCourse.code))
             .map(t => {
                 // 해당 과정 찾기
                 const course = coursesData.find(c => c.code === t.course_code);
@@ -1674,9 +1674,9 @@ async function loadDashboard() {
                                 String(twoDaysAgo.getMonth() + 1).padStart(2, '0') + '-' + 
                                 String(twoDaysAgo.getDate()).padStart(2, '0');
         
-        // 최근 2일치 시간표 가져오기
+        // 최근 2일치 시간표 가져오기 (전체 과정이면 모든 과정)
         const recent3DaysTimetables = timetablesData
-            .filter(t => t.course_code === mainCourse.code && t.class_date >= twoDaysAgoStr && t.class_date <= today)
+            .filter(t => (isAllCourses || t.course_code === mainCourse.code) && t.class_date >= twoDaysAgoStr && t.class_date <= today)
             .sort((a, b) => {
                 const dateCompare = b.class_date.localeCompare(a.class_date);
                 if (dateCompare !== 0) return dateCompare;
@@ -1694,8 +1694,8 @@ async function loadDashboard() {
             };
         });
         
-        // 선택된 과정의 프로젝트들
-        const courseProjects = projectsData.filter(p => p.course_code === mainCourse.code);
+        // 선택된 과정의 프로젝트들 (전체 과정이면 모든 프로젝트)
+        const courseProjects = isAllCourses ? projectsData : projectsData.filter(p => p.course_code === mainCourse.code);
         const courseProjectIds = courseProjects.map(p => p.id);
         
         // 최근 팀 활동일지 (선택된 과정 프로젝트만, 최근 5건)
@@ -1802,6 +1802,82 @@ async function loadDashboard() {
         
         // 진도율 계산 함수 (과정별)
         window.calculateProgress = function(courseCode) {
+            // 전체 과정일 경우 모든 과정의 합계 계산
+            if (courseCode === 'ALL') {
+                let totalLectureHours = 0;
+                let totalProjectHours = 0;
+                let totalWorkshipHours = 0;
+                let totalLectureCompleted = 0;
+                let totalProjectCompleted = 0;
+                let totalWorkshipCompleted = 0;
+                let totalPastTimetables = 0;
+                let totalTrainingLogCount = 0;
+                
+                // 시간 계산 함수
+                const calcHours = (tt) => {
+                    if (!tt.start_time || !tt.end_time) return 0;
+                    const startHour = parseInt(tt.start_time.split(':')[0]);
+                    const startMinute = parseInt(tt.start_time.split(':')[1] || 0);
+                    const endHour = parseInt(tt.end_time.split(':')[0]);
+                    const endMinute = parseInt(tt.end_time.split(':')[1] || 0);
+                    return (endHour * 60 + endMinute - startHour * 60 - startMinute) / 60;
+                };
+                
+                // 모든 과정 순회
+                coursesData.forEach(course => {
+                    totalLectureHours += course.lecture_hours || 0;
+                    totalProjectHours += course.project_hours || 0;
+                    totalWorkshipHours += course.workship_hours || 0;
+                    
+                    // 오늘까지의 시간표 필터링
+                    const completedTimetables = timetablesData.filter(tt => 
+                        tt.course_code === course.code && 
+                        tt.class_date <= todayDate
+                    );
+                    
+                    // 유형별 시수 계산
+                    completedTimetables.forEach(tt => {
+                        const hours = calcHours(tt);
+                        if (tt.type === 'lecture') totalLectureCompleted += hours;
+                        else if (tt.type === 'project') totalProjectCompleted += hours;
+                        else if (tt.type === 'practice') totalWorkshipCompleted += hours;
+                    });
+                    
+                    // 훈련일지 작성률 계산 (오늘 이전까지)
+                    const pastTimetables = timetablesData.filter(tt => 
+                        tt.course_code === course.code && 
+                        tt.class_date < todayDate
+                    );
+                    totalPastTimetables += pastTimetables.length;
+                    
+                    const trainingLogCount = trainingLogsData.filter(log => {
+                        const logTimetable = timetablesData.find(tt => tt.id === log.timetable_id);
+                        return logTimetable && logTimetable.course_code === course.code && logTimetable.class_date < todayDate;
+                    }).length;
+                    totalTrainingLogCount += trainingLogCount;
+                });
+                
+                const totalHours = totalLectureHours + totalProjectHours + totalWorkshipHours;
+                const trainingLogRate = totalPastTimetables > 0 ? Math.round((totalTrainingLogCount / totalPastTimetables) * 100) : 0;
+                
+                return {
+                    lecture: totalLectureHours > 0 ? Math.round((totalLectureCompleted / totalLectureHours) * 100) : 0,
+                    project: totalProjectHours > 0 ? Math.round((totalProjectCompleted / totalProjectHours) * 100) : 0,
+                    workship: totalWorkshipHours > 0 ? Math.round((totalWorkshipCompleted / totalWorkshipHours) * 100) : 0,
+                    total: totalHours > 0 ? Math.round(((totalLectureCompleted + totalProjectCompleted + totalWorkshipCompleted) / totalHours) * 100) : 0,
+                    lectureCompleted: Math.round(totalLectureCompleted),
+                    projectCompleted: Math.round(totalProjectCompleted),
+                    workshipCompleted: Math.round(totalWorkshipCompleted),
+                    lectureTotal: totalLectureHours,
+                    projectTotal: totalProjectHours,
+                    workshipTotal: totalWorkshipHours,
+                    trainingLogRate,
+                    trainingLogCount: totalTrainingLogCount,
+                    pastTimetablesCount: totalPastTimetables
+                };
+            }
+            
+            // 단일 과정 처리
             const course = coursesData.find(c => c.code === courseCode);
             if (!course) return { lecture: 0, project: 0, workship: 0, total: 0, trainingLogRate: 0 };
             
